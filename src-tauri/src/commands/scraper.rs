@@ -173,11 +173,8 @@ pub async fn apply_scraped_data(app: AppHandle, options: ApplyScrapeOptions) -> 
         scraped_at: Some(chrono::Local::now().naive_local().to_string()),
     };
 
-    diesel::insert_into(rom_metadata::table)
+    diesel::replace_into(rom_metadata::table)
         .values(&metadata)
-        .on_conflict(rom_metadata::rom_id)
-        .do_update()
-        .set(&metadata)
         .execute(&mut conn)
         .map_err(|e| e.to_string())?;
 
