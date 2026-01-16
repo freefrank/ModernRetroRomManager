@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, LayoutGrid, List, Filter, Plus, Ghost } from "lucide-react";
+import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
 import { useAppStore } from "@/stores/appStore";
@@ -11,13 +11,26 @@ import type { Rom } from "@/types";
 import RomGrid from "@/components/rom/RomGrid";
 import RomList from "@/components/rom/RomList";
 import RomDetail from "@/components/rom/RomDetail";
+import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 
 export default function Library() {
   const { t } = useTranslation();
-  const { roms, fetchRoms, addScanDirectory, stats } = useRomStore();
+  const { 
+    roms, 
+    fetchRoms, 
+    addScanDirectory, 
+    stats, 
+    selectedRomIds, 
+    toggleRomSelection, 
+    clearSelection,
+    selectAllRoms,
+    isBatchScraping,
+    batchProgress
+  } = useRomStore();
   const { viewMode, setViewMode, searchQuery, setSearchQuery } = useAppStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [activeRom, setActiveRom] = useState<Rom | null>(null);
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchRoms({ searchQuery: debouncedSearch });
@@ -38,10 +51,65 @@ export default function Library() {
     }
   };
 
+  const handleRomClick = (rom: Rom) => {
+    // Single click logic: Select if multi-select mode (Ctrl/Shift held - TODO), else open Detail
+    // For now: Always open detail, Selection is handled by dedicated checkbox or specialized interactions
+    setActiveRom(rom);
+  };
+
   return (
-    <div className="flex flex-col h-full space-y-8 max-w-[1600px] mx-auto w-full pb-8">
+    <div className="flex flex-col h-full space-y-8 max-w-[1600px] mx-auto w-full pb-8 relative">
+      {/* Batch Actions Toolbar (Floating) */}
+      <div 
+        className={clsx(
+          "fixed bottom-8 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ease-out transform",
+          selectedRomIds.size > 0 ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"
+        )}
+      >
+        <div className="bg-[#151621]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2 flex items-center gap-4 px-4">
+          <div className="text-white font-medium pl-2 border-r border-white/10 pr-4">
+            <span className="text-accent-primary font-bold">{selectedRomIds.size}</span> Selected
+          </div>
+          
+          <button 
+            onClick={() => setIsBatchDialogOpen(true)}
+            disabled={isBatchScraping}
+            className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-xl transition-colors font-medium shadow-lg shadow-accent-primary/20"
+          >
+            <Database className="w-4 h-4" />
+            Batch Scrape
+          </button>
+          
+          <button 
+            onClick={clearSelection}
+            className="px-4 py-2 hover:bg-white/10 text-white rounded-xl transition-colors text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      {/* Batch Progress Bar (Top) */}
+      {isBatchScraping && batchProgress && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#151621] border-b border-accent-primary/30 shadow-lg">
+          <div className="h-1 bg-white/10">
+            <div 
+              className="h-full bg-accent-primary transition-all duration-300 ease-out"
+              style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+            />
+          </div>
+          <div className="max-w-[1600px] mx-auto px-6 py-2 flex items-center justify-between text-xs font-medium">
+            <span className="text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-accent-primary animate-pulse" />
+              Batch Scraping...
+            </span>
+            <span className="text-text-muted">{batchProgress.message} ({batchProgress.current}/{batchProgress.total})</span>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between sticky top-0 z-10 bg-bg-primary/50 backdrop-blur-md py-4 -mt-4 pt-8">
+      <div className={clsx("flex flex-col gap-6 md:flex-row md:items-center md:justify-between sticky top-0 z-10 bg-bg-primary/50 backdrop-blur-md py-4 -mt-4 pt-8 transition-all", isBatchScraping && "mt-8")}>
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-white mb-2">
             {t("library.title")}
@@ -139,15 +207,31 @@ export default function Library() {
           </div>
         ) : (
           viewMode === "grid" ? (
-            <RomGrid roms={roms} onRomClick={setActiveRom} />
+            <RomGrid 
+              roms={roms} 
+              selectedIds={selectedRomIds}
+              onRomClick={handleRomClick}
+              onToggleSelect={(id) => toggleRomSelection(id, true)} 
+            />
           ) : (
-            <RomList roms={roms} onRomClick={setActiveRom} />
+            <RomList 
+              roms={roms} 
+              selectedIds={selectedRomIds}
+              onRomClick={handleRomClick}
+              onToggleSelect={(id) => toggleRomSelection(id, true)}
+            />
           )
         )}
       </div>
 
       {/* Detail Panel */}
       <RomDetail rom={activeRom} onClose={() => setActiveRom(null)} />
+      
+      {/* Batch Scrape Dialog */}
+      <BatchScrapeDialog 
+        isOpen={isBatchDialogOpen} 
+        onClose={() => setIsBatchDialogOpen(false)} 
+      />
     </div>
   );
 }

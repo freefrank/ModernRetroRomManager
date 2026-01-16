@@ -1,9 +1,12 @@
-use crate::db::{get_connection, models::{ApiConfig, MediaAsset, RomMetadata}, schema::{api_configs, media_assets, rom_metadata}};
+use crate::db::{get_connection, models::{ApiConfig, MediaAsset, Rom, RomMetadata}, schema::{api_configs, media_assets, rom_metadata, roms}};
 use crate::scraper::{Scraper, ScrapedGame, ScrapedMedia, steamgriddb::SteamGridDBClient, screenscraper::ScreenScraperClient};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Emitter};
+use std::path::PathBuf;
+
+// ... (ApiConfig structs remain same) ...
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiConfigInfo {
@@ -152,19 +155,18 @@ pub struct ApplyScrapeOptions {
     pub selected_media: Vec<ScrapedMedia>,
 }
 
-/// 应用抓取到的数据
-#[tauri::command]
-pub async fn apply_scraped_data(app: AppHandle, options: ApplyScrapeOptions) -> Result<(), String> {
+/// 核心数据应用逻辑（复用）
+async fn process_scrape_result(app: &AppHandle, options: &ApplyScrapeOptions) -> Result<(), String> {
     let mut conn = get_connection().map_err(|e| e.to_string())?;
 
     // 1. 更新元数据
     let metadata = RomMetadata {
         rom_id: options.rom_id.clone(),
-        name: options.game_details.name,
-        description: options.game_details.description,
-        release_date: options.game_details.release_date,
-        developer: options.game_details.developer,
-        publisher: options.game_details.publisher,
+        name: options.game_details.name.clone(),
+        description: options.game_details.description.clone(),
+        release_date: options.game_details.release_date.clone(),
+        developer: options.game_details.developer.clone(),
+        publisher: options.game_details.publisher.clone(),
         genre: Some(serde_json::to_string(&options.game_details.genres).unwrap_or_default()),
         players: None,
         rating: options.game_details.rating,
@@ -185,7 +187,7 @@ pub async fn apply_scraped_data(app: AppHandle, options: ApplyScrapeOptions) -> 
 
     let client = reqwest::Client::new();
 
-    for media in options.selected_media {
+    for media in &options.selected_media {
         let extension = match media.asset_type.as_str() {
             "video" => "mp4",
             _ => "png", // Default to png for images
@@ -208,7 +210,7 @@ pub async fn apply_scraped_data(app: AppHandle, options: ApplyScrapeOptions) -> 
             width: media.width,
             height: media.height,
             file_size: Some(std::fs::metadata(&save_path).map(|m| m.len() as i64).unwrap_or(0)),
-            source_url: Some(media.url),
+            source_url: Some(media.url.clone()),
             downloaded_at: chrono::Local::now().naive_local().to_string(),
         };
 
@@ -217,6 +219,106 @@ pub async fn apply_scraped_data(app: AppHandle, options: ApplyScrapeOptions) -> 
             .execute(&mut conn)
             .map_err(|e| e.to_string())?;
     }
+
+    Ok(())
+}
+
+/// 应用抓取到的数据 (Frontend调用)
+#[tauri::command]
+pub async fn apply_scraped_data(app: AppHandle, options: ApplyScrapeOptions) -> Result<(), String> {
+    process_scrape_result(&app, &options).await
+}
+
+#[derive(Clone, serde::Serialize)]
+struct BatchProgress {
+    current: usize,
+    total: usize,
+    message: String,
+    finished: bool,
+}
+
+/// 自动抓取单个 ROM
+async fn auto_scrape_rom(app: &AppHandle, rom_id: &str, provider: &str) -> Result<(), String> {
+    let mut conn = get_connection().map_err(|e| e.to_string())?;
+    
+    // 1. 获取 ROM 信息
+    let rom = roms::table
+        .filter(roms::id.eq(rom_id))
+        .first::<Rom>(&mut conn)
+        .map_err(|e| e.to_string())?;
+
+    // 2. 搜索游戏 (使用文件名，去除扩展名)
+    // 简单的文件名清理：去除括号内容
+    let clean_name = rom.filename
+        .rsplitn(2, '.').last().unwrap_or(&rom.filename) // remove extension
+        .split('(').next().unwrap_or("") // remove (region) etc
+        .trim();
+
+    let scraper = get_scraper(provider).await?;
+    let search_results = scraper.search(clean_name).await?;
+
+    if let Some(game) = search_results.first() {
+        // 3. 获取详情 (如果需要)
+        let details = scraper.get_details(&game.source_id).await?;
+        
+        // 4. 获取媒体
+        let media_list = scraper.get_media(&game.source_id).await?;
+        
+        // 5. 自动选择最佳媒体
+        // 策略：每种类型取第一个
+        let mut selected_media = Vec::new();
+        let types = vec!["boxfront", "screenshot", "logo", "video", "hero"];
+        
+        for t in types {
+            if let Some(m) = media_list.iter().find(|m| m.asset_type == t) {
+                selected_media.push(m.clone());
+            }
+        }
+
+        // 6. 应用数据
+        process_scrape_result(app, &ApplyScrapeOptions {
+            rom_id: rom_id.to_string(),
+            game_details: details,
+            selected_media,
+        }).await?;
+    } else {
+        return Err(format!("No match found for {}", clean_name));
+    }
+
+    Ok(())
+}
+
+/// 批量 Scrape
+#[tauri::command]
+pub async fn batch_scrape(app: AppHandle, rom_ids: Vec<String>, provider: String) -> Result<(), String> {
+    let total = rom_ids.len();
+    
+    for (idx, rom_id) in rom_ids.into_iter().enumerate() {
+        // 发送进度
+        let _ = app.emit("batch-scrape-progress", BatchProgress {
+            current: idx + 1,
+            total,
+            message: format!("Processing item {}/{}", idx + 1, total),
+            finished: false,
+        });
+
+        // 执行自动抓取，忽略单个失败
+        if let Err(e) = auto_scrape_rom(&app, &rom_id, &provider).await {
+            println!("Failed to auto-scrape rom {}: {}", rom_id, e);
+        }
+        
+        // 简单的限速，避免 API 封禁 (特别是 SteamGridDB)
+        // 生产环境应该用更好的 Rate Limiter
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    }
+
+    // 完成
+    let _ = app.emit("batch-scrape-progress", BatchProgress {
+        current: total,
+        total,
+        message: "Batch scrape completed".to_string(),
+        finished: true,
+    });
 
     Ok(())
 }

@@ -10,10 +10,28 @@ interface ScanProgress {
   finished: boolean;
 }
 
+interface BatchProgress {
+  current: number;
+  total: number;
+  message: string;
+  finished: boolean;
+}
+
 interface RomState {
   // ROM 列表
   roms: Rom[];
   fetchRoms: (filter?: FilterOption) => Promise<void>;
+  
+  // 选中的 ROM
+  selectedRomIds: Set<string>;
+  toggleRomSelection: (id: string, multiSelect?: boolean) => void;
+  selectAllRoms: () => void;
+  clearSelection: () => void;
+
+  // 批量 Scrape
+  isBatchScraping: boolean;
+  batchProgress: BatchProgress | null;
+  startBatchScrape: (provider: string) => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -49,6 +67,50 @@ export const useRomStore = create<RomState>((set, get) => ({
       get().fetchStats();
     } catch (error) {
       console.error("Failed to fetch roms:", error);
+    }
+  },
+
+  // 选中的 ROM
+  selectedRomIds: new Set(),
+  toggleRomSelection: (id: string, multiSelect = false) => {
+    set((state) => {
+      if (multiSelect) {
+        const newSet = new Set(state.selectedRomIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        return { selectedRomIds: newSet };
+      } else {
+        return { selectedRomIds: new Set([id]) };
+      }
+    });
+  },
+  selectAllRoms: () => {
+    set((state) => ({ selectedRomIds: new Set(state.roms.map(r => r.id)) }));
+  },
+  clearSelection: () => set({ selectedRomIds: new Set() }),
+
+  // 批量 Scrape
+  isBatchScraping: false,
+  batchProgress: null,
+  startBatchScrape: async (provider: string) => {
+    const { selectedRomIds } = get();
+    if (selectedRomIds.size === 0) return;
+
+    set({ isBatchScraping: true, batchProgress: null });
+    try {
+      const unlisten = await listen<BatchProgress>("batch-scrape-progress", (event) => {
+        set({ batchProgress: event.payload });
+        if (event.payload.finished) {
+          set({ isBatchScraping: false });
+          get().fetchRoms();
+          unlisten();
+        }
+      });
+
+      await invoke("batch_scrape", { romIds: Array.from(selectedRomIds), provider });
+    } catch (error) {
+      console.error("Failed to start batch scrape:", error);
+      set({ isBatchScraping: false });
     }
   },
 
