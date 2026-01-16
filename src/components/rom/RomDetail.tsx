@@ -4,6 +4,7 @@ import { X, Calendar, User, Building2, Globe, Gamepad2, Play, Star } from "lucid
 import { useTranslation } from "react-i18next";
 import type { Rom } from "@/types";
 import ScrapeDialog from "./ScrapeDialog";
+import { getMediaUrl } from "@/utils/media";
 
 interface RomDetailProps {
   rom: Rom | null;
@@ -15,6 +16,11 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
 
   if (!rom) return null;
+
+  const hero = rom.media?.find((m) => m.assetType === "hero") || rom.media?.find((m) => m.assetType === "boxfront");
+  const video = rom.media?.find((m) => m.assetType === "video");
+  const heroUrl = getMediaUrl(hero?.path);
+  const videoUrl = getMediaUrl(video?.path);
 
   return (
     <>
@@ -38,20 +44,32 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-[#0B0C15] border-l border-white/10 z-50 overflow-y-auto shadow-2xl"
             >
-              {/* Header Image */}
-              <div className="relative aspect-video w-full bg-[#151621]">
-                <div className="absolute inset-0 flex items-center justify-center text-white/5">
-                  <Gamepad2 className="w-24 h-24" />
-                </div>
+              {/* Header Image/Video */}
+              <div className="relative aspect-video w-full bg-[#151621] overflow-hidden">
+                {videoUrl ? (
+                  <video 
+                    src={videoUrl} 
+                    autoPlay 
+                    muted 
+                    loop 
+                    className="w-full h-full object-cover"
+                  />
+                ) : heroUrl ? (
+                  <img src={heroUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-white/5">
+                    <Gamepad2 className="w-24 h-24" />
+                  </div>
+                )}
                 
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-white/10 text-white transition-colors backdrop-blur-md"
+                  className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-white/10 text-white transition-colors backdrop-blur-md z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0B0C15] to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0B0C15] via-[#0B0C15]/40 to-transparent">
                   <h2 className="text-3xl font-bold text-white mb-2 leading-tight">
                     {rom.metadata?.name || rom.filename}
                   </h2>

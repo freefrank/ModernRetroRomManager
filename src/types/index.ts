@@ -47,7 +47,9 @@ export type MediaAssetType =
   | "screenshot"
   | "video"
   | "logo"
-  | "manual";
+  | "manual"
+  | "hero"
+  | "icon";
 
 // 游戏系统/平台
 export interface GameSystem {

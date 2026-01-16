@@ -8,6 +8,7 @@ diesel::table! {
         extensions -> Text,
         igdb_platform_id -> Nullable<Integer>,
         thegamesdb_platform_id -> Nullable<Integer>,
+        screenscraper_id -> Nullable<Integer>,
     }
 }
 

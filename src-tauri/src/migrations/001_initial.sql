@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS systems (
   release_year INTEGER,
   extensions TEXT NOT NULL,
   igdb_platform_id INTEGER,
-  thegamesdb_platform_id INTEGER
+  thegamesdb_platform_id INTEGER,
+  screenscraper_id INTEGER
 );
 
 -- ROM 表

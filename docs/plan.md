@@ -116,7 +116,7 @@
 - [x] SteamGridDB API 客户端
 - [ ] TheGamesDB API 客户端
 - [ ] MobyGames API 客户端
-- [ ] ScreenScraper API 客户端 (In Progress)
+- [x] ScreenScraper API 客户端
 - [ ] 搜索引擎 + AI Scraper
 - [x] 交互式 Scrape 对话框 (Frontend)
 

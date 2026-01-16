@@ -13,6 +13,7 @@ pub struct System {
     pub extensions: String, // JSON 数组
     pub igdb_platform_id: Option<i32>,
     pub thegamesdb_platform_id: Option<i32>,
+    pub screenscraper_id: Option<i32>,
 }
 
 /// ROM 文件

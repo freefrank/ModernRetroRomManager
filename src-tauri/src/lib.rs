@@ -4,11 +4,14 @@ mod scanner;
 mod scraper;
 
 use tauri::Manager;
+use tauri_plugin_fs::FsExt;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // 初始化数据库
             let app_data_dir = app
@@ -82,6 +85,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".nes", ".zip", ".7z"]"#.to_string(),
             igdb_platform_id: Some(18),
             thegamesdb_platform_id: Some(7),
+            screenscraper_id: Some(3),
         },
         db::models::System {
             id: "snes".to_string(),
@@ -92,6 +96,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".sfc", ".smc", ".zip", ".7z"]"#.to_string(),
             igdb_platform_id: Some(19),
             thegamesdb_platform_id: Some(6),
+            screenscraper_id: Some(4),
         },
         db::models::System {
             id: "n64".to_string(),
@@ -102,6 +107,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".n64", ".z64", ".v64", ".zip"]"#.to_string(),
             igdb_platform_id: Some(4),
             thegamesdb_platform_id: Some(3),
+            screenscraper_id: Some(14),
         },
         db::models::System {
             id: "gb".to_string(),
@@ -112,6 +118,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".gb", ".zip"]"#.to_string(),
             igdb_platform_id: Some(33),
             thegamesdb_platform_id: Some(4),
+            screenscraper_id: Some(9),
         },
         db::models::System {
             id: "gbc".to_string(),
@@ -122,6 +129,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".gbc", ".zip"]"#.to_string(),
             igdb_platform_id: Some(22),
             thegamesdb_platform_id: Some(41),
+            screenscraper_id: Some(10),
         },
         db::models::System {
             id: "gba".to_string(),
@@ -132,6 +140,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".gba", ".zip"]"#.to_string(),
             igdb_platform_id: Some(24),
             thegamesdb_platform_id: Some(5),
+            screenscraper_id: Some(12),
         },
         db::models::System {
             id: "nds".to_string(),
@@ -142,6 +151,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".nds", ".zip"]"#.to_string(),
             igdb_platform_id: Some(20),
             thegamesdb_platform_id: Some(8),
+            screenscraper_id: Some(15),
         },
         db::models::System {
             id: "genesis".to_string(),
@@ -152,6 +162,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".md", ".bin", ".gen", ".zip"]"#.to_string(),
             igdb_platform_id: Some(29),
             thegamesdb_platform_id: Some(18),
+            screenscraper_id: Some(1),
         },
         db::models::System {
             id: "saturn".to_string(),
@@ -162,6 +173,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".iso", ".cue", ".bin"]"#.to_string(),
             igdb_platform_id: Some(32),
             thegamesdb_platform_id: Some(17),
+            screenscraper_id: Some(5),
         },
         db::models::System {
             id: "dreamcast".to_string(),
@@ -172,6 +184,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".cdi", ".gdi", ".iso"]"#.to_string(),
             igdb_platform_id: Some(23),
             thegamesdb_platform_id: Some(16),
+            screenscraper_id: Some(40),
         },
         db::models::System {
             id: "psx".to_string(),
@@ -182,6 +195,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".iso", ".bin", ".cue", ".pbp"]"#.to_string(),
             igdb_platform_id: Some(7),
             thegamesdb_platform_id: Some(10),
+            screenscraper_id: Some(57),
         },
         db::models::System {
             id: "ps2".to_string(),
@@ -192,6 +206,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".iso", ".bin"]"#.to_string(),
             igdb_platform_id: Some(8),
             thegamesdb_platform_id: Some(11),
+            screenscraper_id: Some(58),
         },
         db::models::System {
             id: "psp".to_string(),
@@ -202,6 +217,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".iso", ".cso"]"#.to_string(),
             igdb_platform_id: Some(38),
             thegamesdb_platform_id: Some(13),
+            screenscraper_id: Some(61),
         },
         db::models::System {
             id: "arcade".to_string(),
@@ -212,6 +228,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".zip"]"#.to_string(),
             igdb_platform_id: Some(52),
             thegamesdb_platform_id: Some(23),
+            screenscraper_id: Some(75),
         },
         db::models::System {
             id: "neogeo".to_string(),
@@ -222,6 +239,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".zip"]"#.to_string(),
             igdb_platform_id: Some(80),
             thegamesdb_platform_id: Some(24),
+            screenscraper_id: Some(142),
         },
         db::models::System {
             id: "pce".to_string(),
@@ -232,6 +250,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".pce", ".zip"]"#.to_string(),
             igdb_platform_id: Some(86),
             thegamesdb_platform_id: Some(34),
+            screenscraper_id: Some(31),
         },
         db::models::System {
             id: "atari2600".to_string(),
@@ -242,6 +261,7 @@ fn get_preset_systems() -> Vec<db::models::System> {
             extensions: r#"[".a26", ".bin", ".zip"]"#.to_string(),
             igdb_platform_id: Some(59),
             thegamesdb_platform_id: Some(22),
+            screenscraper_id: Some(26),
         },
     ]
 }
