@@ -113,11 +113,12 @@
 
 #### 2.1 API 集成
 - [ ] IGDB API 客户端
-- [ ] SteamGridDB API 客户端
+- [x] SteamGridDB API 客户端
 - [ ] TheGamesDB API 客户端
 - [ ] MobyGames API 客户端
-- [ ] ScreenScraper API 客户端
+- [ ] ScreenScraper API 客户端 (In Progress)
 - [ ] 搜索引擎 + AI Scraper
+- [x] 交互式 Scrape 对话框 (Frontend)
 
 #### 2.2 智能匹配
 - [ ] ROM 文件名解析（No-Intro 命名规范）
