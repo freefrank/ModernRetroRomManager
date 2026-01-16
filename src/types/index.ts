@@ -11,6 +11,7 @@ export interface Rom {
   createdAt: string;
   updatedAt: string;
   metadata?: RomMetadata;
+  media?: MediaAsset[];
 }
 
 export interface RomMetadata {

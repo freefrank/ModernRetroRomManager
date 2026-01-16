@@ -3,7 +3,7 @@ pub mod detect;
 
 use std::path::Path;
 use walkdir::WalkDir;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use crate::db::{get_connection, models::{Rom, System, ScanDirectory}, schema::{roms, scan_directories, systems}};
 use diesel::prelude::*;
 use uuid::Uuid;

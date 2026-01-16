@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
+use sha1::Digest;
 
 /// 计算文件的 CRC32, MD5, SHA1
 pub struct FileHashes {

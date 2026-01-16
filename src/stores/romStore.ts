@@ -1,29 +1,34 @@
 import { create } from "zustand";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { Rom, GameSystem, ScanDirectory } from "@/types";
+
+interface ScanProgress {
+  current: number;
+  total?: number;
+  message: string;
+  finished: boolean;
+}
 
 interface RomState {
   // ROM 列表
   roms: Rom[];
-  setRoms: (roms: Rom[]) => void;
-  addRom: (rom: Rom) => void;
-  updateRom: (id: string, data: Partial<Rom>) => void;
-  removeRom: (id: string) => void;
-
-  // 当前选中的 ROM
-  selectedRomIds: string[];
-  setSelectedRomIds: (ids: string[]) => void;
-  toggleRomSelection: (id: string) => void;
-  clearSelection: () => void;
-
+  fetchRoms: () => Promise<void>;
+  
   // 游戏系统
   systems: GameSystem[];
-  setSystems: (systems: GameSystem[]) => void;
+  fetchSystems: () => Promise<void>;
 
   // 扫描目录
   scanDirectories: ScanDirectory[];
-  setScanDirectories: (dirs: ScanDirectory[]) => void;
-  addScanDirectory: (dir: ScanDirectory) => void;
-  removeScanDirectory: (id: string) => void;
+  fetchScanDirectories: () => Promise<void>;
+  addScanDirectory: (path: string) => Promise<void>;
+  removeScanDirectory: (id: string) => Promise<void>;
+
+  // 扫描状态
+  isScanning: boolean;
+  scanProgress: ScanProgress | null;
+  startScan: (dirId: string) => Promise<void>;
 
   // 统计信息
   stats: {
@@ -31,59 +36,84 @@ interface RomState {
     scrapedRoms: number;
     totalSize: number;
   };
-  updateStats: () => void;
+  fetchStats: () => Promise<void>;
 }
 
 export const useRomStore = create<RomState>((set, get) => ({
   // ROM 列表
   roms: [],
-  setRoms: (roms) => {
-    set({ roms });
-    get().updateStats();
+  fetchRoms: async () => {
+    try {
+      const roms = await invoke<Rom[]>("get_roms", {});
+      set({ roms });
+      get().fetchStats();
+    } catch (error) {
+      console.error("Failed to fetch roms:", error);
+    }
   },
-  addRom: (rom) => {
-    set((state) => ({ roms: [...state.roms, rom] }));
-    get().updateStats();
-  },
-  updateRom: (id, data) => {
-    set((state) => ({
-      roms: state.roms.map((rom) => (rom.id === id ? { ...rom, ...data } : rom)),
-    }));
-  },
-  removeRom: (id) => {
-    set((state) => ({
-      roms: state.roms.filter((rom) => rom.id !== id),
-      selectedRomIds: state.selectedRomIds.filter((romId) => romId !== id),
-    }));
-    get().updateStats();
-  },
-
-  // 当前选中的 ROM
-  selectedRomIds: [],
-  setSelectedRomIds: (ids) => set({ selectedRomIds: ids }),
-  toggleRomSelection: (id) => {
-    set((state) => ({
-      selectedRomIds: state.selectedRomIds.includes(id)
-        ? state.selectedRomIds.filter((romId) => romId !== id)
-        : [...state.selectedRomIds, id],
-    }));
-  },
-  clearSelection: () => set({ selectedRomIds: [] }),
 
   // 游戏系统
   systems: [],
-  setSystems: (systems) => set({ systems }),
+  fetchSystems: async () => {
+    try {
+      const systems = await invoke<GameSystem[]>("get_systems");
+      set({ systems });
+    } catch (error) {
+      console.error("Failed to fetch systems:", error);
+    }
+  },
 
   // 扫描目录
   scanDirectories: [],
-  setScanDirectories: (dirs) => set({ scanDirectories: dirs }),
-  addScanDirectory: (dir) => {
-    set((state) => ({ scanDirectories: [...state.scanDirectories, dir] }));
+  fetchScanDirectories: async () => {
+    try {
+      const dirs = await invoke<ScanDirectory[]>("get_scan_directories");
+      set({ scanDirectories: dirs });
+    } catch (error) {
+      console.error("Failed to fetch scan directories:", error);
+    }
   },
-  removeScanDirectory: (id) => {
-    set((state) => ({
-      scanDirectories: state.scanDirectories.filter((dir) => dir.id !== id),
-    }));
+  addScanDirectory: async (path: string) => {
+    try {
+      await invoke("add_scan_directory", { path, systemId: null });
+      await get().fetchScanDirectories();
+    } catch (error) {
+      console.error("Failed to add scan directory:", error);
+      throw error;
+    }
+  },
+  removeScanDirectory: async (id: string) => {
+    try {
+      await invoke("remove_scan_directory", { id });
+      await get().fetchScanDirectories();
+    } catch (error) {
+      console.error("Failed to remove scan directory:", error);
+      throw error;
+    }
+  },
+
+  // 扫描状态
+  isScanning: false,
+  scanProgress: null,
+  startScan: async (dirId: string) => {
+    set({ isScanning: true, scanProgress: null });
+    try {
+      // 监听进度事件
+      const unlisten = await listen<ScanProgress>("scan-progress", (event) => {
+        set({ scanProgress: event.payload });
+        if (event.payload.finished) {
+          set({ isScanning: false });
+          get().fetchRoms(); // 扫描完成后刷新列表
+          get().fetchScanDirectories(); // 更新最后扫描时间
+          unlisten(); // 移除监听
+        }
+      });
+
+      await invoke("start_scan", { dirId });
+    } catch (error) {
+      console.error("Failed to start scan:", error);
+      set({ isScanning: false });
+    }
   },
 
   // 统计信息
@@ -92,14 +122,18 @@ export const useRomStore = create<RomState>((set, get) => ({
     scrapedRoms: 0,
     totalSize: 0,
   },
-  updateStats: () => {
-    const { roms } = get();
-    set({
-      stats: {
-        totalRoms: roms.length,
-        scrapedRoms: roms.filter((rom) => rom.metadata).length,
-        totalSize: roms.reduce((sum, rom) => sum + rom.size, 0),
-      },
-    });
+  fetchStats: async () => {
+    try {
+      const stats = await invoke<{ total_roms: number; scraped_roms: number; total_size: number }>("get_rom_stats");
+      set({
+        stats: {
+          totalRoms: stats.total_roms,
+          scrapedRoms: stats.scraped_roms,
+          totalSize: stats.total_size,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    }
   },
 }));

@@ -94,16 +94,19 @@
 #### 1.3 基础 UI
 - [x] 现代化 Cyberpunk 风格布局
 - [x] Glassmorphism 侧边栏导航
+- [x] 国际化支持 (i18n)
 - [ ] ROM 列表视图（表格）
 - [ ] ROM 网格视图（封面）
 - [ ] ROM 详情面板
 - [ ] 全局搜索 (Spotlight 风格)
 
 #### 1.4 ROM 扫描器
-- [x] 目录递归扫描
-- [x] 文件扩展名过滤
-- [x] CRC32/MD5/SHA1 计算
-- [x] 系统自动识别（基于目录名/扩展名）
+- [x] 目录递归扫描 (Backend)
+- [x] 文件扩展名过滤 (Backend)
+- [x] CRC32/MD5/SHA1 计算 (Backend)
+- [x] 系统自动识别 (Backend)
+- [ ] 扫描目录管理 UI (Frontend)
+- [ ] 扫描进度展示 (Frontend)
 
 ### Phase 2: Scraper 核心
 
@@ -160,6 +163,7 @@
 ## 🔗 参考资源
 
 ### API 文档
+- [SteamGridDB API](https://www.steamgriddb.com/api/v2)
 - [IGDB API](https://api-docs.igdb.com/)
 - [TheGamesDB API](https://thegamesdb.net/api/)
 - [MobyGames API](https://www.mobygames.com/info/api)

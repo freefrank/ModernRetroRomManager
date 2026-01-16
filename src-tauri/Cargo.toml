@@ -36,4 +36,5 @@ crc32fast = "1.5.0"
 md5 = "0.8.0"
 sha1 = "0.10.6"
 hex = "0.4.3"
+tauri-plugin-dialog = "2.6.0"
 
