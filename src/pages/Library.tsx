@@ -1,16 +1,19 @@
 import { Search, LayoutGrid, List, Filter, Plus, Ghost, Star, Clock, Play, Gamepad2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Library() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col h-full space-y-8 max-w-[1600px] mx-auto w-full pb-8">
       {/* Header Section */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between sticky top-0 z-10 bg-bg-primary/50 backdrop-blur-md py-4 -mt-4 pt-8">
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-white mb-2">
-            My Library
+            {t("library.title")}
           </h1>
           <p className="text-text-secondary font-medium">
-            0 Games <span className="mx-2 text-text-muted">•</span> 0 Collections
+            {t("library.gameCount", { count: 0 })}
           </p>
         </div>
 
@@ -22,7 +25,7 @@ export default function Library() {
               <Search className="w-5 h-5 text-text-muted ml-4" />
               <input
                 type="text"
-                placeholder="Search games..."
+                placeholder={t("library.search")}
                 className="w-full bg-transparent border-none focus:ring-0 text-sm px-3 py-3 text-white placeholder:text-text-muted focus:outline-none"
               />
               <div className="hidden md:flex items-center gap-1 pr-3">
@@ -33,10 +36,10 @@ export default function Library() {
 
           {/* View Toggle & Filters */}
           <div className="flex items-center gap-2 p-1 bg-[#151621] rounded-xl border border-white/10">
-            <button className="p-2 rounded-lg bg-accent-primary text-white shadow-lg shadow-accent-primary/20 transition-all">
+            <button className="p-2 rounded-lg bg-accent-primary text-white shadow-lg shadow-accent-primary/20 transition-all" title={t("library.viewMode.grid")}>
               <LayoutGrid className="w-5 h-5" />
             </button>
-            <button className="p-2 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors">
+            <button className="p-2 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors" title={t("library.viewMode.list")}>
               <List className="w-5 h-5" />
             </button>
           </div>
@@ -59,17 +62,17 @@ export default function Library() {
             </div>
             
             <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
-              It's quiet in here...
+              {t("library.empty.title")}
             </h2>
             <p className="text-text-secondary mb-8 text-lg leading-relaxed">
-              Your library is looking a bit empty. Start by adding a directory to scan for your retro games.
+              {t("library.empty.description")}
             </p>
             
             <button className="relative inline-flex group/btn">
               <div className="absolute transition-all duration-300 opacity-70 -inset-px bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl blur-lg group-hover/btn:opacity-100 group-hover/btn:-inset-1 group-hover/btn:duration-200 animate-tilt"></div>
               <div className="relative inline-flex items-center gap-2 px-8 py-4 bg-[#0B0C15] rounded-xl leading-none text-white transition duration-200 border border-white/10 hover:bg-[#151621]">
                 <Plus className="w-5 h-5 text-accent-secondary" />
-                <span className="font-semibold tracking-wide">Add ROM Directory</span>
+                <span className="font-semibold tracking-wide">{t("library.empty.addDirectory")}</span>
               </div>
             </button>
           </div>

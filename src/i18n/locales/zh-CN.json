@@ -1,0 +1,129 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "版本 {{version}}"
+  },
+  "nav": {
+    "library": "ROM 库",
+    "scraper": "Scraper",
+    "import": "导入/导出",
+    "settings": "设置"
+  },
+  "library": {
+    "title": "ROM 库",
+    "gameCount": "{{count}} 个游戏",
+    "search": "搜索...",
+    "empty": {
+      "title": "ROM 库为空",
+      "description": "添加扫描目录开始管理你的 ROM 收藏",
+      "addDirectory": "添加目录"
+    },
+    "viewMode": {
+      "grid": "网格视图",
+      "list": "列表视图"
+    }
+  },
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "开始 Scrape",
+    "apiConfig": {
+      "title": "API 配置",
+      "description": "配置 Scraper API 密钥以获取游戏元数据和媒体资源"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Twitch 旗下，数据全面"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "高质量封面/Logo/图标"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "社区驱动，免费"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "老游戏数据丰富"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "需注册，媒体资源多"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key"
+    }
+  },
+  "import": {
+    "title": "导入/导出",
+    "importSection": {
+      "title": "导入",
+      "description": "从现有的 ROM 管理软件导入元数据和媒体资源"
+    },
+    "exportSection": {
+      "title": "导出",
+      "description": "将 ROM 库导出为其他格式以便在其他软件中使用"
+    },
+    "formats": {
+      "emulationstation": {
+        "name": "EmulationStation",
+        "file": "gamelist.xml"
+      },
+      "pegasus": {
+        "name": "Pegasus/Recalbox",
+        "file": "metadata.txt"
+      },
+      "launchbox": {
+        "name": "LaunchBox",
+        "file": "XML"
+      },
+      "retroarch": {
+        "name": "RetroArch",
+        "file": ".lpl"
+      }
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "scanDirectories": {
+      "title": "扫描目录",
+      "description": "配置 ROM 扫描目录，软件会自动检测其中的 ROM 文件",
+      "empty": "暂未添加扫描目录",
+      "addDirectory": "添加目录"
+    },
+    "storage": {
+      "title": "存储设置",
+      "databaseLocation": "数据库位置",
+      "mediaDirectory": "媒体资源目录",
+      "defaultLocation": "默认位置",
+      "browse": "浏览"
+    },
+    "language": {
+      "title": "语言",
+      "description": "选择界面显示语言"
+    },
+    "about": {
+      "title": "关于"
+    }
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "已 Scrape: {{count}}",
+    "storageUsed": "存储: {{size}}"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "确认",
+    "delete": "删除",
+    "edit": "编辑",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功"
+  }
+}

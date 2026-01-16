@@ -2,31 +2,34 @@ import { NavLink } from "react-router-dom";
 import { Library, Database, ArrowRightLeft, Settings, Gamepad2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 
 const navItems = [
   {
     to: "/",
-    label: "ROM 库",
+    labelKey: "nav.library",
     icon: Library,
   },
   {
     to: "/scraper",
-    label: "Scraper",
+    labelKey: "nav.scraper",
     icon: Database,
   },
   {
     to: "/import",
-    label: "导入/导出",
+    labelKey: "nav.import",
     icon: ArrowRightLeft,
   },
   {
     to: "/settings",
-    label: "设置",
+    labelKey: "nav.settings",
     icon: Settings,
   },
 ];
 
 export default function Sidebar() {
+  const { t } = useTranslation();
+
   return (
     <aside className="w-64 flex flex-col bg-[#0B0C15]/95 backdrop-blur-xl border-r border-white/5 relative z-20 h-full">
       {/* Logo */}
@@ -79,7 +82,7 @@ export default function Sidebar() {
                   )}
                 />
                 <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
-                  {item.label}
+                  {t(item.labelKey)}
                 </span>
               </>
             )}

@@ -1,0 +1,129 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "Version {{version}}"
+  },
+  "nav": {
+    "library": "Library",
+    "scraper": "Scraper",
+    "import": "Import/Export",
+    "settings": "Settings"
+  },
+  "library": {
+    "title": "ROM Library",
+    "gameCount": "{{count}} games",
+    "search": "Search...",
+    "empty": {
+      "title": "Library is empty",
+      "description": "Add a scan directory to start managing your ROM collection",
+      "addDirectory": "Add Directory"
+    },
+    "viewMode": {
+      "grid": "Grid View",
+      "list": "List View"
+    }
+  },
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Start Scrape",
+    "apiConfig": {
+      "title": "API Configuration",
+      "description": "Configure Scraper API keys to fetch game metadata and media assets"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Powered by Twitch, comprehensive data"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "High-quality covers/logos/icons"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "Community-driven, free"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Rich data for retro games"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Registration required, rich media"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key"
+    }
+  },
+  "import": {
+    "title": "Import/Export",
+    "importSection": {
+      "title": "Import",
+      "description": "Import metadata and media assets from existing ROM management software"
+    },
+    "exportSection": {
+      "title": "Export",
+      "description": "Export your ROM library to other formats for use in other software"
+    },
+    "formats": {
+      "emulationstation": {
+        "name": "EmulationStation",
+        "file": "gamelist.xml"
+      },
+      "pegasus": {
+        "name": "Pegasus/Recalbox",
+        "file": "metadata.txt"
+      },
+      "launchbox": {
+        "name": "LaunchBox",
+        "file": "XML"
+      },
+      "retroarch": {
+        "name": "RetroArch",
+        "file": ".lpl"
+      }
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "scanDirectories": {
+      "title": "Scan Directories",
+      "description": "Configure ROM scan directories, the software will automatically detect ROM files",
+      "empty": "No scan directories added yet",
+      "addDirectory": "Add Directory"
+    },
+    "storage": {
+      "title": "Storage Settings",
+      "databaseLocation": "Database Location",
+      "mediaDirectory": "Media Directory",
+      "defaultLocation": "Default Location",
+      "browse": "Browse"
+    },
+    "language": {
+      "title": "Language",
+      "description": "Select interface language"
+    },
+    "about": {
+      "title": "About"
+    }
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "Scraped: {{count}}",
+    "storageUsed": "Storage: {{size}}"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  }
+}
