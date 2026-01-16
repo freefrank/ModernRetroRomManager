@@ -127,3 +127,7 @@ src-tauri/data.db-wal
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Claude Code
+CLAUDE.md
+AGENTS.md
