@@ -32,6 +32,8 @@ pub fn run() {
             commands::get_scan_directories,
             commands::remove_scan_directory,
             commands::start_scan,
+            commands::get_api_configs,
+            commands::save_api_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
