@@ -27,6 +27,10 @@ pub fn run() {
             commands::get_roms,
             commands::get_rom,
             commands::get_rom_stats,
+            commands::add_scan_directory,
+            commands::get_scan_directories,
+            commands::remove_scan_directory,
+            commands::start_scan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
