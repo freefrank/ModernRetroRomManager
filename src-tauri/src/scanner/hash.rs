@@ -31,7 +31,7 @@ pub fn calculate_hashes<P: AsRef<Path>>(path: P) -> io::Result<FileHashes> {
 
     Ok(FileHashes {
         crc32: format!("{:08x}", crc32.finalize()),
-        md5: format!("{:x}", md5.compute()),
+        md5: format!("{:x}", md5.finalize()),
         sha1: hex::encode(sha1.finalize()),
     })
 }

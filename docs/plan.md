@@ -95,10 +95,11 @@
 - [x] 现代化 Cyberpunk 风格布局
 - [x] Glassmorphism 侧边栏导航
 - [x] 国际化支持 (i18n)
+- [x] ROM 列表视图（表格）
 - [x] ROM 列表视图（网格）
+- [x] ROM 详情面板
+- [x] 全局搜索 (Spotlight 风格)
 - [ ] ROM 网格视图（封面）
-- [ ] ROM 详情面板
-- [ ] 全局搜索 (Spotlight 风格)
 
 #### 1.4 ROM 扫描器
 - [x] 目录递归扫描 (Backend)
