@@ -2,11 +2,13 @@ import { useEffect } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
-import { Folder, Trash2, RefreshCw, Plus, HardDrive } from "lucide-react";
+import { useAppStore } from "@/stores/appStore";
+import { Folder, Trash2, RefreshCw, Plus, HardDrive, Moon, Sun } from "lucide-react";
 import { clsx } from "clsx";
 
 export default function Settings() {
   const { t } = useTranslation();
+  const { theme, setTheme } = useAppStore();
   const { 
     scanDirectories, 
     fetchScanDirectories, 
@@ -44,18 +46,50 @@ export default function Settings() {
   return (
     <div className="flex flex-col h-full">
       {/* 工具栏 */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0B0C15]/50 backdrop-blur-md sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-white">{t("settings.title")}</h1>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border-default bg-bg-primary/50 backdrop-blur-md sticky top-0 z-10">
+        <h1 className="text-xl font-bold text-text-primary">{t("settings.title")}</h1>
       </div>
 
       {/* 内容区 */}
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-3xl space-y-8">
+          
+          {/* 外观设置 */}
+          <section>
+            <h2 className="text-lg font-medium text-text-primary mb-4">外观</h2>
+            <div className="grid grid-cols-3 gap-4">
+              <button
+                onClick={() => setTheme("dark")}
+                className={clsx(
+                  "p-4 rounded-xl border transition-all flex flex-col items-center gap-3",
+                  theme === "dark" 
+                    ? "bg-bg-secondary border-accent-primary text-text-primary ring-1 ring-accent-primary" 
+                    : "bg-bg-secondary border-border-default text-text-secondary hover:border-border-hover"
+                )}
+              >
+                <Moon className="w-6 h-6" />
+                <span className="text-sm font-medium">Dark</span>
+              </button>
+              <button
+                onClick={() => setTheme("light")}
+                className={clsx(
+                  "p-4 rounded-xl border transition-all flex flex-col items-center gap-3",
+                  theme === "light" 
+                    ? "bg-bg-secondary border-accent-primary text-text-primary ring-1 ring-accent-primary" 
+                    : "bg-bg-secondary border-border-default text-text-secondary hover:border-border-hover"
+                )}
+              >
+                <Sun className="w-6 h-6" />
+                <span className="text-sm font-medium">Light</span>
+              </button>
+            </div>
+          </section>
+
           {/* 扫描目录 */}
           <section>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-medium text-white">{t("settings.scanDirectories.title")}</h2>
+                <h2 className="text-lg font-medium text-text-primary">{t("settings.scanDirectories.title")}</h2>
                 <p className="text-sm text-text-secondary mt-1">
                   {t("settings.scanDirectories.description")}
                 </p>
@@ -71,14 +105,14 @@ export default function Settings() {
 
             {/* 扫描进度 */}
             {isScanning && scanProgress && (
-              <div className="mb-4 p-4 bg-[#151621] border border-accent-primary/30 rounded-xl relative overflow-hidden">
+              <div className="mb-4 p-4 bg-bg-secondary border border-accent-primary/30 rounded-xl relative overflow-hidden">
                 <div className="absolute inset-0 bg-accent-primary/5 animate-pulse"></div>
                 <div className="relative z-10">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-white font-medium">{t("common.loading")}</span>
+                    <span className="text-text-primary font-medium">{t("common.loading")}</span>
                     <span className="text-accent-primary">{scanProgress.current} {scanProgress.total ? `/ ${scanProgress.total}` : ''}</span>
                   </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-accent-primary transition-all duration-300"
                       style={{ width: scanProgress.total ? `${(scanProgress.current / scanProgress.total) * 100}%` : '100%' }}
@@ -91,8 +125,8 @@ export default function Settings() {
 
             <div className="space-y-3">
               {scanDirectories.length === 0 ? (
-                <div className="p-8 bg-[#151621] border border-dashed border-white/10 rounded-xl text-center">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
+                <div className="p-8 bg-bg-secondary border border-dashed border-border-default rounded-xl text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-bg-tertiary rounded-full flex items-center justify-center">
                     <Folder className="w-8 h-8 text-text-muted" />
                   </div>
                   <p className="text-text-secondary mb-4">{t("settings.scanDirectories.empty")}</p>
@@ -105,13 +139,13 @@ export default function Settings() {
                 </div>
               ) : (
                 scanDirectories.map((dir) => (
-                  <div key={dir.id} className="group p-4 bg-[#151621] border border-white/5 rounded-xl hover:border-white/10 transition-all flex items-center justify-between">
+                  <div key={dir.id} className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-border-hover transition-all flex items-center justify-between">
                     <div className="flex items-center gap-4 overflow-hidden">
-                      <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-bg-tertiary rounded-lg flex items-center justify-center flex-shrink-0">
                         <HardDrive className="w-5 h-5 text-accent-secondary" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-white font-medium truncate text-sm" title={dir.path}>{dir.path}</div>
+                        <div className="text-text-primary font-medium truncate text-sm" title={dir.path}>{dir.path}</div>
                         <div className="text-xs text-text-muted mt-0.5">
                           {dir.lastScan ? `Last scan: ${dir.lastScan}` : "Never scanned"}
                         </div>
@@ -126,7 +160,7 @@ export default function Settings() {
                           "p-2 rounded-lg transition-colors",
                           isScanning 
                             ? "text-text-muted cursor-not-allowed opacity-50" 
-                            : "text-text-secondary hover:text-white hover:bg-white/10"
+                            : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
                         )}
                         title={t("common.refresh")}
                       >
@@ -148,7 +182,7 @@ export default function Settings() {
 
           {/* 存储设置 (Mock) */}
           <section>
-            <h2 className="text-lg font-medium text-white mb-4">{t("settings.storage.title")}</h2>
+            <h2 className="text-lg font-medium text-text-primary mb-4">{t("settings.storage.title")}</h2>
 
             <div className="space-y-4">
               <div>
@@ -158,9 +192,9 @@ export default function Settings() {
                     type="text"
                     value={t("settings.storage.defaultLocation")}
                     readOnly
-                    className="flex-1 px-3 py-2 bg-[#151621] border border-white/10 rounded-lg text-sm text-text-secondary focus:outline-none"
+                    className="flex-1 px-3 py-2 bg-bg-secondary border border-border-default rounded-lg text-sm text-text-secondary focus:outline-none"
                   />
-                  <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors text-sm border border-white/5">
+                  <button className="px-4 py-2 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-lg transition-colors text-sm border border-border-default">
                     {t("settings.storage.browse")}
                   </button>
                 </div>
@@ -170,15 +204,15 @@ export default function Settings() {
 
           {/* 关于 */}
           <section>
-            <h2 className="text-lg font-medium text-white mb-4">{t("settings.about.title")}</h2>
+            <h2 className="text-lg font-medium text-text-primary mb-4">{t("settings.about.title")}</h2>
 
-            <div className="p-4 bg-[#151621] border border-white/5 rounded-xl">
+            <div className="p-4 bg-bg-secondary border border-border-default rounded-xl">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-xl flex items-center justify-center shadow-lg shadow-accent-primary/20">
                   <span className="text-2xl font-bold text-white">MR</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">ModernRetroRomManager</h3>
+                  <h3 className="text-lg font-bold text-text-primary">ModernRetroRomManager</h3>
                   <p className="text-text-secondary text-sm">v0.1.0</p>
                   <div className="flex gap-4 mt-2">
                     <a

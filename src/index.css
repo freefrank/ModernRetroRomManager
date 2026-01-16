@@ -2,29 +2,68 @@
 @import "tailwindcss";
 
 @theme {
-  /* Cyberpunk / Deep Dark Theme */
-  --color-bg-primary: #0B0C15;
-  --color-bg-secondary: #151621;
-  --color-bg-tertiary: #1E1F2E;
+  /* Use CSS Variables for runtime switching */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
 
-  /* Accents */
-  --color-accent-primary: #7C3AED;   /* Electric Violet */
-  --color-accent-secondary: #22D3EE; /* Neon Cyan */
-  --color-accent-success: #10B981;
-  --color-accent-warning: #F59E0B;
-  --color-accent-error: #EF4444;
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-success: var(--accent-success);
+  --color-accent-warning: var(--accent-warning);
+  --color-accent-error: var(--accent-error);
 
-  /* Text */
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
 
-  /* Borders */
-  --color-border-default: rgba(255, 255, 255, 0.08);
-  --color-border-hover: rgba(255, 255, 255, 0.15);
-  --color-border-highlight: rgba(124, 58, 237, 0.5);
+  --color-border-default: var(--border-default);
+  --color-border-hover: var(--border-hover);
+  --color-border-highlight: var(--border-highlight);
   
   --font-family-sans: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Light Theme (Default) */
+:root {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F1F5F9;
+
+  --accent-primary: #6366F1;   /* Indigo-500 */
+  --accent-secondary: #0EA5E9; /* Sky-500 */
+  --accent-success: #10B981;
+  --accent-warning: #F59E0B;
+  --accent-error: #EF4444;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.15);
+  --border-highlight: rgba(99, 102, 241, 0.5);
+}
+
+/* Dark Theme */
+.dark {
+  --bg-primary: #0B0C15;
+  --bg-secondary: #151621;
+  --bg-tertiary: #1E1F2E;
+
+  --accent-primary: #7C3AED;   /* Violet-600 */
+  --accent-secondary: #22D3EE; /* Cyan-400 */
+  --accent-success: #10B981;
+  --accent-warning: #F59E0B;
+  --accent-error: #EF4444;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
+  --border-highlight: rgba(124, 58, 237, 0.5);
 }
 
 /* Global Styles */
@@ -46,21 +85,7 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Custom Utilities */
-@layer utilities {
-  .glass {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10;
-  }
-  
-  .glass-card {
-    @apply backdrop-blur-md bg-[#151621]/80 border border-white/5 shadow-xl;
-  }
-  
-  .text-glow {
-    text-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
-  }
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Scrollbar */
@@ -74,10 +99,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-border-hover);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-text-muted);
 }

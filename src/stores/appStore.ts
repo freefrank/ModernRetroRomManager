@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import type { ViewMode, SortOption, FilterOption } from "@/types";
 
+export type ThemeMode = "light" | "dark";
+
 interface AppState {
+  // Theme
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
+
   // UI 状态
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -32,6 +38,10 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  // Theme
+  theme: "dark", // Default to dark
+  setTheme: (theme) => set({ theme }),
+
   // UI 状态
   viewMode: "grid",
   setViewMode: (mode) => set({ viewMode: mode }),
