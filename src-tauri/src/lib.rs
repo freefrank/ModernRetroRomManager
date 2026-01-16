@@ -44,6 +44,7 @@ pub fn run() {
             commands::apply_scraped_data,
             commands::batch_scrape,
             commands::import_gamelist,
+            commands::export_to_emulationstation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
