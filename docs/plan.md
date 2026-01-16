@@ -82,7 +82,7 @@
 #### 1.1 项目初始化
 - [x] 项目规划文档
 - [x] Tauri v2 + React 19 + TypeScript 项目搭建
-- [x] TailwindCSS v4 + Dark Theme 配置
+- [x] TailwindCSS v4 + 多主题配置 (8种主题: Light/Dark/Cyberpunk/Ocean/Forest/Sunset/Rose/Nord)
 - [x] 基础路由配置 (React Router 7)
 
 #### 1.2 数据库层
