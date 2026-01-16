@@ -40,11 +40,6 @@ pub fn init_db(app_data_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
-/// 获取数据库连接池
-pub fn get_db_pool() -> Option<&'static DbPool> {
-    DB_POOL.get()
-}
-
 /// 获取数据库连接
 pub fn get_connection() -> Result<r2d2::PooledConnection<ConnectionManager<SqliteConnection>>, r2d2::PoolError> {
     DB_POOL.get().expect("Database not initialized").get()

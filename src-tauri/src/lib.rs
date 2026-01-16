@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod scanner;
+mod scraper;
 
 use tauri::Manager;
 
@@ -34,6 +35,10 @@ pub fn run() {
             commands::start_scan,
             commands::get_api_configs,
             commands::save_api_config,
+            commands::search_game,
+            commands::get_scraper_game_details,
+            commands::get_scraper_game_media,
+            commands::apply_scraped_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -41,7 +46,7 @@ pub fn run() {
 
 /// 初始化预置游戏系统数据
 fn init_preset_systems() -> Result<(), Box<dyn std::error::Error>> {
-    use db::{get_connection, models::System, schema::systems};
+    use db::{get_connection, schema::systems};
     use diesel::prelude::*;
 
     let preset_systems = get_preset_systems();

@@ -32,8 +32,9 @@ pub struct Rom {
 }
 
 /// ROM 元数据
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, Selectable)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, Selectable, AsChangeset)]
 #[diesel(table_name = crate::db::schema::rom_metadata)]
+#[diesel(primary_key(rom_id))]
 pub struct RomMetadata {
     pub rom_id: String,
     pub name: String,

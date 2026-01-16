@@ -37,4 +37,6 @@ md5 = "0.8.0"
 sha1 = "0.10.6"
 hex = "0.4.3"
 tauri-plugin-dialog = "2.6.0"
+reqwest = { version = "0.13.1", features = ["json"] }
+async-trait = "0.1.89"
 

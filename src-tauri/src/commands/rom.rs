@@ -76,7 +76,6 @@ impl From<MediaAsset> for MediaAssetInfo {
 #[serde(rename_all = "camelCase")]
 pub struct RomFilter {
     pub system_id: Option<String>,
-    pub has_metadata: Option<bool>,
     pub search_query: Option<String>,
 }
 
@@ -91,7 +90,6 @@ pub struct RomStats {
 #[tauri::command]
 pub fn get_roms(filter: Option<RomFilter>) -> Result<Vec<RomInfo>, String> {
     let mut conn = get_connection().map_err(|e| e.to_string())?;
-    let mut pattern = String::new();
 
     let mut query = roms::table.into_boxed();
 
@@ -100,8 +98,8 @@ pub fn get_roms(filter: Option<RomFilter>) -> Result<Vec<RomInfo>, String> {
             query = query.filter(roms::system_id.eq(system_id));
         }
         if let Some(ref search) = f.search_query {
-            pattern = format!("%{}%", search);
-            query = query.filter(roms::filename.like(&pattern));
+            let pattern = format!("%{}%", search);
+            query = query.filter(roms::filename.like(pattern));
         }
     }
 
