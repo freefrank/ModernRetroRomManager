@@ -26,7 +26,7 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
-          {roms.map((rom, index) => {
+          {roms.map((rom) => {
             const isSelected = selectedIds.has(rom.id);
             return (
               <tr

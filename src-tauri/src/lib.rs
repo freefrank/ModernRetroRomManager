@@ -43,6 +43,7 @@ pub fn run() {
             commands::get_scraper_game_media,
             commands::apply_scraped_data,
             commands::batch_scrape,
+            commands::import_gamelist,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

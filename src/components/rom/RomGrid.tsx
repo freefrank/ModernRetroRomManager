@@ -24,7 +24,11 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
             onClick={(e) => {
               // 如果按住了 Ctrl/Meta，或者是点击了 Checkbox (通过 e.target 判断，或者专门的按钮)
               // 这里简化：点击整个卡片触发 onRomClick，点击 Checkbox 触发 onToggleSelect
-              onRomClick(rom);
+              if (e.ctrlKey || e.metaKey) {
+                 onToggleSelect(rom.id);
+              } else {
+                 onRomClick(rom);
+              }
             }}
             className={clsx(
               "group relative bg-[#151621] rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer",

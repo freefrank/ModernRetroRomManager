@@ -23,7 +23,6 @@ export default function Library() {
     selectedRomIds, 
     toggleRomSelection, 
     clearSelection,
-    selectAllRoms,
     isBatchScraping,
     batchProgress
   } = useRomStore();
