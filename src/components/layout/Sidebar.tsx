@@ -31,18 +31,18 @@ export default function Sidebar() {
   const { t } = useTranslation();
 
   return (
-    <aside className="w-64 flex flex-col bg-[#0B0C15]/95 backdrop-blur-xl border-r border-white/5 relative z-20 h-full">
+    <aside className="w-64 flex flex-col bg-bg-primary/95 backdrop-blur-xl border-r border-border-default relative z-20 h-full">
       {/* Logo */}
       <div className="h-20 flex items-center px-6">
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 bg-accent-primary blur-md opacity-50 rounded-lg"></div>
             <div className="w-10 h-10 bg-gradient-to-br from-accent-primary to-accent-secondary rounded-lg flex items-center justify-center relative z-10 shadow-lg">
-              <Gamepad2 className="text-white w-6 h-6" />
+              <Gamepad2 className="text-text-primary w-6 h-6" />
             </div>
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-lg tracking-tight leading-none text-white">RetroRom</span>
+            <span className="font-bold text-lg tracking-tight leading-none text-text-primary">RetroRom</span>
             <span className="text-[10px] font-medium text-accent-secondary uppercase tracking-widest">Manager</span>
           </div>
         </div>
@@ -58,8 +58,8 @@ export default function Sidebar() {
               clsx(
                 "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden",
                 isActive
-                  ? "text-white"
-                  : "text-text-secondary hover:text-white hover:bg-white/5"
+                  ? "text-text-primary"
+                  : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
               )
             }
           >
@@ -74,7 +74,7 @@ export default function Sidebar() {
                     exit={{ opacity: 0 }}
                   />
                 )}
-                
+
                 <item.icon
                   className={clsx(
                     "w-5 h-5 z-10 transition-transform duration-300",
@@ -91,7 +91,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer Info */}
-      <div className="p-6 border-t border-white/5">
+      <div className="p-6 border-t border-border-default">
         <div className="flex items-center justify-between">
           <p className="text-xs text-text-muted font-medium">v0.1.0</p>
           <div className="w-2 h-2 rounded-full bg-accent-success shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>

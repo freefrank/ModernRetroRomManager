@@ -42,39 +42,39 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-[#0B0C15] border-l border-white/10 z-50 overflow-y-auto shadow-2xl"
+              className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-bg-primary border-l border-border-default z-50 overflow-y-auto shadow-2xl"
             >
               {/* Header Image/Video */}
-              <div className="relative aspect-video w-full bg-[#151621] overflow-hidden">
+              <div className="relative aspect-video w-full bg-bg-secondary overflow-hidden">
                 {videoUrl ? (
-                  <video 
-                    src={videoUrl} 
-                    autoPlay 
-                    muted 
-                    loop 
+                  <video
+                    src={videoUrl}
+                    autoPlay
+                    muted
+                    loop
                     className="w-full h-full object-cover"
                   />
                 ) : heroUrl ? (
                   <img src={heroUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-white/5">
+                  <div className="absolute inset-0 flex items-center justify-center text-text-muted/10">
                     <Gamepad2 className="w-24 h-24" />
                   </div>
                 )}
-                
+
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-white/10 text-white transition-colors backdrop-blur-md z-10"
+                  className="absolute top-4 right-4 p-2 rounded-full bg-bg-primary/50 hover:bg-bg-tertiary text-text-primary transition-colors backdrop-blur-md z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0B0C15] via-[#0B0C15]/40 to-transparent">
-                  <h2 className="text-3xl font-bold text-white mb-2 leading-tight">
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent">
+                  <h2 className="text-3xl font-bold text-text-primary mb-2 leading-tight">
                     {rom.metadata?.name || rom.filename}
                   </h2>
                   <div className="flex items-center gap-3 text-sm">
-                    <span className="px-2 py-0.5 rounded bg-white/10 text-white font-medium uppercase text-xs border border-white/5">
+                    <span className="px-2 py-0.5 rounded bg-bg-tertiary text-text-primary font-medium uppercase text-xs border border-border-default">
                       {rom.systemId}
                     </span>
                     {rom.metadata?.rating && (
@@ -88,17 +88,17 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
               </div>
 
               {/* Actions */}
-              <div className="p-6 flex gap-3 border-b border-white/5">
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-xl font-medium transition-colors shadow-lg shadow-accent-primary/20">
+              <div className="p-6 flex gap-3 border-b border-border-default">
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-medium transition-colors shadow-lg shadow-accent-primary/20">
                   <Play className="w-5 h-5" />
                   Play
                 </button>
-                <button className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-colors border border-white/5">
+                <button className="flex-1 py-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-medium transition-colors border border-border-default">
                   {t("common.edit", { defaultValue: "Edit" })}
                 </button>
-                <button 
+                <button
                   onClick={() => setIsScrapeDialogOpen(true)}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-medium transition-colors border border-white/5"
+                  className="flex-1 py-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-medium transition-colors border border-border-default"
                 >
                   Scrape
                 </button>
@@ -122,7 +122,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     <span className="text-xs text-text-muted flex items-center gap-1">
                       <Calendar className="w-3 h-3" /> Release Date
                     </span>
-                    <p className="text-sm text-white">
+                    <p className="text-sm text-text-primary">
                       {rom.metadata?.releaseDate || "Unknown"}
                     </p>
                   </div>
@@ -130,7 +130,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     <span className="text-xs text-text-muted flex items-center gap-1">
                       <Building2 className="w-3 h-3" /> Developer
                     </span>
-                    <p className="text-sm text-white truncate">
+                    <p className="text-sm text-text-primary truncate">
                       {rom.metadata?.developer || "Unknown"}
                     </p>
                   </div>
@@ -138,7 +138,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     <span className="text-xs text-text-muted flex items-center gap-1">
                       <Globe className="w-3 h-3" /> Publisher
                     </span>
-                    <p className="text-sm text-white truncate">
+                    <p className="text-sm text-text-primary truncate">
                       {rom.metadata?.publisher || "Unknown"}
                     </p>
                   </div>
@@ -146,33 +146,33 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     <span className="text-xs text-text-muted flex items-center gap-1">
                       <User className="w-3 h-3" /> Players
                     </span>
-                    <p className="text-sm text-white">
+                    <p className="text-sm text-text-primary">
                       {rom.metadata?.players || "Unknown"}
                     </p>
                   </div>
                 </div>
 
                 {/* File Info */}
-                <div className="pt-6 border-t border-white/5">
+                <div className="pt-6 border-t border-border-default">
                   <h3 className="text-sm font-medium text-text-muted uppercase tracking-widest mb-3">
                     File Info
                   </h3>
-                  <div className="bg-[#151621] rounded-lg p-4 space-y-2 text-xs font-mono text-text-secondary border border-white/5">
+                  <div className="bg-bg-secondary rounded-lg p-4 space-y-2 text-xs font-mono text-text-secondary border border-border-default">
                     <div className="flex justify-between">
                       <span>Size:</span>
-                      <span className="text-white">{Math.round((rom.size / 1024 / 1024) * 100) / 100} MB</span>
+                      <span className="text-text-primary">{Math.round((rom.size / 1024 / 1024) * 100) / 100} MB</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Path:</span>
-                      <span className="text-white truncate max-w-[200px]" title={rom.path}>{rom.filename}</span>
+                      <span className="text-text-primary truncate max-w-[200px]" title={rom.path}>{rom.filename}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>CRC32:</span>
-                      <span className="text-white">{rom.crc32 || "-"}</span>
+                      <span className="text-text-primary">{rom.crc32 || "-"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>MD5:</span>
-                      <span className="text-white truncate max-w-[200px]" title={rom.md5}>{rom.md5 || "-"}</span>
+                      <span className="text-text-primary truncate max-w-[200px]" title={rom.md5}>{rom.md5 || "-"}</span>
                     </div>
                   </div>
                 </div>
@@ -181,10 +181,10 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
           </>
         )}
       </AnimatePresence>
-      <ScrapeDialog 
-        rom={rom} 
-        isOpen={isScrapeDialogOpen} 
-        onClose={() => setIsScrapeDialogOpen(false)} 
+      <ScrapeDialog
+        rom={rom}
+        isOpen={isScrapeDialogOpen}
+        onClose={() => setIsScrapeDialogOpen(false)}
       />
     </>
   );

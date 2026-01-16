@@ -15,13 +15,13 @@ import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 
 export default function Library() {
   const { t } = useTranslation();
-  const { 
-    roms, 
-    fetchRoms, 
-    addScanDirectory, 
-    stats, 
-    selectedRomIds, 
-    toggleRomSelection, 
+  const {
+    roms,
+    fetchRoms,
+    addScanDirectory,
+    stats,
+    selectedRomIds,
+    toggleRomSelection,
     clearSelection,
     isBatchScraping,
     batchProgress
@@ -59,29 +59,29 @@ export default function Library() {
   return (
     <div className="flex flex-col h-full space-y-8 max-w-[1600px] mx-auto w-full pb-8 relative">
       {/* Batch Actions Toolbar (Floating) */}
-      <div 
+      <div
         className={clsx(
           "fixed bottom-8 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ease-out transform",
           selectedRomIds.size > 0 ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"
         )}
       >
-        <div className="bg-[#151621]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2 flex items-center gap-4 px-4">
-          <div className="text-white font-medium pl-2 border-r border-white/10 pr-4">
+        <div className="bg-bg-secondary/90 backdrop-blur-xl border border-border-default rounded-2xl shadow-2xl p-2 flex items-center gap-4 px-4">
+          <div className="text-text-primary font-medium pl-2 border-r border-border-default pr-4">
             <span className="text-accent-primary font-bold">{selectedRomIds.size}</span> Selected
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setIsBatchDialogOpen(true)}
             disabled={isBatchScraping}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-xl transition-colors font-medium shadow-lg shadow-accent-primary/20"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl transition-colors font-medium shadow-lg shadow-accent-primary/20"
           >
             <Database className="w-4 h-4" />
             Batch Scrape
           </button>
-          
-          <button 
+
+          <button
             onClick={clearSelection}
-            className="px-4 py-2 hover:bg-white/10 text-white rounded-xl transition-colors text-sm"
+            className="px-4 py-2 hover:bg-bg-tertiary text-text-primary rounded-xl transition-colors text-sm"
           >
             Cancel
           </button>
@@ -90,15 +90,15 @@ export default function Library() {
 
       {/* Batch Progress Bar (Top) */}
       {isBatchScraping && batchProgress && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-[#151621] border-b border-accent-primary/30 shadow-lg">
-          <div className="h-1 bg-white/10">
-            <div 
+        <div className="fixed top-0 left-0 right-0 z-50 bg-bg-secondary border-b border-accent-primary/30 shadow-lg">
+          <div className="h-1 bg-bg-tertiary">
+            <div
               className="h-full bg-accent-primary transition-all duration-300 ease-out"
               style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
             />
           </div>
           <div className="max-w-[1600px] mx-auto px-6 py-2 flex items-center justify-between text-xs font-medium">
-            <span className="text-white flex items-center gap-2">
+            <span className="text-text-primary flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-accent-primary animate-pulse" />
               Batch Scraping...
             </span>
@@ -110,7 +110,7 @@ export default function Library() {
       {/* Header Section */}
       <div className={clsx("flex flex-col gap-6 md:flex-row md:items-center md:justify-between sticky top-0 z-10 bg-bg-primary/50 backdrop-blur-md py-4 -mt-4 pt-8 transition-all", isBatchScraping && "mt-8")}>
         <div>
-          <h1 className="text-4xl font-bold tracking-tight text-white mb-2">
+          <h1 className="text-4xl font-bold tracking-tight text-text-primary mb-2">
             {t("library.title")}
           </h1>
           <p className="text-text-secondary font-medium">
@@ -122,50 +122,50 @@ export default function Library() {
           {/* Spotlight Search */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-200"></div>
-            <div className="relative flex items-center bg-[#151621] rounded-xl border border-white/10 w-full md:w-80 transition-colors focus-within:border-accent-primary/50 focus-within:bg-[#1E1F2E]">
+            <div className="relative flex items-center bg-bg-secondary rounded-xl border border-border-default w-full md:w-80 transition-colors focus-within:border-accent-primary/50 focus-within:bg-bg-tertiary">
               <Search className="w-5 h-5 text-text-muted ml-4" />
               <input
                 type="text"
                 placeholder={t("library.search")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none focus:ring-0 text-sm px-3 py-3 text-white placeholder:text-text-muted focus:outline-none"
+                className="w-full bg-transparent border-none focus:ring-0 text-sm px-3 py-3 text-text-primary placeholder:text-text-muted focus:outline-none"
               />
               <div className="hidden md:flex items-center gap-1 pr-3">
-                <kbd className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-white/5 text-text-muted border border-white/10">⌘K</kbd>
+                <kbd className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-bg-tertiary text-text-muted border border-border-default">⌘K</kbd>
               </div>
             </div>
           </div>
 
           {/* View Toggle & Filters */}
-          <div className="flex items-center gap-2 p-1 bg-[#151621] rounded-xl border border-white/10">
-            <button 
+          <div className="flex items-center gap-2 p-1 bg-bg-secondary rounded-xl border border-border-default">
+            <button
               onClick={() => setViewMode("grid")}
               className={clsx(
                 "p-2 rounded-lg transition-all",
-                viewMode === "grid" 
-                  ? "bg-accent-primary text-white shadow-lg shadow-accent-primary/20" 
-                  : "text-text-muted hover:text-white hover:bg-white/5"
+                viewMode === "grid"
+                  ? "bg-accent-primary text-text-primary shadow-lg shadow-accent-primary/20"
+                  : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
               )}
               title={t("library.viewMode.grid")}
             >
               <LayoutGrid className="w-5 h-5" />
             </button>
-            <button 
+            <button
               onClick={() => setViewMode("list")}
               className={clsx(
                 "p-2 rounded-lg transition-all",
-                viewMode === "list" 
-                  ? "bg-accent-primary text-white shadow-lg shadow-accent-primary/20" 
-                  : "text-text-muted hover:text-white hover:bg-white/5"
+                viewMode === "list"
+                  ? "bg-accent-primary text-text-primary shadow-lg shadow-accent-primary/20"
+                  : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
               )}
               title={t("library.viewMode.list")}
             >
               <List className="w-5 h-5" />
             </button>
           </div>
-          
-          <button className="p-3 rounded-xl bg-[#151621] border border-white/10 text-text-secondary hover:text-white hover:border-white/20 hover:bg-white/5 transition-all">
+
+          <button className="p-3 rounded-xl bg-bg-secondary border border-border-default text-text-secondary hover:text-text-primary hover:border-border-hover hover:bg-bg-tertiary transition-all">
             <Filter className="w-5 h-5" />
           </button>
         </div>
@@ -178,25 +178,25 @@ export default function Library() {
             <div className="text-center max-w-md mx-auto relative group cursor-default mb-16">
               {/* Glowing Effect Background */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent-primary/10 rounded-full blur-[80px] group-hover:bg-accent-primary/20 transition-all duration-700"></div>
-              
+
               <div className="relative">
-                <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-[#1E1F2E] to-[#151621] border border-white/5 flex items-center justify-center shadow-2xl group-hover:scale-105 transition-transform duration-500 ring-1 ring-white/10">
+                <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-bg-tertiary to-bg-secondary border border-border-default flex items-center justify-center shadow-2xl group-hover:scale-105 transition-transform duration-500 ring-1 ring-border-default">
                   <Ghost className="w-16 h-16 text-text-muted group-hover:text-accent-primary transition-colors duration-300" />
                 </div>
-                
-                <h2 className="text-3xl font-bold text-white mb-3 tracking-tight">
+
+                <h2 className="text-3xl font-bold text-text-primary mb-3 tracking-tight">
                   {t("library.empty.title")}
                 </h2>
                 <p className="text-text-secondary mb-8 text-lg leading-relaxed">
                   {t("library.empty.description")}
                 </p>
-                
-                <button 
+
+                <button
                   onClick={handleAddDirectory}
                   className="relative inline-flex group/btn"
                 >
                   <div className="absolute transition-all duration-300 opacity-70 -inset-px bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl blur-lg group-hover/btn:opacity-100 group-hover/btn:-inset-1 group-hover/btn:duration-200 animate-tilt"></div>
-                  <div className="relative inline-flex items-center gap-2 px-8 py-4 bg-[#0B0C15] rounded-xl leading-none text-white transition duration-200 border border-white/10 hover:bg-[#151621]">
+                  <div className="relative inline-flex items-center gap-2 px-8 py-4 bg-bg-primary rounded-xl leading-none text-text-primary transition duration-200 border border-border-default hover:bg-bg-secondary">
                     <Plus className="w-5 h-5 text-accent-secondary" />
                     <span className="font-semibold tracking-wide">{t("library.empty.addDirectory")}</span>
                   </div>
@@ -206,15 +206,15 @@ export default function Library() {
           </div>
         ) : (
           viewMode === "grid" ? (
-            <RomGrid 
-              roms={roms} 
+            <RomGrid
+              roms={roms}
               selectedIds={selectedRomIds}
               onRomClick={handleRomClick}
-              onToggleSelect={(id) => toggleRomSelection(id, true)} 
+              onToggleSelect={(id) => toggleRomSelection(id, true)}
             />
           ) : (
-            <RomList 
-              roms={roms} 
+            <RomList
+              roms={roms}
               selectedIds={selectedRomIds}
               onRomClick={handleRomClick}
               onToggleSelect={(id) => toggleRomSelection(id, true)}
@@ -225,11 +225,11 @@ export default function Library() {
 
       {/* Detail Panel */}
       <RomDetail rom={activeRom} onClose={() => setActiveRom(null)} />
-      
+
       {/* Batch Scrape Dialog */}
-      <BatchScrapeDialog 
-        isOpen={isBatchDialogOpen} 
-        onClose={() => setIsBatchDialogOpen(false)} 
+      <BatchScrapeDialog
+        isOpen={isBatchDialogOpen}
+        onClose={() => setIsBatchDialogOpen(false)}
       />
     </div>
   );

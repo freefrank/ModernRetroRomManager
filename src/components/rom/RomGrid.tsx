@@ -23,14 +23,14 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
             key={rom.id}
             onClick={() => onRomClick(rom)}
             className={clsx(
-              "group relative bg-[#151621] rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer",
-              isSelected 
-                ? "border-accent-primary ring-1 ring-accent-primary shadow-[0_0_30px_rgba(124,58,237,0.2)]" 
-                : "border-white/5 hover:border-accent-primary/50 hover:shadow-[0_0_30px_rgba(124,58,237,0.1)]"
+              "group relative bg-bg-secondary rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer",
+              isSelected
+                ? "border-accent-primary ring-1 ring-accent-primary shadow-[0_0_30px_rgba(124,58,237,0.2)]"
+                : "border-border-default hover:border-accent-primary/50 hover:shadow-[0_0_30px_rgba(124,58,237,0.1)]"
             )}
           >
             {/* Image Section */}
-            <div className="aspect-[3/4] bg-gradient-to-br from-[#1E1F2E] to-[#0B0C15] relative overflow-hidden">
+            <div className="aspect-[3/4] bg-gradient-to-br from-bg-tertiary to-bg-primary relative overflow-hidden">
               <div className="absolute inset-0 bg-accent-primary/5 group-hover:bg-accent-primary/10 transition-colors"></div>
 
               {coverUrl ? (
@@ -41,14 +41,14 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Gamepad2 className="w-12 h-12 text-white/5 group-hover:text-accent-primary/20 transition-colors duration-500" />
+                  <Gamepad2 className="w-12 h-12 text-text-muted/10 group-hover:text-accent-primary/20 transition-colors duration-500" />
                 </div>
               )}
 
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-                <button 
-                  className="p-3 rounded-full bg-accent-primary text-white transform scale-50 group-hover:scale-100 transition-all duration-300 hover:bg-accent-primary/90 shadow-lg"
+                <button
+                  className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 group-hover:scale-100 transition-all duration-300 hover:bg-accent-primary/90 shadow-lg"
                   onClick={(e) => {
                     e.stopPropagation();
                     // Play logic
@@ -59,7 +59,7 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
               </div>
 
               {/* Selection Checkbox (Visible on hover or selected) */}
-              <div 
+              <div
                 className={clsx(
                   "absolute top-3 right-3 z-10 transition-all duration-200",
                   isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -72,8 +72,8 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
                   }}
                   className={clsx(
                     "w-6 h-6 rounded-full flex items-center justify-center border transition-colors",
-                    isSelected 
-                      ? "bg-accent-primary border-accent-primary text-white" 
+                    isSelected
+                      ? "bg-accent-primary border-accent-primary text-text-primary"
                       : "bg-black/50 border-white/30 text-transparent hover:border-white hover:bg-black/70"
                   )}
                 >
@@ -82,7 +82,7 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
               </div>
 
               <div className="absolute top-3 left-3">
-                <span className="px-2 py-1 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10 uppercase">
+                <span className="px-2 py-1 rounded-md bg-bg-primary/60 backdrop-blur-md text-[10px] font-bold text-text-primary border border-border-default uppercase">
                   {rom.systemId}
                 </span>
               </div>
@@ -91,7 +91,7 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
             {/* Content */}
             <div className="p-4">
               <h3
-                className="font-semibold text-white truncate mb-1 group-hover:text-accent-primary transition-colors"
+                className="font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors"
                 title={rom.metadata?.name || rom.filename}
               >
                 {rom.metadata?.name || rom.filename}

@@ -50,8 +50,23 @@ fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error:
     // 启用外键约束
     diesel::sql_query("PRAGMA foreign_keys = ON;").execute(conn)?;
     
-    // 创建表结构
-    diesel::sql_query(include_str!("../migrations/001_initial.sql")).execute(conn)?;
+    // 创建表结构 - 先过滤注释行，再按分号分割执行
+    let migration_sql = include_str!("../migrations/001_initial.sql");
+    
+    // 过滤掉注释行
+    let sql_without_comments: String = migration_sql
+        .lines()
+        .filter(|line| !line.trim().starts_with("--"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    
+    // 按分号分割并执行每条语句
+    for statement in sql_without_comments.split(';') {
+        let statement = statement.trim();
+        if !statement.is_empty() {
+            diesel::sql_query(statement).execute(conn)?;
+        }
+    }
     
     Ok(())
 }

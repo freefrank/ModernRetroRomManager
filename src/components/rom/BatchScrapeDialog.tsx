@@ -42,18 +42,18 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative w-full max-w-md bg-[#0B0C15] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-md bg-bg-primary border border-border-default rounded-2xl shadow-2xl overflow-hidden"
         >
-          <div className="p-6 border-b border-white/5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Batch Scrape</h2>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 text-text-secondary">
+          <div className="p-6 border-b border-border-default flex items-center justify-between">
+            <h2 className="text-xl font-bold text-text-primary">Batch Scrape</h2>
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-tertiary text-text-secondary">
               <X className="w-6 h-6" />
             </button>
           </div>
 
           <div className="p-6 space-y-6">
             <p className="text-text-secondary">
-              You are about to scrape metadata and media for <span className="text-white font-bold">{selectedRomIds.size}</span> selected games.
+              You are about to scrape metadata and media for <span className="text-text-primary font-bold">{selectedRomIds.size}</span> selected games.
             </p>
 
             <div>
@@ -61,7 +61,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                className="w-full bg-[#151621] border border-white/10 rounded-lg px-3 py-3 text-sm text-white focus:outline-none focus:border-accent-primary"
+                className="w-full bg-bg-secondary border border-border-default rounded-lg px-3 py-3 text-sm text-text-primary focus:outline-none focus:border-accent-primary"
               >
                 {activeProviders.length === 0 ? (
                   <option disabled>No providers enabled</option>
@@ -78,13 +78,13 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
             <div className="flex justify-end gap-3 pt-4">
               <button
                 onClick={onClose}
-                className="px-6 py-2 rounded-xl text-white hover:bg-white/5 transition-colors font-medium text-sm"
+                className="px-6 py-2 rounded-xl text-text-primary hover:bg-bg-tertiary transition-colors font-medium text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleStart}
-                className="px-8 py-2 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-xl font-bold transition-colors shadow-lg shadow-accent-primary/20 flex items-center gap-2"
+                className="px-8 py-2 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-bold transition-colors shadow-lg shadow-accent-primary/20 flex items-center gap-2"
               >
                 <Database className="w-4 h-4" />
                 Start Scrape

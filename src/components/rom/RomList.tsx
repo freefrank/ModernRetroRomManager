@@ -14,9 +14,9 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
   const { t } = useTranslation();
 
   return (
-    <div className="bg-[#151621] rounded-xl border border-white/5 overflow-hidden">
+    <div className="bg-bg-secondary rounded-xl border border-border-default overflow-hidden">
       <table className="w-full text-left">
-        <thead className="bg-white/5 text-text-secondary text-xs uppercase font-medium">
+        <thead className="bg-bg-tertiary text-text-secondary text-xs uppercase font-medium">
           <tr>
             <th className="px-6 py-4 w-12">#</th>
             <th className="px-6 py-4">{t("common.name", { defaultValue: "Name" })}</th>
@@ -25,7 +25,7 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
             <th className="px-6 py-4">{t("common.date", { defaultValue: "Date" })}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5">
+        <tbody className="divide-y divide-border-default">
           {roms.map((rom) => {
             const isSelected = selectedIds.has(rom.id);
             return (
@@ -34,7 +34,7 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
                 onClick={() => onRomClick(rom)}
                 className={clsx(
                   "group transition-colors cursor-pointer",
-                  isSelected ? "bg-accent-primary/10 hover:bg-accent-primary/20" : "hover:bg-white/5"
+                  isSelected ? "bg-accent-primary/10 hover:bg-accent-primary/20" : "hover:bg-bg-tertiary"
                 )}
               >
                 <td className="px-6 py-4 text-text-muted text-sm">
@@ -46,8 +46,8 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
                     className={clsx(
                       "w-5 h-5 rounded flex items-center justify-center border transition-colors",
                       isSelected
-                        ? "bg-accent-primary border-accent-primary text-white"
-                        : "bg-transparent border-white/20 text-transparent hover:border-white/50"
+                        ? "bg-accent-primary border-accent-primary text-text-primary"
+                        : "bg-transparent border-border-default text-transparent hover:border-border-hover"
                     )}
                   >
                     <CheckCircle2 className="w-3 h-3" />
@@ -55,11 +55,11 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-[#0B0C15] flex items-center justify-center text-text-muted">
+                    <div className="w-8 h-8 rounded bg-bg-primary flex items-center justify-center text-text-muted">
                       <Gamepad2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="font-medium text-white group-hover:text-accent-primary transition-colors">
+                      <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors">
                         {rom.metadata?.name || rom.filename}
                       </div>
                       <div className="text-xs text-text-muted truncate max-w-[200px]">
@@ -69,7 +69,7 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="px-2 py-1 rounded bg-[#0B0C15] border border-white/10 text-xs font-medium text-text-secondary uppercase">
+                  <span className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase">
                     {rom.systemId}
                   </span>
                 </td>

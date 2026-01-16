@@ -137,8 +137,11 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
   addScanDirectory: async (path: string) => {
     try {
-      await invoke("add_scan_directory", { path, systemId: null });
+      // 添加目录并获取新目录的信息
+      const newDir = await invoke<ScanDirectory>("add_scan_directory", { path, systemId: null });
       await get().fetchScanDirectories();
+      // 自动开始扫描新添加的目录
+      await get().startScan(newDir.id);
     } catch (error) {
       console.error("Failed to add scan directory:", error);
       throw error;

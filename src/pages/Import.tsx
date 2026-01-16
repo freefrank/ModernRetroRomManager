@@ -103,14 +103,14 @@ export default function Import() {
   return (
     <div className="flex flex-col h-full">
       {/* 工具栏 */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0B0C15]/50 backdrop-blur-md sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-white">{t("import.title")}</h1>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border-default bg-bg-primary/50 backdrop-blur-md sticky top-0 z-10">
+        <h1 className="text-xl font-bold text-text-primary">{t("import.title")}</h1>
       </div>
 
       {/* 内容区 */}
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-3xl space-y-8">
-          
+
           {/* Result Alert */}
           {result && (
             <div className={clsx(
@@ -124,15 +124,15 @@ export default function Import() {
 
           {/* Progress Bar */}
           {progress && (
-            <div className="mb-4 p-4 bg-[#151621] border border-accent-primary/30 rounded-xl relative overflow-hidden">
+            <div className="mb-4 p-4 bg-bg-secondary border border-accent-primary/30 rounded-xl relative overflow-hidden">
               <div className="absolute inset-0 bg-accent-primary/5 animate-pulse"></div>
               <div className="relative z-10">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-white font-medium">{t("common.loading")}</span>
+                  <span className="text-text-primary font-medium">{t("common.loading")}</span>
                   <span className="text-accent-primary">{progress.current} {progress.total > 0 ? `/ ${progress.total}` : ''}</span>
                 </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div 
+                <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+                  <div
                     className="h-full bg-accent-primary transition-all duration-300"
                     style={{ width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '100%' }}
                   ></div>
@@ -144,17 +144,17 @@ export default function Import() {
 
           {/* 导入 */}
           <section>
-            <h2 className="text-lg font-medium text-white mb-4">{t("import.importSection.title")}</h2>
+            <h2 className="text-lg font-medium text-text-primary mb-4">{t("import.importSection.title")}</h2>
             <p className="text-text-secondary mb-6 text-sm">
               {t("import.importSection.description")}
             </p>
 
             <div className="grid grid-cols-2 gap-4">
               {/* EmulationStation */}
-              <button 
+              <button
                 onClick={() => handleImport("emulationstation")}
                 disabled={!!importing || !!exporting}
-                className="group p-4 bg-[#151621] border border-white/5 rounded-xl hover:border-accent-primary/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-accent-primary/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-4 mb-2">
                   <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -165,7 +165,7 @@ export default function Import() {
                     )}
                   </div>
                   <div>
-                    <h3 className="font-bold text-white group-hover:text-accent-primary transition-colors">EmulationStation</h3>
+                    <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation</h3>
                     <p className="text-xs text-text-secondary mt-0.5">gamelist.xml</p>
                   </div>
                 </div>
@@ -173,13 +173,13 @@ export default function Import() {
 
               {/* Other Placeholders */}
               {["Pegasus/Recalbox", "LaunchBox", "RetroArch"].map((name) => (
-                <button 
+                <button
                   key={name}
                   disabled
-                  className="p-4 bg-[#151621] border border-white/5 rounded-xl opacity-50 cursor-not-allowed text-left"
+                  className="p-4 bg-bg-secondary border border-border-default rounded-xl opacity-50 cursor-not-allowed text-left"
                 >
                   <div className="flex items-center gap-4 mb-2">
-                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-bg-tertiary rounded-xl flex items-center justify-center flex-shrink-0">
                       <span className="text-text-muted font-bold text-lg">{name.substring(0, 2).toUpperCase()}</span>
                     </div>
                     <div>
@@ -194,16 +194,16 @@ export default function Import() {
 
           {/* 导出 */}
           <section>
-            <h2 className="text-lg font-medium text-white mb-4">{t("import.exportSection.title")}</h2>
+            <h2 className="text-lg font-medium text-text-primary mb-4">{t("import.exportSection.title")}</h2>
             <p className="text-text-secondary mb-6 text-sm">
               {t("import.exportSection.description")}
             </p>
 
             <div className="grid grid-cols-2 gap-4">
-              <button 
+              <button
                 onClick={() => handleExport("emulationstation")}
                 disabled={!!importing || !!exporting}
-                className="group p-4 bg-[#151621] border border-white/5 rounded-xl hover:border-accent-primary/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-accent-primary/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-4 mb-2">
                   <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -214,7 +214,7 @@ export default function Import() {
                     )}
                   </div>
                   <div>
-                    <h3 className="font-bold text-white group-hover:text-accent-primary transition-colors">EmulationStation</h3>
+                    <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation</h3>
                     <p className="text-xs text-text-secondary mt-0.5">gamelist.xml + ROMs</p>
                   </div>
                 </div>

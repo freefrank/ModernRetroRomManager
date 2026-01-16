@@ -45,7 +45,7 @@
   --border-highlight: rgba(99, 102, 241, 0.5);
 }
 
-/* Dark Theme */
+/* Dark Theme (默认暗色) */
 .dark {
   --bg-primary: #0B0C15;
   --bg-secondary: #151621;
@@ -64,6 +64,132 @@
   --border-default: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.15);
   --border-highlight: rgba(124, 58, 237, 0.5);
+}
+
+/* Cyberpunk Theme (赛博朋克) */
+.cyberpunk {
+  --bg-primary: #0D0221;
+  --bg-secondary: #1A0533;
+  --bg-tertiary: #2D0A4E;
+
+  --accent-primary: #FF00FF;   /* Magenta */
+  --accent-secondary: #00FFFF; /* Cyan */
+  --accent-success: #39FF14;
+  --accent-warning: #FFD700;
+  --accent-error: #FF0040;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #E0B0FF;
+  --text-muted: #9D4EDD;
+
+  --border-default: rgba(255, 0, 255, 0.15);
+  --border-hover: rgba(255, 0, 255, 0.3);
+  --border-highlight: rgba(0, 255, 255, 0.5);
+}
+
+/* Ocean Theme (海洋蓝) */
+.ocean {
+  --bg-primary: #0A192F;
+  --bg-secondary: #112240;
+  --bg-tertiary: #1D3557;
+
+  --accent-primary: #64FFDA;   /* Teal */
+  --accent-secondary: #58A6FF; /* Blue */
+  --accent-success: #4ADE80;
+  --accent-warning: #FCD34D;
+  --accent-error: #F87171;
+
+  --text-primary: #CCD6F6;
+  --text-secondary: #8892B0;
+  --text-muted: #5C6A86;
+
+  --border-default: rgba(100, 255, 218, 0.1);
+  --border-hover: rgba(100, 255, 218, 0.2);
+  --border-highlight: rgba(100, 255, 218, 0.5);
+}
+
+/* Forest Theme (森林绿) */
+.forest {
+  --bg-primary: #0F1A0F;
+  --bg-secondary: #1A2E1A;
+  --bg-tertiary: #264226;
+
+  --accent-primary: #4ADE80;   /* Emerald */
+  --accent-secondary: #A3E635; /* Lime */
+  --accent-success: #22C55E;
+  --accent-warning: #FBBF24;
+  --accent-error: #F87171;
+
+  --text-primary: #ECFDF5;
+  --text-secondary: #A7F3D0;
+  --text-muted: #6EE7B7;
+
+  --border-default: rgba(74, 222, 128, 0.1);
+  --border-hover: rgba(74, 222, 128, 0.2);
+  --border-highlight: rgba(74, 222, 128, 0.5);
+}
+
+/* Sunset Theme (日落橙) */
+.sunset {
+  --bg-primary: #1A0A0A;
+  --bg-secondary: #2D1515;
+  --bg-tertiary: #421F1F;
+
+  --accent-primary: #F97316;   /* Orange */
+  --accent-secondary: #FBBF24; /* Amber */
+  --accent-success: #4ADE80;
+  --accent-warning: #F59E0B;
+  --accent-error: #EF4444;
+
+  --text-primary: #FFF7ED;
+  --text-secondary: #FDBA74;
+  --text-muted: #C2410C;
+
+  --border-default: rgba(249, 115, 22, 0.15);
+  --border-hover: rgba(249, 115, 22, 0.25);
+  --border-highlight: rgba(249, 115, 22, 0.5);
+}
+
+/* Rose Theme (玫瑰红) */
+.rose {
+  --bg-primary: #1A0A14;
+  --bg-secondary: #2D1525;
+  --bg-tertiary: #421F36;
+
+  --accent-primary: #F43F5E;   /* Rose */
+  --accent-secondary: #FB7185; /* Pink */
+  --accent-success: #4ADE80;
+  --accent-warning: #FBBF24;
+  --accent-error: #EF4444;
+
+  --text-primary: #FFF1F2;
+  --text-secondary: #FDA4AF;
+  --text-muted: #9F1239;
+
+  --border-default: rgba(244, 63, 94, 0.15);
+  --border-hover: rgba(244, 63, 94, 0.25);
+  --border-highlight: rgba(244, 63, 94, 0.5);
+}
+
+/* Nord Theme (北欧风) */
+.nord {
+  --bg-primary: #2E3440;
+  --bg-secondary: #3B4252;
+  --bg-tertiary: #434C5E;
+
+  --accent-primary: #88C0D0;   /* Nord Frost */
+  --accent-secondary: #81A1C1; /* Nord Blue */
+  --accent-success: #A3BE8C;
+  --accent-warning: #EBCB8B;
+  --accent-error: #BF616A;
+
+  --text-primary: #ECEFF4;
+  --text-secondary: #D8DEE9;
+  --text-muted: #4C566A;
+
+  --border-default: rgba(136, 192, 208, 0.1);
+  --border-hover: rgba(136, 192, 208, 0.2);
+  --border-highlight: rgba(136, 192, 208, 0.5);
 }
 
 /* Global Styles */

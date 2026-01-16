@@ -73,14 +73,33 @@ pub fn add_scan_directory(path: String, system_id: Option<String>) -> Result<Sca
     Ok(ScanDirectoryInfo::from(new_dir))
 }
 
-/// 删除扫描目录
+/// 删除扫描目录及其所有导入的 ROM
 #[tauri::command]
 pub fn remove_scan_directory(id: String) -> Result<(), String> {
+    use crate::db::schema::roms;
+    
     let mut conn = get_connection().map_err(|e| e.to_string())?;
 
-    diesel::delete(scan_directories::table.filter(scan_directories::id.eq(id)))
-        .execute(&mut conn)
+    // 先获取目录路径
+    let dir = scan_directories::table
+        .filter(scan_directories::id.eq(&id))
+        .first::<ScanDirectory>(&mut conn)
+        .optional()
         .map_err(|e| e.to_string())?;
+
+    if let Some(dir) = dir {
+        // 删除该目录下所有 ROM（路径以目录路径开头的）
+        // 注意：rom_metadata 和 media_assets 通过 ON DELETE CASCADE 自动删除
+        let dir_path_pattern = format!("{}%", dir.path);
+        diesel::delete(roms::table.filter(roms::path.like(&dir_path_pattern)))
+            .execute(&mut conn)
+            .map_err(|e| e.to_string())?;
+
+        // 删除扫描目录记录
+        diesel::delete(scan_directories::table.filter(scan_directories::id.eq(&id)))
+            .execute(&mut conn)
+            .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

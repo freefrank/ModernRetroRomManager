@@ -2,17 +2,17 @@ import { useEffect } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
-import { useAppStore } from "@/stores/appStore";
-import { Folder, Trash2, RefreshCw, Plus, HardDrive, Moon, Sun } from "lucide-react";
+import { useAppStore, THEMES } from "@/stores/appStore";
+import { Folder, Trash2, RefreshCw, Plus, HardDrive } from "lucide-react";
 import { clsx } from "clsx";
 
 export default function Settings() {
   const { t } = useTranslation();
   const { theme, setTheme } = useAppStore();
-  const { 
-    scanDirectories, 
-    fetchScanDirectories, 
-    addScanDirectory, 
+  const {
+    scanDirectories,
+    fetchScanDirectories,
+    addScanDirectory,
     removeScanDirectory,
     startScan,
     isScanning,
@@ -53,35 +53,26 @@ export default function Settings() {
       {/* 内容区 */}
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-3xl space-y-8">
-          
+
           {/* 外观设置 */}
           <section>
-            <h2 className="text-lg font-medium text-text-primary mb-4">外观</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <button
-                onClick={() => setTheme("dark")}
-                className={clsx(
-                  "p-4 rounded-xl border transition-all flex flex-col items-center gap-3",
-                  theme === "dark" 
-                    ? "bg-bg-secondary border-accent-primary text-text-primary ring-1 ring-accent-primary" 
-                    : "bg-bg-secondary border-border-default text-text-secondary hover:border-border-hover"
-                )}
-              >
-                <Moon className="w-6 h-6" />
-                <span className="text-sm font-medium">Dark</span>
-              </button>
-              <button
-                onClick={() => setTheme("light")}
-                className={clsx(
-                  "p-4 rounded-xl border transition-all flex flex-col items-center gap-3",
-                  theme === "light" 
-                    ? "bg-bg-secondary border-accent-primary text-text-primary ring-1 ring-accent-primary" 
-                    : "bg-bg-secondary border-border-default text-text-secondary hover:border-border-hover"
-                )}
-              >
-                <Sun className="w-6 h-6" />
-                <span className="text-sm font-medium">Light</span>
-              </button>
+            <h2 className="text-lg font-medium text-text-primary mb-4">外观主题</h2>
+            <div className="grid grid-cols-4 gap-3">
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  className={clsx(
+                    "p-4 rounded-xl border transition-all flex flex-col items-center gap-2",
+                    theme === t.id
+                      ? "bg-bg-secondary border-accent-primary text-text-primary ring-1 ring-accent-primary"
+                      : "bg-bg-secondary border-border-default text-text-secondary hover:border-border-hover"
+                  )}
+                >
+                  <span className="text-2xl">{t.icon}</span>
+                  <span className="text-sm font-medium">{t.name}</span>
+                </button>
+              ))}
             </div>
           </section>
 
@@ -94,7 +85,7 @@ export default function Settings() {
                   {t("settings.scanDirectories.description")}
                 </p>
               </div>
-              <button 
+              <button
                 onClick={handleAddDirectory}
                 className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-lg transition-colors text-sm font-medium"
               >
@@ -113,7 +104,7 @@ export default function Settings() {
                     <span className="text-accent-primary">{scanProgress.current} {scanProgress.total ? `/ ${scanProgress.total}` : ''}</span>
                   </div>
                   <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-accent-primary transition-all duration-300"
                       style={{ width: scanProgress.total ? `${(scanProgress.current / scanProgress.total) * 100}%` : '100%' }}
                     ></div>
@@ -130,7 +121,7 @@ export default function Settings() {
                     <Folder className="w-8 h-8 text-text-muted" />
                   </div>
                   <p className="text-text-secondary mb-4">{t("settings.scanDirectories.empty")}</p>
-                  <button 
+                  <button
                     onClick={handleAddDirectory}
                     className="text-accent-primary hover:text-accent-primary/80 text-sm font-medium"
                   >
@@ -151,22 +142,22 @@ export default function Settings() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={() => handleScan(dir.id)}
                         disabled={isScanning}
                         className={clsx(
                           "p-2 rounded-lg transition-colors",
-                          isScanning 
-                            ? "text-text-muted cursor-not-allowed opacity-50" 
+                          isScanning
+                            ? "text-text-muted cursor-not-allowed opacity-50"
                             : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
                         )}
                         title={t("common.refresh")}
                       >
                         <RefreshCw className={clsx("w-4 h-4", isScanning && "animate-spin")} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => removeScanDirectory(dir.id)}
                         className="p-2 rounded-lg text-text-secondary hover:text-accent-error hover:bg-accent-error/10 transition-colors"
                         title={t("common.delete")}
