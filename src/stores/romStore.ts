@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Rom, GameSystem, ScanDirectory } from "@/types";
+import type { Rom, GameSystem, ScanDirectory, FilterOption } from "@/types";
 
 interface ScanProgress {
   current: number;
@@ -13,7 +13,7 @@ interface ScanProgress {
 interface RomState {
   // ROM 列表
   roms: Rom[];
-  fetchRoms: () => Promise<void>;
+  fetchRoms: (filter?: FilterOption) => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -42,9 +42,9 @@ interface RomState {
 export const useRomStore = create<RomState>((set, get) => ({
   // ROM 列表
   roms: [],
-  fetchRoms: async () => {
+  fetchRoms: async (filter?: FilterOption) => {
     try {
-      const roms = await invoke<Rom[]>("get_roms", {});
+      const roms = await invoke<Rom[]>("get_roms", { filter });
       set({ roms });
       get().fetchStats();
     } catch (error) {

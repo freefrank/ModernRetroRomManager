@@ -1,16 +1,27 @@
-import { useEffect } from "react";
-import { Search, LayoutGrid, List, Filter, Plus, Ghost, Star, Clock, Play, Gamepad2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, LayoutGrid, List, Filter, Plus, Ghost } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
+import { useAppStore } from "@/stores/appStore";
 import { open } from "@tauri-apps/plugin-dialog";
+import { clsx } from "clsx";
+import { useDebounce } from "@/hooks/useDebounce";
+import type { Rom } from "@/types";
+
+import RomGrid from "@/components/rom/RomGrid";
+import RomList from "@/components/rom/RomList";
+import RomDetail from "@/components/rom/RomDetail";
 
 export default function Library() {
   const { t } = useTranslation();
   const { roms, fetchRoms, addScanDirectory, stats } = useRomStore();
+  const { viewMode, setViewMode, searchQuery, setSearchQuery } = useAppStore();
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [activeRom, setActiveRom] = useState<Rom | null>(null);
 
   useEffect(() => {
-    fetchRoms();
-  }, [fetchRoms]);
+    fetchRoms({ searchQuery: debouncedSearch });
+  }, [fetchRoms, debouncedSearch]);
 
   const handleAddDirectory = async () => {
     try {
@@ -49,6 +60,8 @@ export default function Library() {
               <input
                 type="text"
                 placeholder={t("library.search")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent border-none focus:ring-0 text-sm px-3 py-3 text-white placeholder:text-text-muted focus:outline-none"
               />
               <div className="hidden md:flex items-center gap-1 pr-3">
@@ -59,10 +72,28 @@ export default function Library() {
 
           {/* View Toggle & Filters */}
           <div className="flex items-center gap-2 p-1 bg-[#151621] rounded-xl border border-white/10">
-            <button className="p-2 rounded-lg bg-accent-primary text-white shadow-lg shadow-accent-primary/20 transition-all" title={t("library.viewMode.grid")}>
+            <button 
+              onClick={() => setViewMode("grid")}
+              className={clsx(
+                "p-2 rounded-lg transition-all",
+                viewMode === "grid" 
+                  ? "bg-accent-primary text-white shadow-lg shadow-accent-primary/20" 
+                  : "text-text-muted hover:text-white hover:bg-white/5"
+              )}
+              title={t("library.viewMode.grid")}
+            >
               <LayoutGrid className="w-5 h-5" />
             </button>
-            <button className="p-2 rounded-lg text-text-muted hover:text-white hover:bg-white/5 transition-colors" title={t("library.viewMode.list")}>
+            <button 
+              onClick={() => setViewMode("list")}
+              className={clsx(
+                "p-2 rounded-lg transition-all",
+                viewMode === "list" 
+                  ? "bg-accent-primary text-white shadow-lg shadow-accent-primary/20" 
+                  : "text-text-muted hover:text-white hover:bg-white/5"
+              )}
+              title={t("library.viewMode.list")}
+            >
               <List className="w-5 h-5" />
             </button>
           </div>
@@ -107,61 +138,16 @@ export default function Library() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-            {roms.map((rom) => (
-              <div key={rom.id} className="group relative bg-[#151621] rounded-2xl border border-white/5 overflow-hidden hover:border-accent-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(124,58,237,0.1)] hover:-translate-y-1">
-                {/* Image Placeholder */}
-                <div className="aspect-[3/4] bg-gradient-to-br from-[#1E1F2E] to-[#0B0C15] relative overflow-hidden">
-                  <div className="absolute inset-0 bg-accent-primary/5 group-hover:bg-accent-primary/10 transition-colors"></div>
-                  
-                  {rom.media?.length ? (
-                    // TODO: 显示真实图片
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Gamepad2 className="w-12 h-12 text-white/5" />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Gamepad2 className="w-12 h-12 text-white/5 group-hover:text-accent-primary/20 transition-colors duration-500" />
-                    </div>
-                  )}
-                  
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-                    <button className="p-3 rounded-full bg-accent-primary text-white transform scale-50 group-hover:scale-100 transition-all duration-300 hover:bg-accent-primary/90 shadow-lg">
-                      <Play className="w-6 h-6 ml-1" />
-                    </button>
-                  </div>
-                  
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2 py-1 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10 uppercase">
-                      {rom.systemId}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Content */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-white truncate mb-1 group-hover:text-accent-primary transition-colors" title={rom.metadata?.name || rom.filename}>
-                    {rom.metadata?.name || rom.filename}
-                  </h3>
-                  <div className="flex items-center justify-between text-xs text-text-secondary">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{Math.round(rom.size / 1024 / 1024 * 100) / 100} MB</span>
-                    </div>
-                    {rom.metadata?.rating && (
-                      <div className="flex items-center gap-1 text-accent-warning">
-                        <Star className="w-3 h-3 fill-current" />
-                        <span>{rom.metadata.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          viewMode === "grid" ? (
+            <RomGrid roms={roms} onRomClick={setActiveRom} />
+          ) : (
+            <RomList roms={roms} onRomClick={setActiveRom} />
+          )
         )}
       </div>
+
+      {/* Detail Panel */}
+      <RomDetail rom={activeRom} onClose={() => setActiveRom(null)} />
     </div>
   );
 }

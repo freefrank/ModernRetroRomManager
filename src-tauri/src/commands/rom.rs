@@ -73,6 +73,7 @@ impl From<MediaAsset> for MediaAssetInfo {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RomFilter {
     pub system_id: Option<String>,
     pub has_metadata: Option<bool>,

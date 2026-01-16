@@ -163,6 +163,7 @@
 ## 🔗 参考资源
 
 ### API 文档
+- [SteamGridDB API](https://www.steamgriddb.com/api/v2)
 - [IGDB API](https://api-docs.igdb.com/)
 - [TheGamesDB API](https://thegamesdb.net/api/)
 - [MobyGames API](https://www.mobygames.com/info/api)
