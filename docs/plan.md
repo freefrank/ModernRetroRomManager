@@ -121,16 +121,16 @@
 - [x] 交互式 Scrape 对话框 (Frontend)
 
 #### 2.2 智能匹配
-- [ ] ROM 文件名解析（No-Intro 命名规范）
+- [x] ROM 文件名解析（No-Intro 命名规范）
 - [ ] Hash 精确匹配
 - [ ] 模糊搜索 + 用户确认
 - [ ] 多源数据聚合（优先级合并）
 
 #### 2.3 媒体下载
-- [ ] 并发下载队列
-- [ ] 断点续传
+- [x] 并发下载队列 (Batch Scraper)
+- [x] 断点续传 (Basic Implementation)
 - [ ] 图片格式转换/压缩
-- [ ] 本地缓存管理
+- [x] 本地缓存管理
 
 ### Phase 3: 导入导出
 
@@ -156,6 +156,8 @@
 - [ ] 主题切换（暗/亮）
 
 #### 4.2 高级 Scraper
+- [x] 批量 Scraper (Backend Queue & Auto-Match)
+- [x] 批量操作 UI (Frontend)
 - [ ] 自定义爬虫规则
 - [ ] 代理设置
 - [ ] 速率限制配置
