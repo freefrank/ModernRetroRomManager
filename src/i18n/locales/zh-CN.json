@@ -62,7 +62,9 @@
     "title": "导入/导出",
     "importSection": {
       "title": "导入",
-      "description": "从现有的 ROM 管理软件导入元数据和媒体资源"
+      "description": "从现有的 ROM 管理软件导入元数据和媒体资源",
+      "deprecated": "当前版本已迁移为目录扫描模式，请在 ROM 库中添加目录。",
+      "success": "已切换为目录扫描模式"
     },
     "exportSection": {
       "title": "导出",
@@ -89,6 +91,9 @@
   },
   "settings": {
     "title": "设置",
+    "appearance": {
+      "title": "外观主题"
+    },
     "scanDirectories": {
       "title": "扫描目录",
       "description": "配置 ROM 扫描目录，软件会自动检测其中的 ROM 文件",
@@ -97,10 +102,9 @@
     },
     "storage": {
       "title": "存储设置",
-      "databaseLocation": "数据库位置",
+      "configDirectory": "配置目录",
       "mediaDirectory": "媒体资源目录",
-      "defaultLocation": "默认位置",
-      "browse": "浏览"
+      "defaultLocation": "默认位置"
     },
     "language": {
       "title": "语言",
@@ -125,5 +129,25 @@
     "loading": "加载中...",
     "error": "错误",
     "success": "成功"
+  },
+  "metadataDialog": {
+    "title": "检测到元数据文件",
+    "subtitle": "选择元数据格式",
+    "description": "点击下方选项选择格式：",
+    "skip": "跳过"
+  },
+  "directoryInput": {
+    "placeholder": "例如: C:\\ROMs\\SNES 或 /home/user/roms",
+    "browse": "浏览...",
+    "browseTitle": "选择目录",
+    "status": {
+      "validating": "验证中...",
+      "error": "错误: {{error}}",
+      "missing": "路径不存在",
+      "notDirectory": "不是目录",
+      "notReadable": "无读取权限",
+      "notWritable": "警告: 无写入权限",
+      "valid": "有效路径 ✓"
+    }
   }
 }

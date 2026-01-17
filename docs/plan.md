@@ -27,15 +27,15 @@
 │                      Backend Layer                          │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              Rust (Tauri Framework v2)              │   │
-│  │     - 轻量级 (~5MB vs Electron ~150MB)              │   │
-│  │     - 高性能文件/ROM处理                            │   │
+│  │     - 轻量级 (无内嵌浏览器开销)                     │   │
+│  │     - Metadata 驱动 (直接读写 XML/TXT)              │   │
 │  │     - 跨平台编译 (Win/Mac/Linux)                    │   │
 │  └─────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
-│                      Data Layer                             │
+│                      Storage Layer                          │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │             SQLite (本地文件)                        │   │
-│  │           ORM: Diesel (Rust)                        │   │
+│  │             File System (Metadata Files)            │   │
+│  │           pegasus.txt / gamelist.xml                │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -85,11 +85,13 @@
 - [x] TailwindCSS v4 + 多主题配置 (8种主题: Light/Dark/Cyberpunk/Ocean/Forest/Sunset/Rose/Nord)
 - [x] 基础路由配置 (React Router 7)
 
-#### 1.2 数据库层
-- [x] SQLite + Diesel 集成
-- [x] 数据库迁移脚本 (roms, systems, metadata, assets)
-- [x] 预置 17 种游戏系统数据 (NES, SNES, PSX...)
+#### 1.2 数据服务层 (Refactored)
+- [x] 移除 SQLite/Diesel 依赖
+- [x] 实现 Metadata 文件解析器 (Pegasus / EmulationStation)
+- [x] 预置 17 种游戏系统数据 (Config file)
 - [x] 基础 Tauri Commands (get_roms, get_stats)
+- [x] 目录扫描替代旧导入流程
+- [x] 前端 ROM 列表字段对齐
 
 #### 1.3 基础 UI
 - [x] 现代化 Cyberpunk 风格布局
@@ -134,9 +136,9 @@
 
 ### Phase 3: 导入导出
 
-#### 3.1 导入功能
-- [ ] EmulationStation gamelist.xml 解析
-- [ ] metadata.txt 解析
+#### 3.1 导入功能 (即时读取)
+- [x] EmulationStation gamelist.xml 解析
+- [x] metadata.txt 解析
 - [ ] LaunchBox XML 解析
 - [ ] RetroArch .lpl 解析
 - [ ] 媒体资产关联
@@ -168,7 +170,6 @@
 #### 5.1 配置目录结构
 - [x] 统一配置目录到 `./config/`
   - `config/settings.json` - 应用配置
-  - `config/db/data.db` - SQLite 数据库
   - `config/media/` - 媒体资产缓存
 - [x] 环境变量支持 (`CONFIG_DIR` 覆盖默认路径)
 - [ ] Docker volume 挂载支持

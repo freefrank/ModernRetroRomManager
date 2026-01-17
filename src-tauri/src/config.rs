@@ -27,16 +27,6 @@ pub fn get_config_dir() -> PathBuf {
         .clone()
 }
 
-/// 获取数据库目录路径
-pub fn get_db_dir() -> PathBuf {
-    get_config_dir().join("db")
-}
-
-/// 获取数据库文件路径
-pub fn get_db_path() -> PathBuf {
-    get_db_dir().join("data.db")
-}
-
 /// 获取媒体资产目录路径
 pub fn get_media_dir() -> PathBuf {
     get_config_dir().join("media")
@@ -49,10 +39,10 @@ pub fn get_settings_path() -> PathBuf {
 
 /// 确保配置目录结构存在
 pub fn ensure_config_dirs() -> Result<(), std::io::Error> {
-    std::fs::create_dir_all(get_db_dir())?;
     std::fs::create_dir_all(get_media_dir())?;
     Ok(())
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -62,8 +52,6 @@ mod tests {
     fn test_config_paths() {
         let config_dir = get_config_dir();
         assert!(config_dir.ends_with("config"));
-        
-        let db_path = get_db_path();
-        assert!(db_path.ends_with("data.db"));
     }
 }
+

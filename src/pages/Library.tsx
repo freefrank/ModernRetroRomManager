@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { useRomStore } from "@/stores/romStore";
 import { useAppStore } from "@/stores/appStore";
 import { clsx } from "clsx";
@@ -12,6 +13,14 @@ import RomList from "@/components/rom/RomList";
 import RomDetail from "@/components/rom/RomDetail";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 import DirectoryInput from "@/components/common/DirectoryInput";
+import MetadataImportDialog from "@/components/common/MetadataImportDialog";
+
+interface MetadataFileInfo {
+  format: string;
+  format_name: string;
+  file_path: string;
+  file_name: string;
+}
 
 export default function Library() {
   const { t } = useTranslation();
@@ -34,6 +43,11 @@ export default function Library() {
   const [newDirPath, setNewDirPath] = useState("");
   const [isValidPath, setIsValidPath] = useState(false);
 
+  // 元数据检测状态
+  const [detectedMetadata, setDetectedMetadata] = useState<MetadataFileInfo[]>([]);
+  const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
+  const [pendingDirPath, setPendingDirPath] = useState("");
+
   useEffect(() => {
     fetchRoms({ searchQuery: debouncedSearch });
   }, [fetchRoms, debouncedSearch]);
@@ -41,10 +55,50 @@ export default function Library() {
   const handleAddDirectory = async () => {
     if (!isValidPath || !newDirPath.trim()) return;
     try {
-      await addScanDirectory(newDirPath);
-      setIsAddDirDialogOpen(false);
+      // 先检测元数据文件
+      const metadata = await invoke<MetadataFileInfo[]>("detect_metadata_files", { path: newDirPath });
+
+      if (metadata.length > 0) {
+        // 发现元数据，显示选择对话框
+        setPendingDirPath(newDirPath);
+        setDetectedMetadata(metadata);
+        setIsAddDirDialogOpen(false);
+        setIsMetadataDialogOpen(true);
+      } else {
+        // 无元数据，直接添加目录
+        await addScanDirectory(newDirPath);
+        setIsAddDirDialogOpen(false);
+      }
+
       setNewDirPath("");
       setIsValidPath(false);
+    } catch (error) {
+      console.error("Error adding directory:", error);
+    }
+  };
+
+  const handleMetadataImport = async (file: MetadataFileInfo) => {
+    try {
+      // 添加目录，记录元数据格式
+      await addScanDirectory(pendingDirPath, file.format);
+
+      setIsMetadataDialogOpen(false);
+      setIsAddDirDialogOpen(false);
+      setPendingDirPath("");
+      setDetectedMetadata([]);
+    } catch (error) {
+      console.error("Error importing metadata:", error);
+    }
+  };
+
+  const handleSkipImport = async () => {
+    try {
+      // 跳过元数据导入，使用 'none' 格式
+      await addScanDirectory(pendingDirPath, "none");
+      setIsMetadataDialogOpen(false);
+      setIsAddDirDialogOpen(false);
+      setPendingDirPath("");
+      setDetectedMetadata([]);
     } catch (error) {
       console.error("Error adding directory:", error);
     }
@@ -241,7 +295,7 @@ export default function Library() {
           />
           <div className="relative w-full max-w-md bg-bg-primary border border-border-default rounded-2xl shadow-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-text-primary">添加扫描目录</h3>
+              <h3 className="text-lg font-bold text-text-primary">{t("settings.scanDirectories.addDirectory")}</h3>
               <button
                 onClick={() => setIsAddDirDialogOpen(false)}
                 className="p-2 rounded-lg hover:bg-bg-tertiary text-text-secondary"
@@ -250,31 +304,42 @@ export default function Library() {
               </button>
             </div>
 
-            <DirectoryInput
-              value={newDirPath}
-              onChange={setNewDirPath}
-              onValidPath={(v) => setIsValidPath(v.exists && v.is_directory && v.readable)}
-              placeholder="例如: C:\ROMs\SNES 或 /home/user/roms"
-            />
+              <DirectoryInput
+                value={newDirPath}
+                onChange={setNewDirPath}
+                onValidPath={(v) => setIsValidPath(v.exists && v.is_directory && v.readable)}
+                placeholder={t("directoryInput.placeholder")}
+              />
+
 
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setIsAddDirDialogOpen(false)}
                 className="px-4 py-2 rounded-xl text-text-primary hover:bg-bg-tertiary transition-colors text-sm font-medium"
               >
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleAddDirectory}
                 disabled={!isValidPath}
                 className="px-6 py-2 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                添加
+                {t("settings.scanDirectories.addDirectory")}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 元数据导入对话框 */}
+      <MetadataImportDialog
+        isOpen={isMetadataDialogOpen}
+        onClose={() => setIsMetadataDialogOpen(false)}
+        metadataFiles={detectedMetadata}
+        onImport={handleMetadataImport}
+        onSkip={handleSkipImport}
+      />
     </div>
   );
 }
+

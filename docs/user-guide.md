@@ -28,28 +28,21 @@ yay -S retro-rom-manager
 
 1. 点击左侧菜单 **"库管理"**
 2. 点击 **"添加目录"**
-3. 选择你的 ROM 目录
-4. 软件会自动扫描并识别 ROM
+3. 选择你的 ROM 目录或包含多个系统的根目录
+4. 选择元数据格式 (推荐 Pegasus 或 EmulationStation)
+5. 软件会自动解析并展示 ROM (无需漫长的导入过程)
 
 ---
 
-## 导入现有数据
+## 数据格式说明
 
-### 从 EmulationStation 导入
-
-1. 进入 **设置 > 导入/导出**
-2. 选择 **"导入 gamelist.xml"**
-3. 定位到你的 `gamelist.xml` 文件
-4. 确认导入
-
-### 支持的格式
+支持直接读取以下格式，无需导入步骤：
 
 | 格式 | 文件 | 来源 |
 |------|------|------|
 | EmulationStation | gamelist.xml | RetroPie, ES-DE |
-| metadata.txt | metadata.txt | Pegasus, Recalbox, Batocera |
-| LaunchBox | *.xml | LaunchBox |
-| RetroArch | *.lpl | RetroArch |
+| Pegasus | metadata.txt | Pegasus, Recalbox, Batocera |
+| 无 Metadata | (仅扫描文件) | 简单文件列表模式 |
 
 ---
 

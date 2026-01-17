@@ -20,10 +20,6 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Database
-diesel = { version = "2.2", features = ["sqlite", "r2d2"] }
-libsqlite3-sys = { version = "0.30", features = ["bundled"] }
-
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 

@@ -1,6 +1,5 @@
-import { Clock, Gamepad2, Play, Star, CheckCircle2 } from "lucide-react";
+import { Gamepad2, Play, Star, CheckCircle2 } from "lucide-react";
 import type { Rom } from "@/types";
-import { getMediaUrl } from "@/utils/media";
 import { clsx } from "clsx";
 
 interface RomGridProps {
@@ -14,13 +13,18 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
       {roms.map((rom) => {
-        const boxfront = rom.media?.find((m) => m.assetType === "boxfront");
-        const coverUrl = getMediaUrl(boxfront?.path);
-        const isSelected = selectedIds.has(rom.id);
+        // boxart 存储的是相对路径，需要结合 directory 转换为该文件的 URL
+        // 但目前后端只给了路径，前端可能需要特殊处理才能访问本地文件
+        // 临时处理：如果有 boxart 则显示，否则占位符
+        // 注意：Webview 访问本地文件通常需要 convertFileSrc
+        // const coverUrl = rom.boxart ? convertFileSrc(path.join(rom.directory, rom.boxart)) : null;
+        // 这里只是示意，实际上可能需要 helper
+        const coverUrl = rom.boxart; // 暂时直接用，后续可能得修
+        const isSelected = selectedIds.has(rom.file);
 
         return (
           <div
-            key={rom.id}
+            key={rom.file}
             onClick={() => onRomClick(rom)}
             className={clsx(
               "group relative bg-bg-secondary rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer",
@@ -68,7 +72,7 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onToggleSelect(rom.id);
+                    onToggleSelect(rom.file);
                   }}
                   className={clsx(
                     "w-6 h-6 rounded-full flex items-center justify-center border transition-colors",
@@ -83,7 +87,7 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
 
               <div className="absolute top-3 left-3">
                 <span className="px-2 py-1 rounded-md bg-bg-primary/60 backdrop-blur-md text-[10px] font-bold text-text-primary border border-border-default uppercase">
-                  {rom.systemId}
+                  {rom.system}
                 </span>
               </div>
             </div>
@@ -92,19 +96,18 @@ export default function RomGrid({ roms, selectedIds, onRomClick, onToggleSelect 
             <div className="p-4">
               <h3
                 className="font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors"
-                title={rom.metadata?.name || rom.filename}
+                title={rom.name}
               >
-                {rom.metadata?.name || rom.filename}
+                {rom.name}
               </h3>
               <div className="flex items-center justify-between text-xs text-text-secondary">
                 <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  <span>{Math.round((rom.size / 1024 / 1024) * 100) / 100} MB</span>
+                  {/* File size removed for now */}
                 </div>
-                {rom.metadata?.rating && (
+                {rom.rating && (
                   <div className="flex items-center gap-1 text-accent-warning">
                     <Star className="w-3 h-3 fill-current" />
-                    <span>{rom.metadata.rating.toFixed(1)}</span>
+                    <span>{rom.rating}</span>
                   </div>
                 )}
               </div>

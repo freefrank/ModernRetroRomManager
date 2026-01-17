@@ -4,7 +4,6 @@ import { X, Calendar, User, Building2, Globe, Gamepad2, Play, Star } from "lucid
 import { useTranslation } from "react-i18next";
 import type { Rom } from "@/types";
 import ScrapeDialog from "./ScrapeDialog";
-import { getMediaUrl } from "@/utils/media";
 
 interface RomDetailProps {
   rom: Rom | null;
@@ -17,10 +16,9 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
 
   if (!rom) return null;
 
-  const hero = rom.media?.find((m) => m.assetType === "hero") || rom.media?.find((m) => m.assetType === "boxfront");
-  const video = rom.media?.find((m) => m.assetType === "video");
-  const heroUrl = getMediaUrl(hero?.path);
-  const videoUrl = getMediaUrl(video?.path);
+  // 临时：只有 boxart，没有 hero/video
+  const heroUrl = rom.boxart;
+  const videoUrl = null;
 
   return (
     <>
@@ -71,16 +69,16 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent">
                   <h2 className="text-3xl font-bold text-text-primary mb-2 leading-tight">
-                    {rom.metadata?.name || rom.filename}
+                    {rom.name}
                   </h2>
                   <div className="flex items-center gap-3 text-sm">
                     <span className="px-2 py-0.5 rounded bg-bg-tertiary text-text-primary font-medium uppercase text-xs border border-border-default">
-                      {rom.systemId}
+                      {rom.system}
                     </span>
-                    {rom.metadata?.rating && (
+                    {rom.rating && (
                       <div className="flex items-center gap-1 text-accent-warning">
                         <Star className="w-4 h-4 fill-current" />
-                        <span>{rom.metadata.rating.toFixed(1)}</span>
+                        <span>{rom.rating}</span>
                       </div>
                     )}
                   </div>
@@ -112,7 +110,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     Description
                   </h3>
                   <p className="text-text-secondary leading-relaxed text-sm">
-                    {rom.metadata?.description || "No description available."}
+                    {rom.description || rom.summary || "No description available."}
                   </p>
                 </div>
 
@@ -123,7 +121,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <Calendar className="w-3 h-3" /> Release Date
                     </span>
                     <p className="text-sm text-text-primary">
-                      {rom.metadata?.releaseDate || "Unknown"}
+                      {rom.release || "Unknown"}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -131,7 +129,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <Building2 className="w-3 h-3" /> Developer
                     </span>
                     <p className="text-sm text-text-primary truncate">
-                      {rom.metadata?.developer || "Unknown"}
+                      {rom.developer || "Unknown"}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -139,7 +137,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <Globe className="w-3 h-3" /> Publisher
                     </span>
                     <p className="text-sm text-text-primary truncate">
-                      {rom.metadata?.publisher || "Unknown"}
+                      {rom.publisher || "Unknown"}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -147,7 +145,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <User className="w-3 h-3" /> Players
                     </span>
                     <p className="text-sm text-text-primary">
-                      {rom.metadata?.players || "Unknown"}
+                      {rom.players || "Unknown"}
                     </p>
                   </div>
                 </div>
@@ -158,22 +156,16 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     File Info
                   </h3>
                   <div className="bg-bg-secondary rounded-lg p-4 space-y-2 text-xs font-mono text-text-secondary border border-border-default">
-                    <div className="flex justify-between">
+                    {/* Size 暂未提供 */}
+                    {/* <div className="flex justify-between">
                       <span>Size:</span>
                       <span className="text-text-primary">{Math.round((rom.size / 1024 / 1024) * 100) / 100} MB</span>
-                    </div>
+                    </div> */}
                     <div className="flex justify-between">
                       <span>Path:</span>
-                      <span className="text-text-primary truncate max-w-[200px]" title={rom.path}>{rom.filename}</span>
+                      <span className="text-text-primary truncate max-w-[200px]" title={rom.file}>{rom.file}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>CRC32:</span>
-                      <span className="text-text-primary">{rom.crc32 || "-"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>MD5:</span>
-                      <span className="text-text-primary truncate max-w-[200px]" title={rom.md5}>{rom.md5 || "-"}</span>
-                    </div>
+                    {/* CRC32/MD5 暂未提供 */}
                   </div>
                 </div>
               </div>

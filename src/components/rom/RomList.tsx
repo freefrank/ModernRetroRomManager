@@ -19,18 +19,18 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
         <thead className="bg-bg-tertiary text-text-secondary text-xs uppercase font-medium">
           <tr>
             <th className="px-6 py-4 w-12">#</th>
-            <th className="px-6 py-4">{t("common.name", { defaultValue: "Name" })}</th>
-            <th className="px-6 py-4">{t("common.system", { defaultValue: "System" })}</th>
-            <th className="px-6 py-4">{t("common.size", { defaultValue: "Size" })}</th>
-            <th className="px-6 py-4">{t("common.date", { defaultValue: "Date" })}</th>
+            <th className="px-6 py-4">{t("common.name")}</th>
+            <th className="px-6 py-4">{t("common.system")}</th>
+            <th className="px-6 py-4">{t("common.size")}</th>
+            <th className="px-6 py-4">{t("common.date")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-default">
           {roms.map((rom) => {
-            const isSelected = selectedIds.has(rom.id);
+            const isSelected = selectedIds.has(rom.file);
             return (
               <tr
-                key={rom.id}
+                key={rom.file}
                 onClick={() => onRomClick(rom)}
                 className={clsx(
                   "group transition-colors cursor-pointer",
@@ -41,7 +41,7 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onToggleSelect(rom.id);
+                      onToggleSelect(rom.file);
                     }}
                     className={clsx(
                       "w-5 h-5 rounded flex items-center justify-center border transition-colors",
@@ -60,24 +60,24 @@ export default function RomList({ roms, selectedIds, onRomClick, onToggleSelect 
                     </div>
                     <div>
                       <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors">
-                        {rom.metadata?.name || rom.filename}
+                        {rom.name}
                       </div>
                       <div className="text-xs text-text-muted truncate max-w-[200px]">
-                        {rom.path}
+                        {rom.directory}
                       </div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase">
-                    {rom.systemId}
+                    {rom.system}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-text-secondary">
-                  {Math.round((rom.size / 1024 / 1024) * 100) / 100} MB
+                  {t("common.notAvailable")}
                 </td>
                 <td className="px-6 py-4 text-sm text-text-muted">
-                  {new Date(rom.createdAt).toLocaleDateString()}
+                  {t("common.notAvailable")}
                 </td>
               </tr>
             );

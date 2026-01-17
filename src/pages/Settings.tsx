@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import { useRomStore } from "@/stores/romStore";
 import { useAppStore, THEMES } from "@/stores/appStore";
 import { Folder, Trash2, RefreshCw, Plus, HardDrive, X } from "lucide-react";
 import { clsx } from "clsx";
 import DirectoryInput from "@/components/common/DirectoryInput";
+import MetadataImportDialog from "@/components/common/MetadataImportDialog";
+
+interface MetadataFileInfo {
+  format: string;
+  format_name: string;
+  file_path: string;
+  file_name: string;
+}
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -14,24 +23,61 @@ export default function Settings() {
     fetchScanDirectories,
     addScanDirectory,
     removeScanDirectory,
-    startScan,
     isScanning,
-    scanProgress
+    scanProgress,
+    fetchRoms,
   } = useRomStore();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDirPath, setNewDirPath] = useState("");
   const [isValidPath, setIsValidPath] = useState(false);
+  const [configDir, setConfigDir] = useState<string | null>(null);
+  const [mediaDir, setMediaDir] = useState<string | null>(null);
+
+  // 元数据检测状态
+  const [detectedMetadata, setDetectedMetadata] = useState<MetadataFileInfo[]>([]);
+  const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
+  const [pendingDirPath, setPendingDirPath] = useState("");
 
   useEffect(() => {
     fetchScanDirectories();
   }, [fetchScanDirectories]);
 
+  useEffect(() => {
+    const loadPaths = async () => {
+      try {
+        const [configPath, mediaPath] = await Promise.all([
+          invoke<string>("get_config_dir"),
+          invoke<string>("get_media_dir"),
+        ]);
+        setConfigDir(configPath);
+        setMediaDir(mediaPath);
+      } catch (error) {
+        console.error("Failed to load config paths:", error);
+      }
+    };
+
+    loadPaths();
+  }, []);
+
   const handleAddDirectory = async () => {
     if (!isValidPath || !newDirPath.trim()) return;
     try {
-      await addScanDirectory(newDirPath);
-      setIsAddDialogOpen(false);
+      // 先检测元数据文件
+      const metadata = await invoke<MetadataFileInfo[]>("detect_metadata_files", { path: newDirPath });
+
+      if (metadata.length > 0) {
+        // 发现元数据，先保存路径，显示选择对话框
+        setPendingDirPath(newDirPath);
+        setDetectedMetadata(metadata);
+        setIsAddDialogOpen(false);
+        setIsMetadataDialogOpen(true);
+      } else {
+        // 无元数据，直接添加目录
+        await addScanDirectory(newDirPath);
+        setIsAddDialogOpen(false);
+      }
+
       setNewDirPath("");
       setIsValidPath(false);
     } catch (error) {
@@ -39,9 +85,35 @@ export default function Settings() {
     }
   };
 
-  const handleScan = async (id: string) => {
-    if (isScanning) return;
-    await startScan(id);
+  const handleMetadataImport = async (file: MetadataFileInfo) => {
+    try {
+      // 添加目录，记录元数据格式
+      await addScanDirectory(pendingDirPath, file.format);
+
+      setIsMetadataDialogOpen(false);
+      setIsAddDialogOpen(false);
+      setPendingDirPath("");
+      setDetectedMetadata([]);
+    } catch (error) {
+      console.error("Error importing metadata:", error);
+    }
+  };
+
+  const handleSkipImport = async () => {
+    try {
+      // 跳过元数据导入，使用 'none' 格式
+      await addScanDirectory(pendingDirPath, "none");
+      setIsMetadataDialogOpen(false);
+      setIsAddDialogOpen(false);
+      setPendingDirPath("");
+      setDetectedMetadata([]);
+    } catch (error) {
+      console.error("Error adding directory:", error);
+    }
+  };
+
+  const handleScan = async () => {
+    await fetchRoms();
   };
 
   return (
@@ -57,7 +129,8 @@ export default function Settings() {
 
           {/* 外观设置 */}
           <section>
-            <h2 className="text-lg font-medium text-text-primary mb-4">外观主题</h2>
+              <h2 className="text-lg font-medium text-text-primary mb-4">{t("settings.appearance.title")}</h2>
+
             <div className="grid grid-cols-4 gap-3">
               {THEMES.map((t) => (
                 <button
@@ -131,7 +204,7 @@ export default function Settings() {
                 </div>
               ) : (
                 scanDirectories.map((dir) => (
-                  <div key={dir.id} className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-border-hover transition-all flex items-center justify-between">
+                  <div key={dir.path} className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-border-hover transition-all flex items-center justify-between">
                     <div className="flex items-center gap-4 overflow-hidden">
                       <div className="w-10 h-10 bg-bg-tertiary rounded-lg flex items-center justify-center flex-shrink-0">
                         <HardDrive className="w-5 h-5 text-accent-secondary" />
@@ -139,14 +212,14 @@ export default function Settings() {
                       <div className="min-w-0">
                         <div className="text-text-primary font-medium truncate text-sm" title={dir.path}>{dir.path}</div>
                         <div className="text-xs text-text-muted mt-0.5">
-                          {dir.lastScan ? `Last scan: ${dir.lastScan}` : "Never scanned"}
+                          Metadata: {dir.metadataFormat}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleScan(dir.id)}
+                        onClick={handleScan}
                         disabled={isScanning}
                         className={clsx(
                           "p-2 rounded-lg transition-colors",
@@ -159,7 +232,7 @@ export default function Settings() {
                         <RefreshCw className={clsx("w-4 h-4", isScanning && "animate-spin")} />
                       </button>
                       <button
-                        onClick={() => removeScanDirectory(dir.id)}
+                        onClick={() => removeScanDirectory(dir.path)}
                         className="p-2 rounded-lg text-text-secondary hover:text-accent-error hover:bg-accent-error/10 transition-colors"
                         title={t("common.delete")}
                       >
@@ -172,23 +245,30 @@ export default function Settings() {
             </div>
           </section>
 
-          {/* 存储设置 (Mock) */}
           <section>
             <h2 className="text-lg font-medium text-text-primary mb-4">{t("settings.storage.title")}</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-text-secondary mb-1">{t("settings.storage.databaseLocation")}</label>
+                <label className="block text-sm text-text-secondary mb-1">{t("settings.storage.configDirectory")}</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={t("settings.storage.defaultLocation")}
+                    value={configDir ?? t("settings.storage.defaultLocation")}
                     readOnly
                     className="flex-1 px-3 py-2 bg-bg-secondary border border-border-default rounded-lg text-sm text-text-secondary focus:outline-none"
                   />
-                  <button className="px-4 py-2 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-lg transition-colors text-sm border border-border-default">
-                    {t("settings.storage.browse")}
-                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">{t("settings.storage.mediaDirectory")}</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={mediaDir ?? t("settings.storage.defaultLocation")}
+                    readOnly
+                    className="flex-1 px-3 py-2 bg-bg-secondary border border-border-default rounded-lg text-sm text-text-secondary focus:outline-none"
+                  />
                 </div>
               </div>
             </div>
@@ -204,8 +284,9 @@ export default function Settings() {
                   <span className="text-2xl font-bold text-white">MR</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-text-primary">ModernRetroRomManager</h3>
-                  <p className="text-text-secondary text-sm">v0.1.0</p>
+              <h3 className="text-lg font-bold text-text-primary">ModernRetroRomManager</h3>
+              <p className="text-text-secondary text-sm">v{import.meta.env.APP_VERSION}</p>
+
                   <div className="flex gap-4 mt-2">
                     <a
                       href="https://github.com/dotslash/modern-retro-rom-manager"
@@ -243,31 +324,41 @@ export default function Settings() {
               </button>
             </div>
 
-            <DirectoryInput
-              value={newDirPath}
-              onChange={setNewDirPath}
-              onValidPath={(v) => setIsValidPath(v.exists && v.is_directory && v.readable)}
-              placeholder="例如: C:\ROMs\SNES 或 /home/user/roms"
-            />
+              <DirectoryInput
+                value={newDirPath}
+                onChange={setNewDirPath}
+                onValidPath={(v) => setIsValidPath(v.exists && v.is_directory && v.readable)}
+                placeholder={t("directoryInput.placeholder")}
+              />
+
 
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setIsAddDialogOpen(false)}
                 className="px-4 py-2 rounded-xl text-text-primary hover:bg-bg-tertiary transition-colors text-sm font-medium"
               >
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleAddDirectory}
                 disabled={!isValidPath}
                 className="px-6 py-2 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                添加
+                {t("settings.scanDirectories.addDirectory")}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 元数据导入对话框 */}
+      <MetadataImportDialog
+        isOpen={isMetadataDialogOpen}
+        onClose={() => setIsMetadataDialogOpen(false)}
+        metadataFiles={detectedMetadata}
+        onImport={handleMetadataImport}
+        onSkip={handleSkipImport}
+      />
     </div>
   );
 }

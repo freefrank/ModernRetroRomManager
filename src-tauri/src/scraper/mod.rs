@@ -1,5 +1,6 @@
 pub mod steamgriddb;
 pub mod screenscraper;
+pub mod pegasus;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

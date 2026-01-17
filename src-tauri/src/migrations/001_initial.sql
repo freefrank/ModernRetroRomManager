@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS scan_directories (
   system_id TEXT REFERENCES systems(id),
   recursive INTEGER NOT NULL DEFAULT 1,
   enabled INTEGER NOT NULL DEFAULT 1,
-  last_scan TEXT
+  last_scan TEXT,
+  metadata_format TEXT
 );
 
 -- 索引

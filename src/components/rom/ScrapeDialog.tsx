@@ -26,7 +26,7 @@ interface ScrapeDialogProps {
 
 export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps) {
   const { configs, fetchConfigs } = useScraperStore();
-  const [query, setQuery] = useState(rom.metadata?.name || rom.filename);
+  const [query, setQuery] = useState(rom.name);
   const [provider, setProvider] = useState("steamgriddb");
   const [results, setResults] = useState<ScrapedGame[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -90,7 +90,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
       const selectedMedia = media.filter(m => selectedMediaUrls.has(m.url));
       await invoke("apply_scraped_data", {
         options: {
-          romId: rom.id,
+          romId: rom.file,
           gameDetails: selectedGame,
           selectedMedia
         }
@@ -130,7 +130,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
           <div className="p-6 border-b border-border-default flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-text-primary">Scrape Game Information</h2>
-              <p className="text-sm text-text-secondary mt-1">{rom.filename}</p>
+              <p className="text-sm text-text-secondary mt-1">{rom.file}</p>
             </div>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-tertiary text-text-secondary">
               <X className="w-6 h-6" />

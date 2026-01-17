@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { clsx } from "clsx";
-import { Folder, Check, X, Loader2 } from "lucide-react";
+import { Folder, Check, X, Loader2, FolderOpen } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface PathValidation {
     path: string;
@@ -23,9 +25,10 @@ export default function DirectoryInput({
     value,
     onChange,
     onValidPath,
-    placeholder = "输入目录路径...",
+    placeholder,
     className,
 }: DirectoryInputProps) {
+    const { t } = useTranslation();
     const [validation, setValidation] = useState<PathValidation | null>(null);
     const [isValidating, setIsValidating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -57,6 +60,21 @@ export default function DirectoryInput({
         return () => clearTimeout(timer);
     }, [value, onValidPath]);
 
+    const handleBrowse = async () => {
+        try {
+            const selected = await open({
+                directory: true,
+                multiple: false,
+                title: t("directoryInput.browseTitle"),
+            });
+            if (selected && typeof selected === "string") {
+                onChange(selected);
+            }
+        } catch (err) {
+            console.error("Failed to open directory picker:", err);
+        }
+    };
+
     const getStatusIcon = () => {
         if (isValidating) {
             return <Loader2 className="w-5 h-5 text-text-muted animate-spin" />;
@@ -78,14 +96,14 @@ export default function DirectoryInput({
 
     const getStatusMessage = () => {
         if (!value.trim()) return null;
-        if (isValidating) return "验证中...";
-        if (error) return `错误: ${error}`;
+        if (isValidating) return t("directoryInput.status.validating");
+        if (error) return t("directoryInput.status.error", { error });
         if (validation) {
-            if (!validation.exists) return "路径不存在";
-            if (!validation.is_directory) return "不是目录";
-            if (!validation.readable) return "无读取权限";
-            if (!validation.writable) return "警告: 无写入权限";
-            return "有效路径 ✓";
+            if (!validation.exists) return t("directoryInput.status.missing");
+            if (!validation.is_directory) return t("directoryInput.status.notDirectory");
+            if (!validation.readable) return t("directoryInput.status.notReadable");
+            if (!validation.writable) return t("directoryInput.status.notWritable");
+            return t("directoryInput.status.valid");
         }
         return null;
     };
@@ -108,9 +126,17 @@ export default function DirectoryInput({
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
+                    placeholder={placeholder || t("directoryInput.placeholder")}
                     className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 py-3 text-text-primary placeholder:text-text-muted focus:outline-none"
                 />
+                <button
+                    type="button"
+                    onClick={handleBrowse}
+                    className="px-3 py-2 mr-1 rounded-lg hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
+                    title={t("directoryInput.browse")}
+                >
+                    <FolderOpen className="w-5 h-5" />
+                </button>
             </div>
             {getStatusMessage() && (
                 <p
@@ -125,3 +151,5 @@ export default function DirectoryInput({
         </div>
     );
 }
+
+

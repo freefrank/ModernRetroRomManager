@@ -1,44 +1,34 @@
 // ROM 相关类型
+// ROM 相关类型
 export interface Rom {
-  id: string;
-  filename: string;
-  path: string;
-  systemId: string;
-  size: number;
-  crc32?: string;
-  md5?: string;
-  sha1?: string;
-  createdAt: string;
-  updatedAt: string;
-  metadata?: RomMetadata;
-  media?: MediaAsset[];
-}
-
-export interface RomMetadata {
-  romId: string;
+  file: string;
   name: string;
   description?: string;
-  releaseDate?: string;
+  summary?: string;
   developer?: string;
   publisher?: string;
-  genre?: string[];
-  players?: number;
-  rating?: number;
-  region?: string;
-  scraperSource?: ScraperSource;
-  scrapedAt?: string;
+  genre?: string;
+  players?: string;
+  release?: string;
+  rating?: string;
+  boxart?: string;
+  directory: string;
+  system: string;
 }
 
-export interface MediaAsset {
-  id: string;
-  romId: string;
-  assetType: MediaAssetType;
+// 系统 ROM 列表（后端 get_roms 返回结构）
+export interface SystemRoms {
+  system: string;
   path: string;
-  width?: number;
-  height?: number;
-  fileSize?: number;
-  sourceUrl?: string;
-  downloadedAt: string;
+  roms: Rom[];
+}
+
+// 废弃旧的 Metadata 接口，直接合并在 Rom 中
+export interface MediaAsset {
+  // 暂时保留用于兼容性，后续可能需要调整
+  id: string;
+  path: string;
+  assetType: MediaAssetType;
 }
 
 export type MediaAssetType =
@@ -84,14 +74,16 @@ export interface ApiConfig {
 }
 
 // 扫描目录配置
-export interface ScanDirectory {
-  id: string;
+// 目录配置
+export interface DirectoryConfig {
   path: string;
+  isRootDirectory: boolean;
+  metadataFormat: string;
   systemId?: string;
-  recursive: boolean;
-  enabled: boolean;
-  lastScan?: string;
 }
+
+// 兼容别名
+export type ScanDirectory = DirectoryConfig;
 
 // 导入导出格式
 export type ExportFormat =

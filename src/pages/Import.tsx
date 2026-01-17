@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { clsx } from "clsx";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 interface ExportProgress {
   current: number;
@@ -15,7 +15,7 @@ interface ExportProgress {
 
 export default function Import() {
   const { t } = useTranslation();
-  const [importing, setImporting] = useState<string | null>(null);
+  const importing = false;
   const [exporting, setExporting] = useState<string | null>(null);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
@@ -44,37 +44,13 @@ export default function Import() {
     };
   }, []);
 
-  const handleImport = async (format: string) => {
-    setResult(null);
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [
-          {
-            name: "Gamelist",
-            extensions: ["xml"],
-          },
-        ],
-      });
-
-      if (selected && typeof selected === "string") {
-        setImporting(format);
-        const count = await invoke<number>("import_gamelist", { xmlPath: selected });
-        setResult({
-          success: true,
-          message: `Successfully imported ${count} games!`,
-        });
-      }
-    } catch (error) {
-      console.error("Import failed:", error);
-      setResult({
-        success: false,
-        message: `Import failed: ${error}`,
-      });
-    } finally {
-      setImporting(null);
-    }
+  const handleImport = async () => {
+    setResult({
+      success: true,
+      message: t("import.importSection.deprecated"),
+    });
   };
+
 
   const handleExport = async (format: string) => {
     setResult(null);
@@ -93,8 +69,9 @@ export default function Import() {
       console.error("Export failed:", error);
       setResult({
         success: false,
-        message: `Export failed: ${error}`,
+        message: String(error),
       });
+
       setExporting(null);
       setProgress(null);
     }
@@ -152,17 +129,13 @@ export default function Import() {
             <div className="grid grid-cols-2 gap-4">
               {/* EmulationStation */}
               <button
-                onClick={() => handleImport("emulationstation")}
+                onClick={handleImport}
                 disabled={!!importing || !!exporting}
                 className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-accent-primary/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-4 mb-2">
                   <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    {importing === "emulationstation" ? (
-                      <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
-                    ) : (
-                      <span className="text-orange-400 font-bold text-lg">ES</span>
-                    )}
+                    <span className="text-orange-400 font-bold text-lg">ES</span>
                   </div>
                   <div>
                     <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation</h3>
@@ -207,11 +180,7 @@ export default function Import() {
               >
                 <div className="flex items-center gap-4 mb-2">
                   <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    {exporting === "emulationstation" ? (
-                      <Loader2 className="w-6 h-6 text-orange-400 animate-spin" />
-                    ) : (
-                      <span className="text-orange-400 font-bold text-lg">ES</span>
-                    )}
+                    <span className="text-orange-400 font-bold text-lg">ES</span>
                   </div>
                   <div>
                     <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation</h3>

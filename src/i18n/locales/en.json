@@ -62,7 +62,9 @@
     "title": "Import/Export",
     "importSection": {
       "title": "Import",
-      "description": "Import metadata and media assets from existing ROM management software"
+      "description": "Import metadata and media assets from existing ROM management software",
+      "deprecated": "This version uses directory scanning. Please add a directory in the Library page.",
+      "success": "Directory scanning mode enabled"
     },
     "exportSection": {
       "title": "Export",
@@ -89,6 +91,9 @@
   },
   "settings": {
     "title": "Settings",
+    "appearance": {
+      "title": "Appearance"
+    },
     "scanDirectories": {
       "title": "Scan Directories",
       "description": "Configure ROM scan directories, the software will automatically detect ROM files",
@@ -97,10 +102,9 @@
     },
     "storage": {
       "title": "Storage Settings",
-      "databaseLocation": "Database Location",
+      "configDirectory": "Config Directory",
       "mediaDirectory": "Media Directory",
-      "defaultLocation": "Default Location",
-      "browse": "Browse"
+      "defaultLocation": "Default Location"
     },
     "language": {
       "title": "Language",
@@ -125,5 +129,25 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success"
+  },
+  "metadataDialog": {
+    "title": "Metadata files detected",
+    "subtitle": "Choose metadata format",
+    "description": "Select a format to use:",
+    "skip": "Skip"
+  },
+  "directoryInput": {
+    "placeholder": "e.g. C:\\ROMs\\SNES or /home/user/roms",
+    "browse": "Browse...",
+    "browseTitle": "Select directory",
+    "status": {
+      "validating": "Validating...",
+      "error": "Error: {{error}}",
+      "missing": "Path not found",
+      "notDirectory": "Not a directory",
+      "notReadable": "No read permission",
+      "notWritable": "Warning: No write permission",
+      "valid": "Valid path ✓"
+    }
   }
 }

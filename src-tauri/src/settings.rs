@@ -4,6 +4,24 @@ use std::collections::HashMap;
 use std::fs;
 use std::sync::RwLock;
 
+/// 目录配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectoryConfig {
+    /// 目录路径
+    pub path: String,
+    /// 是否为 ROMs 根目录（包含多个系统子目录）
+    /// true: 扫描子目录作为独立系统
+    /// false: 当前目录就是单个系统目录
+    #[serde(default)]
+    pub is_root_directory: bool,
+    /// 元数据格式: emulationstation, pegasus, launchbox, none
+    /// 对于 root 目录，每个子目录可能有不同格式，在运行时自动检测
+    pub metadata_format: String,
+    /// 系统 ID (可选，仅用于单系统目录)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_id: Option<String>,
+}
+
 /// Scraper API 配置
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScraperConfig {
@@ -29,8 +47,9 @@ pub struct AppSettings {
     pub language: String,
     /// 视图模式: grid, list
     pub view_mode: String,
-    /// 扫描目录列表
-    pub scan_directories: Vec<String>,
+    /// 目录列表
+    #[serde(default)]
+    pub directories: Vec<DirectoryConfig>,
     /// Scraper API 配置 (key: provider id)
     #[serde(default)]
     pub scrapers: HashMap<String, ScraperConfig>,
@@ -42,7 +61,7 @@ impl Default for AppSettings {
             theme: "dark".to_string(),
             language: "zh".to_string(),
             view_mode: "grid".to_string(),
-            scan_directories: Vec::new(),
+            directories: Vec::new(),
             scrapers: HashMap::new(),
         }
     }
