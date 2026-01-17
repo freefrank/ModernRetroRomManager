@@ -11,12 +11,9 @@ export default function Scraper() {
     fetchConfigs();
   }, [fetchConfigs]);
 
-  const handleSave = async (provider: string, data: any) => {
+  const handleSave = async (provider: string, data: Record<string, unknown>) => {
     try {
-      await saveConfig({
-        provider,
-        ...data,
-      });
+      await saveConfig(provider, data);
     } catch (error) {
       console.error("Failed to save config:", error);
     }
@@ -29,8 +26,8 @@ export default function Scraper() {
       description: t("scraper.providers.igdb.description"),
       color: "purple",
       fields: [
-        { key: "clientId", label: t("scraper.fields.clientId"), type: "text" },
-        { key: "clientSecret", label: t("scraper.fields.clientSecret"), type: "password" },
+        { key: "client_id", label: t("scraper.fields.clientId"), type: "text" },
+        { key: "client_secret", label: t("scraper.fields.clientSecret"), type: "password" },
       ],
     },
     {
@@ -38,21 +35,21 @@ export default function Scraper() {
       name: "SteamGridDB",
       description: t("scraper.providers.steamgriddb.description"),
       color: "blue",
-      fields: [{ key: "apiKey", label: t("scraper.fields.apiKey"), type: "password" }],
+      fields: [{ key: "api_key", label: t("scraper.fields.apiKey"), type: "password" }],
     },
     {
       id: "thegamesdb",
       name: "TheGamesDB",
       description: t("scraper.providers.thegamesdb.description"),
       color: "green",
-      fields: [{ key: "apiKey", label: t("scraper.fields.apiKey"), type: "password" }],
+      fields: [{ key: "api_key", label: t("scraper.fields.apiKey"), type: "password" }],
     },
     {
       id: "mobygames",
       name: "MobyGames",
       description: t("scraper.providers.mobygames.description"),
       color: "orange",
-      fields: [{ key: "apiKey", label: t("scraper.fields.apiKey"), type: "password" }],
+      fields: [{ key: "api_key", label: t("scraper.fields.apiKey"), type: "password" }],
     },
     {
       id: "screenscraper",

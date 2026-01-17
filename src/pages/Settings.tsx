@@ -1,10 +1,10 @@
-import { useEffect } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
 import { useAppStore, THEMES } from "@/stores/appStore";
-import { Folder, Trash2, RefreshCw, Plus, HardDrive } from "lucide-react";
+import { Folder, Trash2, RefreshCw, Plus, HardDrive, X } from "lucide-react";
 import { clsx } from "clsx";
+import DirectoryInput from "@/components/common/DirectoryInput";
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -19,20 +19,21 @@ export default function Settings() {
     scanProgress
   } = useRomStore();
 
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newDirPath, setNewDirPath] = useState("");
+  const [isValidPath, setIsValidPath] = useState(false);
+
   useEffect(() => {
     fetchScanDirectories();
   }, [fetchScanDirectories]);
 
   const handleAddDirectory = async () => {
+    if (!isValidPath || !newDirPath.trim()) return;
     try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-
-      if (selected && typeof selected === "string") {
-        await addScanDirectory(selected);
-      }
+      await addScanDirectory(newDirPath);
+      setIsAddDialogOpen(false);
+      setNewDirPath("");
+      setIsValidPath(false);
     } catch (error) {
       console.error("Error adding directory:", error);
     }
@@ -86,7 +87,7 @@ export default function Settings() {
                 </p>
               </div>
               <button
-                onClick={handleAddDirectory}
+                onClick={() => setIsAddDialogOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
@@ -122,7 +123,7 @@ export default function Settings() {
                   </div>
                   <p className="text-text-secondary mb-4">{t("settings.scanDirectories.empty")}</p>
                   <button
-                    onClick={handleAddDirectory}
+                    onClick={() => setIsAddDialogOpen(true)}
                     className="text-accent-primary hover:text-accent-primary/80 text-sm font-medium"
                   >
                     {t("settings.scanDirectories.addDirectory")}
@@ -223,6 +224,50 @@ export default function Settings() {
           </section>
         </div>
       </div>
+
+      {/* 添加目录弹窗 */}
+      {isAddDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsAddDialogOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-bg-primary border border-border-default rounded-2xl shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-text-primary">添加扫描目录</h3>
+              <button
+                onClick={() => setIsAddDialogOpen(false)}
+                className="p-2 rounded-lg hover:bg-bg-tertiary text-text-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <DirectoryInput
+              value={newDirPath}
+              onChange={setNewDirPath}
+              onValidPath={(v) => setIsValidPath(v.exists && v.is_directory && v.readable)}
+              placeholder="例如: C:\ROMs\SNES 或 /home/user/roms"
+            />
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsAddDialogOpen(false)}
+                className="px-4 py-2 rounded-xl text-text-primary hover:bg-bg-tertiary transition-colors text-sm font-medium"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleAddDirectory}
+                disabled={!isValidPath}
+                className="px-6 py-2 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                添加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

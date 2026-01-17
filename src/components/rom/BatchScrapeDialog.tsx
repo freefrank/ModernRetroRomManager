@@ -25,7 +25,9 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
 
   if (!isOpen) return null;
 
-  const activeProviders = Object.values(configs).filter(c => c.enabled);
+  const activeProviders = Object.entries(configs)
+    .filter(([, c]) => c.enabled)
+    .map(([provider]) => provider);
 
   return (
     <AnimatePresence>
@@ -66,9 +68,9 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                 {activeProviders.length === 0 ? (
                   <option disabled>No providers enabled</option>
                 ) : (
-                  activeProviders.map(c => (
-                    <option key={c.provider} value={c.provider}>
-                      {c.provider.toUpperCase()}
+                  activeProviders.map(p => (
+                    <option key={p} value={p}>
+                      {p.toUpperCase()}
                     </option>
                   ))
                 )}

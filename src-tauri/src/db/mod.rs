@@ -1,29 +1,21 @@
 pub mod models;
 pub mod schema;
 
+use crate::config;
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
-use std::path::PathBuf;
 use std::sync::OnceLock;
 
 pub type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
 static DB_POOL: OnceLock<DbPool> = OnceLock::new();
 
-/// 获取数据库文件路径
-pub fn get_db_path(app_data_dir: &PathBuf) -> PathBuf {
-    app_data_dir.join("data.db")
-}
-
 /// 初始化数据库连接池
-pub fn init_db(app_data_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    let db_path = get_db_path(app_data_dir);
+pub fn init_db() -> Result<(), Box<dyn std::error::Error>> {
+    // 确保配置目录存在
+    config::ensure_config_dirs()?;
     
-    // 确保目录存在
-    if let Some(parent) = db_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    
+    let db_path = config::get_db_path();
     let database_url = db_path.to_string_lossy().to_string();
     let manager = ConnectionManager::<SqliteConnection>::new(&database_url);
     
@@ -37,8 +29,8 @@ pub fn init_db(app_data_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error>>
     
     DB_POOL.set(pool).map_err(|_| "Database pool already initialized")?;
     
-    Ok(())
-}
+    Ok(()
+)}
 
 /// 获取数据库连接
 pub fn get_connection() -> Result<r2d2::PooledConnection<ConnectionManager<SqliteConnection>>, r2d2::PoolError> {

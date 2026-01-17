@@ -163,6 +163,27 @@
 - [ ] 代理设置
 - [ ] 速率限制配置
 
+### Phase 5: 配置架构重构 (本地/Docker 双模式) ✅
+
+#### 5.1 配置目录结构
+- [x] 统一配置目录到 `./config/`
+  - `config/settings.json` - 应用配置
+  - `config/db/data.db` - SQLite 数据库
+  - `config/media/` - 媒体资产缓存
+- [x] 环境变量支持 (`CONFIG_DIR` 覆盖默认路径)
+- [ ] Docker volume 挂载支持
+
+#### 5.2 目录选择 UI 重构
+- [x] 移除 Tauri dialog 依赖（Web 端不可用）
+- [x] 新增手动输入路径 UI
+- [x] 路径验证 API（后端验证目录是否存在/可读）
+- [x] 目录浏览 API（后端返回目录列表供选择）
+
+#### 5.3 部署模式支持
+- [x] 本地模式：使用相对路径 `./config/`
+- [ ] Docker 模式：挂载 `/app/config` volume
+- [ ] 配置热重载支持
+
 ---
 
 ## 🔗 参考资源
