@@ -14,12 +14,25 @@ import RomDetail from "@/components/rom/RomDetail";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 import DirectoryInput from "@/components/common/DirectoryInput";
 import MetadataImportDialog from "@/components/common/MetadataImportDialog";
+import RootDirectoryDialog from "@/components/common/RootDirectoryDialog";
 
 interface MetadataFileInfo {
   format: string;
   format_name: string;
   file_path: string;
   file_name: string;
+}
+
+interface SubDirectoryInfo {
+  name: string;
+  path: string;
+  metadata_files: MetadataFileInfo[];
+}
+
+interface DirectoryScanResult {
+  is_root_directory: boolean;
+  metadata_files: MetadataFileInfo[];
+  sub_directories: SubDirectoryInfo[];
 }
 
 export default function Library() {
@@ -47,6 +60,9 @@ export default function Library() {
   const [detectedMetadata, setDetectedMetadata] = useState<MetadataFileInfo[]>([]);
   const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
   const [pendingDirPath, setPendingDirPath] = useState("");
+  
+  const [isRootDialogOpen, setIsRootDialogOpen] = useState(false);
+  const [detectedSubDirs, setDetectedSubDirs] = useState<SubDirectoryInfo[]>([]);
 
   useEffect(() => {
     fetchRoms({ searchQuery: debouncedSearch });
@@ -56,14 +72,20 @@ export default function Library() {
     if (!isValidPath || !newDirPath.trim()) return;
     try {
       // 先检测元数据文件
-      const metadata = await invoke<MetadataFileInfo[]>("detect_metadata_files", { path: newDirPath });
+      const scanResult = await invoke<DirectoryScanResult>("scan_directory", { path: newDirPath });
 
-      if (metadata.length > 0) {
+      if (scanResult.metadata_files.length > 0) {
         // 发现元数据，显示选择对话框
         setPendingDirPath(newDirPath);
-        setDetectedMetadata(metadata);
+        setDetectedMetadata(scanResult.metadata_files);
         setIsAddDirDialogOpen(false);
         setIsMetadataDialogOpen(true);
+      } else if (scanResult.sub_directories.length > 0) {
+        // 发现子目录，可能是根目录
+        setPendingDirPath(newDirPath);
+        setDetectedSubDirs(scanResult.sub_directories);
+        setIsAddDirDialogOpen(false);
+        setIsRootDialogOpen(true);
       } else {
         // 无元数据，直接添加目录
         await addScanDirectory(newDirPath);
@@ -101,6 +123,40 @@ export default function Library() {
       setDetectedMetadata([]);
     } catch (error) {
       console.error("Error adding directory:", error);
+    }
+  };
+
+  const handleImportAsRoot = async () => {
+    try {
+      await invoke("add_directory", {
+        path: pendingDirPath,
+        metadataFormat: "auto",
+        isRoot: true,
+        systemId: null,
+      });
+      await fetchRoms();
+      setIsRootDialogOpen(false);
+      setPendingDirPath("");
+      setDetectedSubDirs([]);
+    } catch (error) {
+      console.error("Error adding root directory:", error);
+    }
+  };
+
+  const handleSelectSubDirectory = async (subDir: SubDirectoryInfo, format: string) => {
+    try {
+      await invoke("add_directory", {
+        path: subDir.path,
+        metadataFormat: format,
+        isRoot: false,
+        systemId: subDir.name,
+      });
+      await fetchRoms();
+      setIsRootDialogOpen(false);
+      setPendingDirPath("");
+      setDetectedSubDirs([]);
+    } catch (error) {
+      console.error("Error adding sub directory:", error);
     }
   };
 
@@ -338,6 +394,14 @@ export default function Library() {
         metadataFiles={detectedMetadata}
         onImport={handleMetadataImport}
         onSkip={handleSkipImport}
+      />
+
+      <RootDirectoryDialog
+        isOpen={isRootDialogOpen}
+        onClose={() => setIsRootDialogOpen(false)}
+        subDirectories={detectedSubDirs}
+        onImportAsRoot={handleImportAsRoot}
+        onSelectSubDirectory={handleSelectSubDirectory}
       />
     </div>
   );

@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { api, isTauri } from "@/lib/api";
 import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms } from "@/types";
 
 interface ScanProgress {
@@ -17,9 +16,18 @@ interface BatchProgress {
   finished: boolean;
 }
 
+interface SystemInfo {
+  name: string;
+  romCount: number;
+}
+
 interface RomState {
   // ROM 列表
   roms: Rom[];
+  systemRoms: SystemRoms[];
+  availableSystems: SystemInfo[];
+  selectedSystem: string | null;
+  setSelectedSystem: (system: string | null) => void;
   fetchRoms: (filter?: FilterOption) => Promise<void>;
   
   // 选中的 ROM
@@ -58,14 +66,36 @@ interface RomState {
 }
 
 export const useRomStore = create<RomState>((set, get) => ({
-  // ROM 列表
   roms: [],
-  fetchRoms: async (filter?: FilterOption) => {
+  systemRoms: [],
+  availableSystems: [],
+  selectedSystem: null,
+  setSelectedSystem: (system: string | null) => {
+    set({ selectedSystem: system });
+    const { systemRoms } = get();
+    if (system === null) {
+      set({ roms: systemRoms.flatMap(s => s.roms) });
+    } else {
+      const filtered = systemRoms.find(s => s.system === system);
+      set({ roms: filtered ? filtered.roms : [] });
+    }
+  },
+  fetchRoms: async (_filter?: FilterOption) => {
     try {
-      const systemRoms = await invoke<SystemRoms[]>("get_roms", { filter });
-      // 扁平化 ROM 列表以便 UI 使用
-      const roms = systemRoms.flatMap(s => s.roms);
-      set({ roms });
+      const systemRoms = await api.getRoms();
+      const availableSystems = systemRoms.map(s => ({
+        name: s.system,
+        romCount: s.roms.length,
+      }));
+      const { selectedSystem } = get();
+      let roms: Rom[];
+      if (selectedSystem) {
+        const filtered = systemRoms.find(s => s.system === selectedSystem);
+        roms = filtered ? filtered.roms : [];
+      } else {
+        roms = systemRoms.flatMap(s => s.roms);
+      }
+      set({ systemRoms, availableSystems, roms });
       get().fetchStats();
     } catch (error) {
       console.error("Failed to fetch roms:", error);
@@ -100,8 +130,16 @@ export const useRomStore = create<RomState>((set, get) => ({
     const { selectedRomIds } = get();
     if (selectedRomIds.size === 0) return;
 
+    if (!isTauri()) {
+      console.warn("Batch scrape not supported in web mode");
+      return;
+    }
+
     set({ isBatchScraping: true, batchProgress: null });
     try {
+      const { listen } = await import("@tauri-apps/api/event");
+      const { invoke } = await import("@tauri-apps/api/core");
+      
       const unlisten = await listen<BatchProgress>("batch-scrape-progress", (event) => {
         set({ batchProgress: event.payload });
         if (event.payload.finished) {
@@ -122,7 +160,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   systems: [],
   fetchSystems: async () => {
     try {
-      const systems = await invoke<GameSystem[]>("get_systems");
+      const systems = await api.getSystems();
       set({ systems });
     } catch (error) {
       console.error("Failed to fetch systems:", error);
@@ -133,7 +171,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   scanDirectories: [],
   fetchScanDirectories: async () => {
     try {
-      const dirs = await invoke<ScanDirectory[]>("get_directories");
+      const dirs = await api.getDirectories();
       set({ scanDirectories: dirs });
     } catch (error) {
       console.error("Failed to fetch directories:", error);
@@ -141,13 +179,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
   addScanDirectory: async (path: string, metadataFormat="none") => {
     try {
-      // 默认非 root，后续 UI 应该提供选项
-      await invoke<ScanDirectory>("add_directory", { 
-        path, 
-        metadataFormat,
-        isRoot: false,
-        systemId: null,
-      });
+      await api.addDirectory(path, metadataFormat, false, null);
       await get().fetchScanDirectories();
       await get().fetchRoms();
     } catch (error) {
@@ -157,7 +189,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
   removeScanDirectory: async (path: string) => {
     try {
-      await invoke("remove_directory", { path });
+      await api.removeDirectory(path);
       await get().fetchScanDirectories();
       await get().fetchRoms();
     } catch (error) {
@@ -179,12 +211,12 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
   fetchStats: async () => {
     try {
-      const stats = await invoke<{ total_roms: number; total_systems: number }>("get_rom_stats");
+      const stats = await api.getStats();
       set({
         stats: {
           totalRoms: stats.total_roms,
-          scrapedRoms: 0, // 暂时无法统计
-          totalSize: 0, // 暂时无法统计
+          scrapedRoms: 0,
+          totalSize: 0,
         },
       });
     } catch (error) {

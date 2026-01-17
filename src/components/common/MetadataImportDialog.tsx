@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Database, SkipForward } from "lucide-react";
+import { X, Database, SkipForward, Gamepad2, Package, FileText } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 
@@ -28,10 +28,10 @@ export default function MetadataImportDialog({
     const { t } = useTranslation();
     if (!isOpen) return null;
 
-    const formatIcons: Record<string, string> = {
-        emulationstation: "🕹️",
-        pegasus: "🎮",
-        launchbox: "📦",
+    const formatIcons: Record<string, React.ReactNode> = {
+        emulationstation: <Gamepad2 className="w-6 h-6" />,
+        pegasus: <Gamepad2 className="w-6 h-6" />,
+        launchbox: <Package className="w-6 h-6" />,
     };
 
     return (
@@ -77,15 +77,20 @@ export default function MetadataImportDialog({
                         {metadataFiles.map((file) => (
                             <button
                                 key={file.file_path}
-                                onClick={() => onImport(file)}
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onImport(file);
+                                }}
                                 className={clsx(
                                     "w-full p-4 rounded-xl border transition-all text-left",
                                     "bg-bg-secondary border-border-default hover:border-accent-primary hover:bg-accent-primary/10",
                                     "flex items-center gap-4 group"
                                 )}
                             >
-                                <div className="w-12 h-12 bg-bg-tertiary rounded-lg flex items-center justify-center text-2xl group-hover:bg-accent-primary/20 transition-colors">
-                                    {formatIcons[file.format] || "📄"}
+                                <div className="w-12 h-12 bg-bg-tertiary rounded-lg flex items-center justify-center text-text-secondary group-hover:bg-accent-primary/20 group-hover:text-accent-primary transition-colors">
+                                    {formatIcons[file.format] || <FileText className="w-6 h-6" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors">
@@ -102,7 +107,12 @@ export default function MetadataImportDialog({
 
                     <div className="p-6 border-t border-border-default flex justify-end">
                         <button
-                            onClick={onSkip}
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSkip();
+                            }}
                             className="flex items-center gap-2 px-6 py-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors text-sm font-medium"
                         >
                             <SkipForward className="w-4 h-4" />

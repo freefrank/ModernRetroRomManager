@@ -1,5 +1,3 @@
-// ROM 相关类型
-// ROM 相关类型
 export interface Rom {
   file: string;
   name: string;
@@ -11,9 +9,23 @@ export interface Rom {
   players?: string;
   release?: string;
   rating?: string;
-  boxart?: string;
   directory: string;
   system: string;
+  box_front?: string;
+  box_back?: string;
+  box_spine?: string;
+  box_full?: string;
+  cartridge?: string;
+  logo?: string;
+  marquee?: string;
+  bezel?: string;
+  gridicon?: string;
+  flyer?: string;
+  background?: string;
+  music?: string;
+  screenshot?: string;
+  titlescreen?: string;
+  video?: string;
 }
 
 // 系统 ROM 列表（后端 get_roms 返回结构）

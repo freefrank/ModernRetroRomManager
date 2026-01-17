@@ -1,39 +1,41 @@
-import { NavLink } from "react-router-dom";
-import { Library, Database, ArrowRightLeft, Settings, Gamepad2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Library, Database, ArrowRightLeft, Settings, Gamepad2, ChevronDown, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
+import { useRomStore } from "@/stores/romStore";
 
-const navItems = [
-  {
-    to: "/",
-    labelKey: "nav.library",
-    icon: Library,
-  },
-  {
-    to: "/scraper",
-    labelKey: "nav.scraper",
-    icon: Database,
-  },
-  {
-    to: "/import",
-    labelKey: "nav.import",
-    icon: ArrowRightLeft,
-  },
-  {
-    to: "/settings",
-    labelKey: "nav.settings",
-    icon: Settings,
-  },
+const NAV_ITEMS = [
+  { to: "/scraper", icon: Database, labelKey: "sidebar.scraper" },
+  { to: "/import", icon: ArrowRightLeft, labelKey: "sidebar.import" },
+  { to: "/settings", icon: Settings, labelKey: "sidebar.settings" },
 ];
 
 export default function Sidebar() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { availableSystems, selectedSystem, setSelectedSystem } = useRomStore();
+  
+  const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
+
+  const isLibraryActive = location.pathname === "/";
+
+  const handleLibraryClick = () => {
+    navigate("/");
+    setSelectedSystem(null);
+  };
+
+  const handleSystemClick = (systemName: string) => {
+    navigate("/");
+    setSelectedSystem(systemName);
+  };
 
   return (
     <aside className="w-64 flex flex-col bg-bg-primary/95 backdrop-blur-xl border-r border-border-default relative z-20 h-full">
       {/* Logo */}
-      <div className="h-20 flex items-center px-6">
+      <div className="h-20 flex items-center px-6 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 bg-accent-primary blur-md opacity-50 rounded-lg"></div>
@@ -49,8 +51,91 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {navItems.map((item) => (
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+        {/* Library Item with Expansion */}
+        <div className="space-y-1">
+            <div
+                className={clsx(
+                "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group cursor-pointer select-none",
+                isLibraryActive && !selectedSystem
+                    ? "text-text-primary"
+                    : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+                )}
+                onClick={handleLibraryClick}
+            >
+                {isLibraryActive && !selectedSystem && (
+                    <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    />
+                )}
+                
+                <Library
+                    className={clsx(
+                    "w-5 h-5 z-10 transition-transform duration-300",
+                    isLibraryActive && !selectedSystem ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                    )}
+                />
+                <span className="font-medium z-10 text-sm tracking-wide flex-1">
+                    {t("sidebar.library", { defaultValue: "ROM库" })}
+                </span>
+                
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsLibraryExpanded(!isLibraryExpanded);
+                    }}
+                    className="z-10 p-1 rounded-md hover:bg-bg-primary/50 text-text-muted hover:text-text-primary transition-colors"
+                >
+                    {isLibraryExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                    ) : (
+                        <ChevronRight className="w-4 h-4" />
+                    )}
+                </button>
+            </div>
+
+            {/* Sub-items (Systems) */}
+            <AnimatePresence initial={false}>
+                {isLibraryExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden ml-4 pl-4 border-l border-border-default space-y-1"
+                    >
+                        {availableSystems.map((sys) => (
+                            <button
+                                key={sys.name}
+                                onClick={() => handleSystemClick(sys.name)}
+                                className={clsx(
+                                    "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all duration-200 group relative",
+                                    selectedSystem === sys.name
+                                        ? "text-text-primary bg-accent-primary/10"
+                                        : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+                                )}
+                            >
+                                <span className={clsx(
+                                    "w-1.5 h-1.5 rounded-full transition-colors",
+                                    selectedSystem === sys.name ? "bg-accent-secondary" : "bg-border-default group-hover:bg-text-secondary"
+                                )}></span>
+                                <span className="truncate flex-1 text-left">{sys.name}</span>
+                                <span className="text-[10px] text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {sys.romCount}
+                                </span>
+                            </button>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+
+        {/* Other Nav Items */}
+        {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -68,7 +153,7 @@ export default function Sidebar() {
                 {isActive && (
                   <motion.div
                     layoutId="activeNav"
-                    className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary"
+                    className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -91,9 +176,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer Info */}
-      <div className="p-6 border-t border-border-default">
+      <div className="p-6 border-t border-border-default flex-shrink-0">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-text-muted font-medium">v0.1.0</p>
+          <p className="text-xs text-text-muted font-medium">v{import.meta.env.APP_VERSION || "0.1.0"}</p>
           <div className="w-2 h-2 rounded-full bg-accent-success shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
         </div>
       </div>
