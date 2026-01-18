@@ -451,7 +451,7 @@ export default function Settings() {
               {sortedProviders.map((p) => (
                 <div
                   key={p.id}
-                  draggable
+                  draggable={true}
                   onDragStart={(e) => handleDragStart(e, p.id)}
                   onDragOver={(e) => handleDragOver(e, p.id)}
                   onDrop={(e) => handleDrop(e, p.id)}
@@ -490,6 +490,7 @@ export default function Settings() {
 
                     <div className="flex items-center gap-4">
                       <button
+                        draggable={false}
                         onClick={() => handleEditConfig(p)}
                         className="p-2.5 rounded-xl bg-bg-tertiary text-text-secondary hover:text-accent-primary hover:bg-bg-primary transition-all border border-transparent hover:border-accent-primary/30"
                         title="编辑配置"
@@ -497,7 +498,7 @@ export default function Settings() {
                         <Key className="w-5 h-5" />
                       </button>
 
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label draggable={false} className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
