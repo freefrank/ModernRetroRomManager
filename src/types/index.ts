@@ -26,6 +26,9 @@ export interface Rom {
   screenshot?: string;
   titlescreen?: string;
   video?: string;
+  // 预览相关
+  has_temp_metadata: boolean;
+  temp_data?: any;
 }
 
 // 系统 ROM 列表（后端 get_roms 返回结构）
@@ -132,8 +135,16 @@ export interface ScraperMediaAsset {
 export interface ScrapeResult {
   metadata: ScraperGameMetadata;
   media: ScraperMediaAsset[];
-  sources: string[];
 }
+
+export interface ApplyScrapedDataOptions {
+  rom_id: string;
+  directory: string;
+  system: string;
+  metadata: ScraperGameMetadata;
+  selected_media: ScraperMediaAsset[];
+}
+
 
 // 扫描目录配置
 // 目录配置

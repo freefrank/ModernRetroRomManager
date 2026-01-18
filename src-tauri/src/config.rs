@@ -32,6 +32,11 @@ pub fn get_media_dir() -> PathBuf {
     get_config_dir().join("media")
 }
 
+/// 获取临时数据目录路径
+pub fn get_temp_dir() -> PathBuf {
+    get_config_dir().join("temp")
+}
+
 /// 获取设置文件路径
 pub fn get_settings_path() -> PathBuf {
     get_config_dir().join("settings.json")
@@ -40,6 +45,7 @@ pub fn get_settings_path() -> PathBuf {
 /// 确保配置目录结构存在
 pub fn ensure_config_dirs() -> Result<(), std::io::Error> {
     std::fs::create_dir_all(get_media_dir())?;
+    std::fs::create_dir_all(get_temp_dir())?;
     Ok(())
 }
 

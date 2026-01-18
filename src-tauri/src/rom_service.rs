@@ -7,7 +7,7 @@ use crate::settings::{get_settings, DirectoryConfig};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RomInfo {
     pub file: String,
     pub name: String,
@@ -36,6 +36,9 @@ pub struct RomInfo {
     pub screenshot: Option<String>,
     pub titlescreen: Option<String>,
     pub video: Option<String>,
+    // 预览数据 (PegasusGame 结构比较接近原始解析结果)
+    pub temp_data: Option<PegasusGame>,
+    pub has_temp_metadata: bool,
 }
 
 /// 系统 ROM 列表
@@ -79,12 +82,34 @@ impl From<PegasusGame> for RomInfo {
             screenshot: game.screenshot,
             titlescreen: game.titlescreen,
             video: game.video,
+            temp_data: None,
+            has_temp_metadata: false,
         }
     }
 }
 
 
+use crate::config::get_temp_dir;
+
+/// 尝试加载并应用临时元数据
+fn apply_temp_metadata(roms: &mut [RomInfo], system: &str) {
+    let temp_metadata_path = get_temp_dir().join(system).join("metadata.txt");
+    if !temp_metadata_path.exists() {
+        return;
+    }
+
+    if let Ok(temp_metadata) = parse_pegasus_file(&temp_metadata_path) {
+        for rom in roms {
+            if let Some(temp_game) = temp_metadata.games.iter().find(|g| g.file == Some(rom.file.clone())) {
+                rom.has_temp_metadata = true;
+                rom.temp_data = Some(temp_game.clone());
+            }
+        }
+    }
+}
+
 /// 获取所有目录的 ROM 列表
+
 pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
     let settings = get_settings();
     let mut all_systems = Vec::new();
@@ -111,8 +136,11 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                         // 自动检测子目录的 metadata 格式
                         let format = detect_metadata_format(&sub_path);
                         
-                        if let Ok(roms) = get_roms_from_directory(&sub_path, &format, &system_name) {
+                        if let Ok(mut roms) = get_roms_from_directory(&sub_path, &format, &system_name) {
                             if !roms.is_empty() {
+                                // 尝试加载临时元数据
+                                apply_temp_metadata(&mut roms, &system_name);
+                                
                                 all_systems.push(SystemRoms {
                                     system: system_name,
                                     path: sub_path.to_string_lossy().to_string(),
@@ -133,8 +161,11 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                     .to_string()
             });
             
-            if let Ok(roms) = get_roms_from_directory(dir_path, &dir_config.metadata_format, &system_name) {
+            if let Ok(mut roms) = get_roms_from_directory(dir_path, &dir_config.metadata_format, &system_name) {
                 if !roms.is_empty() {
+                    // 尝试加载临时元数据
+                    apply_temp_metadata(&mut roms, &system_name);
+
                     all_systems.push(SystemRoms {
                         system: system_name,
                         path: dir_config.path.clone(),
@@ -143,6 +174,7 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                 }
             }
         }
+
     }
     
     Ok(all_systems)
@@ -381,6 +413,8 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 rating: g.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
                 directory: dir_path.to_string_lossy().to_string(),
                 system: system_name.to_string(),
+                has_temp_metadata: false,
+                temp_data: None,
                 box_front: g.image.map(|image| resolve_media_path(dir_path, &image)),
                 box_back: None,
                 box_spine: None,
@@ -463,6 +497,8 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                             screenshot: None,
                             titlescreen: None,
                             video: None,
+                            has_temp_metadata: false,
+                            temp_data: None,
                         });
                     }
                 }

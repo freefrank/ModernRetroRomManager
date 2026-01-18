@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api, isTauri } from "@/lib/api";
+import { api, scraperApi, isTauri } from "@/lib/api";
 import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms } from "@/types";
 
 interface ScanProgress {
@@ -64,6 +64,7 @@ interface RomState {
     totalSize: number;
   };
   fetchStats: () => Promise<void>;
+  exportData: (system: string, directory: string) => Promise<void>;
 }
 
 export const useRomStore = create<RomState>((set, get) => ({
@@ -130,8 +131,8 @@ export const useRomStore = create<RomState>((set, get) => ({
   // 批量 Scrape
   isBatchScraping: false,
   batchProgress: null,
-  startBatchScrape: async (provider: string) => {
-    const { selectedRomIds } = get();
+  startBatchScrape: async (providerId: string) => {
+    const { selectedRomIds, selectedSystem, systemRoms } = get();
     if (selectedRomIds.size === 0) return;
 
     if (!isTauri()) {
@@ -139,24 +140,40 @@ export const useRomStore = create<RomState>((set, get) => ({
       return;
     }
 
+    // 获取当前系统的目录信息
+    const systemInfo = systemRoms.find(s => s.system === selectedSystem);
+    const directory = systemInfo?.path || "";
+    const system = selectedSystem || "";
+
     set({ isBatchScraping: true, batchProgress: null });
     try {
       const { listen } = await import("@tauri-apps/api/event");
-      const { invoke } = await import("@tauri-apps/api/core");
       
       const unlisten = await listen<BatchProgress>("batch-scrape-progress", (event) => {
         set({ batchProgress: event.payload });
         if (event.payload.finished) {
-          set({ isBatchScraping: false });
-          get().fetchRoms();
+          setTimeout(() => {
+            set({ isBatchScraping: false });
+            get().fetchRoms();
+          }, 1000);
           unlisten();
         }
       });
 
-      await invoke("batch_scrape", { romIds: Array.from(selectedRomIds), provider });
+      await scraperApi.batchScrape(Array.from(selectedRomIds), system, directory, providerId);
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });
+    }
+  },
+
+  exportData: async (system: string, directory: string) => {
+    try {
+      await scraperApi.exportScrapedData(system, directory);
+      await get().fetchRoms();
+    } catch (error) {
+      console.error("Failed to export data:", error);
+      throw error;
     }
   },
 

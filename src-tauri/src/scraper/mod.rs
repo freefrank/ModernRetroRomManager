@@ -4,6 +4,7 @@ pub mod pegasus;
 pub mod types;
 pub mod manager;
 pub mod matcher;
+pub mod persistence;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

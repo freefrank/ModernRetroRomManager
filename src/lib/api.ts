@@ -1,4 +1,4 @@
-import type { SystemRoms, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult } from "@/types";
+import type { SystemRoms, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions } from "@/types";
 
 declare global {
   interface Window {
@@ -186,6 +186,27 @@ export const scraperApi = {
   async setProviderEnabled(providerId: string, enabled: boolean): Promise<void> {
     if (isTauri()) {
       await tauriInvoke("scraper_set_provider_enabled", { providerId, enabled });
+    }
+  },
+
+  /** 应用抓取到的数据 */
+  async applyScrapedData(options: ApplyScrapedDataOptions): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("apply_scraped_data", { options });
+    }
+  },
+
+  /** 批量抓取 */
+  async batchScrape(romIds: string[], system: string, directory: string, providerId: string): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("batch_scrape", { romIds, system, directory, providerId });
+    }
+  },
+
+  /** 导出临时数据到库 */
+  async exportScrapedData(system: string, directory: string): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("export_scraped_data", { system, directory });
     }
   },
 };

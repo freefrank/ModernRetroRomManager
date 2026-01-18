@@ -4,15 +4,20 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::State;
+use std::path::Path;
+use std::fs;
+use tauri::{State, Emitter};
 use tokio::sync::RwLock;
-
+use crate::config::get_temp_dir;
 use crate::scraper::{
     manager::ScraperManager,
     types::{ScrapeQuery, SearchResult, GameMetadata, MediaAsset, ScrapeResult},
     steamgriddb::SteamGridDBClient,
     screenscraper::ScreenScraperClient,
+    persistence::{download_media, save_metadata_pegasus},
 };
+use crate::rom_service::RomInfo;
+
 
 // ============================================================================
 // State - ScraperManager 全局状态
@@ -202,14 +207,158 @@ pub async fn scraper_set_provider_enabled(
 // ScraperManager 控制 (占位)
 // ============================================================================
 
+#[derive(Debug, Deserialize)]
+pub struct ApplyScrapedDataOptions {
+    pub rom_id: String, // 文件名
+    pub directory: String, // 目录
+    pub system: String, // 系统
+    pub metadata: GameMetadata,
+    pub selected_media: Vec<MediaAsset>,
+}
+
 #[tauri::command]
-pub async fn apply_scraped_data(_rom_id: String) -> Result<(), String> {
-    // TODO: 实现保存 scrape 数据到 metadata 文件
+pub async fn apply_scraped_data(
+    _state: State<'_, ScraperState>,
+    options: ApplyScrapedDataOptions,
+) -> Result<(), String> {
+    // 1. 构建 RomInfo (用于定位目录和文件)
+    let rom = RomInfo {
+        file: options.rom_id.clone(),
+        directory: options.directory.clone(),
+        system: options.system.clone(),
+        name: options.metadata.name.clone(),
+        ..Default::default()
+    };
+
+    // 2. 下载媒体文件到临时目录
+    if !options.selected_media.is_empty() {
+        download_media(&rom, &options.selected_media, true).await?;
+    }
+
+    // 3. 写入元数据到临时目录
+    save_metadata_pegasus(&rom, &options.metadata, true)?;
+
+    Ok(())
+}
+
+/// 批量处理进度
+#[derive(Debug, Clone, Serialize)]
+pub struct BatchProgress {
+    pub current: usize,
+    pub total: usize,
+    pub message: String,
+    pub finished: bool,
+}
+
+#[tauri::command]
+pub async fn batch_scrape(
+    app: tauri::AppHandle,
+    state: State<'_, ScraperState>,
+    rom_ids: Vec<String>,
+    system: String,
+    directory: String,
+    _provider_id: String,
+) -> Result<(), String> {
+    let manager_arc = Arc::clone(&state.manager);
+    let total = rom_ids.len();
+
+    tokio::spawn(async move {
+        for (i, file_name) in rom_ids.into_iter().enumerate() {
+            let current = i + 1;
+            
+            let _ = app.emit("batch-scrape-progress", BatchProgress {
+                current,
+                total,
+                message: format!("正在抓取: {}", file_name),
+                finished: false,
+            });
+
+            let query = ScrapeQuery::new(file_name.clone(), file_name.clone()).with_system(system.clone());
+            
+            let scrape_res = {
+                let manager = manager_arc.read().await;
+                manager.scrape(&query).await
+            };
+
+            if let Ok(result) = scrape_res {
+                let rom = RomInfo {
+                    file: file_name.clone(),
+                    name: result.metadata.name.clone(),
+                    system: system.clone(),
+                    directory: directory.clone(),
+                    ..Default::default()
+                };
+                let _ = save_metadata_pegasus(&rom, &result.metadata, true);
+            }
+        }
+
+        let _ = app.emit("batch-scrape-progress", BatchProgress {
+            current: total,
+            total,
+            message: "批量处理完成".to_string(),
+            finished: true,
+        });
+    });
+
     Ok(())
 }
 
 #[tauri::command]
-pub async fn batch_scrape(_rom_ids: Vec<String>, _provider_id: String) -> Result<(), String> {
-    // TODO: 实现批量 scrape
+pub async fn export_scraped_data(
+    system: String,
+    directory: String,
+) -> Result<(), String> {
+    let temp_metadata_path = get_temp_dir().join(&system).join("metadata.txt");
+    if !temp_metadata_path.exists() {
+        return Err("No temporary data to export".to_string());
+    }
+
+    // 1. 读取临时元数据
+    let content = fs::read_to_string(&temp_metadata_path).map_err(|e| e.to_string())?;
+    
+    // 2. 写入到目标目录 (Pegasus 模式)
+    let target_path = Path::new(&directory).join("metadata.txt");
+    
+    // 如果目标文件存在，我们执行合并/追加逻辑
+    // 简单起见，目前直接追加
+    let mut target_content = if target_path.exists() {
+        fs::read_to_string(&target_path).map_err(|e| e.to_string())?
+    } else {
+        String::new()
+    };
+
+    target_content.push_str("\n# Exported from ModernRetroRomManager\n");
+    target_content.push_str(&content);
+
+    fs::write(&target_path, target_content).map_err(|e| e.to_string())?;
+
+    // 3. 移动媒体文件
+    let temp_media_dir = get_temp_dir().join("media").join(&system);
+    let target_media_dir = Path::new(&directory).join("media");
+
+    if temp_media_dir.exists() {
+        fs::create_dir_all(&target_media_dir).map_err(|e| e.to_string())?;
+        // 简单移动整个系统目录下的媒体
+        // 这里可以使用更精细的按文件移动逻辑
+        copy_dir_recursive(&temp_media_dir, &target_media_dir)?;
+    }
+
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    }
+
+    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &dst.join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.join(entry.file_name())).map_err(|e| e.to_string())?;
+        }
+    }
     Ok(())
 }

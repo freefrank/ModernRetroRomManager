@@ -96,9 +96,15 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
     setIsApplying(true);
     try {
       const selectedMedia = media.filter(m => selectedMediaUrls.has(m.url));
-      console.log("Applying scraped data:", { result: selectedResult, metadata, selectedMedia });
-      // TODO: 更新后端 apply_scraped_data 接收新格式
-      // 目前后端 Command 还是占位符
+      
+      await scraperApi.applyScrapedData({
+        rom_id: rom.file,
+        directory: rom.directory,
+        system: rom.system,
+        metadata,
+        selected_media: selectedMedia
+      });
+      
       onClose();
     } catch (error) {
       console.error("Apply failed:", error);

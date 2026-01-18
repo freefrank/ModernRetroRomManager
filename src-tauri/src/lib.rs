@@ -41,6 +41,7 @@ pub fn run() {
             commands::scraper_set_provider_enabled,
             commands::apply_scraped_data,
             commands::batch_scrape,
+            commands::export_scraped_data,
             // Import/Export
             commands::import_gamelist,
             commands::import_pegasus,
