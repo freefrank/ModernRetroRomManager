@@ -1,11 +1,12 @@
 //! 中文 ROM 命名数据库管理
-//! 
+//!
 //! 负责管理 yingw/rom-name-cn 仓库的本地副本，并提供 CSV 读取功能
 
 use std::path::PathBuf;
 use std::process::Command;
 use std::fs;
 use crate::config::get_data_dir;
+use crate::system_mapping::find_csv_name_by_folder;
 
 const REPO_URL: &str = "https://github.com/yingw/rom-name-cn.git";
 const REPO_DIR_NAME: &str = "rom-name-cn";
@@ -77,38 +78,13 @@ pub fn find_csv_in_dir(root_path: &PathBuf, system: &str) -> Option<PathBuf> {
         return None;
     }
 
-    // 简单的关键词匹配映射
-    let keyword = match system.to_lowercase().as_str() {
-        "nes" | "famicom" => "Nintendo - Nintendo Entertainment System",
-        "snes" | "sfc" => "Nintendo - Super Nintendo Entertainment System",
-        "gba" => "Nintendo - Game Boy Advance",
-        "gb" => "Nintendo - Game Boy",
-        "gbc" => "Nintendo - Game Boy Color",
-        "n64" => "Nintendo - Nintendo 64",
-        "nds" => "Nintendo - Nintendo DS",
-        "3ds" => "Nintendo - Nintendo 3DS",
-        "gc" | "gamecube" => "Nintendo - GameCube",
-        "wii" => "Nintendo - Wii",
-        "psx" | "ps1" => "Sony - PlayStation",
-        "ps2" => "Sony - PlayStation 2",
-        "psp" => "Sony - PlayStation Portable",
-        "md" | "genesis" => "Sega - Mega Drive - Genesis",
-        "ss" | "saturn" => "Sega - Saturn",
-        "dc" | "dreamcast" => "Sega - Dreamcast",
-        "neo" | "neogeo" => "SNK - Neo Geo",
-        "mame" | "arcade" | "fba" => "Arcade",
-        _ => system, // 默认尝试直接匹配
-    };
+    // 使用 system_mapping 查找 CSV 文件名
+    let csv_name = find_csv_name_by_folder(system)?;
 
-    if let Ok(entries) = fs::read_dir(root_path) {
-        for entry in entries.filter_map(|e| e.ok()) {
-            let path = entry.path();
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.to_lowercase().contains(&keyword.to_lowercase()) && name.ends_with(".csv") {
-                    return Some(path);
-                }
-            }
-        }
+    // 直接查找精确的 CSV 文件名
+    let csv_path = root_path.join(csv_name);
+    if csv_path.exists() {
+        return Some(csv_path);
     }
 
     None

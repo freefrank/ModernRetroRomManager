@@ -368,3 +368,21 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
         },
     ]
 }
+
+/// 根据文件夹名查找系统映射（不区分大小写）
+pub fn find_mapping_by_folder(folder_name: &str) -> Option<SystemMapping> {
+    let folder_lower = folder_name.to_lowercase();
+    get_system_mappings()
+        .into_iter()
+        .find(|m| m.folder_name.to_lowercase() == folder_lower)
+}
+
+/// 根据文件夹名查找 CSV 数据库文件名
+pub fn find_csv_name_by_folder(folder_name: &str) -> Option<&'static str> {
+    find_mapping_by_folder(folder_name).and_then(|m| m.csv_name)
+}
+
+/// 根据文件夹名查找 Logo 图片文件名
+pub fn find_logo_name_by_folder(folder_name: &str) -> Option<&'static str> {
+    find_mapping_by_folder(folder_name).and_then(|m| m.logo_name)
+}
