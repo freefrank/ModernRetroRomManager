@@ -123,17 +123,23 @@ pub fn find_csv_for_system(system: &str) -> Option<PathBuf> {
 pub fn read_csv(path: &PathBuf) -> Result<Vec<CnRomEntry>, String> {
     let mut entries = Vec::new();
     let mut rdr = csv::ReaderBuilder::new()
-        .has_headers(false) // yingw/rom-name-cn 的文件通常没有 header，第一行就是数据，或者是英文,中文
+        .has_headers(true) // CSV 文件有 header: Name EN,Name CN
         .from_path(path)
         .map_err(|e| e.to_string())?;
 
     for result in rdr.records() {
         if let Ok(record) = result {
             if record.len() >= 2 {
-                entries.push(CnRomEntry {
-                    english_name: record[0].to_string(),
-                    chinese_name: record[1].to_string(),
-                });
+                let english_name = record[0].trim().to_string();
+                let chinese_name = record[1].trim().to_string();
+
+                // 跳过空行或无效数据
+                if !english_name.is_empty() && !chinese_name.is_empty() {
+                    entries.push(CnRomEntry {
+                        english_name,
+                        chinese_name,
+                    });
+                }
             }
         }
     }

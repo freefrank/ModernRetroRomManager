@@ -106,9 +106,9 @@ export const api = {
   },
 
   /** 自动修复目录命名 */
-  async autoFixNaming(path: string): Promise<{ success: number; failed: number }> {
+  async autoFixNaming(path: string, system?: string): Promise<{ success: number; failed: number }> {
     if (isTauri()) {
-      return await tauriInvoke("auto_fix_naming", { path });
+      return await tauriInvoke("auto_fix_naming", { path, system });
     }
     return { success: 0, failed: 0 };
   },

@@ -37,6 +37,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "resources/rom-name-cn": "rom-name-cn",
+      "resources/logo": "logo"
+    }
   }
 }

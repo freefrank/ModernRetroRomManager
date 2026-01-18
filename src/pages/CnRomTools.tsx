@@ -1,8 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Search, Tag, FileText, AlertTriangle, FileDown, ChevronDown, X } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
+
+interface MatchProgress {
+  current: number;
+  total: number;
+}
 
 interface CheckResult {
   file: string;
@@ -96,6 +101,29 @@ export default function CnName() {
   const [showSystemPicker, setShowSystemPicker] = useState(false);
   const [systemFilter, setSystemFilter] = useState("");
 
+  // 匹配进度
+  const [matchProgress, setMatchProgress] = useState<MatchProgress | null>(null);
+
+  // 监听匹配进度事件
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    let unlisten: (() => void) | undefined;
+
+    const setupListener = async () => {
+      const { listen } = await import("@tauri-apps/api/event");
+      unlisten = await listen<MatchProgress>("naming-match-progress", (event) => {
+        setMatchProgress(event.payload);
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   // 过滤后的系统列表
   const filteredSystems = useMemo(() => {
     if (!systemFilter.trim()) return PEGASUS_SYSTEMS;
@@ -107,13 +135,21 @@ export default function CnName() {
     );
   }, [systemFilter]);
 
-  // 从目录名匹配系统
+  // 从目录名匹配系统（优先当前目录，其次上级目录）
   const matchSystemFromPath = (path: string): typeof PEGASUS_SYSTEMS[0] | null => {
-    const dirName = path.split(/[/\\]/).filter(Boolean).pop()?.toLowerCase() || "";
-    
-    for (const sys of PEGASUS_SYSTEMS) {
-      if (sys.id === dirName || sys.aliases.some(a => a === dirName)) {
-        return sys;
+    const parts = path.split(/[/\\]/).filter(Boolean);
+
+    // 尝试匹配的目录名列表：当前目录优先，然后是上级目录
+    const dirsToTry = [
+      parts[parts.length - 1]?.toLowerCase() || "",  // 当前目录
+      parts[parts.length - 2]?.toLowerCase() || "",  // 上级目录
+    ].filter(Boolean);
+
+    for (const dirName of dirsToTry) {
+      for (const sys of PEGASUS_SYSTEMS) {
+        if (sys.id === dirName || sys.aliases.some(a => a === dirName)) {
+          return sys;
+        }
       }
     }
     return null;
@@ -188,14 +224,20 @@ export default function CnName() {
 
   const handleAutoFix = async () => {
     if (!checkPath) return;
-    
+
+    if (!selectedSystem) {
+      alert("请先选择游戏平台");
+      return;
+    }
+
     if (!confirm(`确定要匹配英文名吗？\n这将扫描该目录下的所有 ROM，并根据本地数据库自动匹配英文名。\n仅置信度极高 (>95%) 的匹配会被应用。\n结果将保存到临时目录。`)) {
       return;
     }
 
     setIsFixing(true);
+    setMatchProgress(null);
     try {
-      const result = await api.autoFixNaming(checkPath);
+      const result = await api.autoFixNaming(checkPath, selectedSystem.id);
       alert(`匹配完成！\n成功: ${result.success}\n失败/跳过: ${result.failed}`);
       // 重新扫描以显示最新状态
       handleCheck();
@@ -204,6 +246,7 @@ export default function CnName() {
       alert("匹配失败: " + String(error));
     } finally {
       setIsFixing(false);
+      setMatchProgress(null);
     }
   };
 
@@ -463,10 +506,12 @@ export default function CnName() {
                   <button
                     onClick={handleAutoFix}
                     disabled={isFixing}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 text-xs disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 text-xs disabled:opacity-50 min-w-[120px] justify-center"
                   >
                     {isFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                    匹配英文名
+                    {isFixing && matchProgress
+                      ? `(${matchProgress.current}/${matchProgress.total})`
+                      : "匹配英文名"}
                   </button>
 
                   {/* 导出按钮 */}

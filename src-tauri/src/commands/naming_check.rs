@@ -3,14 +3,35 @@
 //! 用于检查目录下的 ROM 命名情况 (中英文对照)
 
 use crate::rom_service::get_roms_from_directory;
-use crate::scraper::local_cn::LocalCnProvider;
-use crate::scraper::{ScrapeQuery, ScraperProvider};
-use crate::config::get_temp_dir;
-use crate::commands::scraper::ScraperState;
+use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
+use crate::scraper::local_cn::smart_cn_similarity;
+use crate::config::{get_temp_dir, get_data_dir};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
-use tauri::State;
+use tauri::{AppHandle, Emitter, Manager};
+
+/// 获取 rom-name-cn 数据目录列表（优先打包资源，其次用户数据目录）
+fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    // 1. 优先检查打包的资源目录
+    if let Ok(resource_path) = app.path().resolve("rom-name-cn", tauri::path::BaseDirectory::Resource) {
+        if resource_path.exists() {
+            eprintln!("[get_cn_repo_paths] Found bundled resource at: {:?}", resource_path);
+            paths.push(resource_path);
+        }
+    }
+
+    // 2. 用户数据目录作为后备（支持用户自行更新）
+    let user_data_path = get_data_dir().join("rom-name-cn");
+    if user_data_path.exists() {
+        eprintln!("[get_cn_repo_paths] Found user data at: {:?}", user_data_path);
+        paths.push(user_data_path);
+    }
+
+    paths
+}
 
 #[derive(Debug, Serialize)]
 pub struct NamingCheckResult {
@@ -18,6 +39,47 @@ pub struct NamingCheckResult {
     pub name: String,
     pub english_name: Option<String>,
     pub extracted_cn_name: Option<String>,
+}
+
+/// 从文件名提取英文后缀信息（如 "Original Generation 2" -> "OG2"）
+fn extract_english_suffix(filename: &str) -> Option<String> {
+    let stem = std::path::Path::new(filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename);
+
+    let clean_name = if let Some(idx) = stem.find(|c| c == '[' || c == '(') {
+        &stem[..idx]
+    } else {
+        stem
+    };
+
+    // 查找中文后的英文部分
+    let parts: Vec<&str> = clean_name.split(&['-', '–', '—', ':', '：'][..]).collect();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    // 获取最后一部分（英文部分）
+    let english_part = parts.last()?.trim();
+
+    // 提取首字母缩写 + 数字
+    let mut abbreviation = String::new();
+    for word in english_part.split_whitespace() {
+        if let Some(first_char) = word.chars().next() {
+            if first_char.is_ascii_alphabetic() {
+                abbreviation.push(first_char.to_ascii_uppercase());
+            } else if first_char.is_ascii_digit() {
+                abbreviation.push_str(word);
+            }
+        }
+    }
+
+    if abbreviation.is_empty() {
+        None
+    } else {
+        Some(abbreviation)
+    }
 }
 
 fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
@@ -35,11 +97,11 @@ fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
         stem
     };
 
-    // 3. 处理全角字符，去除所有空格
+    // 3. 处理全角字符，去除空格
     let normalized = clean_name
         .replace('－', "-")
-        .replace('　', "")  // 全角空格直接移除
-        .replace(' ', "")   // 半角空格直接移除
+        .replace('　', "")   // 全角空格移除
+        .replace(' ', "")    // 半角空格移除
         .trim()
         .to_string();
 
@@ -56,6 +118,12 @@ pub struct AutoFixResult {
     pub failed: usize,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct MatchProgress {
+    pub current: usize,
+    pub total: usize,
+}
+
 #[tauri::command]
 pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckResult>, String> {
     let dir_path = Path::new(&path);
@@ -69,13 +137,20 @@ pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckRe
     // 读取 ROM 列表
     let roms = get_roms_from_directory(dir_path, &format, "unknown")?;
 
-    // 转换为检查结果
+    // 读取临时元数据
+    let temp_entries = load_temp_cn_metadata(&path).unwrap_or_default();
+
+    // 转换为检查结果，合并临时数据
     let results = roms.into_iter().map(|r| {
         let extracted = parse_cn_name_from_filename(&r.file);
+
+        // 查找临时数据中的匹配项
+        let temp_data = temp_entries.iter().find(|e| e.file == r.file);
+
         NamingCheckResult {
-            file: r.file,
-            name: r.name,
-            english_name: r.english_name,
+            file: r.file.clone(),
+            name: temp_data.and_then(|t| t.name.clone()).unwrap_or(r.name),
+            english_name: temp_data.and_then(|t| t.english_name.clone()).or(r.english_name),
             extracted_cn_name: extracted,
         }
     }).collect();
@@ -83,10 +158,55 @@ pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckRe
     Ok(results)
 }
 
+/// 在内存中进行快速匹配
+fn fast_match(
+    query_cn: &str,
+    english_suffix: Option<&str>,
+    csv_entries: &[CnRomEntry],
+) -> Option<(String, String, f32)> {
+    let query_lower = query_cn.to_lowercase();
+    let mut best_match: Option<(String, String, f32)> = None;
+
+    for entry in csv_entries {
+        let chinese_lower = entry.chinese_name.to_lowercase();
+
+        // 1. 精确匹配
+        if chinese_lower == query_lower {
+            return Some((entry.english_name.clone(), entry.chinese_name.clone(), 1.0));
+        }
+
+        // 2. 如果有英文后缀（如 OG2），优先匹配包含该后缀的中文名
+        if let Some(suffix) = english_suffix {
+            if entry.chinese_name.contains(suffix) {
+                let score = smart_cn_similarity(&query_lower, &chinese_lower);
+                if score > 0.5 {
+                    // 后缀匹配优先
+                    return Some((entry.english_name.clone(), entry.chinese_name.clone(), 0.98));
+                }
+            }
+        }
+
+        // 3. 智能相似度匹配
+        let score = smart_cn_similarity(&query_lower, &chinese_lower);
+        if score > 0.75 {
+            if let Some((_, _, best_score)) = &best_match {
+                if score > *best_score {
+                    best_match = Some((entry.english_name.clone(), entry.chinese_name.clone(), score));
+                }
+            } else {
+                best_match = Some((entry.english_name.clone(), entry.chinese_name.clone(), score));
+            }
+        }
+    }
+
+    best_match
+}
+
 #[tauri::command]
 pub async fn auto_fix_naming(
-    state: State<'_, ScraperState>,
+    app: AppHandle,
     path: String,
+    system: Option<String>,
 ) -> Result<AutoFixResult, String> {
     let dir_path = Path::new(&path);
     if !dir_path.exists() {
@@ -94,52 +214,84 @@ pub async fn auto_fix_naming(
     }
 
     let format = detect_format(dir_path);
-    let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    // 优先使用传入的系统名，否则从目录名获取
+    let system_name = system.unwrap_or_else(|| {
+        dir_path.file_name().unwrap_or_default().to_string_lossy().to_string()
+    });
     let roms = get_roms_from_directory(dir_path, &format, &system_name)?;
+    let total = roms.len();
 
-    let _manager = state.manager.read().await;
-    let provider = LocalCnProvider::new(vec![]); 
+    // 一次性加载 CSV 到内存（优先使用打包资源）
+    let repo_paths = get_cn_repo_paths(&app);
+    let csv_entries = {
+        let mut entries = Vec::new();
+        for repo_path in &repo_paths {
+            if let Some(csv_path) = find_csv_in_dir(repo_path, &system_name) {
+                eprintln!("[auto_fix_naming] Found CSV at: {:?}", csv_path);
+                if let Ok(loaded) = read_csv(&csv_path) {
+                    entries = loaded;
+                    break;
+                }
+            }
+        }
+        if entries.is_empty() {
+            eprintln!("[auto_fix_naming] No CSV found for system: {} in paths: {:?}", system_name, repo_paths);
+            return Err(format!("No CSV database found for system: {}", system_name));
+        }
+        entries
+    };
+
+    eprintln!("[auto_fix_naming] Loaded {} entries from CSV", csv_entries.len());
 
     let mut success_count = 0;
     let mut failed_count = 0;
-    
+
     // 收集需要写入的数据
     let mut entries: Vec<TempMetadataEntry> = Vec::new();
 
-    for rom in roms {
+    for (idx, rom) in roms.into_iter().enumerate() {
+        // 发送进度事件
+        let _ = app.emit("naming-match-progress", MatchProgress {
+            current: idx + 1,
+            total,
+        });
+
         // 如果已经有英文名，跳过
         if rom.english_name.is_some() && rom.name != rom.file {
              continue;
         }
 
         let extracted_cn = parse_cn_name_from_filename(&rom.file);
-        
-        let query = ScrapeQuery {
-            name: extracted_cn.clone().unwrap_or_else(|| rom.name.clone()),
-            file_name: rom.file.clone(),
-            system: Some(system_name.clone()),
-            ..Default::default()
-        };
+        let english_suffix = extract_english_suffix(&rom.file);
 
-        match provider.search(&query).await {
-            Ok(results) => {
-                if let Some(best_match) = results.iter().find(|r| r.confidence > 0.95) {
-                    entries.push(TempMetadataEntry {
-                        file: rom.file.clone(),
-                        name: extracted_cn.clone(),
-                        english_name: Some(best_match.source_id.clone()),
-                    });
-                    success_count += 1;
-                } else {
-                    failed_count += 1;
-                }
+        let query_name = extracted_cn.clone().unwrap_or_else(|| rom.name.clone());
+
+        // 使用内存中的快速匹配
+        if let Some((eng_name, _cn_name, confidence)) = fast_match(
+            &query_name,
+            english_suffix.as_deref(),
+            &csv_entries,
+        ) {
+            // 只有一个匹配且置信度 > 0.75，或高置信度 > 0.95
+            if confidence > 0.95 || confidence > 0.75 {
+                entries.push(TempMetadataEntry {
+                    file: rom.file.clone(),
+                    name: extracted_cn.clone(),
+                    english_name: Some(eng_name),
+                });
+                success_count += 1;
+            } else {
+                failed_count += 1;
             }
-            Err(_) => failed_count += 1,
+        } else {
+            failed_count += 1;
         }
     }
 
     // 保存到 temp 目录
     save_temp_cn_metadata(&path, &entries)?;
+
+    eprintln!("[auto_fix_naming] Done: {} success, {} failed", success_count, failed_count);
 
     Ok(AutoFixResult {
         success: success_count,
