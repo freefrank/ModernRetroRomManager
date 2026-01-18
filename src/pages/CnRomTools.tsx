@@ -520,12 +520,12 @@ export default function CnName() {
             <div className="flex-1 min-h-0 flex flex-col bg-bg-secondary rounded-2xl border border-border-default overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Table container - flex-1 with overflow */}
               <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-sm table-fixed">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
-                      <th className="px-6 py-3 font-bold">文件名</th>
-                      <th className="px-6 py-3 font-bold">ROM名 (Meta)</th>
-                      <th className="px-6 py-3 font-bold">
+                      <th className="w-1/4 px-6 py-3 font-bold">文件名</th>
+                      <th className="w-1/4 px-6 py-3 font-bold">ROM名 (Meta)</th>
+                      <th className="w-1/4 px-6 py-3 font-bold">
                         <div className="flex items-center justify-between">
                           <span>提取中文名</span>
                           <button
@@ -539,7 +539,7 @@ export default function CnName() {
                           </button>
                         </div>
                       </th>
-                      <th className="px-6 py-3 font-bold">
+                      <th className="w-1/4 px-6 py-3 font-bold">
                         <div className="flex items-center justify-between">
                           <button
                             onClick={toggleSort}
