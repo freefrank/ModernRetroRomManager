@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useRomStore } from "@/stores/romStore";
 
 const TOOL_ITEMS = [
-  { to: "/cn-name", icon: Languages, labelKey: "nav.cnName" },
+  { to: "/cn-tools", icon: Languages, labelKey: "nav.cnTools" },
 ];
 
 export default function Sidebar() {

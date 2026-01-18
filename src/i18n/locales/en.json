@@ -9,7 +9,7 @@
     "import": "Import/Export",
     "settings": "Settings",
     "tools": "Tools",
-    "cnName": "Chinese Naming"
+    "cnTools": "Chinese ROM Tools"
   },
   "library": {
     "title": "ROM Library",

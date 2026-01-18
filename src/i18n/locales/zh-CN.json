@@ -9,7 +9,7 @@
     "import": "导入/导出",
     "settings": "设置",
     "tools": "工具箱",
-    "cnName": "中文命名检查"
+    "cnTools": "中文 ROM 工具"
   },
   "library": {
     "title": "ROM 库",

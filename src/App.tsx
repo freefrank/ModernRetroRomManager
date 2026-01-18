@@ -6,7 +6,7 @@ import Library from "./pages/Library";
 import Scraper from "./pages/Scraper";
 import Import from "./pages/Import";
 import Settings from "./pages/Settings";
-import CnName from "./pages/CnName";
+import CnRomTools from "./pages/CnRomTools";
 import { useAppStore } from "./stores/appStore";
 import { useRomStore } from "./stores/romStore";
 import { api, preloadMediaUrls } from "./lib/api";
@@ -83,7 +83,7 @@ export default function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Library />} />
         <Route path="scraper" element={<Scraper />} />
-        <Route path="cn-name" element={<CnName />} />
+        <Route path="cn-tools" element={<CnRomTools />} />
         <Route path="import" element={<Import />} />
         <Route path="settings" element={<Settings />} />
       </Route>
