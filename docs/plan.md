@@ -273,7 +273,20 @@
   - [x] 表格列宽拖拽调整（鼠标拖拽列头分隔线）
 
 
-#### 4.2 高级 Scraper
+#### 4.2 Settings & Configuration Management
+- [x] API 配置管理
+  - [x] 将 API 配置从 Scraper 页面移至 Settings 页面
+  - [x] Provider 列表展示（SteamGridDB、ScreenScraper）
+  - [x] 启用/禁用开关（支持未配置凭证时的状态保存）
+  - [x] 凭证配置面板（用户名/密码/API Key）
+  - [x] 配置持久化到 settings.json
+  - [x] 修复未注册 provider 的开关状态保存问题
+- [x] ChineseROMDB 架构调整
+  - [x] 从 scraper provider 列表中移除
+  - [x] 保留为独立的中文 ROM 工具
+  - [x] update_cn_repo 命令移至 tools 模块
+
+#### 4.3 高级 Scraper
 - [x] 批量 Scraper (Backend Queue & Auto-Match)
 - [x] 批量操作 UI (Frontend)
 - [ ] 自定义爬虫规则
