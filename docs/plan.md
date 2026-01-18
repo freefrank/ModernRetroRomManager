@@ -161,6 +161,12 @@
 - [ ] 批量编辑元数据
 - [ ] 快捷键系统
 - [x] 主题切换（暗/亮）
+- [x] 统一视图组件 (Cover/Grid/List 合并为 RomView.tsx)
+- [x] 视图切换平滑动画 (CSS transition，保持滚动位置)
+- [x] 动态行高计算 (根据容器宽度和 aspect-ratio 自适应)
+- [x] 启动 Splash Screen (HTML 内联，防止白屏闪烁)
+- [x] 封面预加载 (启动时预加载前 50 个 ROM 封面)
+- [x] Splash 加载步骤显示 (支持 i18n)
 
 
 #### 4.2 高级 Scraper
