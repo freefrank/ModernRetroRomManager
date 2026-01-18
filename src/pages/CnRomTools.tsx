@@ -187,13 +187,13 @@ export default function CnName() {
             {checkResults.length > 0 && (
               <div className="bg-bg-secondary rounded-2xl border border-border-default overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full text-left text-sm table-fixed">
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
-                        <th className="px-6 py-3 font-bold">文件名</th>
-                        <th className="px-6 py-3 font-bold">ROM名 (Meta)</th>
-                        <th className="px-6 py-3 font-bold">提取中文名</th>
-                        <th className="px-6 py-3 font-bold">匹配英文名</th>
+                        <th className="w-1/4 px-6 py-3 font-bold">文件名</th>
+                        <th className="w-1/4 px-6 py-3 font-bold">ROM名 (Meta)</th>
+                        <th className="w-1/4 px-6 py-3 font-bold">提取中文名</th>
+                        <th className="w-1/4 px-6 py-3 font-bold">匹配英文名</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-default">
