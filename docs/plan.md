@@ -200,12 +200,15 @@
 - [x] 交互式 Scrape 对话框
 - [x] Tauri commands 对接 ScraperManager
 - [x] 前端 scraperApi 封装 (search, getMetadata, getMedia, autoScrape)
-- [x] 前端类型定义 (ScraperProviderInfo, ScraperSearchResult, etc.)
+- [x] 前端类型 definition (ScraperProviderInfo, ScraperSearchResult, etc.)
 - [x] Provider 配置 UI (API Key 管理)
 - [x] 搜索结果选择 UI (多源结果展示)
 - [x] 批量 Scrape 进度 UI
 - [x] 数据预览与暂存机制 (Temp Metadata & Media)
 - [x] 实时导出进度展示
+- [x] 预览模式下的元数据编辑器 (In-place Editor)
+- [x] 临时媒体资产管理 (Preview & Delete)
+- [x] 全面 i18n 覆盖 (Scraper & Detail modules)
 
 ### Phase 3: 导入导出
 
