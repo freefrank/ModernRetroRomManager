@@ -109,6 +109,28 @@
 - 本地存储管理
 - 图片压缩/格式转换
 
+### 5. 系统名称映射 (System Mapping)
+- **统一映射配置**：60+ 个复古游戏平台的标准化映射
+- **多维度映射**：
+  - ROM 目录名称 → CSV 数据库文件名
+  - ROM 目录名称 → Logo 图片文件名
+  - 系统识别标准化
+- **覆盖平台**：Nintendo、Sega、Sony、Atari、NEC、SNK 等主流厂商
+- **变体支持**：Hack ROM、HD 重制版等特殊版本
+
+### 6. 中文 ROM 工具
+- **中文名称管理**：
+  - 从本地 CSV 数据库提取中文名称
+  - 智能匹配算法 (Jaro-Winkler)
+  - 双路径搜索 (User Data + Resources)
+- **批量操作**：
+  - 目录扫描与命名检查
+  - 一键自动修复命名
+  - 批量导出元数据
+- **平台选择**：支持选择特定游戏系统进行处理
+- **详细对比**：显示原始名称、中文名称、匹配度等信息
+- **本地仓库管理**：Git Clone/Pull rom-name-cn 数据库
+
 ---
 
 ## 🚀 开发路线图
@@ -125,6 +147,7 @@
 - [x] 移除 SQLite/Diesel 依赖
 - [x] 实现 Metadata 文件解析器 (Pegasus / EmulationStation)
 - [x] 预置 17 种游戏系统数据 (Config file)
+- [x] 系统名称映射配置 (60+ 平台，统一 CSV/Logo 映射)
 - [x] 基础 Tauri Commands (get_roms, get_stats)
 - [x] 目录扫描替代旧导入流程
 - [x] 前端 ROM 列表字段对齐
@@ -234,6 +257,12 @@
 - [x] 启动 Splash Screen (HTML 内联，防止白屏闪烁)
 - [x] 封面预加载 (启动时预加载前 50 个 ROM 封面)
 - [x] Splash 加载步骤显示 (支持 i18n)
+- [x] 中文 ROM 工具 UI 优化
+  - [x] 响应式 Flex 布局
+  - [x] 表格列宽平均分布
+  - [x] 内容区域占满页面宽度
+  - [x] 修复内容被 footer 遮挡问题
+  - [x] 选择目录后自动扫描
 
 
 #### 4.2 高级 Scraper
