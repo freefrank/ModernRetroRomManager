@@ -112,6 +112,12 @@ export default function CnName() {
   // 排序状态
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
+  // 列宽状态（百分比）
+  const [columnWidths, setColumnWidths] = useState([25, 25, 25, 25]);
+  const [resizingColumn, setResizingColumn] = useState<number | null>(null);
+  const [startX, setStartX] = useState(0);
+  const [startWidth, setStartWidth] = useState(0);
+
   // 切换排序
   const toggleSort = () => {
     if (sortOrder === null) {
@@ -122,6 +128,51 @@ export default function CnName() {
       setSortOrder(null); // 第三次点击：取消排序
     }
   };
+
+  // 开始调整列宽
+  const handleResizeStart = (columnIndex: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setResizingColumn(columnIndex);
+    setStartX(e.clientX);
+    setStartWidth(columnWidths[columnIndex]);
+  };
+
+  // 调整列宽中
+  useEffect(() => {
+    if (resizingColumn === null) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const diff = e.clientX - startX;
+      const tableWidth = document.querySelector('table')?.offsetWidth || 1000;
+      const diffPercent = (diff / tableWidth) * 100;
+
+      const newWidths = [...columnWidths];
+      const newWidth = Math.max(10, Math.min(50, startWidth + diffPercent));
+      const oldWidth = columnWidths[resizingColumn];
+      const delta = newWidth - oldWidth;
+
+      newWidths[resizingColumn] = newWidth;
+
+      // 调整下一列的宽度以保持总宽度为100%
+      if (resizingColumn < 3) {
+        newWidths[resizingColumn + 1] = Math.max(10, columnWidths[resizingColumn + 1] - delta);
+      }
+
+      setColumnWidths(newWidths);
+    };
+
+    const handleMouseUp = () => {
+      setResizingColumn(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingColumn, startX, startWidth, columnWidths]);
 
   // 排序后的结果
   const sortedResults = useMemo(() => {
@@ -523,9 +574,21 @@ export default function CnName() {
                 <table className="w-full text-left text-sm table-fixed">
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
-                      <th className="w-1/4 px-6 py-3 font-bold">文件名</th>
-                      <th className="w-1/4 px-6 py-3 font-bold">ROM名 (Meta)</th>
-                      <th className="w-1/4 px-6 py-3 font-bold">
+                      <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[0]}%` }}>
+                        文件名
+                        <div
+                          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent-primary/50 transition-colors"
+                          onMouseDown={(e) => handleResizeStart(0, e)}
+                        />
+                      </th>
+                      <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[1]}%` }}>
+                        ROM名 (Meta)
+                        <div
+                          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent-primary/50 transition-colors"
+                          onMouseDown={(e) => handleResizeStart(1, e)}
+                        />
+                      </th>
+                      <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[2]}%` }}>
                         <div className="flex items-center justify-between">
                           <span>提取中文名</span>
                           <button
@@ -538,8 +601,12 @@ export default function CnName() {
                             设置为ROM名
                           </button>
                         </div>
+                        <div
+                          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent-primary/50 transition-colors"
+                          onMouseDown={(e) => handleResizeStart(2, e)}
+                        />
                       </th>
-                      <th className="w-1/4 px-6 py-3 font-bold">
+                      <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[3]}%` }}>
                         <div className="flex items-center justify-between">
                           <button
                             onClick={toggleSort}
