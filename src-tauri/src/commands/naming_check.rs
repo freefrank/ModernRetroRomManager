@@ -17,6 +17,36 @@ pub struct NamingCheckResult {
     pub file: String,
     pub name: String,
     pub english_name: Option<String>,
+    pub extracted_cn_name: Option<String>,
+}
+
+fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
+    // 1. 去除扩展名
+    let stem = std::path::Path::new(filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename);
+
+    // 2. 清理括号及内容 []()
+    // 策略：找到第一个 [ 或 (，截断
+    let clean_name = if let Some(idx) = stem.find(|c| c == '[' || c == '(') {
+        &stem[..idx]
+    } else {
+        stem
+    };
+
+    // 3. 处理全角字符和空格
+    let normalized = clean_name
+        .replace('－', "-")
+        .replace('　', " ")
+        .trim()
+        .to_string();
+
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -39,10 +69,14 @@ pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckRe
     let roms = get_roms_from_directory(dir_path, &format, "unknown")?;
 
     // 转换为检查结果
-    let results = roms.into_iter().map(|r| NamingCheckResult {
-        file: r.file,
-        name: r.name,
-        english_name: r.english_name,
+    let results = roms.into_iter().map(|r| {
+        let extracted = parse_cn_name_from_filename(&r.file);
+        NamingCheckResult {
+            file: r.file,
+            name: r.name,
+            english_name: r.english_name,
+            extracted_cn_name: extracted,
+        }
     }).collect();
 
     Ok(results)
@@ -87,8 +121,11 @@ pub async fn auto_fix_naming(
              continue;
         }
 
+        // 尝试从文件名提取中文名，如果有，使用它进行搜索
+        let extracted_cn = parse_cn_name_from_filename(&rom.file);
+        
         let query = ScrapeQuery {
-            name: rom.name.clone(),
+            name: extracted_cn.clone().unwrap_or_else(|| rom.name.clone()),
             file_name: rom.file.clone(),
             system: Some(system_name.clone()),
             ..Default::default()
@@ -98,9 +135,11 @@ pub async fn auto_fix_naming(
             Ok(results) => {
                 // 查找高置信度结果
                 if let Some(best_match) = results.iter().find(|r| r.confidence > 0.95) {
-                    // 获取元数据 (其实 search 结果已经有了 name 和 source_id(english_name))
+                    // 获取元数据
+                    // name 优先使用提取的中文名 (如果存在)，否则使用匹配到的中文名
+                    // english_name 使用匹配到的英文名 (source_id)
                     let metadata = crate::scraper::GameMetadata {
-                        name: best_match.name.clone(),
+                        name: extracted_cn.unwrap_or(best_match.name.clone()),
                         english_name: Some(best_match.source_id.clone()),
                         description: None,
                         developer: None,

@@ -126,10 +126,18 @@ impl ScraperProvider for LocalCnProvider {
             // 比较 query.file_name 和 CSV 中的 English Name
             let score_file = jaro_winkler_similarity(&query_file_stem, &english_lower);
             
-            // 同时也比较中文名（万一用户搜索的是中文）
+            // 同时也比较中文名（万一用户搜索的是中文，或者使用提取后的中文名）
             let score_cn = jaro_winkler_similarity(&query_name_lower, &chinese_lower);
 
-            let max_score = score_en.max(score_file).max(score_cn);
+            // 处理英文名中的括号 (e.g. "Game Name (USA)" -> "Game Name")
+            let english_clean = if let Some(idx) = english_lower.find("(") {
+                english_lower[..idx].trim()
+            } else {
+                &english_lower
+            };
+            let score_en_clean = jaro_winkler_similarity(&query_name_lower, english_clean);
+
+            let max_score = score_en.max(score_file).max(score_cn).max(score_en_clean);
 
             if max_score > 0.85 { // 阈值可调
                 results.push(SearchResult {

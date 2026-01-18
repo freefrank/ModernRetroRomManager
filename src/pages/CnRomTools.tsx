@@ -8,6 +8,7 @@ interface CheckResult {
   file: string;
   name: string;
   english_name?: string;
+  extracted_cn_name?: string;
 }
 
 export default function CnName() {
@@ -87,7 +88,7 @@ export default function CnName() {
     }
   };
 
-  const missingCount = checkResults.filter(r => !r.name || r.name === r.file || !r.english_name).length;
+  const missingCount = checkResults.filter(r => !r.english_name).length;
 
   return (
     <div className="flex flex-col h-full bg-bg-primary">
@@ -180,21 +181,38 @@ export default function CnName() {
                     <thead className="sticky top-0 z-10">
                       <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
                         <th className="px-6 py-3 font-bold">文件名</th>
-                        <th className="px-6 py-3 font-bold">中文名 (Metadata)</th>
-                        <th className="px-6 py-3 font-bold">英文名 (Metadata)</th>
+                        <th className="px-6 py-3 font-bold">ROM名 (Meta)</th>
+                        <th className="px-6 py-3 font-bold">提取中文名</th>
+                        <th className="px-6 py-3 font-bold">匹配英文名</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-default">
                       {checkResults.map((res, idx) => {
-                        const isMissing = !res.name || res.name === res.file || !res.english_name;
+                        // 逻辑调整:
+                        // 1. ROM名(Meta) = res.name (从 metadata 读取)
+                        // 2. 提取中文名 = res.extracted_cn_name (从文件名解析)
+                        // 3. 英文名 = res.english_name (从 metadata 读取，或即将写入的)
+                        
+                        // 警告条件：没有英文名，或者 ROM 名和文件名完全一样(说明没匹配过)
+                        const isMissing = !res.english_name;
+                        
                         return (
                           <tr key={idx} className={clsx("hover:bg-bg-tertiary/30 transition-colors", isMissing && "bg-red-500/5")}>
                             <td className="px-6 py-3 text-text-primary font-mono text-xs max-w-xs truncate" title={res.file}>{res.file}</td>
-                            <td className={clsx("px-6 py-3 font-medium max-w-xs truncate", res.name && res.name !== res.file ? "text-green-400" : "text-text-muted italic")}>
-                              {res.name === res.file ? "未匹配" : (res.name || "未设置")}
+                            
+                            {/* ROM名 (Meta) */}
+                            <td className={clsx("px-6 py-3 font-medium max-w-xs truncate", res.name && res.name !== res.file ? "text-text-primary" : "text-text-muted italic")}>
+                              {res.name === res.file ? "未设置" : res.name}
                             </td>
+
+                            {/* 提取中文名 */}
+                            <td className={clsx("px-6 py-3 font-medium max-w-xs truncate", res.extracted_cn_name ? "text-green-400" : "text-text-muted italic")}>
+                              {res.extracted_cn_name || "-"}
+                            </td>
+
+                            {/* 英文名 */}
                             <td className={clsx("px-6 py-3 font-medium max-w-xs truncate", res.english_name ? "text-blue-400" : "text-text-muted italic")}>
-                              {res.english_name || "未设置"}
+                              {res.english_name || "未匹配"}
                             </td>
                           </tr>
                         );
