@@ -106,6 +106,8 @@ pub fn save_metadata_emulationstation(
     Ok(())
 }
 
+/// 将元数据写入 gamelist.xml (EmulationStation 格式)
+
 /// 将抓取到的媒体资产下载到本地
 /// 如果 is_temp 为 true，则保存到程序目录下的 temp/media
 pub async fn download_media(
