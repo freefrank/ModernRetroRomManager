@@ -14,7 +14,8 @@ use crate::scraper::{
     types::{ScrapeQuery, SearchResult, GameMetadata, MediaAsset, ScrapeResult},
     steamgriddb::SteamGridDBClient,
     screenscraper::ScreenScraperClient,
-    persistence::{download_media, save_metadata_pegasus},
+    pegasus::parse_pegasus_file, // Add parser import
+    persistence::{download_media, save_metadata_pegasus, save_metadata_emulationstation},
 };
 use crate::rom_service::RomInfo;
 
@@ -500,16 +501,52 @@ pub async fn export_scraped_data(
 
         // 1. 读取并写入元数据
         if let Ok(content) = fs::read_to_string(&temp_metadata_path) {
-            let target_path = Path::new(&directory).join("metadata.txt");
-            let mut target_content = if target_path.exists() {
-                fs::read_to_string(&target_path).unwrap_or_default()
-            } else {
-                String::new()
-            };
+            // Detect target format
+            let target_gamelist = Path::new(&directory).join("gamelist.xml");
+            
+            if target_gamelist.exists() {
+                // Target is EmulationStation: Need to convert Pegasus data
+                let _ = app_clone.emit("export-progress", ExportProgress {
+                    current: 5,
+                    total: 100,
+                    message: "正在转换格式 (Pegasus -> ES)...".to_string(),
+                    finished: false,
+                });
 
-            target_content.push_str("\n# Exported from ModernRetroRomManager\n");
-            target_content.push_str(&content);
-            let _ = fs::write(&target_path, target_content);
+                if let Ok(pegasus_data) = parse_pegasus_file(&temp_metadata_path) {
+                    for game in pegasus_data.games {
+                        // Use filename from game or fallback (should have file)
+                        if let Some(file) = &game.file {
+                            // Convert to GameMetadata
+                            let metadata: GameMetadata = game.clone().into();
+                            
+                            // Create dummy RomInfo for path resolution in save_metadata_emulationstation
+                            let rom = RomInfo {
+                                file: file.clone(),
+                                directory: directory.clone(),
+                                system: system.clone(),
+                                name: metadata.name.clone(),
+                                ..Default::default()
+                            };
+                            
+                            // Save individually to gamelist.xml (append/update)
+                            let _ = save_metadata_emulationstation(&rom, &metadata, false);
+                        }
+                    }
+                }
+            } else {
+                // Target is Pegasus (default): Append metadata.txt
+                let target_path = Path::new(&directory).join("metadata.txt");
+                let mut target_content = if target_path.exists() {
+                    fs::read_to_string(&target_path).unwrap_or_default()
+                } else {
+                    String::new()
+                };
+
+                target_content.push_str("\n# Exported from ModernRetroRomManager\n");
+                target_content.push_str(&content);
+                let _ = fs::write(&target_path, target_content);
+            }
         }
 
         // 2. 处理媒体文件导出

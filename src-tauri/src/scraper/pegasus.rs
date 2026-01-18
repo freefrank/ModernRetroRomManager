@@ -61,8 +61,36 @@ pub struct PegasusGame {
     pub extra: HashMap<String, String>,
 }
 
+impl Into<crate::scraper::GameMetadata> for PegasusGame {
+    fn into(self) -> crate::scraper::GameMetadata {
+        crate::scraper::GameMetadata {
+            name: self.name,
+            english_name: self.extra.get("x-english-name").cloned(),
+            description: self.description,
+            release_date: self.release,
+            developer: self.developer,
+            publisher: self.publisher,
+            genres: self.genre.map(|g| vec![g]).unwrap_or_default(),
+            players: self.players,
+            rating: self.rating.and_then(|r| {
+                if let Ok(val) = r.trim_end_matches('%').parse::<f64>() {
+                    // 如果是百分比，转换为 0-1
+                    if r.contains('%') {
+                        Some(val / 100.0)
+                    } else {
+                        Some(val)
+                    }
+                } else {
+                    None
+                }
+            }),
+        }
+    }
+}
+
 
 /// Parse result
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PegasusMetadata {
     pub collections: Vec<PegasusCollection>,
