@@ -67,9 +67,12 @@ pub fn run() {
             commands::export::export_to_emulationstation, // Placeholder
             commands::export::export_to_pegasus, // Placeholder
             
-            // Naming check
+            // Naming check / CN ROM Tool
             commands::naming_check::scan_directory_for_naming_check,
             commands::naming_check::auto_fix_naming,
+            commands::naming_check::set_extracted_cn_as_name,
+            commands::naming_check::add_english_as_tag,
+            commands::naming_check::export_cn_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
