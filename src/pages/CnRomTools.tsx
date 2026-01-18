@@ -238,7 +238,12 @@ export default function CnName() {
         <section className="flex-1 min-h-0 flex flex-col gap-4">
           <h2 className="shrink-0 text-lg font-bold text-text-primary flex items-center gap-2">
             <FolderSearch className="w-5 h-5 text-accent-primary" />
-            目录命名检查
+            {checkPath ? (
+              // 从路径提取目录名作为系统名
+              checkPath.split(/[/\\]/).filter(Boolean).pop() || "选择平台"
+            ) : (
+              "选择平台"
+            )}
           </h2>
           
           <div className="shrink-0 flex gap-3">
@@ -278,7 +283,7 @@ export default function CnName() {
                       <th className="w-1/4 px-6 py-3 font-bold">文件名</th>
                       <th className="w-1/4 px-6 py-3 font-bold">ROM名 (Meta)</th>
                       <th className="w-1/4 px-6 py-3 font-bold">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between">
                           <span>提取中文名</span>
                           <button
                             onClick={handleSetAsRomName}
@@ -292,7 +297,7 @@ export default function CnName() {
                         </div>
                       </th>
                       <th className="w-1/4 px-6 py-3 font-bold">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between">
                           <span>匹配英文名</span>
                           <button
                             onClick={handleAddAsTag}
