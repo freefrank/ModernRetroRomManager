@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, CheckCircle2 } from "lucide-react";
+import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, CheckCircle2, Wrench, AlertTriangle } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
 
@@ -16,6 +16,7 @@ export default function CnName() {
   const [checkPath, setCheckPath] = useState("");
   const [checkResults, setCheckResults] = useState<CheckResult[]>([]);
   const [isChecking, setIsChecking] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
 
   const handleUpdate = async () => {
     setIsUpdating(true);
@@ -43,6 +44,8 @@ export default function CnName() {
       });
       if (selected && typeof selected === "string") {
         setCheckPath(selected);
+        // 清空之前的结果
+        setCheckResults([]);
       }
     } catch (error) {
       console.error("Failed to select directory:", error);
@@ -61,6 +64,30 @@ export default function CnName() {
       setIsChecking(false);
     }
   };
+
+  const handleAutoFix = async () => {
+    if (!checkPath) return;
+    
+    // 简单的确认对话框 (生产环境建议用 Modal)
+    if (!confirm(`确定要尝试自动修复吗？\n这将扫描该目录下的所有 ROM，并根据本地数据库自动匹配和写入中文名。\n仅置信度极高 (>95%) 的匹配会被应用。`)) {
+      return;
+    }
+
+    setIsFixing(true);
+    try {
+      const result = await api.autoFixNaming(checkPath);
+      alert(`修复完成！\n成功: ${result.success}\n失败/跳过: ${result.failed}`);
+      // 重新扫描以显示最新状态
+      handleCheck();
+    } catch (error) {
+      console.error("Failed to auto fix:", error);
+      alert("自动修复失败: " + String(error));
+    } finally {
+      setIsFixing(false);
+    }
+  };
+
+  const missingCount = checkResults.filter(r => !r.name || r.name === r.file || !r.english_name).length;
 
   return (
     <div className="flex flex-col h-full bg-bg-primary">
@@ -137,7 +164,7 @@ export default function CnName() {
               </div>
               <button
                 onClick={handleCheck}
-                disabled={!checkPath || isChecking}
+                disabled={!checkPath || isChecking || isFixing}
                 className="px-6 py-2 bg-accent-primary text-bg-primary font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2 whitespace-nowrap"
               >
                 {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
@@ -147,33 +174,56 @@ export default function CnName() {
 
             {/* Results Table */}
             {checkResults.length > 0 && (
-              <div className="bg-bg-secondary rounded-2xl border border-border-default overflow-hidden">
-                <div className="overflow-x-auto">
+              <div className="bg-bg-secondary rounded-2xl border border-border-default overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
                   <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="bg-bg-tertiary/50 border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
                         <th className="px-6 py-3 font-bold">文件名</th>
                         <th className="px-6 py-3 font-bold">中文名 (Metadata)</th>
                         <th className="px-6 py-3 font-bold">英文名 (Metadata)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-default">
-                      {checkResults.map((res, idx) => (
-                        <tr key={idx} className="hover:bg-bg-tertiary/30 transition-colors">
-                          <td className="px-6 py-3 text-text-primary font-mono text-xs">{res.file}</td>
-                          <td className={clsx("px-6 py-3 font-medium", res.name ? "text-green-400" : "text-text-muted italic")}>
-                            {res.name || "未设置"}
-                          </td>
-                          <td className={clsx("px-6 py-3 font-medium", res.english_name ? "text-blue-400" : "text-text-muted italic")}>
-                            {res.english_name || "未设置"}
-                          </td>
-                        </tr>
-                      ))}
+                      {checkResults.map((res, idx) => {
+                        const isMissing = !res.name || res.name === res.file || !res.english_name;
+                        return (
+                          <tr key={idx} className={clsx("hover:bg-bg-tertiary/30 transition-colors", isMissing && "bg-red-500/5")}>
+                            <td className="px-6 py-3 text-text-primary font-mono text-xs max-w-xs truncate" title={res.file}>{res.file}</td>
+                            <td className={clsx("px-6 py-3 font-medium max-w-xs truncate", res.name && res.name !== res.file ? "text-green-400" : "text-text-muted italic")}>
+                              {res.name === res.file ? "未匹配" : (res.name || "未设置")}
+                            </td>
+                            <td className={clsx("px-6 py-3 font-medium max-w-xs truncate", res.english_name ? "text-blue-400" : "text-text-muted italic")}>
+                              {res.english_name || "未设置"}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-                <div className="px-6 py-3 bg-bg-tertiary/30 border-t border-border-default text-xs text-text-muted font-medium text-right">
-                  共检查 {checkResults.length} 个文件
+                
+                <div className="px-6 py-4 bg-bg-tertiary/30 border-t border-border-default flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-xs text-text-muted font-medium">
+                    <span>共 {checkResults.length} 个文件</span>
+                    {missingCount > 0 && (
+                      <span className="text-red-400 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        {missingCount} 个可能缺失中文名
+                      </span>
+                    )}
+                  </div>
+
+                  {missingCount > 0 && (
+                    <button
+                      onClick={handleAutoFix}
+                      disabled={isFixing}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20 text-xs disabled:opacity-50"
+                    >
+                      {isFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wrench className="w-3.5 h-3.5" />}
+                      一键自动修复
+                    </button>
+                  )}
                 </div>
               </div>
             )}
