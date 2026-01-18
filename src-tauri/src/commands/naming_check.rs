@@ -88,7 +88,7 @@ fn extract_english_suffix(filename: &str) -> Option<String> {
 fn clean_english_name(name: &str) -> String {
     // 去除 () 和 [] 中的内容
     let mut result = String::new();
-    let mut depth = 0;
+    let mut depth: i32 = 0;
 
     for ch in name.chars() {
         match ch {
