@@ -665,6 +665,7 @@ export default function CnName() {
                                   }
                                 }}
                                 onBlur={() => handleConfirmEdit(idx)}
+                                onFocus={(e) => e.target.select()}
                                 autoFocus
                                 className="w-full bg-bg-tertiary border border-accent-primary rounded px-2 py-1 text-sm text-text-primary focus:outline-none"
                               />
