@@ -489,7 +489,7 @@ export default function Settings() {
           <section>
             <h2 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
               <Shield className="w-5 h-5 text-accent-primary" />
-              API 配置
+              {t("settings.apiConfig.title")}
             </h2>
 
             <div className="grid grid-cols-1 gap-4">
@@ -518,7 +518,7 @@ export default function Settings() {
                         <h3 className="font-bold text-text-primary text-lg">{p.name}</h3>
                         {p.has_credentials && (
                           <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-tighter border border-green-500/20">
-                            已认证
+                            {t("common.authenticated")}
                           </span>
                         )}
                       </div>
@@ -534,7 +534,7 @@ export default function Settings() {
                       <button
                         onClick={() => handleEditConfig(p)}
                         className="p-2.5 rounded-xl bg-bg-tertiary text-text-secondary hover:text-accent-primary hover:bg-bg-primary transition-all border border-transparent hover:border-accent-primary/30"
-                        title="编辑配置"
+                        title={t("settings.apiConfig.editConfig")}
                       >
                         <Key className="w-5 h-5" />
                       </button>
@@ -558,30 +558,30 @@ export default function Settings() {
                         <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
                           <Info className="w-4 h-4 text-blue-400 mt-0.5" />
                           <p className="text-xs text-blue-200 leading-relaxed">
-                            请输入 API 凭证。这些信息将安全存储在本地配置文件中。
+                            {t("settings.apiConfig.credentialsHint")}
                           </p>
                         </div>
 
                         {p.id === "screenscraper" && (
                           <>
                             <div>
-                              <label className="block text-sm font-medium text-text-primary mb-2">用户名</label>
+                              <label className="block text-sm font-medium text-text-primary mb-2">{t("settings.apiConfig.username")}</label>
                               <input
                                 type="text"
                                 value={credentials.username || ""}
                                 onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
                                 className="w-full px-3 py-2 bg-bg-secondary border border-border-default rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent-primary"
-                                placeholder="ScreenScraper 用户名"
+                                placeholder={t("settings.apiConfig.usernamePlaceholder")}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-text-primary mb-2">密码</label>
+                              <label className="block text-sm font-medium text-text-primary mb-2">{t("settings.apiConfig.password")}</label>
                               <input
                                 type="password"
                                 value={credentials.password || ""}
                                 onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                                 className="w-full px-3 py-2 bg-bg-secondary border border-border-default rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent-primary"
-                                placeholder="ScreenScraper 密码"
+                                placeholder={t("settings.apiConfig.passwordPlaceholder")}
                               />
                             </div>
                           </>
@@ -589,7 +589,7 @@ export default function Settings() {
 
                         {p.id === "steamgriddb" && (
                           <div>
-                            <label className="block text-sm font-medium text-text-primary mb-2">API Key</label>
+                            <label className="block text-sm font-medium text-text-primary mb-2">{t("settings.apiConfig.apiKey")}</label>
                             <input
                               type="text"
                               value={credentials.api_key || ""}
@@ -605,14 +605,14 @@ export default function Settings() {
                             onClick={() => setEditingProvider(null)}
                             className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary hover:bg-bg-primary transition-all text-sm font-medium"
                           >
-                            取消
+                            {t("common.cancel")}
                           </button>
                           <button
                             onClick={handleSaveConfig}
                             className="px-4 py-2 rounded-lg bg-accent-primary text-white hover:opacity-90 transition-all text-sm font-medium flex items-center gap-2"
                           >
                             <Save className="w-4 h-4" />
-                            保存
+                            {t("common.save")}
                           </button>
                         </div>
                       </div>
@@ -665,7 +665,7 @@ export default function Settings() {
           />
           <div className="relative w-full max-w-md bg-bg-primary border border-border-default rounded-2xl shadow-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-text-primary">添加扫描目录</h3>
+              <h3 className="text-lg font-bold text-text-primary">{t("settings.scanDirectories.addDirectory")}</h3>
               <button
                 onClick={() => setIsAddDialogOpen(false)}
                 className="p-2 rounded-lg hover:bg-bg-tertiary text-text-secondary"
@@ -747,7 +747,7 @@ export default function Settings() {
                       <h3 className="font-bold text-text-primary text-lg">{provider.name}</h3>
                       {provider.has_credentials && (
                         <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-tighter border border-green-500/20">
-                          已认证
+                          {t("common.authenticated")}
                         </span>
                       )}
                     </div>
