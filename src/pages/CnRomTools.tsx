@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Search, Tag, FileText, AlertTriangle, FileDown } from "lucide-react";
+import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Search, Tag, FileText, AlertTriangle, FileDown, ChevronDown, X } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
 
@@ -10,6 +10,74 @@ interface CheckResult {
   english_name?: string;
   extracted_cn_name?: string;
 }
+
+// Pegasus 支持的所有系统 (基于用户实际配置)
+const PEGASUS_SYSTEMS: { id: string; name: string; aliases: string[] }[] = [
+  // Nintendo
+  { id: "fc", name: "FC / NES", aliases: ["fc", "nes", "famicom"] },
+  { id: "fc-hd", name: "FC HD", aliases: ["fc-hd", "fc hd"] },
+  { id: "fc hack", name: "FC Hack", aliases: ["fc hack"] },
+  { id: "sfc", name: "SFC / SNES", aliases: ["sfc", "snes", "super famicom"] },
+  { id: "sfc hack", name: "SFC Hack", aliases: ["sfc hack"] },
+  { id: "sfc-msu1", name: "SFC MSU-1", aliases: ["sfc-msu1"] },
+  { id: "n64", name: "Nintendo 64", aliases: ["n64"] },
+  { id: "ngc", name: "Nintendo GameCube", aliases: ["ngc", "gc", "gamecube"] },
+  { id: "wii", name: "Nintendo Wii", aliases: ["wii"] },
+  { id: "wii ware", name: "Wii Ware", aliases: ["wii ware", "wiiware"] },
+  { id: "gb", name: "Game Boy", aliases: ["gb", "gameboy"] },
+  { id: "gbc", name: "Game Boy Color", aliases: ["gbc"] },
+  { id: "gba", name: "Game Boy Advance", aliases: ["gba"] },
+  { id: "nds", name: "Nintendo DS", aliases: ["nds", "ds"] },
+  { id: "3ds", name: "Nintendo 3DS", aliases: ["3ds"] },
+  { id: "virtual boy", name: "Virtual Boy", aliases: ["virtual boy", "vb"] },
+  { id: "game watch", name: "Game & Watch", aliases: ["game watch", "game & watch"] },
+  { id: "poke mini", name: "Pokemon Mini", aliases: ["poke mini", "pokemini"] },
+  // Sega
+  { id: "sms", name: "Sega Master System", aliases: ["sms", "master system"] },
+  { id: "md", name: "Mega Drive / Genesis", aliases: ["md", "megadrive", "genesis"] },
+  { id: "md hack", name: "MD Hack", aliases: ["md hack"] },
+  { id: "md-32x", name: "Sega 32X", aliases: ["md-32x", "32x", "sega 32x"] },
+  { id: "gg", name: "Sega Game Gear", aliases: ["gg", "gamegear"] },
+  { id: "ss", name: "Sega Saturn", aliases: ["ss", "saturn"] },
+  { id: "dc", name: "Sega Dreamcast", aliases: ["dc", "dreamcast"] },
+  { id: "dc hack", name: "DC Hack", aliases: ["dc hack"] },
+  { id: "naomi", name: "Sega NAOMI", aliases: ["naomi"] },
+  // Sony
+  { id: "ps1", name: "PlayStation", aliases: ["ps1", "psx", "playstation"] },
+  { id: "ps1 hack", name: "PS1 Hack", aliases: ["ps1 hack"] },
+  { id: "ps2", name: "PlayStation 2", aliases: ["ps2"] },
+  { id: "psp", name: "PlayStation Portable", aliases: ["psp"] },
+  // NEC
+  { id: "pce", name: "PC Engine / TurboGrafx-16", aliases: ["pce", "pcengine", "tg16"] },
+  // SNK
+  { id: "ngpc", name: "Neo Geo Pocket Color", aliases: ["ngpc", "neogeo pocket"] },
+  // Bandai
+  { id: "ws", name: "WonderSwan", aliases: ["ws", "wonderswan"] },
+  { id: "wsc", name: "WonderSwan Color", aliases: ["wsc"] },
+  // Atari
+  { id: "atari2600", name: "Atari 2600", aliases: ["atari2600", "2600"] },
+  { id: "atari5200", name: "Atari 5200", aliases: ["atari5200", "5200"] },
+  { id: "atari7800", name: "Atari 7800", aliases: ["atari7800", "7800"] },
+  { id: "lynx", name: "Atari Lynx", aliases: ["lynx"] },
+  // Arcade
+  { id: "fbneo act", name: "FBNeo 动作", aliases: ["fbneo act"] },
+  { id: "fbneo stg", name: "FBNeo 射击", aliases: ["fbneo stg"] },
+  { id: "fbneo ftg", name: "FBNeo 格斗", aliases: ["fbneo ftg"] },
+  { id: "fbneo fly", name: "FBNeo 飞行", aliases: ["fbneo fly"] },
+  { id: "fbneo rac", name: "FBNeo 竞速", aliases: ["fbneo rac"] },
+  { id: "fbneo spo", name: "FBNeo 体育", aliases: ["fbneo spo"] },
+  { id: "fbneo etc", name: "FBNeo 其他", aliases: ["fbneo etc"] },
+  { id: "mame act", name: "MAME 动作", aliases: ["mame act"] },
+  { id: "mame stg", name: "MAME 射击", aliases: ["mame stg"] },
+  { id: "mame ftg", name: "MAME 格斗", aliases: ["mame ftg"] },
+  { id: "mame fly", name: "MAME 飞行", aliases: ["mame fly"] },
+  { id: "mame rac", name: "MAME 竞速", aliases: ["mame rac"] },
+  { id: "mame spo", name: "MAME 体育", aliases: ["mame spo"] },
+  { id: "mame etc", name: "MAME 其他", aliases: ["mame etc"] },
+  { id: "light gun", name: "光枪游戏", aliases: ["light gun"] },
+  // PC
+  { id: "dos", name: "DOS", aliases: ["dos"] },
+];
 
 export default function CnName() {
   const { t } = useTranslation();
@@ -22,6 +90,37 @@ export default function CnName() {
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  
+  // 系统选择相关
+  const [selectedSystem, setSelectedSystem] = useState<typeof PEGASUS_SYSTEMS[0] | null>(null);
+  const [showSystemPicker, setShowSystemPicker] = useState(false);
+  const [systemFilter, setSystemFilter] = useState("");
+
+  // 过滤后的系统列表
+  const filteredSystems = useMemo(() => {
+    if (!systemFilter.trim()) return PEGASUS_SYSTEMS;
+    const lower = systemFilter.toLowerCase();
+    return PEGASUS_SYSTEMS.filter(s => 
+      s.name.toLowerCase().includes(lower) || 
+      s.id.toLowerCase().includes(lower) ||
+      s.aliases.some(a => a.includes(lower))
+    );
+  }, [systemFilter]);
+
+  // 从目录名匹配系统
+  const matchSystemFromPath = (path: string): typeof PEGASUS_SYSTEMS[0] | null => {
+    const dirName = path.split(/[/\\]/).filter(Boolean).pop()?.toLowerCase() || "";
+    
+    for (const sys of PEGASUS_SYSTEMS) {
+      if (sys.id === dirName || sys.aliases.some(a => a === dirName)) {
+        return sys;
+      }
+    }
+    return null;
+  };
+
+  // 当前显示的系统名
+  const displaySystemName = selectedSystem?.name || "选择平台";
 
   const handleUpdate = async () => {
     setIsUpdating(true);
@@ -49,6 +148,13 @@ export default function CnName() {
       });
       if (selected && typeof selected === "string") {
         setCheckPath(selected);
+        // 尝试从目录名匹配系统
+        const matched = matchSystemFromPath(selected);
+        setSelectedSystem(matched);
+        // 如果没匹配到，显示系统选择器
+        if (!matched) {
+          setShowSystemPicker(true);
+        }
         // 清空之前的结果并自动扫描
         setCheckResults([]);
         // 自动触发扫描
@@ -236,15 +342,17 @@ export default function CnName() {
 
         {/* Directory Check - flex-1 to fill remaining space */}
         <section className="flex-1 min-h-0 flex flex-col gap-4">
-          <h2 className="shrink-0 text-lg font-bold text-text-primary flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2">
             <FolderSearch className="w-5 h-5 text-accent-primary" />
-            {checkPath ? (
-              // 从路径提取目录名作为系统名
-              checkPath.split(/[/\\]/).filter(Boolean).pop() || "选择平台"
-            ) : (
-              "选择平台"
-            )}
-          </h2>
+            {/* 系统名称按钮 - 点击可选择 */}
+            <button
+              onClick={() => setShowSystemPicker(true)}
+              className="text-lg font-bold text-text-primary flex items-center gap-1 hover:text-accent-primary transition-colors"
+            >
+              {displaySystemName}
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
           
           <div className="shrink-0 flex gap-3">
             <div className="flex-1 flex gap-2">
@@ -399,6 +507,70 @@ export default function CnName() {
         </section>
 
       </div>
+
+      {/* 系统选择弹窗 */}
+      {showSystemPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-bg-secondary border border-border-default rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* 弹窗头部 */}
+            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border-default">
+              <h3 className="text-lg font-bold text-text-primary">选择游戏平台</h3>
+              <button
+                onClick={() => setShowSystemPicker(false)}
+                className="p-1 hover:bg-bg-tertiary rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-text-muted" />
+              </button>
+            </div>
+            
+            {/* 搜索过滤栏 */}
+            <div className="shrink-0 px-6 py-3 border-b border-border-default">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                <input
+                  type="text"
+                  value={systemFilter}
+                  onChange={(e) => setSystemFilter(e.target.value)}
+                  placeholder="搜索平台..."
+                  className="w-full bg-bg-tertiary border border-border-default rounded-lg pl-10 pr-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary"
+                  autoFocus
+                />
+              </div>
+            </div>
+            
+            {/* 系统列表 */}
+            <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
+              {filteredSystems.length === 0 ? (
+                <div className="p-6 text-center text-text-muted text-sm">
+                  没有找到匹配的平台
+                </div>
+              ) : (
+                <div className="p-2">
+                  {filteredSystems.map((sys) => (
+                    <button
+                      key={sys.id}
+                      onClick={() => {
+                        setSelectedSystem(sys);
+                        setShowSystemPicker(false);
+                        setSystemFilter("");
+                      }}
+                      className={clsx(
+                        "w-full px-4 py-3 text-left rounded-lg transition-colors flex items-center gap-3",
+                        selectedSystem?.id === sys.id
+                          ? "bg-accent-primary/20 text-accent-primary"
+                          : "hover:bg-bg-tertiary text-text-primary"
+                      )}
+                    >
+                      <span className="font-medium">{sys.name}</span>
+                      <span className="text-xs text-text-muted ml-auto">{sys.id}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
