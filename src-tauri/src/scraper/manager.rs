@@ -332,6 +332,21 @@ impl ScraperManager {
         });
     }
 
+    /// 设置 provider 优先级
+    pub fn set_priority(&mut self, provider_id: &str, priority: u32) {
+        // 更新内存中的配置（如果存在）
+        if let Some(config) = self.configs.get_mut(provider_id) {
+            config.priority = priority;
+        }
+
+        // 始终持久化保存到 settings.json
+        let provider_id_owned = provider_id.to_string();
+        let _ = update_setting(move |settings| {
+            let entry = settings.scrapers.entry(provider_id_owned).or_default();
+            entry.priority = priority;
+        });
+    }
+
     /// 获取 Provider 的持久化配置 (API Key 等)
     pub fn get_credentials(&self, provider_id: &str) -> Option<ScraperConfig> {
         let settings = get_settings();
@@ -350,13 +365,6 @@ impl ScraperManager {
         // 同时也更新内存中的启用状态
         if let Some(mem_config) = self.configs.get_mut(provider_id) {
             mem_config.enabled = config.enabled;
-        }
-    }
-
-    /// 设置 provider 优先级
-    pub fn set_priority(&mut self, provider_id: &str, priority: u32) {
-        if let Some(config) = self.configs.get_mut(provider_id) {
-            config.priority = priority;
         }
     }
 }

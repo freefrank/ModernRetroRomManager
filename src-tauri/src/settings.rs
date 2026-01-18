@@ -26,6 +26,8 @@ pub struct DirectoryConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScraperConfig {
     pub enabled: bool,
+    #[serde(default = "default_priority")]
+    pub priority: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -36,6 +38,10 @@ pub struct ScraperConfig {
     pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+}
+
+fn default_priority() -> u32 {
+    100
 }
 
 /// 应用配置

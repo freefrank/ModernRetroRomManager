@@ -41,6 +41,7 @@ pub fn run() {
             commands::scraper::scraper_get_media,
             commands::scraper::scraper_auto_scrape,
             commands::scraper::scraper_set_provider_enabled,
+            commands::scraper::scraper_set_provider_priority,
             commands::scraper::apply_scraped_data,
             commands::scraper::batch_scrape,
             commands::scraper::save_temp_metadata,

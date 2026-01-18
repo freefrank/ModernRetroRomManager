@@ -249,6 +249,18 @@ pub async fn scraper_set_provider_enabled(
     Ok(())
 }
 
+/// 设置 provider 优先级
+#[tauri::command]
+pub async fn scraper_set_provider_priority(
+    state: State<'_, ScraperState>,
+    provider_id: String,
+    priority: u32,
+) -> Result<(), String> {
+    let mut manager = state.manager.write().await;
+    manager.set_priority(&provider_id, priority);
+    Ok(())
+}
+
 // ============================================================================
 // ScraperManager 控制 (占位)
 // ============================================================================
