@@ -35,6 +35,11 @@
       "activeSources": "{{count}} 个活跃源",
       "credentialsNote": "请输入该源的 API 凭据。这些信息将加密存储在本地。"
     },
+    "noCredentials": {
+      "title": "未配置 API 凭证",
+      "description": "Scraper 功能需要配置 API 凭证才能使用。请前往设置页面配置 ScreenScraper 或 SteamGridDB 的 API 凭证。",
+      "goToSettings": "前往设置页面"
+    },
     "status": {
       "enabledSources": "已启用源",
       "avgConfidence": "平均置信度",
@@ -199,6 +204,16 @@
       "mediaDirectory": "媒体资源目录",
       "defaultLocation": "默认位置"
     },
+    "apiConfig": {
+      "title": "API 配置",
+      "editConfig": "编辑配置",
+      "username": "用户名",
+      "password": "密码",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "输入用户名",
+      "passwordPlaceholder": "输入密码",
+      "credentialsHint": "请输入该源的 API 凭据。这些信息将加密存储在本地。"
+    },
     "language": {
       "title": "语言",
       "description": "选择界面显示语言"
@@ -254,6 +269,68 @@
       "notReadable": "无读取权限",
       "notWritable": "警告: 无写入权限",
       "valid": "有效路径 ✓"
+    }
+  },
+  "cnRomTools": {
+    "selectPlatform": "选择平台",
+    "selectDirectoryPlaceholder": "选择要检查的 ROM 目录...",
+    "browse": "浏览...",
+    "refresh": "刷新",
+    "about": {
+      "title": "关于本项目",
+      "description": {
+        "part1": "本软件集成了",
+        "part2": "项目的数据。该项目提供了极其详尽的 ROM 中英文名称对照表，涵盖了绝大多数主流复古游戏平台。通过模糊匹配算法，我们能够在抓取元数据时自动识别并匹配中文名称。"
+      },
+      "dataSource": "数据来源: GitHub (yingw/rom-name-cn)",
+      "visitRepo": "访问仓库",
+      "updateDatabase": "更新数据库",
+      "updating": "更新中..."
+    },
+    "table": {
+      "fileName": "文件名",
+      "romName": "ROM名 (Meta)",
+      "extractedCnName": "提取中文名",
+      "matchedEnglishName": "匹配英文名",
+      "setAsRomName": "设置为ROM名",
+      "setAsRomNameTitle": "将提取的中文名设置为 ROM 名",
+      "addAsTag": "添加为额外tag",
+      "addAsTagTitle": "将英文名添加为额外 tag",
+      "clickToSort": "点击排序",
+      "notSet": "未设置",
+      "notMatched": "未匹配",
+      "confidenceWithEdit": "置信度: {{confidence}}% - 点击编辑",
+      "clickToEdit": "点击编辑"
+    },
+    "footer": {
+      "totalFiles": "共 {{count}} 个文件",
+      "missingEnglishNames": "{{count}} 个未匹配英文名",
+      "matchEnglishName": "匹配英文名",
+      "exportMetadata": "导出 Metadata"
+    },
+    "systemPicker": {
+      "title": "选择游戏平台",
+      "searchPlaceholder": "搜索平台...",
+      "noResults": "没有找到匹配的平台"
+    },
+    "alerts": {
+      "databaseUpdateSuccess": "数据库更新成功",
+      "updateFailed": "更新失败: {{error}}",
+      "selectPlatformFirst": "请先选择游戏平台",
+      "matchComplete": "匹配完成！\n成功: {{success}}\n失败/跳过: {{failed}}",
+      "matchFailed": "匹配失败: {{error}}",
+      "setComplete": "设置完成！",
+      "setFailed": "设置失败: {{error}}",
+      "addComplete": "添加完成！",
+      "addFailed": "添加失败: {{error}}",
+      "exportSuccess": "导出成功！\n文件已保存到: {{path}}",
+      "exportFailed": "导出失败: {{error}}",
+      "saveFailed": "保存失败: {{error}}"
+    },
+    "confirms": {
+      "autoFixNaming": "确定要匹配英文名吗？\n这将扫描该目录下的所有 ROM，并根据本地数据库自动匹配英文名。\n仅置信度极高 (>95%) 的匹配会被应用。\n结果将保存到临时目录。",
+      "setAsRomName": "确定要将提取的中文名设置为 ROM 名吗？\n这将把从文件名提取的中文名写入到临时 metadata 中。",
+      "addAsTag": "确定要将英文名添加为额外 tag 吗？\n这将把匹配到的英文名作为 x-mrrm-eng tag 写入临时 metadata。"
     }
   }
 }

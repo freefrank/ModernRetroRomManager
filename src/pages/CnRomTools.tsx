@@ -256,7 +256,7 @@ export default function CnName() {
   };
 
   // 当前显示的系统名
-  const displaySystemName = selectedSystem?.name || "选择平台";
+  const displaySystemName = selectedSystem?.name || t("cnRomTools.selectPlatform");
 
   const handleUpdate = async () => {
     setIsUpdating(true);
@@ -265,10 +265,10 @@ export default function CnName() {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("update_cn_repo");
       }
-      alert("数据库更新成功");
+      alert(t("cnRomTools.alerts.databaseUpdateSuccess"));
     } catch (error) {
       console.error("Failed to update CN repo:", error);
-      alert("更新失败: " + String(error));
+      alert(t("cnRomTools.alerts.updateFailed", { error: String(error) }));
     } finally {
       setIsUpdating(false);
     }
@@ -326,11 +326,11 @@ export default function CnName() {
     if (!checkPath) return;
 
     if (!selectedSystem) {
-      alert("请先选择游戏平台");
+      alert(t("cnRomTools.alerts.selectPlatformFirst"));
       return;
     }
 
-    if (!confirm(`确定要匹配英文名吗？\n这将扫描该目录下的所有 ROM，并根据本地数据库自动匹配英文名。\n仅置信度极高 (>95%) 的匹配会被应用。\n结果将保存到临时目录。`)) {
+    if (!confirm(t("cnRomTools.confirms.autoFixNaming"))) {
       return;
     }
 
@@ -338,12 +338,12 @@ export default function CnName() {
     setMatchProgress(null);
     try {
       const result = await api.autoFixNaming(checkPath, selectedSystem.id);
-      alert(`匹配完成！\n成功: ${result.success}\n失败/跳过: ${result.failed}`);
+      alert(t("cnRomTools.alerts.matchComplete", { success: result.success, failed: result.failed }));
       // 重新扫描以显示最新状态
       handleCheck();
     } catch (error) {
       console.error("Failed to auto fix:", error);
-      alert("匹配失败: " + String(error));
+      alert(t("cnRomTools.alerts.matchFailed", { error: String(error) }));
     } finally {
       setIsFixing(false);
       setMatchProgress(null);
@@ -353,7 +353,7 @@ export default function CnName() {
   const handleSetAsRomName = async () => {
     if (!checkPath) return;
     
-    if (!confirm(`确定要将提取的中文名设置为 ROM 名吗？\n这将把从文件名提取的中文名写入到临时 metadata 中。`)) {
+    if (!confirm(t("cnRomTools.confirms.setAsRomName"))) {
       return;
     }
 
@@ -363,11 +363,11 @@ export default function CnName() {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("set_extracted_cn_as_name", { directory: checkPath });
       }
-      alert("设置完成！");
+      alert(t("cnRomTools.alerts.setComplete"));
       handleCheck();
     } catch (error) {
       console.error("Failed to set ROM name:", error);
-      alert("设置失败: " + String(error));
+      alert(t("cnRomTools.alerts.setFailed", { error: String(error) }));
     } finally {
       setIsSettingName(false);
     }
@@ -376,7 +376,7 @@ export default function CnName() {
   const handleAddAsTag = async () => {
     if (!checkPath) return;
     
-    if (!confirm(`确定要将英文名添加为额外 tag 吗？\n这将把匹配到的英文名作为 x-mrrm-eng tag 写入临时 metadata。`)) {
+    if (!confirm(t("cnRomTools.confirms.addAsTag"))) {
       return;
     }
 
@@ -386,11 +386,11 @@ export default function CnName() {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("add_english_as_tag", { directory: checkPath });
       }
-      alert("添加完成！");
+      alert(t("cnRomTools.alerts.addComplete"));
       handleCheck();
     } catch (error) {
       console.error("Failed to add tag:", error);
-      alert("添加失败: " + String(error));
+      alert(t("cnRomTools.alerts.addFailed", { error: String(error) }));
     } finally {
       setIsAddingTag(false);
     }
@@ -422,10 +422,10 @@ export default function CnName() {
         targetPath: savePath,
         format
       });
-      alert(`导出成功！\n文件已保存到: ${savePath}`);
+      alert(t("cnRomTools.alerts.exportSuccess", { path: savePath }));
     } catch (error) {
       console.error("Failed to export:", error);
-      alert("导出失败: " + String(error));
+      alert(t("cnRomTools.alerts.exportFailed", { error: String(error) }));
     } finally {
       setIsExporting(false);
     }
@@ -466,7 +466,7 @@ export default function CnName() {
       }
     } catch (error) {
       console.error("Failed to save english name:", error);
-      alert("保存失败: " + String(error));
+      alert(t("cnRomTools.alerts.saveFailed", { error: String(error) }));
     }
 
     setEditingFile(null);
@@ -499,16 +499,15 @@ export default function CnName() {
           <div className="p-6 border-b border-border-default">
             <div className="flex items-center gap-3 mb-2">
               <Info className="w-5 h-5 text-accent-primary" />
-              <h2 className="text-lg font-bold text-text-primary">关于本项目</h2>
+              <h2 className="text-lg font-bold text-text-primary">{t("cnRomTools.about.title")}</h2>
             </div>
             <p className="text-sm text-text-secondary leading-relaxed">
-              本软件集成了 <a href="https://github.com/yingw/rom-name-cn" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline font-bold">yingw/rom-name-cn</a> 项目的数据。
-              该项目提供了极其详尽的 ROM 中英文名称对照表，涵盖了绝大多数主流复古游戏平台。通过模糊匹配算法，我们能够在抓取元数据时自动识别并匹配中文名称。
+              {t("cnRomTools.about.description.part1")} <a href="https://github.com/yingw/rom-name-cn" target="_blank" rel="noopener noreferrer" className="text-accent-primary hover:underline font-bold">yingw/rom-name-cn</a> {t("cnRomTools.about.description.part2")}
             </p>
           </div>
           <div className="bg-bg-tertiary/50 p-4 flex items-center justify-between">
             <div className="text-xs text-text-muted font-medium">
-              数据来源: GitHub (yingw/rom-name-cn)
+              {t("cnRomTools.about.dataSource")}
             </div>
             <div className="flex gap-4">
               <a 
@@ -517,7 +516,7 @@ export default function CnName() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs font-bold text-text-primary hover:text-accent-primary transition-colors"
               >
-                访问仓库 <ExternalLink className="w-3 h-3" />
+                {t("cnRomTools.about.visitRepo")} <ExternalLink className="w-3 h-3" />
               </a>
               <button
                 onClick={handleUpdate}
@@ -525,7 +524,7 @@ export default function CnName() {
                 className="flex items-center gap-1.5 text-xs font-bold text-accent-primary hover:text-accent-primary/80 transition-colors disabled:opacity-50"
               >
                 {isUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                {isUpdating ? "更新中..." : "更新数据库"}
+                {isUpdating ? t("cnRomTools.about.updating") : t("cnRomTools.about.updateDatabase")}
               </button>
             </div>
           </div>
@@ -551,14 +550,14 @@ export default function CnName() {
                 type="text" 
                 value={checkPath}
                 readOnly
-                placeholder="选择要检查的 ROM 目录..."
+                placeholder={t("cnRomTools.selectDirectoryPlaceholder")}
                 className="flex-1 bg-bg-secondary border border-border-default rounded-xl px-4 py-3 text-sm text-text-primary focus:outline-none"
               />
               <button 
                 onClick={handleBrowse}
                 className="px-4 py-2 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold transition-all border border-border-default text-sm whitespace-nowrap"
               >
-                浏览...
+                {t("cnRomTools.browse")}
               </button>
             </div>
             <button
@@ -567,7 +566,7 @@ export default function CnName() {
               className="px-6 py-2 bg-accent-primary text-bg-primary font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2 whitespace-nowrap"
             >
               {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              刷新
+              {t("cnRomTools.refresh")}
             </button>
           </div>
 
@@ -580,14 +579,14 @@ export default function CnName() {
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
                       <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[0]}%` }}>
-                        文件名
+                        {t("cnRomTools.table.fileName")}
                         <div
                           className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent-primary/50 transition-colors"
                           onMouseDown={(e) => handleResizeStart(0, e)}
                         />
                       </th>
                       <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[1]}%` }}>
-                        ROM名 (Meta)
+                        {t("cnRomTools.table.romName")}
                         <div
                           className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent-primary/50 transition-colors"
                           onMouseDown={(e) => handleResizeStart(1, e)}
@@ -595,15 +594,15 @@ export default function CnName() {
                       </th>
                       <th className="px-6 py-3 font-bold relative" style={{ width: `${columnWidths[2]}%` }}>
                         <div className="flex items-center justify-between">
-                          <span>提取中文名</span>
+                          <span>{t("cnRomTools.table.extractedCnName")}</span>
                           <button
                             onClick={handleSetAsRomName}
                             disabled={isSettingName}
                             className="px-2 py-1 text-[10px] bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors disabled:opacity-50 normal-case font-medium"
-                            title="将提取的中文名设置为 ROM 名"
+                            title={t("cnRomTools.table.setAsRomNameTitle")}
                           >
                             {isSettingName ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3 inline mr-1" />}
-                            设置为ROM名
+                            {t("cnRomTools.table.setAsRomName")}
                           </button>
                         </div>
                         <div
@@ -616,9 +615,9 @@ export default function CnName() {
                           <button
                             onClick={toggleSort}
                             className="flex items-center gap-1 hover:text-accent-primary transition-colors cursor-pointer"
-                            title="点击排序"
+                            title={t("cnRomTools.table.clickToSort")}
                           >
-                            <span>匹配英文名</span>
+                            <span>{t("cnRomTools.table.matchedEnglishName")}</span>
                             {sortOrder === 'desc' && <ArrowDown className="w-3 h-3" />}
                             {sortOrder === 'asc' && <ArrowUp className="w-3 h-3" />}
                           </button>
@@ -626,10 +625,10 @@ export default function CnName() {
                             onClick={handleAddAsTag}
                             disabled={isAddingTag}
                             className="px-2 py-1 text-[10px] bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors disabled:opacity-50 normal-case font-medium"
-                            title="将英文名添加为额外 tag"
+                            title={t("cnRomTools.table.addAsTagTitle")}
                           >
                             {isAddingTag ? <Loader2 className="w-3 h-3 animate-spin" /> : <Tag className="w-3 h-3 inline mr-1" />}
-                            添加为额外tag
+                            {t("cnRomTools.table.addAsTag")}
                           </button>
                         </div>
                       </th>
@@ -646,7 +645,7 @@ export default function CnName() {
                           <td className="px-6 py-3 text-text-primary font-mono text-xs truncate" title={res.file}>{res.file}</td>
 
                           <td className={clsx("px-6 py-3 font-medium truncate", res.name && res.name !== res.file ? "text-text-primary" : "text-text-muted italic")}>
-                            {res.name === res.file ? "未设置" : res.name}
+                            {res.name === res.file ? t("cnRomTools.table.notSet") : res.name}
                           </td>
 
                           <td className={clsx("px-6 py-3 font-medium truncate", res.extracted_cn_name ? "text-green-400" : "text-text-muted italic")}>
@@ -681,9 +680,9 @@ export default function CnName() {
                                   "w-full text-left truncate hover:underline cursor-pointer",
                                   res.english_name ? "text-blue-400" : "text-text-muted italic"
                                 )}
-                                title={res.confidence ? `置信度: ${res.confidence.toFixed(1)}% - 点击编辑` : "点击编辑"}
+                                title={res.confidence ? t("cnRomTools.table.confidenceWithEdit", { confidence: res.confidence.toFixed(1) }) : t("cnRomTools.table.clickToEdit")}
                               >
-                                {res.english_name || "未匹配"}
+                                {res.english_name || t("cnRomTools.table.notMatched")}
                               </button>
                             )}
                           </td>
@@ -697,11 +696,11 @@ export default function CnName() {
               {/* Footer bar - shrink-0 to stay at bottom */}
               <div className="shrink-0 px-6 py-4 bg-bg-tertiary/30 border-t border-border-default flex items-center justify-between">
                 <div className="flex items-center gap-4 text-xs text-text-muted font-medium">
-                  <span>共 {checkResults.length} 个文件</span>
+                  <span>{t("cnRomTools.footer.totalFiles", { count: checkResults.length })}</span>
                   {missingCount > 0 && (
                     <span className="text-red-400 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" />
-                      {missingCount} 个未匹配英文名
+                      {t("cnRomTools.footer.missingEnglishNames", { count: missingCount })}
                     </span>
                   )}
                 </div>
@@ -716,7 +715,7 @@ export default function CnName() {
                     {isFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                     {isFixing && matchProgress
                       ? `(${matchProgress.current}/${matchProgress.total})`
-                      : "匹配英文名"}
+                      : t("cnRomTools.footer.matchEnglishName")}
                   </button>
 
                   {/* 导出按钮 */}
@@ -727,7 +726,7 @@ export default function CnName() {
                       className="flex items-center gap-2 px-4 py-2 bg-accent-primary text-bg-primary font-bold rounded-lg hover:opacity-90 transition-all shadow-lg shadow-accent-primary/20 text-xs disabled:opacity-50"
                     >
                       {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-                      导出 Metadata
+                      {t("cnRomTools.footer.exportMetadata")}
                     </button>
                     
                     {/* 导出格式选择菜单 */}
@@ -764,7 +763,7 @@ export default function CnName() {
           <div className="bg-bg-secondary border border-border-default rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* 弹窗头部 */}
             <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border-default">
-              <h3 className="text-lg font-bold text-text-primary">选择游戏平台</h3>
+              <h3 className="text-lg font-bold text-text-primary">{t("cnRomTools.systemPicker.title")}</h3>
               <button
                 onClick={() => setShowSystemPicker(false)}
                 className="p-1 hover:bg-bg-tertiary rounded-lg transition-colors"
@@ -781,7 +780,7 @@ export default function CnName() {
                   type="text"
                   value={systemFilter}
                   onChange={(e) => setSystemFilter(e.target.value)}
-                  placeholder="搜索平台..."
+                  placeholder={t("cnRomTools.systemPicker.searchPlaceholder")}
                   className="w-full bg-bg-tertiary border border-border-default rounded-lg pl-10 pr-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary"
                   autoFocus
                 />
@@ -792,7 +791,7 @@ export default function CnName() {
             <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
               {filteredSystems.length === 0 ? (
                 <div className="p-6 text-center text-text-muted text-sm">
-                  没有找到匹配的平台
+                  {t("cnRomTools.systemPicker.noResults")}
                 </div>
               ) : (
                 <div className="p-2">

@@ -408,6 +408,11 @@
   - [x] 自动去除英文名中的区域标签（如 (USA)）
   - [x] 按置信度排序（点击列头切换：降序→升序→取消）
   - [x] 表格列宽拖拽调整（鼠标拖拽列头分隔线）
+- [x] i18n 合规性修复
+  - [x] Settings.tsx - API 配置相关文字（13个翻译键）
+  - [x] Scraper.tsx - 未配置凭证警告（3个翻译键）
+  - [x] CnRomTools.tsx - 所有硬编码中文文字（50+个翻译键）
+  - [x] 更新翻译文件（zh-CN.json 和 en.json）
 
 
 #### 4.2 Settings & Configuration Management

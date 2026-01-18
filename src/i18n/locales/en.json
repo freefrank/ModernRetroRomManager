@@ -35,6 +35,11 @@
       "activeSources": "{{count}} active sources",
       "credentialsNote": "Please enter your API credentials. They are stored securely on your machine."
     },
+    "noCredentials": {
+      "title": "No API Credentials Configured",
+      "description": "Scraper requires API credentials to function. Please go to Settings to configure ScreenScraper or SteamGridDB API credentials.",
+      "goToSettings": "Go to Settings"
+    },
     "status": {
       "enabledSources": "Enabled Sources",
       "avgConfidence": "Avg Confidence",
@@ -199,6 +204,16 @@
       "mediaDirectory": "Media Directory",
       "defaultLocation": "Default Location"
     },
+    "apiConfig": {
+      "title": "API Configuration",
+      "editConfig": "Edit Config",
+      "username": "Username",
+      "password": "Password",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Enter username",
+      "passwordPlaceholder": "Enter password",
+      "credentialsHint": "Please enter your API credentials. They are stored securely on your machine."
+    },
     "language": {
       "title": "Language",
       "description": "Select interface language"
@@ -254,6 +269,68 @@
       "notReadable": "No read access",
       "notWritable": "Warning: No write access",
       "valid": "Valid path ✓"
+    }
+  },
+  "cnRomTools": {
+    "selectPlatform": "Select Platform",
+    "selectDirectoryPlaceholder": "Select ROM directory to check...",
+    "browse": "Browse...",
+    "refresh": "Refresh",
+    "about": {
+      "title": "About This Project",
+      "description": {
+        "part1": "This software integrates data from the",
+        "part2": "project. This project provides comprehensive ROM Chinese-English name mappings covering most mainstream retro gaming platforms. Through fuzzy matching algorithms, we can automatically identify and match Chinese names when scraping metadata."
+      },
+      "dataSource": "Data Source: GitHub (yingw/rom-name-cn)",
+      "visitRepo": "Visit Repository",
+      "updateDatabase": "Update Database",
+      "updating": "Updating..."
+    },
+    "table": {
+      "fileName": "File Name",
+      "romName": "ROM Name (Meta)",
+      "extractedCnName": "Extracted CN Name",
+      "matchedEnglishName": "Matched English Name",
+      "setAsRomName": "Set as ROM Name",
+      "setAsRomNameTitle": "Set extracted Chinese name as ROM name",
+      "addAsTag": "Add as Extra Tag",
+      "addAsTagTitle": "Add English name as extra tag",
+      "clickToSort": "Click to sort",
+      "notSet": "Not Set",
+      "notMatched": "Not Matched",
+      "confidenceWithEdit": "Confidence: {{confidence}}% - Click to edit",
+      "clickToEdit": "Click to edit"
+    },
+    "footer": {
+      "totalFiles": "Total {{count}} files",
+      "missingEnglishNames": "{{count}} missing English names",
+      "matchEnglishName": "Match English Name",
+      "exportMetadata": "Export Metadata"
+    },
+    "systemPicker": {
+      "title": "Select Game Platform",
+      "searchPlaceholder": "Search platform...",
+      "noResults": "No matching platforms found"
+    },
+    "alerts": {
+      "databaseUpdateSuccess": "Database updated successfully",
+      "updateFailed": "Update failed: {{error}}",
+      "selectPlatformFirst": "Please select a game platform first",
+      "matchComplete": "Matching complete!\nSuccess: {{success}}\nFailed/Skipped: {{failed}}",
+      "matchFailed": "Matching failed: {{error}}",
+      "setComplete": "Set complete!",
+      "setFailed": "Set failed: {{error}}",
+      "addComplete": "Add complete!",
+      "addFailed": "Add failed: {{error}}",
+      "exportSuccess": "Export successful!\nFile saved to: {{path}}",
+      "exportFailed": "Export failed: {{error}}",
+      "saveFailed": "Save failed: {{error}}"
+    },
+    "confirms": {
+      "autoFixNaming": "Are you sure you want to match English names?\nThis will scan all ROMs in the directory and automatically match English names based on the local database.\nOnly matches with very high confidence (>95%) will be applied.\nResults will be saved to the temporary directory.",
+      "setAsRomName": "Are you sure you want to set extracted Chinese names as ROM names?\nThis will write the Chinese names extracted from filenames to temporary metadata.",
+      "addAsTag": "Are you sure you want to add English names as extra tags?\nThis will write matched English names as x-mrrm-eng tags to temporary metadata."
     }
   }
 }
