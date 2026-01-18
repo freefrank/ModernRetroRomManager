@@ -472,7 +472,7 @@ export default function Settings() {
                     dragOverProvider === p.id && "ring-2 ring-accent-primary"
                   )}
                 >
-                  <div className="flex items-center p-5">
+                  <div className="flex items-center p-5 pointer-events-none">
                     <div className="cursor-grab active:cursor-grabbing text-text-muted hover:text-accent-primary transition-colors mr-3">
                       <GripVertical className="w-5 h-5" />
                     </div>
@@ -497,7 +497,7 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4" onDragStart={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-4 pointer-events-auto" onDragStart={(e) => e.stopPropagation()}>
                       <button
                         draggable={false}
                         onClick={() => handleEditConfig(p)}
