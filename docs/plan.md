@@ -196,19 +196,12 @@
 - [ ] 图片格式转换/压缩
 - [x] 本地缓存管理
 
-#### 2.5 前端集成
-- [x] 交互式 Scrape 对话框
-- [x] Tauri commands 对接 ScraperManager
-- [x] 前端 scraperApi 封装 (search, getMetadata, getMedia, autoScrape)
-- [x] 前端类型 definition (ScraperProviderInfo, ScraperSearchResult, etc.)
-- [x] Provider 配置 UI (API Key 管理)
-- [x] 搜索结果选择 UI (多源结果展示)
-- [x] 批量 Scrape 进度 UI
-- [x] 数据预览与暂存机制 (Temp Metadata & Media)
-- [x] 实时导出进度展示
-- [x] 预览模式下的元数据编辑器 (In-place Editor)
-- [x] 临时媒体资产管理 (Preview & Delete)
-- [x] 全面 i18n 覆盖 (Scraper & Detail modules)
+#### 2.6 中文数据库集成
+- [x] 本地 rom-name-cn 仓库管理 (Git Clone/Pull)
+- [x] CSV 解析与双路径搜索 (User Data + Resources)
+- [x] 智能匹配算法 (Jaro-Winkler)
+- [x] 独立管理页面与 Sidebar 入口
+- [x] Metadata 扩展 (x-english-name 支持)
 
 ### Phase 3: 导入导出
 
@@ -221,7 +214,7 @@
 - [x] 媒体资产关联 (Support local & temp media)
 
 #### 3.2 导出功能
-- [ ] gamelist.xml 生成
+- [ ] gamelist.xml 生成 (支持 <english-name>)
 - [x] metadata.txt 生成 (Pegasus 格式，支持 Block 级替换)
 - [ ] 自定义导出模板
 - [x] 异步导出任务 (Support media synchronization)
