@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, CheckCircle2, Wrench, AlertTriangle } from "lucide-react";
+import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Wrench, AlertTriangle } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
 
@@ -45,8 +45,18 @@ export default function CnName() {
       });
       if (selected && typeof selected === "string") {
         setCheckPath(selected);
-        // 清空之前的结果
+        // 清空之前的结果并自动扫描
         setCheckResults([]);
+        // 自动触发扫描
+        setIsChecking(true);
+        try {
+          const results = await api.scanDirectoryForNamingCheck(selected);
+          setCheckResults(results);
+        } catch (error) {
+          console.error("Failed to check directory:", error);
+        } finally {
+          setIsChecking(false);
+        }
       }
     } catch (error) {
       console.error("Failed to select directory:", error);
@@ -168,8 +178,8 @@ export default function CnName() {
                 disabled={!checkPath || isChecking || isFixing}
                 className="px-6 py-2 bg-accent-primary text-bg-primary font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2 whitespace-nowrap"
               >
-                {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                开始检查
+                {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                刷新
               </button>
             </div>
 
