@@ -451,11 +451,6 @@ pub struct ExportProgress {
     pub finished: bool,
 }
 
-#[tauri::command]
-pub async fn update_cn_repo() -> Result<(), String> {
-    crate::scraper::cn_repo::update_repo()
-}
-
 fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.filter_map(|e| e.ok()) {

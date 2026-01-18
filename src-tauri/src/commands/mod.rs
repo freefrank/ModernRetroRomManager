@@ -6,6 +6,7 @@ pub mod scraper;
 pub mod import;
 pub mod export;
 pub mod naming_check;
+pub mod tools;
 
 pub use config::*;
 // Removed re-exports to avoid ambiguity and circular deps, use explicit paths

@@ -46,7 +46,6 @@ pub fn run() {
             commands::scraper::save_temp_metadata,
             commands::scraper::get_temp_media_list,
             commands::scraper::delete_temp_media,
-            commands::scraper::update_cn_repo,
 
             // Export (New location)
             commands::export::export_scraped_data,
@@ -60,6 +59,9 @@ pub fn run() {
             commands::naming_check::add_english_as_tag,
             commands::naming_check::export_cn_metadata,
             commands::naming_check::update_english_name,
+
+            // Tools
+            commands::tools::update_cn_repo,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
