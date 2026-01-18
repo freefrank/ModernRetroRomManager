@@ -201,24 +201,28 @@
 - [x] Tauri commands 对接 ScraperManager
 - [x] 前端 scraperApi 封装 (search, getMetadata, getMedia, autoScrape)
 - [x] 前端类型定义 (ScraperProviderInfo, ScraperSearchResult, etc.)
-- [ ] Provider 配置 UI (API Key 管理)
-- [ ] 搜索结果选择 UI (多源结果展示)
-- [ ] 批量 Scrape 进度 UI
+- [x] Provider 配置 UI (API Key 管理)
+- [x] 搜索结果选择 UI (多源结果展示)
+- [x] 批量 Scrape 进度 UI
+- [x] 数据预览与暂存机制 (Temp Metadata & Media)
+- [x] 实时导出进度展示
 
 ### Phase 3: 导入导出
 
 #### 3.1 导入功能 (即时读取)
 - [x] EmulationStation gamelist.xml 解析
 - [x] metadata.txt 解析
+- [x] 临时元数据合并预览 (Temp metadata merging)
 - [ ] LaunchBox XML 解析
 - [ ] RetroArch .lpl 解析
-- [ ] 媒体资产关联
+- [x] 媒体资产关联 (Support local & temp media)
 
 #### 3.2 导出功能
 - [ ] gamelist.xml 生成
-- [ ] metadata.txt 生成
+- [x] metadata.txt 生成 (Pegasus 格式，支持 Block 级替换)
 - [ ] 自定义导出模板
-- [ ] 批量导出
+- [x] 异步导出任务 (Support media synchronization)
+- [x] 导出进度回调 (Tauri Emitter)
 
 ### Phase 4: 高级功能
 

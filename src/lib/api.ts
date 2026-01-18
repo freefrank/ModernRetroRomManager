@@ -209,4 +209,26 @@ export const scraperApi = {
       await tauriInvoke("export_scraped_data", { system, directory });
     }
   },
+
+  /** 保存手动编辑的临时元数据 */
+  async saveTempMetadata(system: string, directory: string, rom_id: string, metadata: ScraperGameMetadata): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("save_temp_metadata", { system, directory, rom_id, metadata });
+    }
+  },
+
+  /** 获取临时媒体列表 */
+  async getTempMediaList(system: string, rom_id: string): Promise<{ asset_type: string, path: string }[]> {
+    if (isTauri()) {
+      return tauriInvoke("get_temp_media_list", { system, rom_id });
+    }
+    return [];
+  },
+
+  /** 删除临时媒体 */
+  async deleteTempMedia(system: string, rom_id: string, assetType: string): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("delete_temp_media", { system, rom_id, assetType });
+    }
+  },
 };

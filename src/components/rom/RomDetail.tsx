@@ -4,7 +4,7 @@ import {
   X, Calendar, User, Building2, Globe, Gamepad2, Play, Star, 
   Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Loader2
 } from "lucide-react";
-import { resolveMediaUrlAsync } from "@/lib/api";
+import { resolveMediaUrlAsync, scraperApi } from "@/lib/api";
 import type { Rom } from "@/types";
 import { useRomStore } from "@/stores/romStore";
 import ScrapeDialog from "./ScrapeDialog";
@@ -28,14 +28,22 @@ function useMediaUrl(path: string | undefined): string | null {
 }
 
 export default function RomDetail({ rom, onClose }: RomDetailProps) {
-  const { exportData } = useRomStore();
+  const { exportData, updateTempMetadata, deleteTempMedia, isExporting, exportProgress } = useRomStore();
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Rom & { _activeTab: string }>>({});
+  const [tempMedia, setTempMedia] = useState<{ asset_type: string, path: string }[]>([]);
 
   useEffect(() => {
     if (rom) {
       setIsPreview(rom.has_temp_metadata);
+      setIsEditing(false);
+      if (rom.has_temp_metadata) {
+        scraperApi.getTempMediaList(rom.system, rom.file).then(setTempMedia);
+      } else {
+        setTempMedia([]);
+      }
     }
   }, [rom]);
 
@@ -48,24 +56,62 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
     genre: rom.temp_data.genre || rom.genre,
     release: rom.temp_data.release || rom.release,
     rating: rom.temp_data.rating || rom.rating,
-    box_front: rom.temp_data.box_front || rom.box_front,
+    box_front: tempMedia.find(m => m.asset_type === "boxfront")?.path || rom.temp_data.box_front || rom.box_front,
+    video: tempMedia.find(m => m.asset_type === "video")?.path || rom.temp_data.video || rom.video,
+    logo: tempMedia.find(m => m.asset_type === "logo")?.path || rom.temp_data.logo || rom.logo,
+    background: tempMedia.find(m => m.asset_type === "background")?.path || rom.temp_data.background || rom.background,
+    screenshot: tempMedia.find(m => m.asset_type === "screenshot")?.path || rom.temp_data.screenshot || rom.screenshot,
   } : rom;
 
-  const heroSource = displayData?.background || displayData?.screenshot || displayData?.box_front;
+  const currentData = isEditing ? { ...displayData, ...editForm } : displayData;
+
+  const heroSource = currentData?.background || currentData?.screenshot || currentData?.box_front;
   const heroUrl = useMediaUrl(heroSource);
-  const videoUrl = useMediaUrl(displayData?.video);
-  const logoUrl = useMediaUrl(displayData?.logo);
+  const videoUrl = useMediaUrl(currentData?.video);
+  const logoUrl = useMediaUrl(currentData?.logo);
 
   const handleExport = async () => {
     if (!rom) return;
-    setIsExporting(true);
     try {
       await exportData(rom.system, rom.directory);
       setIsPreview(false);
     } catch (error) {
       console.error("Export failed:", error);
-    } finally {
-      setIsExporting(false);
+    }
+  };
+
+  const handleStartEdit = () => {
+    setEditForm({ ...displayData, _activeTab: editForm._activeTab || "info" });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!rom || !editForm) return;
+    try {
+      await updateTempMetadata(rom.system, rom.directory, rom.file, {
+        name: editForm.name || "",
+        description: editForm.description,
+        developer: editForm.developer,
+        publisher: editForm.publisher,
+        genres: editForm.genre ? [editForm.genre] : [],
+        release_date: editForm.release,
+        rating: typeof editForm.rating === 'string' ? parseFloat(editForm.rating) : editForm.rating,
+      });
+      setIsEditing(false);
+      setIsPreview(true);
+    } catch (error) {
+      console.error("Save edit failed:", error);
+    }
+  };
+
+  const handleDeleteMedia = async (assetType: string) => {
+    if (!rom) return;
+    try {
+      await deleteTempMedia(rom.system, rom.file, assetType);
+      const newList = await scraperApi.getTempMediaList(rom.system, rom.file);
+      setTempMedia(newList);
+    } catch (error) {
+      console.error("Delete media failed:", error);
     }
   };
 
@@ -94,9 +140,9 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
               {/* Header Image/Video */}
               <div className="relative aspect-video w-full bg-bg-secondary overflow-hidden shrink-0">
                 {videoUrl ? (
-                  <video src={videoUrl} autoPlay muted loop className="w-full h-full object-cover" />
+                  <video key={videoUrl} src={videoUrl} autoPlay muted loop className="w-full h-full object-cover" />
                 ) : heroUrl ? (
-                  <img src={heroUrl} alt="" className="w-full h-full object-cover" />
+                  <img key={heroUrl} src={heroUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-text-muted/10">
                     <Gamepad2 className="w-24 h-24" />
@@ -112,7 +158,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                   </button>
 
                   <div className="flex gap-2">
-                    {rom.has_temp_metadata && (
+                    {rom.has_temp_metadata && !isEditing && (
                       <button
                         onClick={() => setIsPreview(!isPreview)}
                         className={clsx(
@@ -129,76 +175,141 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent">
                   {logoUrl ? (
-                    <img src={logoUrl} alt={displayData?.name} className="h-12 mb-2 object-contain drop-shadow-lg" />
+                    <img src={logoUrl} alt={currentData?.name} className="h-12 mb-2 object-contain drop-shadow-lg" />
                   ) : (
-                    <h2 className="text-3xl font-bold text-text-primary mb-2 leading-tight">
-                      {displayData?.name}
-                    </h2>
+                    <div className="mb-2">
+                      {isEditing ? (
+                        <input
+                          value={editForm.name || ""}
+                          onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                          className="text-3xl font-bold bg-bg-secondary/50 border border-accent-primary/30 rounded px-2 w-full text-text-primary outline-none focus:border-accent-primary"
+                        />
+                      ) : (
+                        <h2 className="text-3xl font-bold text-text-primary leading-tight">
+                          {currentData?.name}
+                        </h2>
+                      )}
+                    </div>
                   )}
                   <div className="flex items-center gap-3 text-sm">
                     <span className="px-2 py-0.5 rounded bg-bg-tertiary text-text-primary font-medium uppercase text-xs border border-border-default">
                       {rom.system}
                     </span>
-                    {displayData?.rating && (
+                    {!isEditing && currentData?.rating && (
                       <div className="flex items-center gap-1 text-accent-warning">
                         <Star className="w-4 h-4 fill-current" />
-                        <span>{displayData.rating}</span>
+                        <span>{currentData.rating}</span>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="p-6 flex gap-3 border-b border-border-default bg-bg-primary sticky top-0 z-20">
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-bold transition-all shadow-lg shadow-accent-primary/20 active:scale-95">
-                  <Play className="w-5 h-5 fill-current" />
-                  Play
-                </button>
-                <button
-                  onClick={() => setIsScrapeDialogOpen(true)}
-                  className="px-4 py-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold transition-all border border-border-default"
-                  title="抓取元数据"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
-                <button className="px-4 py-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold transition-all border border-border-default">
-                  <Edit2 className="w-5 h-5" />
-                </button>
+              <div className="flex border-b border-border-default bg-bg-primary shrink-0 overflow-x-auto no-scrollbar">
+                {["info", "media"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setEditForm({ ...editForm, _activeTab: tab })}
+                    className={clsx(
+                      "px-6 py-4 text-xs font-black uppercase tracking-widest transition-all relative",
+                      (editForm._activeTab || "info") === tab
+                        ? "text-accent-primary"
+                        : "text-text-muted hover:text-text-primary"
+                    )}
+                  >
+                    {tab === "info" ? "基本信息" : "媒体资产"}
+                    {(editForm._activeTab || "info") === tab && (
+                      <motion.div layoutId="active_tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-primary" />
+                    )}
+                  </button>
+                ))}
               </div>
 
-              {/* Details */}
-              <div className="flex-1 p-6 space-y-8">
-                {isPreview && (
-                  <div className="p-4 bg-accent-primary/5 border border-accent-primary/20 rounded-2xl flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center shrink-0">
-                      <Info className="w-5 h-5 text-accent-primary" />
+              <div className="flex-1 p-6 space-y-8 overflow-y-auto custom-scrollbar">
+                {(editForm._activeTab || "info") === "info" ? (
+                  <>
+                    {isPreview && !isEditing && (
+                      <div className="p-4 bg-accent-primary/5 border border-accent-primary/20 rounded-2xl flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center shrink-0">
+                          <Info className="w-5 h-5 text-accent-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-bold text-text-primary tracking-tight">预览抓取数据</h4>
+                          <p className="text-xs text-text-muted mt-1 leading-relaxed">
+                            这些数据仅保存在临时目录中。您可以检查描述和封面，满意后点击底部的“导出到库”将其永久应用。
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        游戏描述
+                      </h3>
+                      {isEditing ? (
+                        <textarea
+                          value={editForm.description || ""}
+                          onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                          rows={6}
+                          className="w-full bg-bg-secondary/50 border border-border-default rounded-xl p-3 text-sm text-text-primary outline-none focus:border-accent-primary transition-all resize-none font-medium leading-relaxed"
+                        />
+                      ) : (
+                        <p className="text-text-secondary leading-relaxed text-sm font-medium">
+                          {currentData?.description || currentData?.summary || "暂无描述。"}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-bold text-text-primary tracking-tight">预览抓取数据</h4>
-                      <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                        这些数据仅保存在临时目录中。您可以检查描述和封面，满意后点击底部的“导出到库”将其永久应用。
-                      </p>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      {isEditing ? (
+                        <>
+                          <EditItem label="发行日期" value={editForm.release} onChange={v => setEditForm({...editForm, release: v})} />
+                          <EditItem label="开发商" value={editForm.developer} onChange={v => setEditForm({...editForm, developer: v})} />
+                          <EditItem label="发行商" value={editForm.publisher} onChange={v => setEditForm({...editForm, publisher: v})} />
+                          <EditItem label="游戏类型" value={editForm.genre} onChange={v => setEditForm({...editForm, genre: v})} />
+                        </>
+                      ) : (
+                        <>
+                          <InfoItem icon={<Calendar />} label="发行日期" value={currentData?.release} />
+                          <InfoItem icon={<Building2 />} label="开发商" value={currentData?.developer} />
+                          <InfoItem icon={<Globe />} label="发行商" value={currentData?.publisher} />
+                          <InfoItem icon={<User />} label="游戏类型" value={currentData?.genre} />
+                        </>
+                      )}
                     </div>
+                  </>
+                ) : (
+                  <div className="space-y-6">
+                    <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-4">媒体管理 (临时目录)</h3>
+                    {tempMedia.length === 0 ? (
+                      <div className="py-12 border-2 border-dashed border-border-default rounded-2xl flex flex-col items-center justify-center text-text-muted opacity-50">
+                        <Gamepad2 className="w-12 h-12 mb-2" />
+                        <p className="text-sm font-bold">暂无抓取的媒体文件</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        {tempMedia.map(m => (
+                          <div key={m.asset_type} className="group relative aspect-video bg-bg-secondary rounded-xl border border-border-default overflow-hidden shadow-sm">
+                            <MediaPreview path={m.path} />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2">
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest mb-2 bg-accent-primary px-2 py-0.5 rounded shadow-lg">
+                                {m.asset_type}
+                              </span>
+                              <button 
+                                onClick={() => handleDeleteMedia(m.asset_type)}
+                                className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/30"
+                                title="删除该资产"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-
-                <div>
-                  <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    游戏描述
-                  </h3>
-                  <p className="text-text-secondary leading-relaxed text-sm font-medium">
-                    {displayData?.description || displayData?.summary || "暂无描述。"}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <InfoItem icon={<Calendar />} label="发行日期" value={displayData?.release} />
-                  <InfoItem icon={<Building2 />} label="开发商" value={displayData?.developer} />
-                  <InfoItem icon={<Globe />} label="发行商" value={displayData?.publisher} />
-                  <InfoItem icon={<User />} label="游戏类型" value={displayData?.genre} />
-                </div>
 
                 <div className="pt-6 border-t border-border-default">
                   <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-3">文件详情</h3>
@@ -216,30 +327,56 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
               </div>
 
               {/* Footer Actions */}
-              <div className="p-6 border-t border-border-default bg-bg-secondary/30 flex justify-between items-center px-8 shrink-0">
-                <button className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
-                  <Trash2 className="w-4 h-4" />
-                  移除
-                </button>
-                
-                <div className="flex gap-3">
-                  {isPreview ? (
-                    <button
-                      onClick={handleExport}
-                      disabled={isExporting}
-                      className="flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
-                    >
-                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      导出到库
-                    </button>
+              <div className="p-6 border-t border-border-default bg-bg-secondary/30 shrink-0">
+                <div className="flex justify-between items-center px-2">
+                  {isEditing ? (
+                    <>
+                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-text-secondary hover:text-text-primary font-bold text-sm transition-all">取消</button>
+                      <button onClick={handleSaveEdit} className="flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 active:scale-95 transition-all">
+                        <Check className="w-4 h-4 stroke-[3px]" /> 保存预览
+                      </button>
+                    </>
                   ) : (
-                    <button
-                      onClick={onClose}
-                      className="flex items-center gap-2 px-8 py-2.5 bg-bg-tertiary text-text-primary rounded-xl font-black text-sm hover:bg-border-hover transition-all active:scale-95"
-                    >
-                      <Check className="w-4 h-4" />
-                      完成
-                    </button>
+                    <>
+                      <div className="flex gap-2">
+                        <button onClick={() => setIsScrapeDialogOpen(true)} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title="重新抓取"><Download className="w-5 h-5" /></button>
+                        <button onClick={handleStartEdit} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title="手动编辑"><Edit2 className="w-5 h-5" /></button>
+                      </div>
+                <div className="flex gap-3">
+                  {!isEditing && (
+                    isPreview ? (
+                      <button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="group relative flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
+                      >
+                        {isExporting ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>{exportProgress ? `${exportProgress.current}%` : '导出中'}</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>导出到库</span>
+                          </>
+                        )}
+                        {isExporting && exportProgress && (
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${exportProgress.current}%` }}
+                            className="absolute bottom-0 left-0 h-1 bg-white/30"
+                          />
+                        )}
+                      </button>
+                    ) : (
+
+                          <button onClick={onClose} className="flex items-center gap-2 px-8 py-2.5 bg-bg-tertiary text-text-primary rounded-xl font-black text-sm hover:bg-border-hover transition-all active:scale-95">
+                            <Check className="w-4 h-4" /> 完成
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -247,25 +384,37 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
           </>
         )}
       </AnimatePresence>
-      <ScrapeDialog
-        rom={rom}
-        isOpen={isScrapeDialogOpen}
-        onClose={() => setIsScrapeDialogOpen(false)}
-      />
+      <ScrapeDialog rom={rom} isOpen={isScrapeDialogOpen} onClose={() => setIsScrapeDialogOpen(false)} />
     </>
   );
+}
+
+function MediaPreview({ path }: { path: string }) {
+  const url = useMediaUrl(path);
+  if (!url) return <div className="w-full h-full bg-bg-tertiary animate-pulse" />;
+  if (path.toLowerCase().endsWith(".mp4") || path.toLowerCase().endsWith(".webm")) {
+    return <video src={url} className="w-full h-full object-cover" muted loop />;
+  }
+  return <img src={url} alt="" className="w-full h-full object-cover" />;
 }
 
 function InfoItem({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-accent-primary shrink-0 border border-border-default">
-        {icon}
-      </div>
+      <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-accent-primary shrink-0 border border-border-default">{icon}</div>
       <div className="min-w-0">
         <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mb-1">{label}</div>
         <div className="text-sm font-bold text-text-primary truncate">{value || "未知"}</div>
       </div>
+    </div>
+  );
+}
+
+function EditItem({ label, value, onChange }: { label: string, value?: string, onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black text-text-muted uppercase tracking-widest px-1">{label}</label>
+      <input value={value || ""} onChange={e => onChange(e.target.value)} className="w-full bg-bg-secondary/50 border border-border-default rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-accent-primary transition-all font-bold" />
     </div>
   );
 }

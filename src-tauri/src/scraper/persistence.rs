@@ -73,7 +73,7 @@ pub fn save_metadata_pegasus(
     };
 
     // 查找是否已存在该文件
-    let file_line = format!("file: {}", rom.file);
+    let file_marker = format!("file: {}", rom.file);
     
     let mut game_entry = String::new();
     game_entry.push_str(&format!("\ngame: {}\n", metadata.name));
@@ -86,13 +86,46 @@ pub fn save_metadata_pegasus(
     if let Some(ref p) = metadata.players { game_entry.push_str(&format!("players: {}\n", p)); }
     if let Some(ref r) = metadata.rating { game_entry.push_str(&format!("rating: {}%\n", (r * 100.0) as i32)); }
 
-    // 如果是临时文件，我们可能希望每个游戏只有一个 entry，方便预览
-    // 如果包含文件名则尝试替换（简单实现：删除旧 block）
-    if is_temp && content.contains(&file_line) {
-        // TODO: 真正的 block 替换逻辑比较复杂
-        // 临时方案：如果是临时目录，我们可以考虑为每个 ROM 单独存一个文件，或者在这里做全文搜索并清理
-        // 这里暂时先简单追加，后期再优化解析器
-        content.push_str(&game_entry);
+    // 极简处理：如果包含文件名则替换
+    if content.contains(&file_marker) {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut new_lines = Vec::new();
+        let mut in_target_block = false;
+
+        // 首先找到包含 file_marker 的 block 的起始索引
+        let mut target_start_idx = None;
+        for (i, line) in lines.iter().enumerate() {
+            if line.starts_with("game:") {
+                let mut j = i + 1;
+                while j < lines.len() && !lines[j].starts_with("game:") {
+                    if lines[j].trim() == file_marker {
+                        target_start_idx = Some(i);
+                        break;
+                    }
+                    j += 1;
+                }
+            }
+            if target_start_idx.is_some() { break; }
+        }
+
+        if let Some(start_idx) = target_start_idx {
+            for (i, line) in lines.iter().enumerate() {
+                if i == start_idx {
+                    in_target_block = true;
+                    new_lines.push(game_entry.trim());
+                    continue;
+                }
+                if in_target_block && line.starts_with("game:") {
+                    in_target_block = false;
+                }
+                if !in_target_block {
+                    new_lines.push(line);
+                }
+            }
+            content = new_lines.join("\n");
+        } else {
+            content.push_str(&game_entry);
+        }
     } else {
         content.push_str(&game_entry);
     }

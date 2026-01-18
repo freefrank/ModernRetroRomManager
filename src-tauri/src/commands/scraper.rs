@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 use tauri::{State, Emitter};
 use tokio::sync::RwLock;
@@ -304,7 +304,110 @@ pub async fn batch_scrape(
 }
 
 #[tauri::command]
+pub async fn save_temp_metadata(
+    system: String,
+    directory: String,
+    metadata: GameMetadata,
+    rom_id: String,
+) -> Result<(), String> {
+    let rom = RomInfo {
+        file: rom_id,
+        directory,
+        system,
+        name: metadata.name.clone(),
+        ..Default::default()
+    };
+
+    save_metadata_pegasus(&rom, &metadata, true)
+}
+
+#[tauri::command]
+pub async fn delete_temp_media(
+    system: String,
+    rom_id: String,
+    asset_type: String,
+) -> Result<(), String> {
+    let file_stem = Path::new(&rom_id)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&rom_id);
+
+    let media_dir = get_temp_dir()
+        .join("media")
+        .join(&system)
+        .join(file_stem);
+
+    if !media_dir.exists() {
+        return Ok(());
+    }
+
+    // 查找匹配 asset_type 的文件 (忽略扩展名)
+    for entry in fs::read_dir(media_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                if stem == asset_type {
+                    fs::remove_file(path).map_err(|e| e.to_string())?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct TempMediaInfo {
+    pub asset_type: String,
+    pub path: String,
+}
+
+#[tauri::command]
+pub async fn get_temp_media_list(
+    system: String,
+    rom_id: String,
+) -> Result<Vec<TempMediaInfo>, String> {
+    let file_stem = Path::new(&rom_id)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&rom_id);
+
+    let media_dir = get_temp_dir()
+        .join("media")
+        .join(&system)
+        .join(file_stem);
+
+    let mut list = Vec::new();
+    if media_dir.exists() {
+        for entry in fs::read_dir(media_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    list.push(TempMediaInfo {
+                        asset_type: stem.to_string(),
+                        path: path.to_string_lossy().to_string(),
+                    });
+                }
+            }
+        }
+    }
+    Ok(list)
+}
+
+/// 导出任务进度
+#[derive(Debug, Clone, Serialize)]
+pub struct ExportProgress {
+    pub current: usize,
+    pub total: usize,
+    pub message: String,
+    pub finished: bool,
+}
+
+#[tauri::command]
 pub async fn export_scraped_data(
+    app: tauri::AppHandle,
     system: String,
     directory: String,
 ) -> Result<(), String> {
@@ -313,37 +416,93 @@ pub async fn export_scraped_data(
         return Err("No temporary data to export".to_string());
     }
 
-    // 1. 读取临时元数据
-    let content = fs::read_to_string(&temp_metadata_path).map_err(|e| e.to_string())?;
+    let app_clone = app.clone();
     
-    // 2. 写入到目标目录 (Pegasus 模式)
-    let target_path = Path::new(&directory).join("metadata.txt");
-    
-    // 如果目标文件存在，我们执行合并/追加逻辑
-    // 简单起见，目前直接追加
-    let mut target_content = if target_path.exists() {
-        fs::read_to_string(&target_path).map_err(|e| e.to_string())?
-    } else {
-        String::new()
-    };
+    // 启动异步导出
+    tokio::spawn(async move {
+        let _ = app_clone.emit("export-progress", ExportProgress {
+            current: 0,
+            total: 100,
+            message: "准备导出元数据...".to_string(),
+            finished: false,
+        });
 
-    target_content.push_str("\n# Exported from ModernRetroRomManager\n");
-    target_content.push_str(&content);
+        // 1. 读取并写入元数据
+        if let Ok(content) = fs::read_to_string(&temp_metadata_path) {
+            let target_path = Path::new(&directory).join("metadata.txt");
+            let mut target_content = if target_path.exists() {
+                fs::read_to_string(&target_path).unwrap_or_default()
+            } else {
+                String::new()
+            };
 
-    fs::write(&target_path, target_content).map_err(|e| e.to_string())?;
+            target_content.push_str("\n# Exported from ModernRetroRomManager\n");
+            target_content.push_str(&content);
+            let _ = fs::write(&target_path, target_content);
+        }
 
-    // 3. 移动媒体文件
-    let temp_media_dir = get_temp_dir().join("media").join(&system);
-    let target_media_dir = Path::new(&directory).join("media");
+        // 2. 处理媒体文件导出
+        let temp_media_dir = get_temp_dir().join("media").join(&system);
+        let target_media_dir = Path::new(&directory).join("media");
 
-    if temp_media_dir.exists() {
-        fs::create_dir_all(&target_media_dir).map_err(|e| e.to_string())?;
-        // 简单移动整个系统目录下的媒体
-        // 这里可以使用更精细的按文件移动逻辑
-        copy_dir_recursive(&temp_media_dir, &target_media_dir)?;
-    }
+        if temp_media_dir.exists() {
+            let _ = app_clone.emit("export-progress", ExportProgress {
+                current: 20,
+                total: 100,
+                message: "正在同步媒体资产...".to_string(),
+                finished: false,
+            });
+
+            // 获取文件列表以计算进度
+            let mut files_to_copy: Vec<PathBuf> = Vec::new();
+            collect_files(&temp_media_dir, &mut files_to_copy);
+            
+            let total_files = files_to_copy.len();
+            for (i, src_path) in files_to_copy.into_iter().enumerate() {
+                let relative = src_path.strip_prefix(&temp_media_dir).unwrap_or(&src_path);
+                let dst_path = target_media_dir.join(relative);
+                
+                if let Some(parent) = dst_path.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                
+                if let Ok(_) = fs::copy(&src_path, &dst_path) {
+                    let progress = 20 + ((i + 1) as f32 / total_files as f32 * 75.0) as usize;
+                    let _ = app_clone.emit("export-progress", ExportProgress {
+                        current: progress,
+                        total: 100,
+                        message: format!("导出媒体: {} ({}/{})", 
+                            src_path.file_name().and_then(|n| n.to_str()).unwrap_or(""),
+                            i + 1, total_files),
+                        finished: false,
+                    });
+                }
+            }
+        }
+
+        // 3. 完成
+        let _ = app_clone.emit("export-progress", ExportProgress {
+            current: 100,
+            total: 100,
+            message: "导出完成".to_string(),
+            finished: true,
+        });
+    });
 
     Ok(())
+}
+
+fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_dir() {
+                collect_files(&path, files);
+            } else {
+                files.push(path);
+            }
+        }
+    }
 }
 
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {

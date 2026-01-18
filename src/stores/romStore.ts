@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { api, scraperApi, isTauri } from "@/lib/api";
-import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms } from "@/types";
+import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms, ScraperGameMetadata } from "@/types";
 
 interface ScanProgress {
   current: number;
@@ -64,6 +64,12 @@ interface RomState {
     totalSize: number;
   };
   fetchStats: () => Promise<void>;
+  updateTempMetadata: (system: string, directory: string, rom_id: string, metadata: ScraperGameMetadata) => Promise<void>;
+  deleteTempMedia: (system: string, rom_id: string, assetType: string) => Promise<void>;
+  // 导出状态
+  isExporting: boolean;
+  exportProgress: { current: number; total: number; message: string; finished: boolean } | null;
+  
   exportData: (system: string, directory: string) => Promise<void>;
 }
 
@@ -83,6 +89,10 @@ export const useRomStore = create<RomState>((set, get) => ({
       set({ roms: filtered ? filtered.roms : [] });
     }
   },
+  // 导出状态
+  isExporting: false,
+  exportProgress: null,
+
   fetchRoms: async (_filter?: FilterOption) => {
     set({ isLoadingRoms: true });
     try {
@@ -168,11 +178,44 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
 
   exportData: async (system: string, directory: string) => {
+    set({ isExporting: true, exportProgress: null });
     try {
+      const { listen } = await import("@tauri-apps/api/event");
+      const unlisten = await listen<{ current: number; total: number; message: string; finished: boolean }>("export-progress", (event) => {
+        set({ exportProgress: event.payload });
+        if (event.payload.finished) {
+          setTimeout(() => {
+            set({ isExporting: false, exportProgress: null });
+            get().fetchRoms();
+          }, 1500);
+          unlisten();
+        }
+      });
+
       await scraperApi.exportScrapedData(system, directory);
-      await get().fetchRoms();
     } catch (error) {
       console.error("Failed to export data:", error);
+      set({ isExporting: false });
+      throw error;
+    }
+  },
+
+  updateTempMetadata: async (system: string, directory: string, rom_id: string, metadata: ScraperGameMetadata) => {
+    try {
+      await scraperApi.saveTempMetadata(system, directory, rom_id, metadata);
+      await get().fetchRoms(); // 刷新以获取最新 temp_data
+    } catch (error) {
+      console.error("Failed to update temp metadata:", error);
+      throw error;
+    }
+  },
+
+  deleteTempMedia: async (system: string, rom_id: string, assetType: string) => {
+    try {
+      await scraperApi.deleteTempMedia(system, rom_id, assetType);
+      await get().fetchRoms();
+    } catch (error) {
+      console.error("Failed to delete temp media:", error);
       throw error;
     }
   },

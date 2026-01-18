@@ -41,6 +41,9 @@ pub fn run() {
             commands::scraper_set_provider_enabled,
             commands::apply_scraped_data,
             commands::batch_scrape,
+            commands::save_temp_metadata,
+            commands::get_temp_media_list,
+            commands::delete_temp_media,
             commands::export_scraped_data,
             // Import/Export
             commands::import_gamelist,
