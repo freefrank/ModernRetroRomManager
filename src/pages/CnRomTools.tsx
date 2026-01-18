@@ -14,6 +14,7 @@ interface CheckResult {
   name: string;
   english_name?: string;
   extracted_cn_name?: string;
+  confidence?: number; // 匹配置信度 0-100
 }
 
 // Pegasus 支持的所有系统 (基于用户实际配置)
@@ -103,6 +104,24 @@ export default function CnName() {
 
   // 匹配进度
   const [matchProgress, setMatchProgress] = useState<MatchProgress | null>(null);
+
+  // 编辑状态管理
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+
+  // 根据置信度计算背景色 (0-100 -> 红色到无色)
+  const getConfidenceColor = (confidence?: number): string => {
+    if (!confidence) return "transparent";
+    // 置信度越低越红，越高越透明
+    // 0-50: 深红到浅红
+    // 50-80: 浅红到橙色
+    // 80-100: 橙色到透明
+    const normalized = Math.max(0, Math.min(100, confidence));
+    if (normalized >= 95) return "transparent";
+    if (normalized >= 80) return `rgba(251, 146, 60, ${(95 - normalized) / 15 * 0.3})`; // orange
+    if (normalized >= 50) return `rgba(239, 68, 68, ${(80 - normalized) / 30 * 0.5})`; // red
+    return `rgba(220, 38, 38, ${(50 - normalized) / 50 * 0.7 + 0.3})`; // dark red
+  };
 
   // 监听匹配进度事件
   useEffect(() => {
@@ -299,28 +318,28 @@ export default function CnName() {
   const handleExport = async (format: "pegasus" | "gamelist") => {
     if (!checkPath) return;
     setShowExportMenu(false);
-    
+
     try {
       if (!isTauri()) return;
-      
+
       const { save } = await import("@tauri-apps/plugin-dialog");
       const defaultName = format === "pegasus" ? "metadata.pegasus.txt" : "gamelist.xml";
-      
+
       const savePath = await save({
         defaultPath: checkPath + "/" + defaultName,
-        filters: format === "pegasus" 
+        filters: format === "pegasus"
           ? [{ name: "Pegasus Metadata", extensions: ["txt"] }]
           : [{ name: "EmulationStation Gamelist", extensions: ["xml"] }],
       });
-      
+
       if (!savePath) return;
-      
+
       setIsExporting(true);
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("export_cn_metadata", { 
+      await invoke("export_cn_metadata", {
         directory: checkPath,
         targetPath: savePath,
-        format 
+        format
       });
       alert(`导出成功！\n文件已保存到: ${savePath}`);
     } catch (error) {
@@ -329,6 +348,37 @@ export default function CnName() {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // 开始编辑英文名
+  const handleStartEdit = (index: number, currentValue: string) => {
+    setEditingIndex(index);
+    setEditingValue(currentValue || "");
+  };
+
+  // 确认编辑
+  const handleConfirmEdit = async (index: number) => {
+    if (editingIndex !== index) return;
+
+    const result = checkResults[index];
+    const newValue = editingValue.trim();
+
+    // 更新本地状态
+    const updatedResults = [...checkResults];
+    updatedResults[index] = { ...result, english_name: newValue || undefined };
+    setCheckResults(updatedResults);
+
+    // TODO: 调用后端API保存更改
+    // await api.updateEnglishName(checkPath, result.file, newValue);
+
+    setEditingIndex(null);
+    setEditingValue("");
+  };
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setEditingValue("");
   };
 
   const missingCount = checkResults.filter(r => !r.english_name).length;
@@ -466,11 +516,13 @@ export default function CnName() {
                   <tbody className="divide-y divide-border-default">
                     {checkResults.map((res, idx) => {
                       const isMissing = !res.english_name;
-                      
+                      const isEditing = editingIndex === idx;
+                      const bgColor = getConfidenceColor(res.confidence);
+
                       return (
                         <tr key={idx} className={clsx("hover:bg-bg-tertiary/30 transition-colors", isMissing && "bg-red-500/5")}>
                           <td className="px-6 py-3 text-text-primary font-mono text-xs truncate" title={res.file}>{res.file}</td>
-                          
+
                           <td className={clsx("px-6 py-3 font-medium truncate", res.name && res.name !== res.file ? "text-text-primary" : "text-text-muted italic")}>
                             {res.name === res.file ? "未设置" : res.name}
                           </td>
@@ -479,8 +531,38 @@ export default function CnName() {
                             {res.extracted_cn_name || "-"}
                           </td>
 
-                          <td className={clsx("px-6 py-3 font-medium truncate", res.english_name ? "text-blue-400" : "text-text-muted italic")}>
-                            {res.english_name || "未匹配"}
+                          <td
+                            className="px-6 py-3 font-medium truncate relative"
+                            style={{ backgroundColor: bgColor }}
+                          >
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleConfirmEdit(idx);
+                                  } else if (e.key === "Escape") {
+                                    handleCancelEdit();
+                                  }
+                                }}
+                                onBlur={() => handleConfirmEdit(idx)}
+                                autoFocus
+                                className="w-full bg-bg-tertiary border border-accent-primary rounded px-2 py-1 text-sm text-text-primary focus:outline-none"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => handleStartEdit(idx, res.english_name || "")}
+                                className={clsx(
+                                  "w-full text-left truncate hover:underline cursor-pointer",
+                                  res.english_name ? "text-blue-400" : "text-text-muted italic"
+                                )}
+                                title={res.confidence ? `置信度: ${res.confidence.toFixed(1)}% - 点击编辑` : "点击编辑"}
+                              >
+                                {res.english_name || "未匹配"}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

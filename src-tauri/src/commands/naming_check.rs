@@ -39,6 +39,7 @@ pub struct NamingCheckResult {
     pub name: String,
     pub english_name: Option<String>,
     pub extracted_cn_name: Option<String>,
+    pub confidence: Option<f32>,
 }
 
 /// 从文件名提取英文后缀信息（如 "Original Generation 2" -> "OG2"）
@@ -80,6 +81,29 @@ fn extract_english_suffix(filename: &str) -> Option<String> {
     } else {
         Some(abbreviation)
     }
+}
+
+/// 清理英文名，去除括号中的区域信息
+/// 例如: "Super Mario Bros. (USA)" -> "Super Mario Bros."
+fn clean_english_name(name: &str) -> String {
+    // 去除 () 和 [] 中的内容
+    let mut result = String::new();
+    let mut depth = 0;
+
+    for ch in name.chars() {
+        match ch {
+            '(' | '[' => depth += 1,
+            ')' | ']' => depth = depth.saturating_sub(1),
+            _ => {
+                if depth == 0 {
+                    result.push(ch);
+                }
+            }
+        }
+    }
+
+    // 去除首尾空格
+    result.trim().to_string()
 }
 
 fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
@@ -152,6 +176,7 @@ pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckRe
             name: temp_data.and_then(|t| t.name.clone()).unwrap_or(r.name),
             english_name: temp_data.and_then(|t| t.english_name.clone()).or(r.english_name),
             extracted_cn_name: extracted,
+            confidence: temp_data.and_then(|t| t.confidence),
         }
     }).collect();
 
@@ -274,10 +299,14 @@ pub async fn auto_fix_naming(
         ) {
             // 只有一个匹配且置信度 > 0.75，或高置信度 > 0.95
             if confidence > 0.95 || confidence > 0.75 {
+                // 清理英文名，去除括号中的区域信息
+                let cleaned_eng_name = clean_english_name(&eng_name);
+
                 entries.push(TempMetadataEntry {
                     file: rom.file.clone(),
                     name: extracted_cn.clone(),
-                    english_name: Some(eng_name),
+                    english_name: Some(cleaned_eng_name),
+                    confidence: Some(confidence * 100.0), // 转换为百分比
                 });
                 success_count += 1;
             } else {
@@ -304,6 +333,7 @@ struct TempMetadataEntry {
     file: String,
     name: Option<String>,
     english_name: Option<String>,
+    confidence: Option<f32>,
 }
 
 /// 保存临时元数据到 temp 目录
@@ -366,11 +396,13 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
             // 更新或新增
             if let Some(entry) = entries.iter_mut().find(|e| e.file == rom.file) {
                 entry.name = Some(cn_name);
+                // 保留原有的 english_name 和 confidence
             } else {
                 entries.push(TempMetadataEntry {
                     file: rom.file,
                     name: Some(cn_name),
                     english_name: None,
+                    confidence: None,
                 });
             }
             success_count += 1;
