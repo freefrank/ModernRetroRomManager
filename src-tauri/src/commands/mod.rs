@@ -5,8 +5,10 @@ pub mod directory;
 pub mod scraper;
 pub mod import;
 pub mod export;
+pub mod naming_check;
 
 pub use config::*;
+
 pub use rom::*;
 pub use system::*;
 pub use directory::*;

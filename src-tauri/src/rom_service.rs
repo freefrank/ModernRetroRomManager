@@ -38,8 +38,10 @@ pub struct RomInfo {
     pub screenshot: Option<String>,
     pub titlescreen: Option<String>,
     pub video: Option<String>,
+    pub english_name: Option<String>,
     // 预览数据 (PegasusGame 结构比较接近原始解析结果)
     pub temp_data: Option<PegasusGame>,
+
     pub has_temp_metadata: bool,
 }
 
@@ -84,7 +86,9 @@ impl From<PegasusGame> for RomInfo {
             screenshot: game.screenshot,
             titlescreen: game.titlescreen,
             video: game.video,
+            english_name: game.extra.get("x-english-name").cloned(),
             temp_data: None,
+
             has_temp_metadata: false,
         }
     }
@@ -376,9 +380,12 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
         players: Option<String>,
         releasedate: Option<String>,
         rating: Option<f32>,
+        #[serde(rename = "english-name")]
+        english_name: Option<String>,
     }
     
     let gamelist_path = dir_path.join("gamelist.xml");
+
     if !gamelist_path.exists() {
         return scan_rom_files(dir_path, system_name);
     }
@@ -432,9 +439,11 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 screenshot: None,
                 titlescreen: None,
                 video: None,
+                english_name: g.english_name,
             }
         })
         .collect())
+
 }
 
 
@@ -499,9 +508,11 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                             screenshot: None,
                             titlescreen: None,
                             video: None,
+                            english_name: None,
                             has_temp_metadata: false,
                             temp_data: None,
                         });
+
                     }
                 }
             }

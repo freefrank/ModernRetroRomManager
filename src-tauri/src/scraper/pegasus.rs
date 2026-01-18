@@ -57,6 +57,7 @@ pub struct PegasusGame {
     pub screenshot: Option<String>,
     pub titlescreen: Option<String>,
     pub video: Option<String>,
+    #[serde(skip)] // extra 字段单独处理
     pub extra: HashMap<String, String>,
 }
 
@@ -243,6 +244,10 @@ fn apply_key_value(
             "assets.titlescreen" | "assets.title_screen" => g.titlescreen = first_value(),
             "assets.video" | "assets.videos" => g.video = first_value(),
             
+            "x-english-name" => {
+                g.extra.insert("x-english-name".to_string(), value.to_string());
+            }
+
             _ if key.starts_with("x-") => {
                 g.extra.insert(key.to_string(), value.to_string());
             }

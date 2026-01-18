@@ -26,6 +26,7 @@ export interface Rom {
   screenshot?: string;
   titlescreen?: string;
   video?: string;
+  english_name?: string;
   // 预览相关
   has_temp_metadata: boolean;
   temp_data?: any;

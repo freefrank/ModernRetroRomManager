@@ -96,6 +96,14 @@ export const api = {
       total_systems: roms.length,
     };
   },
+
+  /** 扫描目录进行命名检查 */
+  async scanDirectoryForNamingCheck(path: string): Promise<{ file: string; name: string; english_name?: string }[]> {
+    if (isTauri()) {
+      return await tauriInvoke("scan_directory_for_naming_check", { path });
+    }
+    return [];
+  },
 };
 
 // 删除 resolveMediaUrl (未被调用且同步返回 Promise)

@@ -80,6 +80,8 @@ pub fn run() {
             // Scraper config commands (from settings file)
             commands::get_scraper_configs,
             commands::save_scraper_config,
+            // Naming check
+            commands::naming_check::scan_directory_for_naming_check,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
