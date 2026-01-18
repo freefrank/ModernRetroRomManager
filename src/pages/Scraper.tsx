@@ -25,7 +25,7 @@ export default function Scraper() {
 
   const handleEditConfig = (provider: any) => {
     setEditingProvider(provider.id);
-    setCredentials({}); // 生产环境通常不回显密码
+    setCredentials({}); 
   };
 
   const handleSaveConfig = async () => {
@@ -71,17 +71,17 @@ export default function Scraper() {
           <section className="mb-10">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-bg-secondary rounded-2xl border border-border-default">
-                <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">已启用源</div>
+                <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">{t("scraper.status.enabledSources")}</div>
                 <div className="text-2xl font-bold text-accent-primary">
                   {providers.filter(p => p.enabled).length} / {providers.length}
                 </div>
               </div>
               <div className="p-4 bg-bg-secondary rounded-2xl border border-border-default">
-                <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">平均置信度</div>
+                <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">{t("scraper.status.avgConfidence")}</div>
                 <div className="text-2xl font-bold text-green-400">92%</div>
               </div>
               <div className="p-4 bg-bg-secondary rounded-2xl border border-border-default">
-                <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">已配置凭据</div>
+                <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">{t("scraper.status.configuredCredentials")}</div>
                 <div className="text-2xl font-bold text-blue-400">
                   {providers.filter(p => p.has_credentials).length}
                 </div>
@@ -115,7 +115,7 @@ export default function Scraper() {
                         <h3 className="font-bold text-text-primary text-lg">{p.name}</h3>
                         {p.has_credentials && (
                           <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-tighter border border-green-500/20">
-                            已认证
+                            {t("scraper.status.authenticated")}
                           </span>
                         )}
                       </div>
@@ -131,7 +131,7 @@ export default function Scraper() {
                       <button
                         onClick={() => handleEditConfig(p)}
                         className="p-2.5 rounded-xl bg-bg-tertiary text-text-secondary hover:text-accent-primary hover:bg-bg-primary transition-all border border-transparent hover:border-accent-primary/30"
-                        title="配置"
+                        title={t("common.edit")}
                       >
                         <Key className="w-5 h-5" />
                       </button>
@@ -155,27 +155,27 @@ export default function Scraper() {
                         <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
                           <Info className="w-4 h-4 text-blue-400 mt-0.5" />
                           <p className="text-xs text-blue-200 leading-relaxed">
-                            请输入该源的 API 凭据。这些信息将加密存储在本地。
+                            {t("scraper.apiConfig.credentialsNote")}
                           </p>
                         </div>
 
                         {p.id === "screenscraper" ? (
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">用户名</label>
+                              <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">{t("scraper.fields.username")}</label>
                               <input
                                 type="text"
-                                placeholder="SS Username"
+                                placeholder={t("scraper.fields.username")}
                                 value={credentials.username || ""}
                                 onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
                                 className="w-full px-4 py-2.5 bg-bg-secondary border border-border-default rounded-xl focus:outline-none focus:border-accent-primary text-sm text-text-primary shadow-inner"
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">密码</label>
+                              <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">{t("scraper.fields.password")}</label>
                               <input
                                 type="password"
-                                placeholder="SS Password"
+                                placeholder={t("scraper.fields.password")}
                                 value={credentials.password || ""}
                                 onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                                 className="w-full px-4 py-2.5 bg-bg-secondary border border-border-default rounded-xl focus:outline-none focus:border-accent-primary text-sm text-text-primary shadow-inner"
@@ -184,10 +184,10 @@ export default function Scraper() {
                           </div>
                         ) : (
                           <div>
-                            <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">API KEY</label>
+                            <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">{t("scraper.fields.apiKey")}</label>
                             <input
                               type="password"
-                              placeholder="Enter API Key"
+                              placeholder={t("scraper.fields.apiKey")}
                               value={credentials.api_key || ""}
                               onChange={(e) => setCredentials({ ...credentials, api_key: e.target.value })}
                               className="w-full px-4 py-2.5 bg-bg-secondary border border-border-default rounded-xl focus:outline-none focus:border-accent-primary text-sm text-text-primary shadow-inner"
@@ -200,14 +200,14 @@ export default function Scraper() {
                             onClick={() => setEditingProvider(null)}
                             className="px-4 py-2 text-sm font-bold text-text-secondary hover:text-text-primary transition-colors"
                           >
-                            取消
+                            {t("common.cancel")}
                           </button>
                           <button
                             onClick={handleSaveConfig}
                             className="flex items-center gap-2 px-6 py-2 bg-accent-primary text-bg-primary text-sm font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-primary/20"
                           >
                             <Save className="w-4 h-4" />
-                            保存配置
+                            {t("scraper.dialog.confirmAndApply")}
                           </button>
                         </div>
                       </div>

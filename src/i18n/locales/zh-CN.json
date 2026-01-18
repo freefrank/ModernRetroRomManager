@@ -29,7 +29,15 @@
     "startScrape": "开始 Scrape",
     "apiConfig": {
       "title": "API 配置",
-      "description": "配置 Scraper API 密钥以获取游戏元数据和媒体资源"
+      "description": "配置 Scraper API 密钥以获取游戏元数据和媒体资源",
+      "activeSources": "{{count}} 个活跃源",
+      "credentialsNote": "请输入该源的 API 凭据。这些信息将加密存储在本地。"
+    },
+    "status": {
+      "enabledSources": "已启用源",
+      "avgConfidence": "平均置信度",
+      "configuredCredentials": "已配置凭据",
+      "authenticated": "已认证"
     },
     "providers": {
       "igdb": {
@@ -56,7 +64,88 @@
     "fields": {
       "clientId": "Client ID",
       "clientSecret": "Client Secret",
-      "apiKey": "API Key"
+      "apiKey": "API Key",
+      "username": "用户名",
+      "password": "密码"
+    },
+    "dialog": {
+      "title": "抓取游戏元数据",
+      "searchPlaceholder": "输入游戏名称搜索...",
+      "searchButton": "搜索",
+      "searching": "搜索中...",
+      "resultsCount": "搜索结果 ({{count}})",
+      "noResults": "暂无搜索结果",
+      "loadingDetails": "正在加载详细信息...",
+      "confidence": "置信度",
+      "userRating": "用户评分",
+      "releaseDate": "发行日期",
+      "developer": "开发商",
+      "publisher": "发行商",
+      "sourceSystem": "来源系统",
+      "description": "游戏描述",
+      "noDescription": "暂无描述。",
+      "mediaAssets": "可选媒体资产 ({{count}})",
+      "selectedAssets": "已选择 {{count}} 个资产",
+      "readyToScrape": "准备抓取数据",
+      "readyToScrapeDesc": "在左侧搜索并选择一个游戏结果，即可预览并选择要抓取的详细信息。",
+      "applyNote": "选择资产后点击右侧按钮应用到该游戏。",
+      "confirmAndApply": "确认并应用"
+    },
+    "batch": {
+      "title": "批量抓取 (Batch Scrape)",
+      "scraping": "正在抓取数据...",
+      "processed": "{{current}} / {{total}} 个游戏已处理",
+      "preparing": "准备中...",
+      "completed": "抓取完成!",
+      "completedDesc": "所有选中的游戏信息已成功更新。",
+      "pendingTitle": "即将为 {{count}} 个选中的游戏抓取数据",
+      "pendingDesc": "系统将自动匹配文件名并尝试获取最佳元数据和封面。",
+      "selectSource": "选择抓取源",
+      "recommended": "推荐使用 ScreenScraper",
+      "noSourceEnabled": "请先在设置中启用至少一个抓取源",
+      "start": "开始抓取"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "基本信息",
+      "media": "媒体资产",
+      "files": "文件详情"
+    },
+    "preview": {
+      "mode": "预览数据",
+      "raw": "原始数据",
+      "active": "正在预览抓取数据",
+      "inactive": "查看原始数据",
+      "note": "预览抓取数据",
+      "noteDesc": "这些数据仅保存在临时目录中。您可以检查描述和封面，满意后点击底部的“导出到库”将其永久应用。"
+    },
+    "fields": {
+      "releaseDate": "发行日期",
+      "developer": "开发商",
+      "publisher": "发行商",
+      "genre": "游戏类型",
+      "description": "游戏描述",
+      "noDescription": "暂无详细描述。",
+      "filename": "文件名",
+      "localPath": "本地路径"
+    },
+    "actions": {
+      "play": "开始游戏",
+      "scrape": "抓取元数据",
+      "edit": "手动编辑",
+      "remove": "移除游戏",
+      "export": "导出到库",
+      "exporting": "导出中 {{progress}}%",
+      "exportingSimple": "导出中",
+      "savePreview": "保存到预览",
+      "saveEdit": "保存修改",
+      "cancelEdit": "取消修改"
+    },
+    "media": {
+      "title": "媒体管理 (临时目录)",
+      "empty": "暂无抓取的媒体文件",
+      "deleteNote": "提示: 删除操作仅影响临时目录。导出后，对应类型的旧资产将被新资产覆盖（如果存在）。"
     }
   },
   "import": {
@@ -99,7 +188,8 @@
       "title": "扫描目录",
       "description": "配置 ROM 扫描目录，软件会自动检测其中的 ROM 文件",
       "empty": "暂未添加扫描目录",
-      "addDirectory": "添加目录"
+      "addDirectory": "添加目录",
+      "dialogTitle": "添加扫描目录"
     },
     "storage": {
       "title": "存储设置",
@@ -134,7 +224,8 @@
     "system": "系统",
     "size": "大小",
     "date": "日期",
-    "notAvailable": "N/A"
+    "notAvailable": "未知",
+    "finish": "完成"
   },
   "splash": {
     "initializing": "初始化中...",

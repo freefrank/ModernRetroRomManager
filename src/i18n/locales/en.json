@@ -29,7 +29,15 @@
     "startScrape": "Start Scrape",
     "apiConfig": {
       "title": "API Configuration",
-      "description": "Configure Scraper API keys to fetch game metadata and media assets"
+      "description": "Configure Scraper API keys to fetch game metadata and media assets",
+      "activeSources": "{{count}} active sources",
+      "credentialsNote": "Please enter your API credentials. They are stored securely on your machine."
+    },
+    "status": {
+      "enabledSources": "Enabled Sources",
+      "avgConfidence": "Avg Confidence",
+      "configuredCredentials": "Configured Credentials",
+      "authenticated": "Authenticated"
     },
     "providers": {
       "igdb": {
@@ -56,20 +64,101 @@
     "fields": {
       "clientId": "Client ID",
       "clientSecret": "Client Secret",
-      "apiKey": "API Key"
+      "apiKey": "API Key",
+      "username": "Username",
+      "password": "Password"
+    },
+    "dialog": {
+      "title": "Scrape Game Metadata",
+      "searchPlaceholder": "Search for game name...",
+      "searchButton": "Search",
+      "searching": "Searching...",
+      "resultsCount": "Results ({{count}})",
+      "noResults": "No results found",
+      "loadingDetails": "Loading details...",
+      "confidence": "Confidence",
+      "userRating": "Rating",
+      "releaseDate": "Release Date",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "sourceSystem": "Source System",
+      "description": "Description",
+      "noDescription": "No description available.",
+      "mediaAssets": "Media Assets ({{count}})",
+      "selectedAssets": "{{count}} selected",
+      "readyToScrape": "Ready to Scrape",
+      "readyToScrapeDesc": "Select a result from the left to preview metadata and select assets.",
+      "applyNote": "Select assets and click Apply to update the game info.",
+      "confirmAndApply": "Confirm and Apply"
+    },
+    "batch": {
+      "title": "Batch Scrape",
+      "scraping": "Scraping Data...",
+      "processed": "{{current}} / {{total}} games processed",
+      "preparing": "Preparing...",
+      "completed": "Scrape Completed!",
+      "completedDesc": "All selected games have been updated successfully.",
+      "pendingTitle": "Scraping {{count}} selected games",
+      "pendingDesc": "System will auto-match filenames and fetch the best metadata and covers.",
+      "selectSource": "Select Source",
+      "recommended": "ScreenScraper recommended",
+      "noSourceEnabled": "Enable at least one source in settings first",
+      "start": "Start Scrape"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "Info",
+      "media": "Media",
+      "files": "Files"
+    },
+    "preview": {
+      "mode": "Preview Data",
+      "raw": "Raw Data",
+      "active": "Previewing Scraped Data",
+      "inactive": "View Original Data",
+      "note": "Preview Data",
+      "noteDesc": "These data are stored in a temporary directory. Check description and covers, then click 'Export to Library' to apply them permanently."
+    },
+    "fields": {
+      "releaseDate": "Release Date",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "genre": "Genre",
+      "description": "Description",
+      "noDescription": "No description available.",
+      "filename": "Filename",
+      "localPath": "Local Path"
+    },
+    "actions": {
+      "play": "Play",
+      "scrape": "Scrape",
+      "edit": "Edit",
+      "remove": "Remove",
+      "export": "Export to Library",
+      "exporting": "Exporting {{progress}}%",
+      "exportingSimple": "Exporting",
+      "savePreview": "Save Preview",
+      "saveEdit": "Save Changes",
+      "cancelEdit": "Cancel"
+    },
+    "media": {
+      "title": "Media Management (Temp)",
+      "empty": "No scraped media assets",
+      "deleteNote": "Note: Deletion only affects the temp directory. After exporting, existing assets will be overwritten."
     }
   },
   "import": {
     "title": "Import/Export",
     "importSection": {
       "title": "Import",
-      "description": "Import metadata and media assets from existing ROM management software",
-      "deprecated": "This version uses directory scanning. Please add a directory in the Library page.",
-      "success": "Directory scanning mode enabled"
+      "description": "Import metadata and media assets from existing software",
+      "deprecated": "This version uses directory scanning. Please add a directory in Library page.",
+      "success": "Switched to directory scan mode"
     },
     "exportSection": {
       "title": "Export",
-      "description": "Export your ROM library to other formats for use in other software"
+      "description": "Export your library to other formats"
     },
     "formats": {
       "emulationstation": {
@@ -97,9 +186,10 @@
     },
     "scanDirectories": {
       "title": "Scan Directories",
-      "description": "Configure ROM scan directories, the software will automatically detect ROM files",
-      "empty": "No scan directories added yet",
-      "addDirectory": "Add Directory"
+      "description": "Configure ROM directories, software will detect games automatically",
+      "empty": "No scan directories added",
+      "addDirectory": "Add Directory",
+      "dialogTitle": "Add Scan Directory"
     },
     "storage": {
       "title": "Storage Settings",
@@ -129,13 +219,13 @@
     "refresh": "Refresh",
     "loading": "Loading...",
     "error": "Error",
-    "success": "Success"
-  },
-  "metadataDialog": {
-    "title": "Metadata files detected",
-    "subtitle": "Choose metadata format",
-    "description": "Select a format to use:",
-    "skip": "Skip"
+    "success": "Success",
+    "name": "Name",
+    "system": "System",
+    "size": "Size",
+    "date": "Date",
+    "notAvailable": "Unknown",
+    "finish": "Finish"
   },
   "splash": {
     "initializing": "Initializing...",
@@ -144,6 +234,12 @@
     "loadingCovers": "Loading covers...",
     "ready": "Ready"
   },
+  "metadataDialog": {
+    "title": "Metadata files detected",
+    "subtitle": "Choose metadata format",
+    "description": "Select a format:",
+    "skip": "Skip"
+  },
   "directoryInput": {
     "placeholder": "e.g. C:\\ROMs\\SNES or /home/user/roms",
     "browse": "Browse...",
@@ -151,10 +247,10 @@
     "status": {
       "validating": "Validating...",
       "error": "Error: {{error}}",
-      "missing": "Path not found",
+      "missing": "Path missing",
       "notDirectory": "Not a directory",
-      "notReadable": "No read permission",
-      "notWritable": "Warning: No write permission",
+      "notReadable": "No read access",
+      "notWritable": "Warning: No write access",
       "valid": "Valid path ✓"
     }
   }

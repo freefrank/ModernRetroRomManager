@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Database, Globe, Activity, Loader2, PlayCircle, CheckCircle2, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useScraperStore } from "@/stores/scraperStore";
 import { useRomStore } from "@/stores/romStore";
 import { clsx } from "clsx";
@@ -11,6 +12,7 @@ interface BatchScrapeDialogProps {
 }
 
 export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialogProps) {
+  const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
   const { startBatchScrape, selectedRomIds, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
@@ -56,7 +58,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
           <div className="p-6 border-b border-border-default flex items-center justify-between bg-bg-secondary/30">
             <div className="flex items-center gap-3">
               <Database className="w-6 h-6 text-accent-primary" />
-              <h2 className="text-xl font-bold text-text-primary tracking-tight">批量抓取 (Batch Scrape)</h2>
+              <h2 className="text-xl font-bold text-text-primary tracking-tight">{t("scraper.batch.title")}</h2>
             </div>
             {!isBatchScraping && (
               <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-tertiary text-text-secondary transition-colors">
@@ -72,7 +74,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-accent-primary">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="font-bold text-sm uppercase tracking-widest">正在抓取数据...</span>
+                    <span className="font-bold text-sm uppercase tracking-widest">{t("scraper.batch.scraping")}</span>
                   </div>
                   <span className="text-xl font-black text-text-primary">
                     {batchProgress ? Math.round((batchProgress.current / batchProgress.total) * 100) : 0}%
@@ -90,10 +92,10 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
 
                 <div className="flex flex-col items-center gap-2 p-4 bg-bg-secondary rounded-2xl border border-border-default">
                   <div className="text-sm font-medium text-text-primary">
-                    {batchProgress?.message || "准备中..."}
+                    {batchProgress?.message || t("scraper.batch.preparing")}
                   </div>
                   <div className="text-xs text-text-muted">
-                    {batchProgress?.current} / {batchProgress?.total} 个游戏已处理
+                    {t("scraper.batch.processed", { current: batchProgress?.current || 0, total: batchProgress?.total || 0 })}
                   </div>
                 </div>
 
@@ -105,8 +107,8 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                   >
                     <CheckCircle2 className="w-6 h-6 shrink-0" />
                     <div>
-                      <div className="font-bold">抓取完成!</div>
-                      <div className="text-xs opacity-80">所有选中的游戏信息已成功更新。</div>
+                      <div className="font-bold">{t("scraper.batch.completed")}</div>
+                      <div className="text-xs opacity-80">{t("scraper.batch.completedDesc")}</div>
                     </div>
                   </motion.div>
                 )}
@@ -118,25 +120,25 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                   <PlayCircle className="w-10 h-10 text-accent-primary shrink-0 opacity-80" />
                   <div>
                     <p className="text-text-primary font-bold text-lg leading-tight">
-                      即将为 <span className="text-accent-primary">{selectedRomIds.size}</span> 个选中的游戏抓取数据
+                      {t("scraper.batch.pendingTitle", { count: selectedRomIds.size })}
                     </p>
                     <p className="text-sm text-text-muted mt-1 leading-relaxed">
-                      系统将自动匹配文件名并尝试获取最佳元数据和封面。
+                      {t("scraper.batch.pendingDesc")}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between px-1">
-                    <label className="text-xs font-black text-text-muted uppercase tracking-widest">选择抓取源</label>
-                    <span className="text-[10px] text-accent-primary font-bold">推荐使用 ScreenScraper</span>
+                    <label className="text-xs font-black text-text-muted uppercase tracking-widest">{t("scraper.batch.selectSource")}</label>
+                    <span className="text-[10px] text-accent-primary font-bold">{t("scraper.batch.recommended")}</span>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-3">
                     {activeProviders.length === 0 ? (
                       <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400">
                         <AlertCircle className="w-5 h-5" />
-                        <span className="text-sm font-bold">请先在设置中启用至少一个抓取源</span>
+                        <span className="text-sm font-bold">{t("scraper.batch.noSourceEnabled")}</span>
                       </div>
                     ) : (
                       activeProviders.map(p => (
@@ -180,7 +182,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                     onClick={onClose}
                     className="px-6 py-2.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all font-bold text-sm"
                   >
-                    取消
+                    {t("common.cancel")}
                   </button>
                   <button
                     onClick={handleStart}
@@ -188,7 +190,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                     className="flex items-center gap-2 px-10 py-2.5 bg-accent-primary text-bg-primary text-sm font-black rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-accent-primary/25 disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
                   >
                     <Database className="w-4 h-4" />
-                    开始抓取
+                    {t("scraper.batch.start")}
                   </button>
                 </>
               ) : (
@@ -197,7 +199,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                     onClick={onClose}
                     className="px-10 py-2.5 bg-accent-primary text-bg-primary text-sm font-black rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-accent-primary/25"
                   >
-                    完成
+                    {t("common.finish")}
                   </button>
                 )
               )}

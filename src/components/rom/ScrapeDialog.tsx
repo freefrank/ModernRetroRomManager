@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Image as ImageIcon, Check, Loader2, Gamepad2, Play, Activity, Globe, Info, Star, Calendar, User, LayoutGrid } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { scraperApi } from "@/lib/api";
 import { useScraperStore } from "@/stores/scraperStore";
 import type { Rom, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset } from "@/types";
@@ -13,6 +14,7 @@ interface ScrapeDialogProps {
 }
 
 export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps) {
+  const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
   const [query, setQuery] = useState(rom.name);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
@@ -40,7 +42,6 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
     if (!query) return;
     setIsSearching(true);
     try {
-      // 如果没有选择 provider，则进行全源搜索
       const searchResults = await scraperApi.search(query, rom.file, rom.system);
       setResults(searchResults.sort((a, b) => b.confidence - a.confidence));
       setSelectedResult(null);
@@ -66,7 +67,6 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
       setMetadata(metaResult);
       setMedia(mediaResults);
       
-      // 默认选择一些媒体资产 (例如 BoxFront)
       const defaultSelection = new Set<string>();
       mediaResults.forEach(m => {
         if (m.asset_type === "boxfront" || m.asset_type === "box-2D" || m.asset_type === "box-2d") {
@@ -141,10 +141,10 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                 <Search className="w-6 h-6 text-accent-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-text-primary tracking-tight">抓取游戏元数据</h2>
+                <h2 className="text-xl font-bold text-text-primary tracking-tight">{t("scraper.dialog.title")}</h2>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs font-bold text-accent-primary uppercase tracking-tighter bg-accent-primary/10 px-1.5 py-0.5 rounded">
-                    {rom.system?.toUpperCase() || "UNKNOWN"}
+                    {rom.system?.toUpperCase() || t("common.notAvailable")}
                   </span>
                   <span className="text-xs text-text-muted truncate max-w-md">{rom.file}</span>
                 </div>
@@ -168,7 +168,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="输入游戏名称搜索..."
+                    placeholder={t("scraper.dialog.searchPlaceholder")}
                     className="w-full bg-bg-primary border border-border-default rounded-xl pl-10 pr-12 py-3 text-sm text-text-primary focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 transition-all shadow-inner"
                   />
                   <div className="absolute inset-y-1.5 right-1.5">
@@ -177,16 +177,16 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                       disabled={isSearching}
                       className="h-full px-3 bg-accent-primary rounded-lg text-bg-primary font-bold text-xs disabled:opacity-50 transition-opacity flex items-center gap-1.5"
                     >
-                      {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "搜索"}
+                      {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t("scraper.dialog.searchButton")}
                     </button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-[10px] font-bold text-text-muted uppercase tracking-widest px-1">
-                  <span>搜索结果 ({results.length})</span>
+                  <span>{t("scraper.dialog.resultsCount", { count: results.length })}</span>
                   {activeProviders.length > 0 && (
                     <span className="text-accent-primary">
-                      {activeProviders.length} 个活跃源
+                      {t("scraper.apiConfig.activeSources", { count: activeProviders.length })}
                     </span>
                   )}
                 </div>
@@ -196,7 +196,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                 {results.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-text-muted text-center border-2 border-dashed border-border-default rounded-3xl opacity-50">
                     <Gamepad2 className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-sm">暂无搜索结果</p>
+                    <p className="text-sm">{t("scraper.dialog.noResults")}</p>
                   </div>
                 ) : (
                   results.map((res) => (
@@ -245,7 +245,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
               {isLoadingDetails ? (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-bg-primary/60 backdrop-blur-sm text-accent-primary">
                   <Loader2 className="w-12 h-12 animate-spin mb-4" />
-                  <p className="font-bold tracking-widest text-sm uppercase">正在加载详细信息...</p>
+                  <p className="font-bold tracking-widest text-sm uppercase">{t("scraper.dialog.loadingDetails")}</p>
                 </div>
               ) : null}
 
@@ -287,7 +287,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                               <Star className="w-5 h-5 fill-current" />
                               <span className="text-xl font-black">{metadata.rating.toFixed(1)}</span>
                             </div>
-                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">用户评分</span>
+                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">{t("scraper.dialog.userRating")}</span>
                           </div>
                         )}
                       </div>
@@ -296,35 +296,35 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                         <div className="flex items-center gap-2.5">
                           <Calendar className="w-4 h-4 text-accent-primary" />
                           <div>
-                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">发行日期</div>
-                            <div className="text-xs font-bold text-text-primary">{metadata?.release_date || "未知"}</div>
+                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{t("scraper.dialog.releaseDate")}</div>
+                            <div className="text-xs font-bold text-text-primary">{metadata?.release_date || t("common.notAvailable")}</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2.5">
                           <User className="w-4 h-4 text-accent-primary" />
                           <div>
-                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">开发商</div>
-                            <div className="text-xs font-bold text-text-primary truncate">{metadata?.developer || "未知"}</div>
+                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{t("scraper.dialog.developer")}</div>
+                            <div className="text-xs font-bold text-text-primary truncate">{metadata?.developer || t("common.notAvailable")}</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2.5">
                           <Activity className="w-4 h-4 text-accent-primary" />
                           <div>
-                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">发行商</div>
-                            <div className="text-xs font-bold text-text-primary truncate">{metadata?.publisher || "未知"}</div>
+                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{t("scraper.dialog.publisher")}</div>
+                            <div className="text-xs font-bold text-text-primary truncate">{metadata?.publisher || t("common.notAvailable")}</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2.5">
                           <LayoutGrid className="w-4 h-4 text-accent-primary" />
                           <div>
-                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">来源系统</div>
+                            <div className="text-[9px] text-text-muted uppercase font-bold tracking-widest">{t("scraper.dialog.sourceSystem")}</div>
                             <div className="text-xs font-bold text-text-primary uppercase">{selectedResult.system || "GENERIC"}</div>
                           </div>
                         </div>
                       </div>
 
                       <p className="text-sm text-text-secondary leading-relaxed line-clamp-3">
-                        {metadata?.description || "暂无描述。"}
+                        {metadata?.description || t("scraper.dialog.noDescription")}
                       </p>
                     </div>
                   </div>
@@ -334,10 +334,10 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2">
                         <ImageIcon className="w-4 h-4 text-accent-primary" />
-                        可选媒体资产 ({media.length})
+                        {t("scraper.dialog.mediaAssets", { count: media.length })}
                       </h4>
                       <div className="text-[10px] font-bold text-text-muted">
-                        已选择 {selectedMediaUrls.size} 个资产
+                        {t("scraper.dialog.selectedAssets", { count: selectedMediaUrls.size })}
                       </div>
                     </div>
 
@@ -392,9 +392,9 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                     <Gamepad2 className="w-32 h-32 animate-pulse" />
                     <Search className="w-12 h-12 absolute -bottom-2 -right-2 text-accent-primary" />
                   </div>
-                  <h3 className="text-2xl font-black uppercase tracking-tighter mb-2">准备抓取数据</h3>
+                  <h3 className="text-2xl font-black uppercase tracking-tighter mb-2">{t("scraper.dialog.readyToScrape")}</h3>
                   <p className="max-w-xs text-center text-sm font-medium leading-relaxed">
-                    在左侧搜索并选择一个游戏结果，即可预览并选择要抓取的详细信息。
+                    {t("scraper.dialog.readyToScrapeDesc")}
                   </p>
                 </div>
               )}
@@ -405,14 +405,14 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
           <div className="px-8 py-5 bg-bg-secondary/50 border-t border-border-default flex justify-between items-center">
             <div className="flex items-center gap-3 text-text-muted">
                <Info className="w-4 h-4" />
-               <span className="text-xs font-medium">选择资产后点击右侧按钮应用到该游戏。</span>
+               <span className="text-xs font-medium">{t("scraper.dialog.applyNote")}</span>
             </div>
             <div className="flex items-center gap-4">
               <button
                 onClick={onClose}
                 className="px-6 py-2.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all font-bold text-sm"
               >
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 disabled={!selectedResult || !metadata || selectedMediaUrls.size === 0 || isApplying}
@@ -421,7 +421,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
               >
                 {isApplying && <Loader2 className="w-4 h-4 animate-spin" />}
                 <Check className="w-4 h-4 stroke-[3px]" />
-                确认并应用
+                {t("scraper.dialog.confirmAndApply")}
                 <div className="absolute inset-0 bg-white/20 translate-x-full group-hover:-translate-x-full transition-transform duration-700 skew-x-12" />
               </button>
             </div>

@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  X, Calendar, User, Building2, Globe, Gamepad2, Play, Star, 
-  Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Loader2
+  X, Calendar, User, Building2, Globe, Gamepad2, Star, 
+  Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Loader2, Play
 } from "lucide-react";
 import { resolveMediaUrlAsync, scraperApi } from "@/lib/api";
 import type { Rom } from "@/types";
 import { useRomStore } from "@/stores/romStore";
+import { useTranslation } from "react-i18next";
 import ScrapeDialog from "./ScrapeDialog";
 import { clsx } from "clsx";
 
@@ -28,6 +29,7 @@ function useMediaUrl(path: string | undefined): string | null {
 }
 
 export default function RomDetail({ rom, onClose }: RomDetailProps) {
+  const { t } = useTranslation();
   const { exportData, updateTempMetadata, deleteTempMedia, isExporting, exportProgress } = useRomStore();
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
@@ -167,7 +169,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                         )}
                       >
                         {isPreview ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                        {isPreview ? "预览数据" : "原始数据"}
+                        {isPreview ? t("romDetail.preview.mode") : t("romDetail.preview.raw")}
                       </button>
                     )}
                   </div>
@@ -217,7 +219,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                         : "text-text-muted hover:text-text-primary"
                     )}
                   >
-                    {tab === "info" ? "基本信息" : "媒体资产"}
+                    {tab === "info" ? t("romDetail.tabs.info") : t("romDetail.tabs.media")}
                     {(editForm._activeTab || "info") === tab && (
                       <motion.div layoutId="active_tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-primary" />
                     )}
@@ -234,9 +236,9 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                           <Info className="w-5 h-5 text-accent-primary" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm font-bold text-text-primary tracking-tight">预览抓取数据</h4>
+                          <h4 className="text-sm font-bold text-text-primary tracking-tight">{t("romDetail.preview.note")}</h4>
                           <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                            这些数据仅保存在临时目录中。您可以检查描述和封面，满意后点击底部的“导出到库”将其永久应用。
+                            {t("romDetail.preview.noteDesc")}
                           </p>
                         </div>
                       </div>
@@ -245,7 +247,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     <div>
                       <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                         <LayoutGrid className="w-3.5 h-3.5" />
-                        游戏描述
+                        {t("romDetail.fields.description")}
                       </h3>
                       {isEditing ? (
                         <textarea
@@ -256,7 +258,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                         />
                       ) : (
                         <p className="text-text-secondary leading-relaxed text-sm font-medium">
-                          {currentData?.description || currentData?.summary || "暂无描述。"}
+                          {currentData?.description || currentData?.summary || t("romDetail.fields.noDescription")}
                         </p>
                       )}
                     </div>
@@ -264,28 +266,28 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                     <div className="grid grid-cols-2 gap-6">
                       {isEditing ? (
                         <>
-                          <EditItem label="发行日期" value={editForm.release} onChange={v => setEditForm({...editForm, release: v})} />
-                          <EditItem label="开发商" value={editForm.developer} onChange={v => setEditForm({...editForm, developer: v})} />
-                          <EditItem label="发行商" value={editForm.publisher} onChange={v => setEditForm({...editForm, publisher: v})} />
-                          <EditItem label="游戏类型" value={editForm.genre} onChange={v => setEditForm({...editForm, genre: v})} />
+                          <EditItem label={t("romDetail.fields.releaseDate")} value={editForm.release} onChange={v => setEditForm({...editForm, release: v})} />
+                          <EditItem label={t("romDetail.fields.developer")} value={editForm.developer} onChange={v => setEditForm({...editForm, developer: v})} />
+                          <EditItem label={t("romDetail.fields.publisher")} value={editForm.publisher} onChange={v => setEditForm({...editForm, publisher: v})} />
+                          <EditItem label={t("romDetail.fields.genre")} value={editForm.genre} onChange={v => setEditForm({...editForm, genre: v})} />
                         </>
                       ) : (
                         <>
-                          <InfoItem icon={<Calendar />} label="发行日期" value={currentData?.release} />
-                          <InfoItem icon={<Building2 />} label="开发商" value={currentData?.developer} />
-                          <InfoItem icon={<Globe />} label="发行商" value={currentData?.publisher} />
-                          <InfoItem icon={<User />} label="游戏类型" value={currentData?.genre} />
+                          <InfoItem icon={<Calendar />} label={t("romDetail.fields.releaseDate")} value={currentData?.release} />
+                          <InfoItem icon={<Building2 />} label={t("romDetail.fields.developer")} value={currentData?.developer} />
+                          <InfoItem icon={<Globe />} label={t("romDetail.fields.publisher")} value={currentData?.publisher} />
+                          <InfoItem icon={<User />} label={t("romDetail.fields.genre")} value={currentData?.genre} />
                         </>
                       )}
                     </div>
                   </>
                 ) : (
                   <div className="space-y-6">
-                    <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-4">媒体管理 (临时目录)</h3>
+                    <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-4">{t("romDetail.media.title")}</h3>
                     {tempMedia.length === 0 ? (
                       <div className="py-12 border-2 border-dashed border-border-default rounded-2xl flex flex-col items-center justify-center text-text-muted opacity-50">
                         <Gamepad2 className="w-12 h-12 mb-2" />
-                        <p className="text-sm font-bold">暂无抓取的媒体文件</p>
+                        <p className="text-sm font-bold">{t("romDetail.media.empty")}</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-4">
@@ -299,7 +301,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                               <button 
                                 onClick={() => handleDeleteMedia(m.asset_type)}
                                 className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/30"
-                                title="删除该资产"
+                                title={t("common.delete")}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -308,18 +310,21 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                         ))}
                       </div>
                     )}
+                    <p className="text-[10px] text-text-muted font-medium leading-relaxed italic">
+                      {t("romDetail.media.deleteNote")}
+                    </p>
                   </div>
                 )}
 
                 <div className="pt-6 border-t border-border-default">
-                  <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-3">文件详情</h3>
+                  <h3 className="text-xs font-black text-text-muted uppercase tracking-widest mb-3">{t("romDetail.tabs.files")}</h3>
                   <div className="bg-bg-secondary/50 rounded-xl p-4 space-y-2 text-[11px] font-mono text-text-secondary border border-border-default shadow-inner">
                     <div className="flex justify-between gap-4">
-                      <span className="shrink-0 opacity-50 uppercase">文件名:</span>
+                      <span className="shrink-0 opacity-50 uppercase">{t("romDetail.fields.filename")}:</span>
                       <span className="text-text-primary truncate" title={rom.file}>{rom.file}</span>
                     </div>
                     <div className="flex justify-between gap-4">
-                      <span className="shrink-0 opacity-50 uppercase">本地路径:</span>
+                      <span className="shrink-0 opacity-50 uppercase">{t("romDetail.fields.localPath")}:</span>
                       <span className="text-text-primary truncate" title={rom.directory}>{rom.directory}</span>
                     </div>
                   </div>
@@ -331,48 +336,42 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                 <div className="flex justify-between items-center px-2">
                   {isEditing ? (
                     <>
-                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-text-secondary hover:text-text-primary font-bold text-sm transition-all">取消</button>
+                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-text-secondary hover:text-text-primary font-bold text-sm transition-all">{t("romDetail.actions.cancelEdit")}</button>
                       <button onClick={handleSaveEdit} className="flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 active:scale-95 transition-all">
-                        <Check className="w-4 h-4 stroke-[3px]" /> 保存预览
+                        <Check className="w-4 h-4 stroke-[3px]" /> {t("romDetail.actions.saveEdit")}
                       </button>
                     </>
                   ) : (
                     <>
-                      <div className="flex gap-2">
-                        <button onClick={() => setIsScrapeDialogOpen(true)} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title="重新抓取"><Download className="w-5 h-5" /></button>
-                        <button onClick={handleStartEdit} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title="手动编辑"><Edit2 className="w-5 h-5" /></button>
-                      </div>
-                <div className="flex gap-3">
-                  {!isEditing && (
-                    isPreview ? (
-                      <button
-                        onClick={handleExport}
-                        disabled={isExporting}
-                        className="group relative flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
-                      >
-                        {isExporting ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>{exportProgress ? `${exportProgress.current}%` : '导出中'}</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4" />
-                            <span>导出到库</span>
-                          </>
-                        )}
-                        {isExporting && exportProgress && (
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${exportProgress.current}%` }}
-                            className="absolute bottom-0 left-0 h-1 bg-white/30"
-                          />
-                        )}
+                      <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-bold transition-all shadow-lg shadow-accent-primary/20 active:scale-95">
+                        <Play className="w-5 h-5 fill-current" />
+                        {t("romDetail.actions.play")}
                       </button>
-                    ) : (
-
+                      <div className="flex gap-2">
+                        <button onClick={() => setIsScrapeDialogOpen(true)} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.scrape")}><Download className="w-5 h-5" /></button>
+                        <button onClick={handleStartEdit} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.edit")}><Edit2 className="w-5 h-5" /></button>
+                      </div>
+                      <div className="flex gap-3">
+                        {isPreview ? (
+                          <button onClick={handleExport} disabled={isExporting} className="group relative flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 overflow-hidden">
+                            {isExporting ? (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>{exportProgress ? t("romDetail.actions.exporting", { progress: exportProgress.current }) : t("romDetail.actions.exportingSimple")}</span>
+                              </div>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4" />
+                                <span>{t("romDetail.actions.export")}</span>
+                              </>
+                            )}
+                            {isExporting && exportProgress && (
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${exportProgress.current}%` }} className="absolute bottom-0 left-0 h-1 bg-white/30" />
+                            )}
+                          </button>
+                        ) : (
                           <button onClick={onClose} className="flex items-center gap-2 px-8 py-2.5 bg-bg-tertiary text-text-primary rounded-xl font-black text-sm hover:bg-border-hover transition-all active:scale-95">
-                            <Check className="w-4 h-4" /> 完成
+                            <Check className="w-4 h-4" /> {t("common.finish")}
                           </button>
                         )}
                       </div>
@@ -399,12 +398,13 @@ function MediaPreview({ path }: { path: string }) {
 }
 
 function InfoItem({ icon, label, value }: { icon: React.ReactNode, label: string, value?: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-start gap-3">
       <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-accent-primary shrink-0 border border-border-default">{icon}</div>
       <div className="min-w-0">
         <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mb-1">{label}</div>
-        <div className="text-sm font-bold text-text-primary truncate">{value || "未知"}</div>
+        <div className="text-sm font-bold text-text-primary truncate">{value || t("common.notAvailable")}</div>
       </div>
     </div>
   );
