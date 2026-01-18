@@ -42,10 +42,16 @@ pub fn get_settings_path() -> PathBuf {
     get_config_dir().join("settings.json")
 }
 
+/// 获取数据目录 (用于存放 scraper 数据库等)
+pub fn get_data_dir() -> PathBuf {
+    get_config_dir().join("data")
+}
+
 /// 确保配置目录结构存在
 pub fn ensure_config_dirs() -> Result<(), std::io::Error> {
     std::fs::create_dir_all(get_media_dir())?;
     std::fs::create_dir_all(get_temp_dir())?;
+    std::fs::create_dir_all(get_data_dir())?;
     Ok(())
 }
 

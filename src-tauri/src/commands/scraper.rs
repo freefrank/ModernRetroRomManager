@@ -31,8 +31,12 @@ pub struct ScraperState {
 
 impl ScraperState {
     pub fn new() -> Self {
+        let manager = ScraperManager::new();
+        // 注意：LocalCnProvider 现在需要在 setup 阶段注入路径后注册，或者这里先注册空的？
+        // 为了避免复杂性，我们这里只创建 manager，Provider 的注册移交到 setup
+        
         Self {
-            manager: Arc::new(RwLock::new(ScraperManager::new())),
+            manager: Arc::new(RwLock::new(manager)),
         }
     }
 }
@@ -124,6 +128,25 @@ pub async fn get_scraper_providers(
                 "metadata".to_string(),
                 "media".to_string(),
             ],
+        });
+    }
+
+    // Local Chinese Repo
+    if let Some(config) = manager.get_credentials("local_cn_repo") {
+        providers.push(ProviderInfo {
+            id: "local_cn_repo".to_string(),
+            name: "Chinese ROM DB (Local)".to_string(),
+            enabled: config.enabled,
+            has_credentials: true, // 不需要凭证，只要下载了 repo 就算 ready
+            capabilities: vec!["search".to_string(), "metadata".to_string()],
+        });
+    } else {
+        providers.push(ProviderInfo {
+            id: "local_cn_repo".to_string(),
+            name: "Chinese ROM DB (Local)".to_string(),
+            enabled: true,
+            has_credentials: true,
+            capabilities: vec!["search".to_string(), "metadata".to_string()],
         });
     }
     
@@ -446,6 +469,11 @@ pub struct ExportProgress {
     pub total: usize,
     pub message: String,
     pub finished: bool,
+}
+
+#[tauri::command]
+pub async fn update_cn_repo() -> Result<(), String> {
+    crate::scraper::cn_repo::update_repo()
 }
 
 #[tauri::command]

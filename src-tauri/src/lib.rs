@@ -5,6 +5,8 @@ mod scraper;
 pub mod settings;
 
 use commands::scraper::ScraperState;
+use scraper::local_cn::LocalCnProvider;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,13 +15,27 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(ScraperState::new())
-        .setup(|_app| {
+        .setup(|app| {
             // Debug: 输出配置目录位置
             println!("[DEBUG] Config directory: {:?}", config::get_config_dir());
             println!("[DEBUG] Settings file: {:?}", config::get_settings_path());
             
             // 加载应用配置（如果不存在则创建默认配置）
             settings::load_settings().expect("Failed to load settings");
+
+            // 初始化 LocalCnProvider (注入 Resource 路径)
+            let resource_path = app.path().resolve("rom-name-cn", tauri::path::BaseDirectory::Resource).ok();
+            if let Some(path) = &resource_path {
+                println!("[DEBUG] Resource path for rom-name-cn: {:?}", path);
+            }
+            
+            let extra_paths = resource_path.into_iter().collect::<Vec<_>>();
+            let local_cn = LocalCnProvider::new(extra_paths);
+            
+            // 获取 ScraperState 并注册 Provider
+            let state = app.state::<ScraperState>();
+            let mut manager = state.manager.blocking_write();
+            manager.register(local_cn);
 
             Ok(())
         })
@@ -44,6 +60,7 @@ pub fn run() {
             commands::save_temp_metadata,
             commands::get_temp_media_list,
             commands::delete_temp_media,
+            commands::update_cn_repo,
             commands::export_scraped_data,
             // Import/Export
             commands::import_gamelist,

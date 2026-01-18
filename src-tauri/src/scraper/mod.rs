@@ -1,5 +1,7 @@
 pub mod steamgriddb;
 pub mod screenscraper;
+pub mod local_cn;
+pub mod cn_repo;
 pub mod pegasus;
 pub mod types;
 pub mod manager;
