@@ -521,17 +521,11 @@ export default function CnName() {
               {/* Table container - flex-1 with overflow */}
               <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
                 <table className="w-full text-left text-sm">
-                  <colgroup>
-                    <col style={{ minWidth: '200px' }} />
-                    <col style={{ minWidth: '150px' }} />
-                    <col style={{ minWidth: '150px' }} />
-                    <col style={{ minWidth: '200px' }} />
-                  </colgroup>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
-                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '200px' }}>文件名</th>
-                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '150px' }}>ROM名 (Meta)</th>
-                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '150px' }}>
+                      <th className="px-6 py-3 font-bold">文件名</th>
+                      <th className="px-6 py-3 font-bold">ROM名 (Meta)</th>
+                      <th className="px-6 py-3 font-bold">
                         <div className="flex items-center justify-between">
                           <span>提取中文名</span>
                           <button
@@ -545,7 +539,7 @@ export default function CnName() {
                           </button>
                         </div>
                       </th>
-                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '200px' }}>
+                      <th className="px-6 py-3 font-bold">
                         <div className="flex items-center justify-between">
                           <button
                             onClick={toggleSort}
