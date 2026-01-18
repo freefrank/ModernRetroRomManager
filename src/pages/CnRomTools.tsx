@@ -111,7 +111,7 @@ export default function CnName() {
       </div>
 
       <div className="flex-1 p-8 overflow-auto">
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           
           {/* Info Card */}
           <section className="bg-bg-secondary rounded-2xl border border-border-default overflow-hidden">
