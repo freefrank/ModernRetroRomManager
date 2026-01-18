@@ -1,40 +1,49 @@
 import { create } from "zustand";
-import { invoke } from "@tauri-apps/api/core";
-
-export interface ScraperConfig {
-  enabled: boolean;
-  api_key?: string;
-  client_id?: string;
-  client_secret?: string;
-  username?: string;
-  password?: string;
-}
+import { scraperApi } from "@/lib/api";
+import type { ScraperProviderInfo, ScraperCredentials } from "@/types";
 
 interface ScraperState {
-  configs: Record<string, ScraperConfig>; // Map provider -> config
-  fetchConfigs: () => Promise<void>;
-  saveConfig: (provider: string, config: Partial<ScraperConfig>) => Promise<void>;
+  providers: ScraperProviderInfo[];
+  isLoading: boolean;
+  fetchProviders: () => Promise<void>;
+  configureProvider: (providerId: string, credentials: ScraperCredentials) => Promise<void>;
+  setProviderEnabled: (providerId: string, enabled: boolean) => Promise<void>;
 }
 
 export const useScraperStore = create<ScraperState>((set, get) => ({
-  configs: {},
-  fetchConfigs: async () => {
+  providers: [],
+  isLoading: false,
+  fetchProviders: async () => {
+    set({ isLoading: true });
     try {
-      const configMap = await invoke<Record<string, ScraperConfig>>("get_scraper_configs");
-      set({ configs: configMap });
+      const providers = await scraperApi.getProviders();
+      set({ providers, isLoading: false });
     } catch (error) {
-      console.error("Failed to fetch scraper configs:", error);
+      console.error("Failed to fetch scraper providers:", error);
+      set({ isLoading: false });
     }
   },
-  saveConfig: async (provider, config) => {
+  configureProvider: async (providerId, credentials) => {
     try {
-      // 合并现有配置
-      const existing = get().configs[provider] || { enabled: false };
-      const merged: ScraperConfig = { ...existing, ...config };
-      await invoke("save_scraper_config", { provider, config: merged });
-      await get().fetchConfigs();
+      await scraperApi.configureProvider(providerId, credentials);
+      await get().fetchProviders();
     } catch (error) {
-      console.error("Failed to save scraper config:", error);
+      console.error(`Failed to configure provider ${providerId}:`, error);
+      throw error;
+    }
+  },
+  setProviderEnabled: async (providerId, enabled) => {
+    try {
+      await scraperApi.setProviderEnabled(providerId, enabled);
+      // 乐观更新
+      set({
+        providers: get().providers.map((p) =>
+          p.id === providerId ? { ...p, enabled } : p
+        ),
+      });
+    } catch (error) {
+      console.error(`Failed to set provider ${providerId} enabled:`, error);
+      await get().fetchProviders(); // 失败时回滚
       throw error;
     }
   },

@@ -31,11 +31,6 @@ pub fn run() {
             commands::add_directory,
             commands::get_directories,
             commands::remove_directory,
-            // 旧 scraper API (兼容)
-            commands::get_api_configs,
-            commands::save_api_config,
-            commands::apply_scraped_data,
-            commands::batch_scrape,
             // 新 scraper API
             commands::get_scraper_providers,
             commands::configure_scraper_provider,
@@ -44,6 +39,8 @@ pub fn run() {
             commands::scraper_get_media,
             commands::scraper_auto_scrape,
             commands::scraper_set_provider_enabled,
+            commands::apply_scraped_data,
+            commands::batch_scrape,
             // Import/Export
             commands::import_gamelist,
             commands::import_pegasus,

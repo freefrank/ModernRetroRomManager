@@ -3,8 +3,6 @@
 use crate::scraper::{
     ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
     MediaType, Capabilities, ProviderCapability, RomHash,
-    // 旧类型 (保留兼容)
-    ScrapedGame, ScrapedMedia, Scraper,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -208,106 +206,5 @@ impl ScraperProvider for SteamGridDBClient {
     ) -> Result<Option<SearchResult>, String> {
         // SteamGridDB 不支持 Hash 查找
         Ok(None)
-    }
-}
-
-// ============================================================================
-// 旧 Scraper 实现 (保留兼容性)
-// ============================================================================
-
-#[async_trait]
-impl Scraper for SteamGridDBClient {
-    fn name(&self) -> &'static str {
-        PROVIDER_ID
-    }
-
-    async fn search(&self, query: &str) -> Result<Vec<ScrapedGame>, String> {
-        let url = format!(
-            "https://www.steamgriddb.com/api/v2/search/autocomplete/{}",
-            query
-        );
-        let resp = self
-            .client
-            .get(&url)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        let sgdb_resp: SGDBResponse<Vec<SGDBGame>> =
-            resp.json().await.map_err(|e| e.to_string())?;
-
-        if !sgdb_resp.success {
-            return Err("SGDB API error".to_string());
-        }
-
-        Ok(sgdb_resp
-            .data
-            .into_iter()
-            .map(|g| ScrapedGame {
-                source_id: g.id.to_string(),
-                name: g.name,
-                description: None,
-                release_date: None,
-                developer: None,
-                publisher: None,
-                genres: vec![],
-                rating: None,
-            })
-            .collect())
-    }
-
-    async fn get_details(&self, source_id: &str) -> Result<ScrapedGame, String> {
-        let url = format!(
-            "https://www.steamgriddb.com/api/v2/games/id/{}",
-            source_id
-        );
-        let resp = self
-            .client
-            .get(&url)
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        let sgdb_resp: SGDBResponse<SGDBGame> =
-            resp.json().await.map_err(|e| e.to_string())?;
-
-        Ok(ScrapedGame {
-            source_id: sgdb_resp.data.id.to_string(),
-            name: sgdb_resp.data.name,
-            description: None,
-            release_date: None,
-            developer: None,
-            publisher: None,
-            genres: vec![],
-            rating: None,
-        })
-    }
-
-    async fn get_media(&self, source_id: &str) -> Result<Vec<ScrapedMedia>, String> {
-        let mut all_media = Vec::new();
-
-        let endpoints = [
-            ("grids", "boxfront"),
-            ("heroes", "hero"),
-            ("logos", "logo"),
-            ("icons", "icon"),
-        ];
-
-        for (endpoint, asset_type) in endpoints {
-            if let Ok(images) = self.fetch_images(endpoint, source_id).await {
-                for img in images {
-                    all_media.push(ScrapedMedia {
-                        url: img.url,
-                        asset_type: asset_type.to_string(),
-                        width: Some(img.width),
-                        height: Some(img.height),
-                    });
-                }
-            }
-        }
-
-        Ok(all_media)
     }
 }

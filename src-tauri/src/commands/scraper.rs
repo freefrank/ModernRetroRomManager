@@ -199,47 +199,17 @@ pub async fn scraper_set_provider_enabled(
 }
 
 // ============================================================================
-// 旧 API 兼容 (保留)
+// ScraperManager 控制 (占位)
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ApiConfigInfo {
-    pub id: String,
-    pub provider: String,
-    pub api_key: Option<String>,
-    pub enabled: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateApiConfig {
-    pub provider: String,
-    pub api_key: Option<String>,
-    pub enabled: Option<bool>,
-}
-
 #[tauri::command]
-pub fn get_api_configs() -> Result<Vec<ApiConfigInfo>, String> {
-    Ok(vec![])
-}
-
-#[tauri::command]
-pub fn save_api_config(_config: UpdateApiConfig) -> Result<(), String> {
-    Ok(())
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ApplyScrapeOptions {
-    pub rom_id: String,
-}
-
-#[tauri::command]
-pub async fn apply_scraped_data(_options: ApplyScrapeOptions) -> Result<(), String> {
+pub async fn apply_scraped_data(_rom_id: String) -> Result<(), String> {
     // TODO: 实现保存 scrape 数据到 metadata 文件
     Ok(())
 }
 
 #[tauri::command]
-pub async fn batch_scrape(_rom_ids: Vec<String>, _provider: String) -> Result<(), String> {
+pub async fn batch_scrape(_rom_ids: Vec<String>, _provider_id: String) -> Result<(), String> {
     // TODO: 实现批量 scrape
     Ok(())
 }
