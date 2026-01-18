@@ -7,35 +7,35 @@ use crate::settings::{get_settings, DirectoryConfig};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-/// ROM 信息（运行时数据）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RomInfo {
-    /// 文件路径（相对于目录）
     pub file: String,
-    /// 游戏名称
     pub name: String,
-    /// 描述
     pub description: Option<String>,
-    /// 简介
     pub summary: Option<String>,
-    /// 开发商
     pub developer: Option<String>,
-    /// 发行商
     pub publisher: Option<String>,
-    /// 类型
     pub genre: Option<String>,
-    /// 玩家数
     pub players: Option<String>,
-    /// 发布日期
     pub release: Option<String>,
-    /// 评分
     pub rating: Option<String>,
-    /// 封面图路径（相对路径）
-    pub boxart: Option<String>,
-    /// 所属目录
     pub directory: String,
-    /// 系统名称（目录名或指定的 system_id）
     pub system: String,
+    pub box_front: Option<String>,
+    pub box_back: Option<String>,
+    pub box_spine: Option<String>,
+    pub box_full: Option<String>,
+    pub cartridge: Option<String>,
+    pub logo: Option<String>,
+    pub marquee: Option<String>,
+    pub bezel: Option<String>,
+    pub gridicon: Option<String>,
+    pub flyer: Option<String>,
+    pub background: Option<String>,
+    pub music: Option<String>,
+    pub screenshot: Option<String>,
+    pub titlescreen: Option<String>,
+    pub video: Option<String>,
 }
 
 /// 系统 ROM 列表
@@ -62,12 +62,27 @@ impl From<PegasusGame> for RomInfo {
             players: game.players,
             release: game.release,
             rating: game.rating,
-            boxart: None,
             directory: String::new(),
             system: String::new(),
+            box_front: game.box_front,
+            box_back: game.box_back,
+            box_spine: game.box_spine,
+            box_full: game.box_full,
+            cartridge: game.cartridge,
+            logo: game.logo,
+            marquee: game.marquee,
+            bezel: game.bezel,
+            gridicon: game.gridicon,
+            flyer: game.flyer,
+            background: game.background,
+            music: game.music,
+            screenshot: game.screenshot,
+            titlescreen: game.titlescreen,
+            video: game.video,
         }
     }
 }
+
 
 /// 获取所有目录的 ROM 列表
 pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
@@ -158,11 +173,9 @@ pub fn get_roms_from_directory(
     }
 }
 
-/// 读取 Pegasus 格式
 fn read_pegasus_roms(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, String> {
-    // 尝试多个可能的文件名
     let possible_files = ["metadata.pegasus.txt", "metadata.txt"];
-    
+
     for filename in &possible_files {
         let metadata_path = dir_path.join(filename);
         if metadata_path.exists() {
@@ -174,18 +187,139 @@ fn read_pegasus_roms(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>,
                     let mut rom: RomInfo = g.into();
                     rom.directory = dir_path.to_string_lossy().to_string();
                     rom.system = system_name.to_string();
+                    resolve_all_media_paths(&mut rom, dir_path);
+                    scan_media_directory(&mut rom, dir_path);
                     rom
                 })
                 .collect());
         }
     }
     
-    // 没有找到 metadata 文件，扫描文件
     scan_rom_files(dir_path, system_name)
 }
 
-/// 读取 EmulationStation gamelist.xml 格式
+fn resolve_media_path(dir_path: &Path, value: &str) -> String {
+    let path = Path::new(value);
+    if path.is_absolute() {
+        // Normalize path separators on Windows
+        #[cfg(windows)]
+        return value.replace('/', "\\");
+        #[cfg(not(windows))]
+        return value.to_string();
+    } else {
+        // Normalize the relative path first, then join
+        #[cfg(windows)]
+        let normalized_value = value.replace('/', "\\");
+        #[cfg(not(windows))]
+        let normalized_value = value.to_string();
+        
+        dir_path.join(&normalized_value).to_string_lossy().to_string()
+    }
+}
+
+fn resolve_all_media_paths(rom: &mut RomInfo, dir_path: &Path) {
+    let resolve = |opt: &mut Option<String>| {
+        if let Some(v) = opt.take() {
+            *opt = Some(resolve_media_path(dir_path, &v));
+        }
+    };
+    
+    resolve(&mut rom.box_front);
+    resolve(&mut rom.box_back);
+    resolve(&mut rom.box_spine);
+    resolve(&mut rom.box_full);
+    resolve(&mut rom.cartridge);
+    resolve(&mut rom.logo);
+    resolve(&mut rom.marquee);
+    resolve(&mut rom.bezel);
+    resolve(&mut rom.gridicon);
+    resolve(&mut rom.flyer);
+    resolve(&mut rom.background);
+    resolve(&mut rom.music);
+    resolve(&mut rom.screenshot);
+    resolve(&mut rom.titlescreen);
+    resolve(&mut rom.video);
+}
+
+fn scan_media_directory(rom: &mut RomInfo, dir_path: &Path) {
+    // Use file stem (filename without extension) as lookup key, like Pegasus does
+    let file_stem = Path::new(&rom.file)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&rom.name);
+    
+    let media_dir = dir_path.join("media").join(file_stem);
+    if !media_dir.exists() {
+        return;
+    }
+
+    let entries = match std::fs::read_dir(&media_dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        let full_path = path.to_string_lossy().to_string();
+        
+        match stem.to_lowercase().as_str() {
+            "boxfront" | "box_front" | "boxart" | "cover" => {
+                if rom.box_front.is_none() { rom.box_front = Some(full_path); }
+            }
+            "boxback" | "box_back" => {
+                if rom.box_back.is_none() { rom.box_back = Some(full_path); }
+            }
+            "boxspine" | "box_spine" => {
+                if rom.box_spine.is_none() { rom.box_spine = Some(full_path); }
+            }
+            "boxfull" | "box_full" => {
+                if rom.box_full.is_none() { rom.box_full = Some(full_path); }
+            }
+            "cartridge" | "cart" | "disc" => {
+                if rom.cartridge.is_none() { rom.cartridge = Some(full_path); }
+            }
+            "logo" | "wheel" => {
+                if rom.logo.is_none() { rom.logo = Some(full_path); }
+            }
+            "marquee" | "banner" => {
+                if rom.marquee.is_none() { rom.marquee = Some(full_path); }
+            }
+            "bezel" | "screenmarquee" => {
+                if rom.bezel.is_none() { rom.bezel = Some(full_path); }
+            }
+            "gridicon" | "steam" | "poster" => {
+                if rom.gridicon.is_none() { rom.gridicon = Some(full_path); }
+            }
+            "flyer" => {
+                if rom.flyer.is_none() { rom.flyer = Some(full_path); }
+            }
+            "background" | "fanart" => {
+                if rom.background.is_none() { rom.background = Some(full_path); }
+            }
+            "music" => {
+                if rom.music.is_none() { rom.music = Some(full_path); }
+            }
+            "screenshot" | "screenshots" | "screen" => {
+                if rom.screenshot.is_none() { rom.screenshot = Some(full_path); }
+            }
+            "titlescreen" | "title_screen" | "title" => {
+                if rom.titlescreen.is_none() { rom.titlescreen = Some(full_path); }
+            }
+            "video" | "videos" => {
+                if rom.video.is_none() { rom.video = Some(full_path); }
+            }
+            _ => {}
+        }
+    }
+}
+
 fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, String> {
+
     use quick_xml::de::from_reader;
     use std::fs::File;
     use std::io::BufReader;
@@ -245,13 +379,28 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 players: g.players,
                 release: g.releasedate,
                 rating: g.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
-                boxart: g.image,
                 directory: dir_path.to_string_lossy().to_string(),
                 system: system_name.to_string(),
+                box_front: g.image.map(|image| resolve_media_path(dir_path, &image)),
+                box_back: None,
+                box_spine: None,
+                box_full: None,
+                cartridge: None,
+                logo: None,
+                marquee: None,
+                bezel: None,
+                gridicon: None,
+                flyer: None,
+                background: None,
+                music: None,
+                screenshot: None,
+                titlescreen: None,
+                video: None,
             }
         })
         .collect())
 }
+
 
 /// 无 metadata 时扫描 ROM 文件
 fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, String> {
@@ -297,9 +446,23 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                             players: None,
                             release: None,
                             rating: None,
-                            boxart: None,
                             directory: dir_path.to_string_lossy().to_string(),
                             system: system_name.to_string(),
+                            box_front: None,
+                            box_back: None,
+                            box_spine: None,
+                            box_full: None,
+                            cartridge: None,
+                            logo: None,
+                            marquee: None,
+                            bezel: None,
+                            gridicon: None,
+                            flyer: None,
+                            background: None,
+                            music: None,
+                            screenshot: None,
+                            titlescreen: None,
+                            video: None,
                         });
                     }
                 }

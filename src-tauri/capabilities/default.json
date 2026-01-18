@@ -6,6 +6,25 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "dialog:default"
+    "dialog:default",
+    "fs:default",
+    "fs:allow-read-file",
+    "fs:allow-read-dir",
+    {
+      "identifier": "fs:allow-read",
+      "allow": [{ "path": "**" }]
+    },
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "**" },
+        { "path": "$HOME/**" },
+        { "path": "$APPDATA/**" },
+        { "path": "$LOCALAPPDATA/**" },
+        { "path": "D:/**" },
+        { "path": "E:/**" },
+        { "path": "F:/**" }
+      ]
+    }
   ]
 }

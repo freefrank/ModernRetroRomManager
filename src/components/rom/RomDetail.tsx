@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, User, Building2, Globe, Gamepad2, Play, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { resolveMediaUrlAsync } from "@/lib/api";
 import type { Rom } from "@/types";
 import ScrapeDialog from "./ScrapeDialog";
 
@@ -10,15 +11,28 @@ interface RomDetailProps {
   onClose: () => void;
 }
 
+function useMediaUrl(path: string | undefined): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!path) {
+      setUrl(null);
+      return;
+    }
+    resolveMediaUrlAsync(path).then(setUrl);
+  }, [path]);
+  return url;
+}
+
 export default function RomDetail({ rom, onClose }: RomDetailProps) {
   const { t } = useTranslation();
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
+  
+  const heroSource = rom?.background || rom?.screenshot || rom?.box_front;
+  const heroUrl = useMediaUrl(heroSource);
+  const videoUrl = useMediaUrl(rom?.video);
+  const logoUrl = useMediaUrl(rom?.logo);
 
   if (!rom) return null;
-
-  // 临时：只有 boxart，没有 hero/video
-  const heroUrl = rom.boxart;
-  const videoUrl = null;
 
   return (
     <>
@@ -68,9 +82,13 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                 </button>
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent">
-                  <h2 className="text-3xl font-bold text-text-primary mb-2 leading-tight">
-                    {rom.name}
-                  </h2>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt={rom.name} className="h-12 mb-2 object-contain drop-shadow-lg" />
+                  ) : (
+                    <h2 className="text-3xl font-bold text-text-primary mb-2 leading-tight">
+                      {rom.name}
+                    </h2>
+                  )}
                   <div className="flex items-center gap-3 text-sm">
                     <span className="px-2 py-0.5 rounded bg-bg-tertiary text-text-primary font-medium uppercase text-xs border border-border-default">
                       {rom.system}

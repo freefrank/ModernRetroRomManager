@@ -19,7 +19,8 @@
       "addDirectory": "Add Directory"
     },
     "viewMode": {
-      "grid": "Grid View",
+      "cover": "Cover View",
+      "grid": "Card View",
       "list": "List View"
     }
   },

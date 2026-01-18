@@ -29,6 +29,7 @@ interface RomState {
   selectedSystem: string | null;
   setSelectedSystem: (system: string | null) => void;
   fetchRoms: (filter?: FilterOption) => Promise<void>;
+  isLoadingRoms: boolean;
   
   // 选中的 ROM
   selectedRomIds: Set<string>;
@@ -70,6 +71,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   systemRoms: [],
   availableSystems: [],
   selectedSystem: null,
+  isLoadingRoms: false,
   setSelectedSystem: (system: string | null) => {
     set({ selectedSystem: system });
     const { systemRoms } = get();
@@ -81,6 +83,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     }
   },
   fetchRoms: async (_filter?: FilterOption) => {
+    set({ isLoadingRoms: true });
     try {
       const systemRoms = await api.getRoms();
       const availableSystems = systemRoms.map(s => ({
@@ -95,10 +98,11 @@ export const useRomStore = create<RomState>((set, get) => ({
       } else {
         roms = systemRoms.flatMap(s => s.roms);
       }
-      set({ systemRoms, availableSystems, roms });
+      set({ systemRoms, availableSystems, roms, isLoadingRoms: false });
       get().fetchStats();
     } catch (error) {
       console.error("Failed to fetch roms:", error);
+      set({ isLoadingRoms: false });
     }
   },
 

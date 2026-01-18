@@ -7,9 +7,9 @@ import { useState } from "react";
 import { useRomStore } from "@/stores/romStore";
 
 const NAV_ITEMS = [
-  { to: "/scraper", icon: Database, labelKey: "sidebar.scraper" },
-  { to: "/import", icon: ArrowRightLeft, labelKey: "sidebar.import" },
-  { to: "/settings", icon: Settings, labelKey: "sidebar.settings" },
+  { to: "/scraper", icon: Database, labelKey: "nav.scraper" },
+  { to: "/import", icon: ArrowRightLeft, labelKey: "nav.import" },
+  { to: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 
 export default function Sidebar() {
@@ -80,7 +80,7 @@ export default function Sidebar() {
                     )}
                 />
                 <span className="font-medium z-10 text-sm tracking-wide flex-1">
-                    {t("sidebar.library", { defaultValue: "ROM库" })}
+                    {t("nav.library", { defaultValue: "ROM 库" })}
                 </span>
                 
                 <button
@@ -178,7 +178,7 @@ export default function Sidebar() {
       {/* Footer Info */}
       <div className="p-6 border-t border-border-default flex-shrink-0">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-text-muted font-medium">v{import.meta.env.APP_VERSION || "0.1.0"}</p>
+          <p className="text-xs text-text-muted font-medium">v{import.meta.env.APP_VERSION}</p>
           <div className="w-2 h-2 rounded-full bg-accent-success shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
         </div>
       </div>

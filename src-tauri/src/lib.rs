@@ -46,6 +46,8 @@ pub fn run() {
             commands::validate_path,
             commands::get_config_dir,
             commands::get_media_dir,
+            commands::detect_metadata_files,
+            commands::scan_directory,
             // Settings commands
             commands::get_app_settings,
             commands::save_app_settings,

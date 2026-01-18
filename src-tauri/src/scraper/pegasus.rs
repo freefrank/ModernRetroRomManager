@@ -10,6 +10,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
+use encoding_rs::GBK;
+use chardetng::EncodingDetector;
 
 /// Pegasus collection entry
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -23,7 +25,8 @@ pub struct PegasusCollection {
     pub workdir: Option<String>,
 }
 
-/// Pegasus game entry
+/// Pegasus game entry with full media asset support
+/// See: https://pegasus-frontend.org/docs/user-guide/meta-assets/
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PegasusGame {
     pub name: String,
@@ -38,9 +41,25 @@ pub struct PegasusGame {
     pub release: Option<String>,
     pub rating: Option<String>,
     pub sort_title: Option<String>,
-    /// Custom x- fields
+    // Media assets
+    pub box_front: Option<String>,
+    pub box_back: Option<String>,
+    pub box_spine: Option<String>,
+    pub box_full: Option<String>,
+    pub cartridge: Option<String>,
+    pub logo: Option<String>,
+    pub marquee: Option<String>,
+    pub bezel: Option<String>,
+    pub gridicon: Option<String>,
+    pub flyer: Option<String>,
+    pub background: Option<String>,
+    pub music: Option<String>,
+    pub screenshot: Option<String>,
+    pub titlescreen: Option<String>,
+    pub video: Option<String>,
     pub extra: HashMap<String, String>,
 }
+
 
 /// Parse result
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -49,11 +68,46 @@ pub struct PegasusMetadata {
     pub games: Vec<PegasusGame>,
 }
 
+/// Detect encoding and decode bytes to string
+fn decode_bytes_to_string(bytes: &[u8]) -> String {
+    // Try UTF-8 first (with BOM check)
+    if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        // UTF-8 with BOM
+        if let Ok(s) = std::str::from_utf8(&bytes[3..]) {
+            return s.to_string();
+        }
+    }
+    
+    // Try UTF-8 without BOM
+    if let Ok(s) = std::str::from_utf8(bytes) {
+        // Check if it looks like valid text (no replacement chars after re-encoding)
+        if !s.contains('\u{FFFD}') {
+            return s.to_string();
+        }
+    }
+    
+    // Use chardetng for encoding detection
+    let mut detector = EncodingDetector::new();
+    detector.feed(bytes, true);
+    let encoding = detector.guess(None, true);
+    
+    // Decode with detected encoding
+    let (decoded, _, had_errors) = encoding.decode(bytes);
+    if !had_errors {
+        return decoded.into_owned();
+    }
+    
+    // Fallback: try GBK (common for Chinese files)
+    let (decoded, _, _) = GBK.decode(bytes);
+    decoded.into_owned()
+}
+
 /// Parse a Pegasus metadata file
 pub fn parse_pegasus_file(path: &Path) -> Result<PegasusMetadata, String> {
-    let content = std::fs::read_to_string(path)
+    let bytes = std::fs::read(path)
         .map_err(|e| format!("Failed to read file: {}", e))?;
     
+    let content = decode_bytes_to_string(&bytes);
     parse_pegasus_content(&content)
 }
 
@@ -155,8 +209,9 @@ fn apply_key_value(
     collection: &mut Option<PegasusCollection>,
     game: &mut Option<PegasusGame>,
 ) {
-    // Game properties take priority
     if let Some(ref mut g) = game {
+        let first_value = || value.split_whitespace().next().map(|v| v.to_string());
+        
         match key {
             "file" => g.file = Some(value.to_string()),
             "files" => g.files = value.split_whitespace().map(|s| s.to_string()).collect(),
@@ -169,11 +224,31 @@ fn apply_key_value(
             "release" => g.release = Some(value.to_string()),
             "rating" => g.rating = Some(value.to_string()),
             "sort_title" | "sort_name" | "sort-by" => g.sort_title = Some(value.to_string()),
+            
+            "assets.boxfront" | "assets.box_front" | "assets.boxart2d" | "boxart" | "cover" => {
+                g.box_front = first_value();
+            }
+            "assets.boxback" | "assets.box_back" => g.box_back = first_value(),
+            "assets.boxspine" | "assets.box_spine" => g.box_spine = first_value(),
+            "assets.boxfull" | "assets.box_full" => g.box_full = first_value(),
+            "assets.cartridge" | "assets.disc" | "assets.cart" => g.cartridge = first_value(),
+            "assets.logo" | "assets.wheel" => g.logo = first_value(),
+            "assets.marquee" | "assets.banner" => g.marquee = first_value(),
+            "assets.bezel" | "assets.screenmarquee" => g.bezel = first_value(),
+            "assets.gridicon" | "assets.steam" | "assets.poster" => g.gridicon = first_value(),
+            "assets.flyer" => g.flyer = first_value(),
+            "assets.background" | "assets.fanart" => g.background = first_value(),
+            "assets.music" => g.music = first_value(),
+            "assets.screenshot" | "assets.screenshots" => g.screenshot = first_value(),
+            "assets.titlescreen" | "assets.title_screen" => g.titlescreen = first_value(),
+            "assets.video" | "assets.videos" => g.video = first_value(),
+            
             _ if key.starts_with("x-") => {
                 g.extra.insert(key.to_string(), value.to_string());
             }
             _ => {}
         }
+
         return;
     }
     

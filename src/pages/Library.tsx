@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X } from "lucide-react";
+import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X, Grid3X3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { useRomStore } from "@/stores/romStore";
@@ -8,8 +8,7 @@ import { clsx } from "clsx";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Rom } from "@/types";
 
-import RomGrid from "@/components/rom/RomGrid";
-import RomList from "@/components/rom/RomList";
+import RomView from "@/components/rom/RomView";
 import RomDetail from "@/components/rom/RomDetail";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 import DirectoryInput from "@/components/common/DirectoryInput";
@@ -167,7 +166,7 @@ export default function Library() {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-8 max-w-[1600px] mx-auto w-full pb-8 relative">
+    <div className="flex flex-col h-full space-y-6 max-w-[1600px] mx-auto w-full relative">
       {/* Batch Actions Toolbar (Floating) */}
       <div
         className={clsx(
@@ -250,6 +249,18 @@ export default function Library() {
           {/* View Toggle & Filters */}
           <div className="flex items-center gap-2 p-1 bg-bg-secondary rounded-xl border border-border-default">
             <button
+              onClick={() => setViewMode("cover")}
+              className={clsx(
+                "p-2 rounded-lg transition-all",
+                viewMode === "cover"
+                  ? "bg-accent-primary text-text-primary shadow-lg shadow-accent-primary/20"
+                  : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+              )}
+              title={t("library.viewMode.cover")}
+            >
+              <Grid3X3 className="w-5 h-5" />
+            </button>
+            <button
               onClick={() => setViewMode("grid")}
               className={clsx(
                 "p-2 rounded-lg transition-all",
@@ -282,7 +293,7 @@ export default function Library() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         {roms.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[400px]">
             <div className="text-center max-w-md mx-auto relative group cursor-default mb-16">
@@ -315,21 +326,13 @@ export default function Library() {
             </div>
           </div>
         ) : (
-          viewMode === "grid" ? (
-            <RomGrid
-              roms={roms}
-              selectedIds={selectedRomIds}
-              onRomClick={handleRomClick}
-              onToggleSelect={(id) => toggleRomSelection(id, true)}
-            />
-          ) : (
-            <RomList
-              roms={roms}
-              selectedIds={selectedRomIds}
-              onRomClick={handleRomClick}
-              onToggleSelect={(id) => toggleRomSelection(id, true)}
-            />
-          )
+          <RomView
+            roms={roms}
+            viewMode={viewMode}
+            selectedIds={selectedRomIds}
+            onRomClick={handleRomClick}
+            onToggleSelect={(id) => toggleRomSelection(id, true)}
+          />
         )}
       </div>
 

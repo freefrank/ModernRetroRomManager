@@ -26,10 +26,15 @@
 ├─────────────────────────────────────────────────────────────┤
 │                      Backend Layer                          │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │              Rust (Tauri Framework v2)              │   │
+│  │     桌面版: Rust (Tauri Framework v2)               │   │
 │  │     - 轻量级 (无内嵌浏览器开销)                     │   │
 │  │     - Metadata 驱动 (直接读写 XML/TXT)              │   │
 │  │     - 跨平台编译 (Win/Mac/Linux)                    │   │
+│  ├─────────────────────────────────────────────────────┤   │
+│  │     Web版: Node.js (Express + TypeScript)           │   │
+│  │     - Docker 容器部署                               │   │
+│  │     - Volume 映射 ROM 目录                          │   │
+│  │     - 媒体文件代理 API                              │   │
 │  └─────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │                      Storage Layer                          │
@@ -101,7 +106,7 @@
 - [x] ROM 列表视图（网格）
 - [x] ROM 详情面板
 - [x] 全局搜索 (Spotlight 风格)
-- [ ] ROM 网格视图（封面）
+- [x] ROM 网格视图（封面）
 
 #### 1.4 ROM 扫描器
 - [x] 目录递归扫描 (Backend)
@@ -165,14 +170,14 @@
 - [ ] 代理设置
 - [ ] 速率限制配置
 
-### Phase 5: 配置架构重构 (本地/Docker 双模式) ✅
+### Phase 5: 配置架构重构 (本地/Docker 双模式)
 
 #### 5.1 配置目录结构
 - [x] 统一配置目录到 `./config/`
   - `config/settings.json` - 应用配置
   - `config/media/` - 媒体资产缓存
 - [x] 环境变量支持 (`CONFIG_DIR` 覆盖默认路径)
-- [ ] Docker volume 挂载支持
+- [x] Docker volume 挂载支持
 
 #### 5.2 目录选择 UI 重构
 - [x] 移除 Tauri dialog 依赖（Web 端不可用）
@@ -182,8 +187,28 @@
 
 #### 5.3 部署模式支持
 - [x] 本地模式：使用相对路径 `./config/`
-- [ ] Docker 模式：挂载 `/app/config` volume
+- [x] Docker 模式：挂载 `/roms` volume
 - [ ] 配置热重载支持
+
+### Phase 6: Web 版本 (Docker 部署)
+
+#### 6.1 Node.js 后端服务
+- [x] Express + TypeScript 服务端
+- [x] ROM 数据 API (`/api/roms`)
+- [x] 媒体文件代理 API (`/api/media`)
+- [x] Pegasus metadata 解析器 (移植自 Rust)
+- [x] Media 目录自动扫描
+
+#### 6.2 Docker 支持
+- [x] 多阶段 Dockerfile (前端构建 + 后端构建 + 生产镜像)
+- [x] docker-compose.yml 配置
+- [x] 环境变量配置 (`ROMS_DIR`, `PORT`)
+- [x] Volume 映射文档
+
+#### 6.3 前端适配
+- [x] 环境检测 (Tauri vs Web)
+- [x] API 调用适配层 (`src/lib/api.ts`)
+- [x] 媒体 URL 转换 (convertFileSrc vs HTTP URL)
 
 ---
 
@@ -200,4 +225,5 @@
 - [Tauri](https://tauri.app/)
 - [React](https://react.dev/)
 - [TailwindCSS](https://tailwindcss.com/)
-- [Diesel ORM](https://diesel.rs/)
+- [Express](https://expressjs.com/)
+- [Docker](https://www.docker.com/)

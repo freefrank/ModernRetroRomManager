@@ -105,7 +105,7 @@ export type ExportFormat =
   | "retroarch";
 
 // UI 状态
-export type ViewMode = "grid" | "list";
+export type ViewMode = "grid" | "list" | "cover";
 
 export interface SortOption {
   field: "name" | "system" | "size" | "updatedAt";

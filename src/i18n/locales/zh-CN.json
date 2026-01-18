@@ -19,7 +19,8 @@
       "addDirectory": "添加目录"
     },
     "viewMode": {
-      "grid": "网格视图",
+      "cover": "封面视图",
+      "grid": "卡片视图",
       "list": "列表视图"
     }
   },

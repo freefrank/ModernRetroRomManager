@@ -83,14 +83,25 @@ export function resolveMediaUrl(path: string | undefined): string | null {
   return `${API_BASE}/media?path=${encodeURIComponent(path)}`;
 }
 
+// Normalize path separators for Windows compatibility
+function normalizePath(path: string): string {
+  // Convert forward slashes to backslashes on Windows paths
+  if (path.match(/^[A-Za-z]:/)) {
+    return path.replace(/\//g, '\\');
+  }
+  return path;
+}
+
 export async function resolveMediaUrlAsync(path: string | undefined): Promise<string | null> {
   if (!path) return null;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
 
+  const normalizedPath = normalizePath(path);
+
   if (isTauri()) {
     const { convertFileSrc } = await import("@tauri-apps/api/core");
-    return convertFileSrc(path);
+    return convertFileSrc(normalizedPath);
   }
 
-  return `${API_BASE}/media?path=${encodeURIComponent(path)}`;
+  return `${API_BASE}/media?path=${encodeURIComponent(normalizedPath)}`;
 }
