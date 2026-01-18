@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useScraperStore } from "@/stores/scraperStore";
-import { Settings2, Activity, Loader2, AlertCircle } from "lucide-react";
+import { Settings2, Loader2, AlertCircle } from "lucide-react";
 
 export default function Scraper() {
 

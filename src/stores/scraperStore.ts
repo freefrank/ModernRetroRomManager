@@ -8,6 +8,7 @@ interface ScraperState {
   fetchProviders: () => Promise<void>;
   configureProvider: (providerId: string, credentials: ScraperCredentials) => Promise<void>;
   setProviderEnabled: (providerId: string, enabled: boolean) => Promise<void>;
+  setProviderPriority: (providerId: string, priority: number) => Promise<void>;
 }
 
 export const useScraperStore = create<ScraperState>((set, get) => ({
@@ -43,6 +44,21 @@ export const useScraperStore = create<ScraperState>((set, get) => ({
       });
     } catch (error) {
       console.error(`Failed to set provider ${providerId} enabled:`, error);
+      await get().fetchProviders(); // 失败时回滚
+      throw error;
+    }
+  },
+  setProviderPriority: async (providerId, priority) => {
+    try {
+      await scraperApi.setProviderPriority(providerId, priority);
+      // 乐观更新
+      set({
+        providers: get().providers.map((p) =>
+          p.id === providerId ? { ...p, priority } : p
+        ),
+      });
+    } catch (error) {
+      console.error(`Failed to set provider ${providerId} priority:`, error);
       await get().fetchProviders(); // 失败时回滚
       throw error;
     }

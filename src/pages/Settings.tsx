@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useRomStore } from "@/stores/romStore";
 import { useAppStore, THEMES } from "@/stores/appStore";
 import { useScraperStore } from "@/stores/scraperStore";
-import { Folder, Trash2, RefreshCw, Plus, HardDrive, X, Settings2, Key, Globe, Shield, Activity, Save, Loader2, Info } from "lucide-react";
+import { Folder, Trash2, RefreshCw, Plus, HardDrive, X, Settings2, Key, Globe, Shield, Activity, Save, Info, GripVertical } from "lucide-react";
 import { clsx } from "clsx";
 import DirectoryInput from "@/components/common/DirectoryInput";
 import MetadataImportDialog from "@/components/common/MetadataImportDialog";
@@ -44,9 +44,13 @@ export default function Settings() {
   } = useRomStore();
 
   // Scraper store
-  const { providers, fetchProviders, configureProvider, setProviderEnabled, isLoading: isScraperLoading } = useScraperStore();
+  const { providers, fetchProviders, configureProvider, setProviderEnabled, setProviderPriority } = useScraperStore();
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<ScraperCredentials>({});
+
+  // 拖拽排序状态
+  const [draggedProvider, setDraggedProvider] = useState<string | null>(null);
+  const [dragOverProvider, setDragOverProvider] = useState<string | null>(null);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDirPath, setNewDirPath] = useState("");
@@ -209,6 +213,58 @@ export default function Settings() {
       console.error("Failed to save credentials:", error);
     }
   };
+
+  // 拖拽处理函数
+  const handleDragStart = (e: React.DragEvent, providerId: string) => {
+    setDraggedProvider(providerId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, providerId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverProvider(providerId);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetProviderId: string) => {
+    e.preventDefault();
+    if (!draggedProvider || draggedProvider === targetProviderId) return;
+
+    // 获取排序后的 provider 列表
+    const sortedProviders = [...providers].sort((a, b) => a.priority - b.priority);
+    const draggedIndex = sortedProviders.findIndex(p => p.id === draggedProvider);
+    const targetIndex = sortedProviders.findIndex(p => p.id === targetProviderId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // 重新排列
+    const newProviders = [...sortedProviders];
+    const [removed] = newProviders.splice(draggedIndex, 1);
+    newProviders.splice(targetIndex, 0, removed);
+
+    // 重新计算优先级（从10开始，每个间隔10）
+    try {
+      for (let i = 0; i < newProviders.length; i++) {
+        const newPriority = (i + 1) * 10;
+        if (newProviders[i].priority !== newPriority) {
+          await setProviderPriority(newProviders[i].id, newPriority);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update provider priorities:", error);
+    }
+
+    setDraggedProvider(null);
+    setDragOverProvider(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedProvider(null);
+    setDragOverProvider(null);
+  };
+
+  // 按优先级排序的 providers
+  const sortedProviders = [...providers].sort((a, b) => a.priority - b.priority);
 
   const getProviderIcon = (id: string) => {
     switch (id) {
@@ -392,15 +448,25 @@ export default function Settings() {
             </h2>
 
             <div className="grid grid-cols-1 gap-4">
-              {providers.map((p) => (
+              {sortedProviders.map((p) => (
                 <div
                   key={p.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, p.id)}
+                  onDragOver={(e) => handleDragOver(e, p.id)}
+                  onDrop={(e) => handleDrop(e, p.id)}
+                  onDragEnd={handleDragEnd}
                   className={clsx(
-                    "group relative overflow-hidden rounded-2xl border transition-all duration-300",
-                    p.enabled ? "bg-bg-secondary border-border-hover" : "bg-bg-primary/50 border-border-default opacity-70"
+                    "group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-move",
+                    p.enabled ? "bg-bg-secondary border-border-hover" : "bg-bg-primary/50 border-border-default opacity-70",
+                    draggedProvider === p.id && "opacity-50 scale-95",
+                    dragOverProvider === p.id && "ring-2 ring-accent-primary"
                   )}
                 >
                   <div className="flex items-center p-5">
+                    <div className="cursor-grab active:cursor-grabbing text-text-muted hover:text-accent-primary transition-colors mr-3">
+                      <GripVertical className="w-5 h-5" />
+                    </div>
                     <div className={clsx("w-12 h-12 rounded-xl flex items-center justify-center border", getProviderColor(p.id))}>
                       {getProviderIcon(p.id)}
                     </div>

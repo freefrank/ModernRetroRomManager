@@ -55,6 +55,7 @@ pub struct ProviderInfo {
     pub id: String,
     pub name: String,
     pub enabled: bool,
+    pub priority: u32,
     pub has_credentials: bool,
     pub capabilities: Vec<String>,
 }
@@ -87,6 +88,7 @@ pub async fn get_scraper_providers(
             id: "steamgriddb".to_string(),
             name: "SteamGridDB".to_string(),
             enabled: config.enabled,
+            priority: config.priority,
             has_credentials: config.api_key.is_some() && !config.api_key.unwrap().is_empty(),
             capabilities: vec!["search".to_string(), "media".to_string()],
         });
@@ -95,6 +97,7 @@ pub async fn get_scraper_providers(
             id: "steamgriddb".to_string(),
             name: "SteamGridDB".to_string(),
             enabled: true, // 默认启用
+            priority: 100, // 默认优先级
             has_credentials: false,
             capabilities: vec!["search".to_string(), "media".to_string()],
         });
@@ -106,7 +109,8 @@ pub async fn get_scraper_providers(
             id: "screenscraper".to_string(),
             name: "ScreenScraper".to_string(),
             enabled: config.enabled,
-            has_credentials: config.username.is_some() && !config.username.unwrap().is_empty() 
+            priority: config.priority,
+            has_credentials: config.username.is_some() && !config.username.unwrap().is_empty()
                 && config.password.is_some() && !config.password.unwrap().is_empty(),
             capabilities: vec![
                 "search".to_string(),
@@ -120,6 +124,7 @@ pub async fn get_scraper_providers(
             id: "screenscraper".to_string(),
             name: "ScreenScraper".to_string(),
             enabled: true, // 默认启用
+            priority: 100, // 默认优先级
             has_credentials: false,
             capabilities: vec![
                 "search".to_string(),

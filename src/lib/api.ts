@@ -195,6 +195,13 @@ export const scraperApi = {
     }
   },
 
+  /** 设置 provider 优先级 */
+  async setProviderPriority(providerId: string, priority: number): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("scraper_set_provider_priority", { providerId, priority });
+    }
+  },
+
   /** 应用抓取到的数据 */
   async applyScrapedData(options: ApplyScrapedDataOptions): Promise<void> {
     if (isTauri()) {
