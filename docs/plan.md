@@ -63,15 +63,46 @@
 
 ### 3. Scraper 引擎
 
-| 源 | API类型 | 优先级 | 说明 |
-|----|---------|--------|------|
-| IGDB | REST | ⭐⭐⭐⭐⭐ | Twitch 旗下，数据全面 |
-| SteamGridDB | REST | ⭐⭐⭐⭐⭐ | 高质量封面/Logo/图标 |
-| TheGamesDB | REST | ⭐⭐⭐⭐ | 社区驱动，免费 |
-| MobyGames | REST | ⭐⭐⭐⭐ | 老游戏数据丰富 |
-| ScreenScraper | REST | ⭐⭐⭐ | 需注册，媒体资源多 |
-| LaunchBox | 本地DB | ⭐⭐⭐ | 离线可用 |
-| 搜索引擎 + AI | 混合 | ⭐⭐⭐ | 兜底方案，处理冷门游戏 |
+#### 架构设计
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ScraperManager                           │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  providers: HashMap<String, Box<dyn ScraperProvider>>│   │
+│  │  config: ProviderConfig (优先级、启用状态、API Key) │   │
+│  └─────────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────────┤
+│                    统一接口                                 │
+│  search(query) → Vec<SearchResult>     (并行多源搜索)       │
+│  get_metadata(source) → GameMetadata   (标准化元数据)       │
+│  get_media(source) → Vec<MediaAsset>   (标准化媒体)         │
+│  scrape(rom) → ScrapeResult            (智能聚合)           │
+├─────────────────────────────────────────────────────────────┤
+│              Provider 实现 (可扩展插件式)                   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
+│  │  IGDB    │ │SteamGrid │ │ScreenScr │ │ Custom   │ ...   │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 内置 Provider
+
+| 源 | API类型 | 优势 | 说明 |
+|----|---------|------|------|
+| IGDB | REST | 元数据 | Twitch 旗下，数据全面 |
+| SteamGridDB | REST | 媒体 | 高质量封面/Logo/图标 |
+| ScreenScraper | REST | 全能 | Hash匹配，媒体资源多 |
+| TheGamesDB | REST | 免费 | 社区驱动 |
+| MobyGames | REST | 老游戏 | 数据丰富 |
+| LaunchBox | 本地DB | 离线 | 离线可用 |
+| 搜索引擎 + AI | 混合 | 兜底 | 处理冷门游戏 |
+
+#### 可扩展性
+
+- 实现 `ScraperProvider` trait 即可添加新 provider
+- 支持运行时注册/注销 provider
+- 配置文件管理 provider 优先级和 API 凭证
 
 ### 4. 媒体资产管理
 - Box Art, Screenshot, Video, Logo, Manual
@@ -118,26 +149,57 @@
 
 ### Phase 2: Scraper 核心
 
-#### 2.1 API 集成
-- [ ] IGDB API 客户端
-- [x] SteamGridDB API 客户端
-- [ ] TheGamesDB API 客户端
-- [ ] MobyGames API 客户端
-- [x] ScreenScraper API 客户端
-- [ ] 搜索引擎 + AI Scraper
-- [x] 交互式 Scrape 对话框 (Frontend)
+#### 2.1 ScraperManager 统一调度层
+- [ ] ScraperManager 核心实现
+  - [ ] Provider 注册/管理 (HashMap<String, Box<dyn Scraper>>)
+  - [ ] 统一搜索接口 (并行查询多 provider)
+  - [ ] 统一元数据/媒体获取接口
+  - [ ] 智能 scrape (自动匹配 + 聚合)
+  - [ ] 批量 scrape (进度回调)
+- [ ] 标准化数据结构
+  - [ ] ScrapeQuery (name, system, hash, file_name)
+  - [ ] SearchResult (provider, source_id, name, confidence)
+  - [ ] GameMetadata (name, description, developer, publisher, genres, rating)
+  - [ ] MediaAsset (provider, url, asset_type, dimensions)
+  - [ ] MediaType 枚举 (BoxFront, Screenshot, Logo, Video, etc.)
+- [ ] Provider trait (可扩展接口)
+  - [ ] name() -> 标识符
+  - [ ] capabilities() -> 支持的功能 (search, hash_lookup, metadata, media)
+  - [ ] search(query) -> Vec<SearchResult>
+  - [ ] get_details(source_id) -> GameMetadata
+  - [ ] get_media(source_id) -> Vec<MediaAsset>
 
-#### 2.2 智能匹配
+#### 2.2 内置 Provider 实现
+- [x] SteamGridDB (媒体为主)
+- [x] ScreenScraper (元数据+媒体)
+- [ ] IGDB (元数据为主)
+- [ ] TheGamesDB (免费，社区驱动)
+- [ ] MobyGames (老游戏数据丰富)
+- [ ] LaunchBox 本地数据库 (离线可用)
+- [ ] 搜索引擎 + AI Scraper (兜底方案)
+
+#### 2.3 智能匹配引擎
 - [x] ROM 文件名解析（No-Intro 命名规范）
-- [ ] Hash 精确匹配
-- [ ] 模糊搜索 + 用户确认
-- [ ] 多源数据聚合（优先级合并）
+- [ ] Hash 精确匹配 (CRC32/MD5/SHA1 → ScreenScraper)
+- [ ] 名称模糊匹配 (Levenshtein/Jaro-Winkler 相似度)
+- [ ] 置信度评分 (名称+系统+年份综合评估)
+- [ ] 多源数据聚合（优先级合并规则）
+  - [ ] 元数据优先级: IGDB > ScreenScraper > MobyGames
+  - [ ] 封面优先级: SteamGridDB > ScreenScraper
+  - [ ] 截图优先级: ScreenScraper > IGDB
+  - [ ] Logo/Icon: SteamGridDB
 
-#### 2.3 媒体下载
+#### 2.4 媒体下载
 - [x] 并发下载队列 (Batch Scraper)
 - [x] 断点续传 (Basic Implementation)
 - [ ] 图片格式转换/压缩
 - [x] 本地缓存管理
+
+#### 2.5 前端集成
+- [x] 交互式 Scrape 对话框
+- [ ] Provider 配置 UI (API Key 管理)
+- [ ] 搜索结果选择 UI (多源结果展示)
+- [ ] 批量 Scrape 进度 UI
 
 ### Phase 3: 导入导出
 
