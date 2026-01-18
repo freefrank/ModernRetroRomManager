@@ -124,7 +124,7 @@ export default function Sidebar() {
                                     selectedSystem === sys.name ? "bg-accent-secondary" : "bg-border-default group-hover:bg-text-secondary"
                                 )}></span>
                                 <span className="truncate flex-1 text-left">{sys.name}</span>
-                                <span className="text-[10px] text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[10px] text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded-md">
                                     {sys.romCount}
                                 </span>
                             </button>

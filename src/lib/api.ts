@@ -1,4 +1,4 @@
-import type { SystemRoms, GameSystem, ScanDirectory } from "@/types";
+import type { SystemRoms, GameSystem, ScanDirectory, Rom } from "@/types";
 
 declare global {
   interface Window {
@@ -11,6 +11,32 @@ export const isTauri = (): boolean => {
 };
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
+
+// ============ Media URL Cache ============
+const mediaUrlCache = new Map<string, string>();
+
+export function getCachedMediaUrl(path: string | undefined): string | null {
+  if (!path) return null;
+  return mediaUrlCache.get(path) ?? null;
+}
+
+export async function preloadMediaUrls(roms: Rom[], limit = 50): Promise<void> {
+  const paths = roms
+    .slice(0, limit)
+    .map(rom => rom.box_front || rom.gridicon)
+    .filter((path): path is string => !!path && !mediaUrlCache.has(path));
+
+  await Promise.all(
+    paths.map(async (path) => {
+      const url = await resolveMediaUrlAsync(path);
+      if (url) {
+        mediaUrlCache.set(path, url);
+      }
+    })
+  );
+}
+
+// ============ API Functions ============
 
 async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke } = await import("@tauri-apps/api/core");

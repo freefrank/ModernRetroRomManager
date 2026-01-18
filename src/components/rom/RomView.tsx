@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Gamepad2, Play, Star, CheckCircle2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTranslation } from "react-i18next";
-import { resolveMediaUrlAsync } from "@/lib/api";
+import { resolveMediaUrlAsync, getCachedMediaUrl } from "@/lib/api";
 import type { Rom, ViewMode } from "@/types";
 import { clsx } from "clsx";
 
@@ -14,16 +14,27 @@ interface RomViewProps {
   onToggleSelect: (id: string) => void;
 }
 
-// Shared hook for async media URL resolution
+// Shared hook for async media URL resolution with cache support
 function useMediaUrl(path: string | undefined): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+  // Check cache first for instant display
+  const cachedUrl = path ? getCachedMediaUrl(path) : null;
+  const [url, setUrl] = useState<string | null>(cachedUrl);
+
   useEffect(() => {
     if (!path) {
       setUrl(null);
       return;
     }
+    // If already cached, use it
+    const cached = getCachedMediaUrl(path);
+    if (cached) {
+      setUrl(cached);
+      return;
+    }
+    // Otherwise fetch async
     resolveMediaUrlAsync(path).then(setUrl);
   }, [path]);
+
   return url;
 }
 

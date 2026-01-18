@@ -137,6 +137,13 @@
     "description": "Select a format to use:",
     "skip": "Skip"
   },
+  "splash": {
+    "initializing": "Initializing...",
+    "loadingSettings": "Loading settings...",
+    "loadingRoms": "Loading ROM data...",
+    "loadingCovers": "Loading covers...",
+    "ready": "Ready"
+  },
   "directoryInput": {
     "placeholder": "e.g. C:\\ROMs\\SNES or /home/user/roms",
     "browse": "Browse...",

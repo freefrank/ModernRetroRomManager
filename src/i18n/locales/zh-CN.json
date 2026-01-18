@@ -129,7 +129,19 @@
     "refresh": "刷新",
     "loading": "加载中...",
     "error": "错误",
-    "success": "成功"
+    "success": "成功",
+    "name": "名称",
+    "system": "系统",
+    "size": "大小",
+    "date": "日期",
+    "notAvailable": "N/A"
+  },
+  "splash": {
+    "initializing": "初始化中...",
+    "loadingSettings": "加载设置...",
+    "loadingRoms": "读取 ROM 数据...",
+    "loadingCovers": "加载封面...",
+    "ready": "准备就绪"
   },
   "metadataDialog": {
     "title": "检测到元数据文件",
