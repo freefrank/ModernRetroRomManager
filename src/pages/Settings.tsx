@@ -344,7 +344,8 @@ export default function Settings() {
                 </div>
                 <div>
               <h3 className="text-lg font-bold text-text-primary">ModernRetroRomManager</h3>
-              <p className="text-text-secondary text-sm">v{import.meta.env.APP_VERSION}</p>
+                  <p className="text-text-secondary text-sm">v{APP_VERSION}</p>
+
 
                   <div className="flex gap-4 mt-2">
                     <a

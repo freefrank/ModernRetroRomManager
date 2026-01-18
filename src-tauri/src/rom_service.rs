@@ -3,9 +3,10 @@
 //! 不存储到数据库，运行时直接解析 metadata 文件
 
 use crate::scraper::pegasus::{parse_pegasus_file, PegasusGame};
-use crate::settings::{get_settings, DirectoryConfig};
+use crate::settings::get_settings;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RomInfo {
@@ -507,4 +508,46 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
     }
     
     Ok(roms)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use uuid::Uuid;
+
+    fn create_temp_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("mrrm_test_{}", Uuid::new_v4()));
+        fs::create_dir_all(&dir).expect("create temp dir");
+        dir
+    }
+
+    #[test]
+    fn parse_emulationstation_gamelist() {
+        let dir = create_temp_dir();
+        let xml = r#"
+<gameList>
+  <game>
+    <path>./Super Mario World.sfc</path>
+    <name>Super Mario World</name>
+    <desc>Test description</desc>
+    <developer>Nintendo</developer>
+    <genre>Platform</genre>
+    <players>2</players>
+    <releasedate>1990</releasedate>
+    <rating>0.95</rating>
+  </game>
+</gameList>
+"#;
+        fs::write(dir.join("gamelist.xml"), xml).expect("write gamelist.xml");
+
+        let roms = read_emulationstation_roms(&dir, "snes").expect("parse gamelist");
+        assert_eq!(roms.len(), 1);
+        assert_eq!(roms[0].file, "Super Mario World.sfc");
+        assert_eq!(roms[0].name, "Super Mario World");
+        assert_eq!(roms[0].system, "snes");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

@@ -1,5 +1,3 @@
-use tauri::AppHandle;
-
 #[tauri::command]
 pub fn import_gamelist(_xml_path: String) -> Result<usize, String> {
     Err("Importing gamelist.xml manually is deprecated. Please adding the directory as a library with 'EmulationStation' format selected.".to_string())

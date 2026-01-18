@@ -178,7 +178,7 @@ export default function Sidebar() {
       {/* Footer Info */}
       <div className="p-6 border-t border-border-default flex-shrink-0">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-text-muted font-medium">v{import.meta.env.APP_VERSION}</p>
+          <p className="text-xs text-text-muted font-medium">v{APP_VERSION}</p>
           <div className="w-2 h-2 rounded-full bg-accent-success shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
         </div>
       </div>

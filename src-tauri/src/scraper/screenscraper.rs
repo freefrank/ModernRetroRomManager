@@ -9,7 +9,6 @@ use reqwest::Client;
 use serde::Deserialize;
 
 const PROVIDER_ID: &str = "screenscraper";
-const PROVIDER_NAME: &str = "ScreenScraper";
 
 pub struct ScreenScraperClient {
     ssid: String,
@@ -230,10 +229,6 @@ enum OptionValue {
 impl ScraperProvider for ScreenScraperClient {
     fn id(&self) -> &'static str {
         PROVIDER_ID
-    }
-
-    fn display_name(&self) -> &'static str {
-        PROVIDER_NAME
     }
 
     fn capabilities(&self) -> Capabilities {

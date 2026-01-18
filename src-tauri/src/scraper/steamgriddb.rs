@@ -9,7 +9,6 @@ use reqwest::Client;
 use serde::Deserialize;
 
 const PROVIDER_ID: &str = "steamgriddb";
-const PROVIDER_NAME: &str = "SteamGridDB";
 
 pub struct SteamGridDBClient {
     api_key: String,
@@ -81,10 +80,6 @@ struct SGDBImage {
 impl ScraperProvider for SteamGridDBClient {
     fn id(&self) -> &'static str {
         PROVIDER_ID
-    }
-
-    fn display_name(&self) -> &'static str {
-        PROVIDER_NAME
     }
 
     fn capabilities(&self) -> Capabilities {

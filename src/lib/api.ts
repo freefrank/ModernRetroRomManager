@@ -98,17 +98,7 @@ export const api = {
   },
 };
 
-export function resolveMediaUrl(path: string | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http") || path.startsWith("data:")) return path;
-
-  if (isTauri()) {
-    return import("@tauri-apps/api/core").then(({ convertFileSrc }) => convertFileSrc(path)) as unknown as string;
-  }
-
-  return `${API_BASE}/media?path=${encodeURIComponent(path)}`;
-}
-
+// 删除 resolveMediaUrl (未被调用且同步返回 Promise)
 // Normalize path separators for Windows compatibility
 function normalizePath(path: string): string {
   // Convert forward slashes to backslashes on Windows paths

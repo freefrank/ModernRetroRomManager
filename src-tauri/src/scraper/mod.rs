@@ -7,7 +7,6 @@ pub mod matcher;
 pub mod persistence;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 
 // 重新导出类型
 pub use types::*;
@@ -17,9 +16,6 @@ pub use types::*;
 pub trait ScraperProvider: Send + Sync {
     /// Provider 唯一标识符
     fn id(&self) -> &'static str;
-
-    /// Provider 显示名称
-    fn display_name(&self) -> &'static str;
 
     /// Provider 支持的能力
     fn capabilities(&self) -> Capabilities;

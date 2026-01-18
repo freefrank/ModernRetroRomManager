@@ -1,4 +1,4 @@
-use crate::rom_service::{get_all_roms, RomInfo, SystemRoms};
+use crate::rom_service::{get_all_roms, SystemRoms};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
