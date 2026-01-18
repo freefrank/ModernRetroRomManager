@@ -3,6 +3,7 @@ mod config;
 mod rom_service;
 mod scraper;
 pub mod settings;
+pub mod system_mapping;
 
 use commands::scraper::ScraperState;
 use scraper::local_cn::LocalCnProvider;
