@@ -215,7 +215,7 @@
 - [x] 媒体资产关联 (Support local & temp media)
 
 #### 3.2 导出功能
-- [ ] gamelist.xml 生成 (支持 <english-name>)
+- [x] gamelist.xml 生成 (支持 <english-name>)
 - [x] metadata.txt 生成 (Pegasus 格式，支持 Block 级替换)
 - [ ] 自定义导出模板
 - [x] 异步导出任务 (Support media synchronization)
