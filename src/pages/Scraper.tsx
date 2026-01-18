@@ -60,15 +60,15 @@ export default function Scraper() {
                     <AlertCircle className="w-6 h-6 text-yellow-400" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-yellow-400 mb-2">未配置 API 凭证</h3>
+                    <h3 className="text-lg font-bold text-yellow-400 mb-2">{t("scraper.noCredentials.title")}</h3>
                     <p className="text-sm text-yellow-200 mb-4 leading-relaxed">
-                      Scraper 功能需要配置 API 凭证才能使用。请前往设置页面配置 ScreenScraper 或 SteamGridDB 的 API 凭证。
+                      {t("scraper.noCredentials.description")}
                     </p>
                     <button
                       onClick={() => navigate('/settings')}
                       className="px-4 py-2 bg-yellow-500/20 text-yellow-400 rounded-xl hover:bg-yellow-500/30 transition-all text-sm font-medium border border-yellow-500/30"
                     >
-                      前往设置页面
+                      {t("scraper.noCredentials.goToSettings")}
                     </button>
                   </div>
                 </div>
