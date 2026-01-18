@@ -110,7 +110,7 @@ export default function CnName() {
         </div>
       </div>
 
-      <div className="flex-1 p-8 overflow-auto">
+      <div className="flex-1 p-8 pb-24 overflow-auto">
         <div className="w-full space-y-8">
           
           {/* Info Card */}
