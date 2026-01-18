@@ -219,7 +219,12 @@ export default function Settings() {
     console.log("🎯 Drag start:", providerId);
     setDraggedProvider(providerId);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", providerId); // 某些浏览器需要这个
+    e.dataTransfer.setData("text/plain", providerId);
+
+    // 手动设置拖拽图像（Tauri webview 可能需要这个）
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    e.dataTransfer.setDragImage(target, rect.width / 2, rect.height / 2);
   };
 
   const handleDragOver = (e: React.DragEvent, providerId: string) => {
