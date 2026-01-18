@@ -249,16 +249,17 @@ impl ScraperManager {
 
     /// 启用/禁用 provider
     pub fn set_enabled(&mut self, provider_id: &str, enabled: bool) {
+        // 更新内存中的配置（如果存在）
         if let Some(config) = self.configs.get_mut(provider_id) {
             config.enabled = enabled;
-            
-            // 持久化保存
-            let provider_id_owned = provider_id.to_string();
-            let _ = update_setting(move |settings| {
-                let entry = settings.scrapers.entry(provider_id_owned).or_default();
-                entry.enabled = enabled;
-            });
         }
+
+        // 始终持久化保存到 settings.json（即使 provider 未注册）
+        let provider_id_owned = provider_id.to_string();
+        let _ = update_setting(move |settings| {
+            let entry = settings.scrapers.entry(provider_id_owned).or_default();
+            entry.enabled = enabled;
+        });
     }
 
     /// 获取 Provider 的持久化配置 (API Key 等)
