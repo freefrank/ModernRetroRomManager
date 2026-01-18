@@ -368,8 +368,20 @@ export default function CnName() {
     updatedResults[index] = { ...result, english_name: newValue || undefined };
     setCheckResults(updatedResults);
 
-    // TODO: 调用后端API保存更改
-    // await api.updateEnglishName(checkPath, result.file, newValue);
+    // 调用后端API保存更改
+    try {
+      if (isTauri()) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("update_english_name", {
+          directory: checkPath,
+          file: result.file,
+          englishName: newValue,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save english name:", error);
+      alert("保存失败: " + String(error));
+    }
 
     setEditingIndex(null);
     setEditingValue("");

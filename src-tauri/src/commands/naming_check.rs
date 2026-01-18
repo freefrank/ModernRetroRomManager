@@ -421,17 +421,52 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
 #[tauri::command]
 pub async fn add_english_as_tag(directory: String) -> Result<AutoFixResult, String> {
     let entries = load_temp_cn_metadata(&directory)?;
-    
+
     // 这里 tag 信息已经在 english_name 字段中，导出时会转换为 x-mrrm-eng / <eng>
     // 所以这个命令实际上只是确认操作，不需要额外处理
     // 但如果需要明确标记，可以添加一个 has_eng_tag 字段
-    
+
     let count = entries.iter().filter(|e| e.english_name.is_some()).count();
-    
+
     Ok(AutoFixResult {
         success: count,
         failed: 0,
     })
+}
+
+/// 更新单个 ROM 的英文名 (写入临时 metadata)
+#[tauri::command]
+pub async fn update_english_name(
+    directory: String,
+    file: String,
+    english_name: String,
+) -> Result<(), String> {
+    let mut entries = load_temp_cn_metadata(&directory).unwrap_or_default();
+
+    // 查找或创建条目
+    if let Some(entry) = entries.iter_mut().find(|e| e.file == file) {
+        // 更新现有条目
+        entry.english_name = if english_name.is_empty() {
+            None
+        } else {
+            Some(english_name)
+        };
+    } else {
+        // 创建新条目
+        entries.push(TempMetadataEntry {
+            file,
+            name: None,
+            english_name: if english_name.is_empty() {
+                None
+            } else {
+                Some(english_name)
+            },
+            confidence: None,
+        });
+    }
+
+    save_temp_cn_metadata(&directory, &entries)?;
+    Ok(())
 }
 
 /// 导出临时 metadata 到指定位置

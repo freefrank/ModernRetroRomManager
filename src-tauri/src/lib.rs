@@ -74,6 +74,7 @@ pub fn run() {
             commands::naming_check::set_extracted_cn_as_name,
             commands::naming_check::add_english_as_tag,
             commands::naming_check::export_cn_metadata,
+            commands::naming_check::update_english_name,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
