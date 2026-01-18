@@ -488,10 +488,9 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4" onDragStart={(e) => e.stopPropagation()}>
                       <button
                         draggable={false}
-                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={() => handleEditConfig(p)}
                         className="p-2.5 rounded-xl bg-bg-tertiary text-text-secondary hover:text-accent-primary hover:bg-bg-primary transition-all border border-transparent hover:border-accent-primary/30"
                         title="编辑配置"
@@ -499,7 +498,7 @@ export default function Settings() {
                         <Key className="w-5 h-5" />
                       </button>
 
-                      <label draggable={false} onMouseDown={(e) => e.stopPropagation()} className="relative inline-flex items-center cursor-pointer">
+                      <label draggable={false} className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
