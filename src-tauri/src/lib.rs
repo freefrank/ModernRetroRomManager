@@ -40,46 +40,33 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::get_systems,
-            commands::get_system,
-            commands::get_roms,
-            commands::get_rom_stats,
-            commands::add_directory,
-            commands::get_directories,
-            commands::remove_directory,
-            // 新 scraper API
-            commands::get_scraper_providers,
-            commands::configure_scraper_provider,
-            commands::scraper_search,
-            commands::scraper_get_metadata,
-            commands::scraper_get_media,
-            commands::scraper_auto_scrape,
-            commands::scraper_set_provider_enabled,
-            commands::apply_scraped_data,
-            commands::batch_scrape,
-            commands::save_temp_metadata,
-            commands::get_temp_media_list,
-            commands::delete_temp_media,
-            commands::update_cn_repo,
-            commands::export_scraped_data,
-            // Import/Export
-            commands::import_gamelist,
-            commands::import_pegasus,
-            commands::export_to_emulationstation,
-            commands::export_to_pegasus,
-            // Config commands
-            commands::validate_path,
-            commands::get_config_dir,
-            commands::get_media_dir,
-            commands::detect_metadata_files,
-            commands::scan_directory,
-            // Settings commands
-            commands::get_app_settings,
-            commands::save_app_settings,
-            commands::update_app_setting,
-            // Scraper config commands (from settings file)
-            commands::get_scraper_configs,
-            commands::save_scraper_config,
+            commands::system::get_systems,
+            commands::system::get_system,
+            commands::rom::get_roms,
+            commands::rom::get_rom_stats,
+            commands::directory::add_directory,
+            commands::directory::get_directories,
+            commands::directory::remove_directory,
+            // Scraper (Updated)
+            commands::scraper::get_scraper_providers,
+            commands::scraper::configure_scraper_provider,
+            commands::scraper::scraper_search,
+            commands::scraper::scraper_get_metadata,
+            commands::scraper::scraper_get_media,
+            commands::scraper::scraper_auto_scrape,
+            commands::scraper::scraper_set_provider_enabled,
+            commands::scraper::apply_scraped_data,
+            commands::scraper::batch_scrape,
+            commands::scraper::save_temp_metadata,
+            commands::scraper::get_temp_media_list,
+            commands::scraper::delete_temp_media,
+            commands::scraper::update_cn_repo,
+            
+            // Export (New location)
+            commands::export::export_scraped_data,
+            commands::export::export_to_emulationstation, // Placeholder
+            commands::export::export_to_pegasus, // Placeholder
+            
             // Naming check
             commands::naming_check::scan_directory_for_naming_check,
             commands::naming_check::auto_fix_naming,

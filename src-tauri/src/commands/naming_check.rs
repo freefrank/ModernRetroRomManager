@@ -35,10 +35,11 @@ fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
         stem
     };
 
-    // 3. 处理全角字符和空格
+    // 3. 处理全角字符，去除所有空格
     let normalized = clean_name
         .replace('－', "-")
-        .replace('　', " ")
+        .replace('　', "")  // 全角空格直接移除
+        .replace(' ', "")   // 半角空格直接移除
         .trim()
         .to_string();
 

@@ -8,11 +8,5 @@ pub mod export;
 pub mod naming_check;
 
 pub use config::*;
-
-pub use rom::*;
-pub use system::*;
-pub use directory::*;
-pub use scraper::*;
-pub use import::*;
-pub use export::*;
+// Removed re-exports to avoid ambiguity and circular deps, use explicit paths
 
