@@ -131,3 +131,5 @@ Thumbs.db
 # Claude Code
 CLAUDE.md
 AGENTS.md
+.claude/
+test_matching.txt
