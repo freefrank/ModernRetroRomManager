@@ -9,7 +9,7 @@
     "import": "导入/导出",
     "settings": "设置",
     "tools": "工具箱",
-    "cnRepo": "中文数据库"
+    "cnName": "中文命名检查"
   },
   "library": {
     "title": "ROM 库",

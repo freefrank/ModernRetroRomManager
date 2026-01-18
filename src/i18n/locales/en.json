@@ -9,7 +9,7 @@
     "import": "Import/Export",
     "settings": "Settings",
     "tools": "Tools",
-    "cnRepo": "Chinese DB"
+    "cnName": "Chinese Naming"
   },
   "library": {
     "title": "ROM Library",
