@@ -201,7 +201,8 @@
 - [x] CSV 解析与双路径搜索 (User Data + Resources)
 - [x] 智能匹配算法 (Jaro-Winkler)
 - [x] 独立管理页面与 Sidebar 入口
-- [x] Metadata 扩展 (x-english-name 支持)
+- [x] 目录命名检查工具 (Scan & Report)
+- [x] 一键自动修复功能 (Auto-fix & Persistence)
 
 ### Phase 3: 导入导出
 
