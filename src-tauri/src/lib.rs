@@ -4,8 +4,7 @@ mod rom_service;
 mod scraper;
 pub mod settings;
 
-use tauri::Manager;
-use tauri_plugin_fs::FsExt;
+use commands::scraper::ScraperState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,6 +12,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(ScraperState::new())
         .setup(|_app| {
             // Debug: 输出配置目录位置
             println!("[DEBUG] Config directory: {:?}", config::get_config_dir());
@@ -31,13 +31,20 @@ pub fn run() {
             commands::add_directory,
             commands::get_directories,
             commands::remove_directory,
+            // 旧 scraper API (兼容)
             commands::get_api_configs,
             commands::save_api_config,
-            commands::search_game,
-            commands::get_scraper_game_details,
-            commands::get_scraper_game_media,
             commands::apply_scraped_data,
             commands::batch_scrape,
+            // 新 scraper API
+            commands::get_scraper_providers,
+            commands::configure_scraper_provider,
+            commands::scraper_search,
+            commands::scraper_get_metadata,
+            commands::scraper_get_media,
+            commands::scraper_auto_scrape,
+            commands::scraper_set_provider_enabled,
+            // Import/Export
             commands::import_gamelist,
             commands::import_pegasus,
             commands::export_to_emulationstation,

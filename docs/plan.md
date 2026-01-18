@@ -150,28 +150,29 @@
 ### Phase 2: Scraper 核心
 
 #### 2.1 ScraperManager 统一调度层
-- [ ] ScraperManager 核心实现
-  - [ ] Provider 注册/管理 (HashMap<String, Box<dyn Scraper>>)
-  - [ ] 统一搜索接口 (并行查询多 provider)
-  - [ ] 统一元数据/媒体获取接口
-  - [ ] 智能 scrape (自动匹配 + 聚合)
+- [x] ScraperManager 核心实现
+  - [x] Provider 注册/管理 (HashMap<String, Box<dyn Scraper>>)
+  - [x] 统一搜索接口 (并行查询多 provider)
+  - [x] 统一元数据/媒体获取接口
+  - [x] 智能 scrape (自动匹配 + 聚合)
   - [ ] 批量 scrape (进度回调)
-- [ ] 标准化数据结构
-  - [ ] ScrapeQuery (name, system, hash, file_name)
-  - [ ] SearchResult (provider, source_id, name, confidence)
-  - [ ] GameMetadata (name, description, developer, publisher, genres, rating)
-  - [ ] MediaAsset (provider, url, asset_type, dimensions)
-  - [ ] MediaType 枚举 (BoxFront, Screenshot, Logo, Video, etc.)
-- [ ] Provider trait (可扩展接口)
-  - [ ] name() -> 标识符
-  - [ ] capabilities() -> 支持的功能 (search, hash_lookup, metadata, media)
-  - [ ] search(query) -> Vec<SearchResult>
-  - [ ] get_details(source_id) -> GameMetadata
-  - [ ] get_media(source_id) -> Vec<MediaAsset>
+- [x] 标准化数据结构
+  - [x] ScrapeQuery (name, system, hash, file_name)
+  - [x] SearchResult (provider, source_id, name, confidence)
+  - [x] GameMetadata (name, description, developer, publisher, genres, rating)
+  - [x] MediaAsset (provider, url, asset_type, dimensions)
+  - [x] MediaType 枚举 (BoxFront, Screenshot, Logo, Video, etc.)
+- [x] Provider trait (可扩展接口)
+  - [x] id() + display_name() -> 标识符
+  - [x] capabilities() -> 支持的功能 (search, hash_lookup, metadata, media)
+  - [x] search(query) -> Vec<SearchResult>
+  - [x] get_metadata(source_id) -> GameMetadata
+  - [x] get_media(source_id) -> Vec<MediaAsset>
+  - [x] lookup_by_hash() -> 可选实现
 
 #### 2.2 内置 Provider 实现
-- [x] SteamGridDB (媒体为主)
-- [x] ScreenScraper (元数据+媒体)
+- [x] SteamGridDB (媒体为主，适配新 trait)
+- [x] ScreenScraper (元数据+媒体，支持 Hash 查找)
 - [ ] IGDB (元数据为主)
 - [ ] TheGamesDB (免费，社区驱动)
 - [ ] MobyGames (老游戏数据丰富)
@@ -180,9 +181,9 @@
 
 #### 2.3 智能匹配引擎
 - [x] ROM 文件名解析（No-Intro 命名规范）
-- [ ] Hash 精确匹配 (CRC32/MD5/SHA1 → ScreenScraper)
-- [ ] 名称模糊匹配 (Levenshtein/Jaro-Winkler 相似度)
-- [ ] 置信度评分 (名称+系统+年份综合评估)
+- [x] Hash 精确匹配 (CRC32/MD5/SHA1 → ScreenScraper)
+- [x] 名称模糊匹配 (Jaro-Winkler 相似度算法)
+- [x] 置信度评分 (名称+系统综合评估)
 - [ ] 多源数据聚合（优先级合并规则）
   - [ ] 元数据优先级: IGDB > ScreenScraper > MobyGames
   - [ ] 封面优先级: SteamGridDB > ScreenScraper
@@ -197,6 +198,9 @@
 
 #### 2.5 前端集成
 - [x] 交互式 Scrape 对话框
+- [x] Tauri commands 对接 ScraperManager
+- [x] 前端 scraperApi 封装 (search, getMetadata, getMedia, autoScrape)
+- [x] 前端类型定义 (ScraperProviderInfo, ScraperSearchResult, etc.)
 - [ ] Provider 配置 UI (API Key 管理)
 - [ ] 搜索结果选择 UI (多源结果展示)
 - [ ] 批量 Scrape 进度 UI

@@ -1,4 +1,4 @@
-import type { SystemRoms, GameSystem, ScanDirectory, Rom } from "@/types";
+import type { SystemRoms, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult } from "@/types";
 
 declare global {
   interface Window {
@@ -131,3 +131,61 @@ export async function resolveMediaUrlAsync(path: string | undefined): Promise<st
 
   return `${API_BASE}/media?path=${encodeURIComponent(normalizedPath)}`;
 }
+
+// ============ Scraper API ============
+
+export const scraperApi = {
+  /** 获取所有可用的 provider */
+  async getProviders(): Promise<ScraperProviderInfo[]> {
+    if (isTauri()) {
+      return tauriInvoke<ScraperProviderInfo[]>("get_scraper_providers");
+    }
+    return [];
+  },
+
+  /** 配置 provider 凭证 */
+  async configureProvider(providerId: string, credentials: ScraperCredentials): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("configure_scraper_provider", { providerId, credentials });
+    }
+  },
+
+  /** 搜索游戏 */
+  async search(name: string, fileName: string, system?: string): Promise<ScraperSearchResult[]> {
+    if (isTauri()) {
+      return tauriInvoke<ScraperSearchResult[]>("scraper_search", { name, fileName, system });
+    }
+    return [];
+  },
+
+  /** 获取游戏元数据 */
+  async getMetadata(providerId: string, sourceId: string): Promise<ScraperGameMetadata> {
+    if (isTauri()) {
+      return tauriInvoke<ScraperGameMetadata>("scraper_get_metadata", { providerId, sourceId });
+    }
+    throw new Error("Not available in web mode");
+  },
+
+  /** 获取媒体资产 */
+  async getMedia(providerId: string, sourceId: string): Promise<ScraperMediaAsset[]> {
+    if (isTauri()) {
+      return tauriInvoke<ScraperMediaAsset[]>("scraper_get_media", { providerId, sourceId });
+    }
+    return [];
+  },
+
+  /** 智能 scrape - 自动匹配并聚合数据 */
+  async autoScrape(name: string, fileName: string, system?: string): Promise<ScrapeResult> {
+    if (isTauri()) {
+      return tauriInvoke<ScrapeResult>("scraper_auto_scrape", { name, fileName, system });
+    }
+    throw new Error("Not available in web mode");
+  },
+
+  /** 启用/禁用 provider */
+  async setProviderEnabled(providerId: string, enabled: boolean): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("scraper_set_provider_enabled", { providerId, enabled });
+    }
+  },
+};

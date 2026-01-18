@@ -10,6 +10,7 @@ use super::{
     ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
     ScrapeResult, RomHash, ProviderCapability,
 };
+use super::matcher::rank_results;
 
 /// Provider 配置
 #[derive(Debug, Clone)]

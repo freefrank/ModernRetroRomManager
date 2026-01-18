@@ -85,6 +85,56 @@ export interface ApiConfig {
   priority: number;
 }
 
+// ScraperManager 统一类型
+export interface ScraperProviderInfo {
+  id: string;
+  name: string;
+  enabled: boolean;
+  has_credentials: boolean;
+  capabilities: string[];
+}
+
+export interface ScraperCredentials {
+  api_key?: string;
+  username?: string;
+  password?: string;
+}
+
+export interface ScraperSearchResult {
+  provider: string;
+  source_id: string;
+  name: string;
+  year?: string;
+  system?: string;
+  thumbnail?: string;
+  confidence: number;
+}
+
+export interface ScraperGameMetadata {
+  name: string;
+  description?: string;
+  release_date?: string;
+  developer?: string;
+  publisher?: string;
+  genres: string[];
+  players?: string;
+  rating?: number;
+}
+
+export interface ScraperMediaAsset {
+  provider: string;
+  url: string;
+  asset_type: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ScrapeResult {
+  metadata: ScraperGameMetadata;
+  media: ScraperMediaAsset[];
+  sources: string[];
+}
+
 // 扫描目录配置
 // 目录配置
 export interface DirectoryConfig {
