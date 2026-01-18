@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Search, Tag, FileText, AlertTriangle, FileDown, ChevronDown, X } from "lucide-react";
+import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Search, Tag, FileText, AlertTriangle, FileDown, ChevronDown, X, ArrowUp, ArrowDown } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
 
@@ -108,6 +108,36 @@ export default function CnName() {
   // 编辑状态管理
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState("");
+
+  // 排序状态
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  // 切换排序
+  const toggleSort = () => {
+    if (sortOrder === null) {
+      setSortOrder('desc'); // 第一次点击：降序（高分在前）
+    } else if (sortOrder === 'desc') {
+      setSortOrder('asc'); // 第二次点击：升序（低分在前）
+    } else {
+      setSortOrder(null); // 第三次点击：取消排序
+    }
+  };
+
+  // 排序后的结果
+  const sortedResults = useMemo(() => {
+    if (!sortOrder) return checkResults;
+
+    return [...checkResults].sort((a, b) => {
+      const confA = a.confidence ?? -1; // 没有置信度的排在最后
+      const confB = b.confidence ?? -1;
+
+      if (sortOrder === 'asc') {
+        return confA - confB;
+      } else {
+        return confB - confA;
+      }
+    });
+  }, [checkResults, sortOrder]);
 
   // 根据置信度计算背景色 (0-100 -> 红色到无色)
   const getConfidenceColor = (confidence?: number): string => {
@@ -490,12 +520,18 @@ export default function CnName() {
             <div className="flex-1 min-h-0 flex flex-col bg-bg-secondary rounded-2xl border border-border-default overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Table container - flex-1 with overflow */}
               <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
-                <table className="w-full text-left text-sm table-fixed">
+                <table className="w-full text-left text-sm">
+                  <colgroup>
+                    <col style={{ minWidth: '200px' }} />
+                    <col style={{ minWidth: '150px' }} />
+                    <col style={{ minWidth: '150px' }} />
+                    <col style={{ minWidth: '200px' }} />
+                  </colgroup>
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-bg-tertiary border-b border-border-default text-xs uppercase tracking-wider text-text-muted">
-                      <th className="w-1/4 px-6 py-3 font-bold">文件名</th>
-                      <th className="w-1/4 px-6 py-3 font-bold">ROM名 (Meta)</th>
-                      <th className="w-1/4 px-6 py-3 font-bold">
+                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '200px' }}>文件名</th>
+                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '150px' }}>ROM名 (Meta)</th>
+                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '150px' }}>
                         <div className="flex items-center justify-between">
                           <span>提取中文名</span>
                           <button
@@ -509,9 +545,17 @@ export default function CnName() {
                           </button>
                         </div>
                       </th>
-                      <th className="w-1/4 px-6 py-3 font-bold">
+                      <th className="px-6 py-3 font-bold resize-x overflow-auto" style={{ minWidth: '200px' }}>
                         <div className="flex items-center justify-between">
-                          <span>匹配英文名</span>
+                          <button
+                            onClick={toggleSort}
+                            className="flex items-center gap-1 hover:text-accent-primary transition-colors cursor-pointer"
+                            title="点击排序"
+                          >
+                            <span>匹配英文名</span>
+                            {sortOrder === 'desc' && <ArrowDown className="w-3 h-3" />}
+                            {sortOrder === 'asc' && <ArrowUp className="w-3 h-3" />}
+                          </button>
                           <button
                             onClick={handleAddAsTag}
                             disabled={isAddingTag}
@@ -526,7 +570,7 @@ export default function CnName() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-default">
-                    {checkResults.map((res, idx) => {
+                    {sortedResults.map((res, idx) => {
                       const isMissing = !res.english_name;
                       const isEditing = editingIndex === idx;
                       const bgColor = getConfidenceColor(res.confidence);

@@ -451,6 +451,8 @@ pub async fn update_english_name(
         } else {
             Some(english_name)
         };
+        // 用户手动编辑的自动设置为满分
+        entry.confidence = Some(100.0);
     } else {
         // 创建新条目
         entries.push(TempMetadataEntry {
@@ -461,7 +463,7 @@ pub async fn update_english_name(
             } else {
                 Some(english_name)
             },
-            confidence: None,
+            confidence: Some(100.0), // 用户手动编辑的自动设置为满分
         });
     }
 
