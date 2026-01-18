@@ -104,6 +104,14 @@ export const api = {
     }
     return [];
   },
+
+  /** 自动修复目录命名 */
+  async autoFixNaming(path: string): Promise<{ success: number; failed: number }> {
+    if (isTauri()) {
+      return await tauriInvoke("auto_fix_naming", { path });
+    }
+    return { success: 0, failed: 0 };
+  },
 };
 
 // 删除 resolveMediaUrl (未被调用且同步返回 Promise)

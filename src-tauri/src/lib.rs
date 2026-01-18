@@ -82,6 +82,7 @@ pub fn run() {
             commands::save_scraper_config,
             // Naming check
             commands::naming_check::scan_directory_for_naming_check,
+            commands::naming_check::auto_fix_naming,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

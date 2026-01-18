@@ -2,9 +2,109 @@
 
 use std::path::{Path, PathBuf};
 use std::fs;
+use crate::config::{get_media_dir, get_temp_dir};
 use crate::scraper::{GameMetadata, MediaAsset, MediaType};
 use crate::rom_service::RomInfo;
-use crate::config::{get_media_dir, get_temp_dir};
+use quick_xml::events::{BytesStart, Event};
+use quick_xml::reader::Reader;
+use quick_xml::writer::Writer;
+use std::io::Cursor;
+
+// ... existing code ...
+
+/// 将元数据写入 gamelist.xml (EmulationStation 格式)
+pub fn save_metadata_emulationstation(
+    rom: &RomInfo,
+    metadata: &GameMetadata,
+    is_temp: bool,
+) -> Result<(), String> {
+    let gamelist_path = if is_temp {
+        let temp_sys_dir = get_temp_dir().join(&rom.system);
+        fs::create_dir_all(&temp_sys_dir).map_err(|e| e.to_string())?;
+        temp_sys_dir.join("gamelist.xml")
+    } else {
+        Path::new(&rom.directory).join("gamelist.xml")
+    };
+
+    let content = if gamelist_path.exists() {
+        fs::read_to_string(&gamelist_path).map_err(|e| e.to_string())?
+    } else {
+        r#"<?xml version="1.0"?>
+<gameList>
+</gameList>"#.to_string()
+    };
+
+    // 重构策略：使用 quick-xml 反序列化 -> 修改 -> 序列化
+    // 这样虽然会重置格式，但最稳健。
+    use quick_xml::de::from_str;
+    use quick_xml::se::to_string;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Serialize, Deserialize)]
+    #[serde(rename = "gameList")]
+    struct EsGameList {
+        #[serde(rename = "game", default)]
+        games: Vec<EsGame>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, Clone)]
+    struct EsGame {
+        path: String,
+        name: Option<String>,
+        desc: Option<String>,
+        image: Option<String>,
+        developer: Option<String>,
+        publisher: Option<String>,
+        genre: Option<String>,
+        players: Option<String>,
+        releasedate: Option<String>,
+        rating: Option<f32>,
+        #[serde(rename = "english-name")]
+        english_name: Option<String>,
+    }
+
+    let mut list: EsGameList = from_str(&content).map_err(|e| format!("XML Parse error: {}", e))?;
+    let mut found = false;
+
+    for game in &mut list.games {
+        // 匹配逻辑：path 结尾匹配文件名
+        if game.path.ends_with(&rom.file) || game.path == rom.file {
+            game.name = Some(metadata.name.clone());
+            if let Some(desc) = &metadata.description { game.desc = Some(desc.clone()); }
+            if let Some(dev) = &metadata.developer { game.developer = Some(dev.clone()); }
+            if let Some(pub_) = &metadata.publisher { game.publisher = Some(pub_.clone()); }
+            if !metadata.genres.is_empty() { game.genre = Some(metadata.genres[0].clone()); }
+            if let Some(en) = &metadata.english_name { game.english_name = Some(en.clone()); }
+            found = true;
+            break;
+        }
+    }
+
+    if !found {
+        list.games.push(EsGame {
+            path: format!("./{}", rom.file),
+            name: Some(metadata.name.clone()),
+            desc: metadata.description.clone(),
+            image: None,
+            developer: metadata.developer.clone(),
+            publisher: metadata.publisher.clone(),
+            genre: metadata.genres.first().cloned(),
+            players: metadata.players.clone(),
+            releasedate: metadata.release_date.clone(),
+            rating: metadata.rating.map(|r| r as f32),
+            english_name: metadata.english_name.clone(),
+        });
+    }
+
+    // 序列化回写
+    let new_xml = to_string(&list).map_err(|e| e.to_string())?;
+    // quick-xml 默认没有 xml header
+    let final_xml = format!("<?xml version=\"1.0\"?>\n{}", new_xml);
+    
+    fs::write(gamelist_path, final_xml).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
 
 /// 将抓取到的媒体资产下载到本地
 /// 如果 is_temp 为 true，则保存到程序目录下的 temp/media

@@ -15,7 +15,7 @@ pub struct RomHash {
 }
 
 /// Scrape 查询参数
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ScrapeQuery {
     /// 游戏名（解析自文件名）
     pub name: String,
