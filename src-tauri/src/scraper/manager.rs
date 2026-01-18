@@ -183,6 +183,79 @@ impl ScraperManager {
         provider.get_media(source_id).await
     }
 
+    /// 聚合多个 provider 的元数据（按优先级合并）
+    async fn aggregate_metadata(&self, best_match: &SearchResult) -> (GameMetadata, Vec<String>) {
+        let providers = self.enabled_providers();
+
+        // 并行获取所有支持元数据的 provider 的数据
+        let futures: Vec<_> = providers
+            .iter()
+            .filter(|p| p.capabilities().has(ProviderCapability::Metadata))
+            .map(|p| {
+                let provider = Arc::clone(p);
+                let source_id = best_match.source_id.clone();
+                let provider_id = p.id().to_string();
+                async move {
+                    let result = provider.get_metadata(&source_id).await;
+                    (provider_id, result)
+                }
+            })
+            .collect();
+
+        let results = join_all(futures).await;
+
+        // 合并元数据（按优先级，providers 已排序）
+        self.merge_metadata(results)
+    }
+
+    /// 合并多个 provider 的元数据（优先级从高到低）
+    fn merge_metadata(&self, results: Vec<(String, Result<GameMetadata, String>)>) -> (GameMetadata, Vec<String>) {
+        let mut merged = GameMetadata::default();
+        let mut sources = Vec::new();
+
+        // 按优先级顺序处理（providers 已排序）
+        for (provider_id, result) in results {
+            if let Ok(metadata) = result {
+                // 记录贡献的 provider
+                sources.push(provider_id);
+
+                // 合并字段（只填充空字段，已有数据的字段保持不变）
+                if merged.name.is_empty() {
+                    merged.name = metadata.name;
+                }
+                if merged.english_name.is_none() && metadata.english_name.is_some() {
+                    merged.english_name = metadata.english_name;
+                }
+                if merged.description.is_none() && metadata.description.is_some() {
+                    merged.description = metadata.description;
+                }
+                if merged.release_date.is_none() && metadata.release_date.is_some() {
+                    merged.release_date = metadata.release_date;
+                }
+                if merged.developer.is_none() && metadata.developer.is_some() {
+                    merged.developer = metadata.developer;
+                }
+                if merged.publisher.is_none() && metadata.publisher.is_some() {
+                    merged.publisher = metadata.publisher;
+                }
+                if merged.players.is_none() && metadata.players.is_some() {
+                    merged.players = metadata.players;
+                }
+                if merged.rating.is_none() && metadata.rating.is_some() {
+                    merged.rating = metadata.rating;
+                }
+                // genres 合并（去重）
+                for genre in metadata.genres {
+                    if !merged.genres.contains(&genre) {
+                        merged.genres.push(genre);
+                    }
+                }
+            }
+        }
+
+        (merged, sources)
+    }
+
     /// 智能 scrape - 自动匹配 + 聚合多源数据
     pub async fn scrape(&self, query: &ScrapeQuery) -> Result<ScrapeResult, String> {
         // 1. 先尝试 Hash 精确匹配
@@ -208,11 +281,8 @@ impl ScraperManager {
             }
         };
 
-        // 3. 获取元数据
-        let metadata = self
-            .get_metadata(&best_match.provider, &best_match.source_id)
-            .await
-            .unwrap_or_default();
+        // 3. 聚合多个 provider 的元数据
+        let (metadata, metadata_sources) = self.aggregate_metadata(&best_match).await;
 
         // 4. 并行获取所有 provider 的媒体
         let providers = self.enabled_providers();
@@ -236,7 +306,7 @@ impl ScraperManager {
         Ok(ScrapeResult {
             metadata,
             media,
-            sources: vec![best_match.provider],
+            sources: metadata_sources,
         })
     }
 
