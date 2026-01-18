@@ -226,10 +226,12 @@ export default function Settings() {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverProvider(providerId);
+    console.log("📍 Drag over:", providerId);
   };
 
   const handleDrop = async (e: React.DragEvent, targetProviderId: string) => {
     e.preventDefault();
+    console.log("🎯 Drop on:", targetProviderId, "from:", draggedProvider);
     if (!draggedProvider || draggedProvider === targetProviderId) return;
 
     // 获取排序后的 provider 列表
