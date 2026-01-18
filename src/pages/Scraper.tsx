@@ -2,16 +2,15 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useScraperStore } from "@/stores/scraperStore";
 import { clsx } from "clsx";
-import { Settings2, Key, Globe, Shield, Activity, Save, Loader2, Info, Languages, Download } from "lucide-react";
+import { Settings2, Key, Globe, Shield, Activity, Save, Loader2, Info } from "lucide-react";
 import type { ScraperCredentials } from "@/types";
-import { isTauri } from "@/lib/api";
 
 export default function Scraper() {
+
   const { t } = useTranslation();
   const { providers, fetchProviders, configureProvider, setProviderEnabled, isLoading } = useScraperStore();
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<ScraperCredentials>({});
-  const [isUpdatingCn, setIsUpdatingCn] = useState(false);
 
   useEffect(() => {
     fetchProviders();
@@ -40,27 +39,10 @@ export default function Scraper() {
     }
   };
 
-  const handleUpdateCnRepo = async () => {
-    setIsUpdatingCn(true);
-    try {
-      if (isTauri()) {
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("update_cn_repo");
-      }
-      // alert("中文数据库更新成功");
-    } catch (error) {
-      console.error("Failed to update CN repo:", error);
-      // alert("更新失败: " + String(error));
-    } finally {
-      setIsUpdatingCn(false);
-    }
-  };
-
   const getProviderIcon = (id: string) => {
     switch (id) {
       case "screenscraper": return <Globe className="w-5 h-5" />;
       case "steamgriddb": return <Activity className="w-5 h-5" />;
-      case "local_cn_repo": return <Languages className="w-5 h-5" />;
       default: return <Settings2 className="w-5 h-5" />;
     }
   };
@@ -69,7 +51,6 @@ export default function Scraper() {
     switch (id) {
       case "screenscraper": return "bg-red-500/20 text-red-400 border-red-500/30";
       case "steamgriddb": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-      case "local_cn_repo": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       default: return "bg-bg-tertiary text-text-primary border-border-default";
     }
   };
@@ -179,18 +160,7 @@ export default function Scraper() {
                           </p>
                         </div>
 
-                        {p.id === "local_cn_repo" ? (
-                          <div className="flex justify-end gap-3 pt-2">
-                            <button
-                              onClick={handleUpdateCnRepo}
-                              disabled={isUpdatingCn}
-                              className="flex items-center gap-2 px-6 py-2 bg-accent-primary text-bg-primary text-sm font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-primary/20 disabled:opacity-50"
-                            >
-                              {isUpdatingCn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                              更新数据库
-                            </button>
-                          </div>
-                        ) : p.id === "screenscraper" ? (
+                        {p.id === "screenscraper" ? (
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="block text-[10px] text-text-muted mb-1.5 uppercase font-bold tracking-wider">{t("scraper.fields.username")}</label>

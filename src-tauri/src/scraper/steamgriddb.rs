@@ -153,6 +153,7 @@ impl ScraperProvider for SteamGridDBClient {
 
         Ok(GameMetadata {
             name: sgdb_resp.data.name,
+            english_name: None,
             description: None,
             release_date: sgdb_resp.data.release_date.map(|ts| {
                 let year = 1970 + (ts / 31536000);

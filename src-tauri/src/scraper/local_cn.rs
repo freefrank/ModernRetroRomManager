@@ -167,6 +167,7 @@ impl ScraperProvider for LocalCnProvider {
             if let Some(entry) = entries.iter().find(|e| e.english_name == source_id) {
                 return Ok(GameMetadata {
                     name: entry.chinese_name.clone(),
+                    english_name: Some(entry.english_name.clone()),
                     description: Some(format!("中文名称: {}", entry.chinese_name)), // 简单的描述
                     release_date: None,
                     developer: None,

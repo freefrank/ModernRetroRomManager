@@ -62,6 +62,7 @@ impl ScreenScraperClient {
 
         GameMetadata {
             name,
+            english_name: None, // ScreenScraper API 返回的多语言名称中可能包含英文，这里暂不提取
             description,
             release_date: jeu.dates.first().map(|d| d.date.clone()),
             developer: match &jeu.developpeur {

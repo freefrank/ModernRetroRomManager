@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Library, Database, ArrowRightLeft, Settings, Gamepad2, ChevronDown, ChevronRight } from "lucide-react";
+import { Library, Database, ArrowRightLeft, Settings, Gamepad2, ChevronDown, ChevronRight, Languages } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,10 @@ const NAV_ITEMS = [
   { to: "/scraper", icon: Database, labelKey: "nav.scraper" },
   { to: "/import", icon: ArrowRightLeft, labelKey: "nav.import" },
   { to: "/settings", icon: Settings, labelKey: "nav.settings" },
+];
+
+const TOOL_ITEMS = [
+  { to: "/cn-repo", icon: Languages, labelKey: "nav.cnRepo" },
 ];
 
 export default function Sidebar() {
@@ -132,6 +136,51 @@ export default function Sidebar() {
                     </motion.div>
                 )}
             </AnimatePresence>
+        </div>
+
+        {/* Tools Section */}
+        <div className="pt-4 pb-2">
+          <div className="px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 opacity-70">
+            {t("nav.tools", { defaultValue: "工具" })}
+          </div>
+          {TOOL_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                clsx(
+                  "relative flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group overflow-hidden",
+                  isActive
+                    ? "text-text-primary"
+                    : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNav"
+                      className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    />
+                  )}
+
+                  <item.icon
+                    className={clsx(
+                      "w-4 h-4 z-10 transition-transform duration-300",
+                      isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                    )}
+                  />
+                  <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
+                    {t(item.labelKey)}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          ))}
         </div>
 
         {/* Other Nav Items */}

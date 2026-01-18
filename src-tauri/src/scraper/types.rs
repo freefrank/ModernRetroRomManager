@@ -79,6 +79,7 @@ pub struct SearchResult {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GameMetadata {
     pub name: String,
+    pub english_name: Option<String>,
     pub description: Option<String>,
     pub release_date: Option<String>,
     pub developer: Option<String>,

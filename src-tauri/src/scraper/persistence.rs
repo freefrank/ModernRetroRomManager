@@ -78,6 +78,7 @@ pub fn save_metadata_pegasus(
     let mut game_entry = String::new();
     game_entry.push_str(&format!("\ngame: {}\n", metadata.name));
     game_entry.push_str(&format!("file: {}\n", rom.file));
+    if let Some(ref en) = metadata.english_name { game_entry.push_str(&format!("x-english-name: {}\n", en)); }
     if let Some(ref d) = metadata.description { game_entry.push_str(&format!("description: {}\n", d.replace('\n', " "))); }
     if let Some(ref d) = metadata.developer { game_entry.push_str(&format!("developer: {}\n", d)); }
     if let Some(ref p) = metadata.publisher { game_entry.push_str(&format!("publisher: {}\n", p)); }
