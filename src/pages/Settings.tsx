@@ -216,8 +216,10 @@ export default function Settings() {
 
   // 拖拽处理函数
   const handleDragStart = (e: React.DragEvent, providerId: string) => {
+    console.log("🎯 Drag start:", providerId);
     setDraggedProvider(providerId);
     e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", providerId); // 某些浏览器需要这个
   };
 
   const handleDragOver = (e: React.DragEvent, providerId: string) => {
