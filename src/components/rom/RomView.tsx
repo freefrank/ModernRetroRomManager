@@ -38,8 +38,13 @@ const VIEW_CONFIG = {
       if (width < 1536) return 8;
       return 10;
     },
-    rowHeight: 200,
-    gap: 12, // gap-3
+    // Dynamic row height based on card width (aspect 3:4)
+    getRowHeight: (containerWidth: number, columns: number, gap: number) => {
+      const totalGap = gap * (columns - 1);
+      const cardWidth = (containerWidth - totalGap) / columns;
+      return Math.ceil(cardWidth * (4 / 3));
+    },
+    gap: 12,
     overscan: 3,
   },
   grid: {
@@ -50,13 +55,20 @@ const VIEW_CONFIG = {
       if (width < 1536) return 5;
       return 6;
     },
-    rowHeight: 320,
-    gap: 24, // gap-6
+    // Dynamic row height: aspect 3:4 image + text area
+    getRowHeight: (containerWidth: number, columns: number, gap: number) => {
+      const totalGap = gap * (columns - 1);
+      const cardWidth = (containerWidth - totalGap) / columns;
+      const imageHeight = cardWidth * (4 / 3);
+      const textAreaHeight = 72; // p-4 padding + title + rating
+      return Math.ceil(imageHeight + textAreaHeight);
+    },
+    gap: 24,
     overscan: 2,
   },
   list: {
     getColumns: () => 1,
-    rowHeight: 64,
+    getRowHeight: () => 72,
     gap: 0,
     overscan: 5,
   },
@@ -333,6 +345,24 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
   const parentRef = useRef<HTMLDivElement>(null);
   const columns = useColumnCount(viewMode);
   const config = VIEW_CONFIG[viewMode];
+  const [containerWidth, setContainerWidth] = useState(1200);
+
+  // Track container width for dynamic row height calculation
+  useEffect(() => {
+    const updateWidth = () => {
+      if (parentRef.current) {
+        setContainerWidth(parentRef.current.clientWidth);
+      }
+    };
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+
+  // Calculate dynamic row height based on container width
+  const rowHeight = useMemo(() => {
+    return config.getRowHeight(containerWidth, columns, config.gap);
+  }, [config, containerWidth, columns]);
 
   // Group roms into rows (for grid/cover modes)
   const rows = useMemo(() => {
@@ -348,13 +378,14 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
   }, [roms, columns, viewMode]);
 
   // Memoize estimateSize to prevent virtualizer recreation
-  const estimateSize = useCallback(() => config.rowHeight, [config.rowHeight]);
+  const estimateSize = useCallback(() => rowHeight, [rowHeight]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize,
     overscan: config.overscan,
+    gap: config.gap, // Add gap between rows
   });
 
   const virtualRows = virtualizer.getVirtualItems();
@@ -381,6 +412,7 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
     >
       {listHeader}
       <div
+        className="transition-opacity duration-200 ease-out"
         style={{
           height: `${virtualizer.getTotalSize()}px`,
           width: "100%",
@@ -393,6 +425,7 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
           return (
             <div
               key={virtualRow.key}
+              className="transition-all duration-200 ease-out"
               style={{
                 position: "absolute",
                 top: 0,
@@ -413,7 +446,7 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
               ) : (
                 // Grid/Cover view - multiple items per row
                 <div
-                  className="grid h-full"
+                  className="grid transition-all duration-200 ease-out"
                   style={{
                     gridTemplateColumns: `repeat(${columns}, 1fr)`,
                     gap: `${config.gap}px`,
