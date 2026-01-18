@@ -19,6 +19,8 @@ use crate::scraper::{
 use crate::rom_service::RomInfo;
 
 
+use crate::settings::ScraperConfig;
+
 // ============================================================================
 // State - ScraperManager 全局状态
 // ============================================================================
@@ -73,20 +75,48 @@ pub async fn get_scraper_providers(
     let manager = state.manager.read().await;
     let provider_ids = manager.provider_ids();
     
-    // 目前返回硬编码的 provider 信息
-    // TODO: 从 manager 动态获取
-    let providers = vec![
-        ProviderInfo {
+    // 动态生成 provider 信息
+    let mut providers = Vec::new();
+    
+    // SteamGridDB
+    if let Some(config) = manager.get_credentials("steamgriddb") {
+        providers.push(ProviderInfo {
             id: "steamgriddb".to_string(),
             name: "SteamGridDB".to_string(),
-            enabled: provider_ids.contains(&"steamgriddb".to_string()),
+            enabled: config.enabled,
+            has_credentials: config.api_key.is_some() && !config.api_key.unwrap().is_empty(),
+            capabilities: vec!["search".to_string(), "media".to_string()],
+        });
+    } else {
+        providers.push(ProviderInfo {
+            id: "steamgriddb".to_string(),
+            name: "SteamGridDB".to_string(),
+            enabled: true, // 默认启用
             has_credentials: false,
             capabilities: vec!["search".to_string(), "media".to_string()],
-        },
-        ProviderInfo {
+        });
+    }
+
+    // ScreenScraper
+    if let Some(config) = manager.get_credentials("screenscraper") {
+        providers.push(ProviderInfo {
             id: "screenscraper".to_string(),
             name: "ScreenScraper".to_string(),
-            enabled: provider_ids.contains(&"screenscraper".to_string()),
+            enabled: config.enabled,
+            has_credentials: config.username.is_some() && !config.username.unwrap().is_empty() 
+                && config.password.is_some() && !config.password.unwrap().is_empty(),
+            capabilities: vec![
+                "search".to_string(),
+                "hash_lookup".to_string(),
+                "metadata".to_string(),
+                "media".to_string(),
+            ],
+        });
+    } else {
+        providers.push(ProviderInfo {
+            id: "screenscraper".to_string(),
+            name: "ScreenScraper".to_string(),
+            enabled: true, // 默认启用
             has_credentials: false,
             capabilities: vec![
                 "search".to_string(),
@@ -94,8 +124,8 @@ pub async fn get_scraper_providers(
                 "metadata".to_string(),
                 "media".to_string(),
             ],
-        },
-    ];
+        });
+    }
     
     Ok(providers)
 }
@@ -109,20 +139,33 @@ pub async fn configure_scraper_provider(
 ) -> Result<(), String> {
     let mut manager = state.manager.write().await;
     
+    // 获取当前配置以保留 enabled 状态
+    let current_config = manager.get_credentials(&provider_id).unwrap_or_default();
+    
+    let mut new_config = ScraperConfig {
+        enabled: current_config.enabled,
+        ..Default::default()
+    };
+
     match provider_id.as_str() {
         "steamgriddb" => {
             if let Some(api_key) = credentials.api_key {
                 if !api_key.is_empty() {
-                    let client = SteamGridDBClient::new(api_key);
+                    let client = SteamGridDBClient::new(api_key.clone());
                     manager.register(client);
+                    new_config.api_key = Some(api_key);
+                    manager.set_credentials(&provider_id, new_config);
                 }
             }
         }
         "screenscraper" => {
             if let (Some(username), Some(password)) = (credentials.username, credentials.password) {
                 if !username.is_empty() && !password.is_empty() {
-                    let client = ScreenScraperClient::new(username, password);
+                    let client = ScreenScraperClient::new(username.clone(), password.clone());
                     manager.register(client);
+                    new_config.username = Some(username);
+                    new_config.password = Some(password);
+                    manager.set_credentials(&provider_id, new_config);
                 }
             }
         }
@@ -503,21 +546,4 @@ fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
             }
         }
     }
-}
-
-fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
-    if !dst.exists() {
-        fs::create_dir_all(dst).map_err(|e| e.to_string())?;
-    }
-
-    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let file_type = entry.file_type().map_err(|e| e.to_string())?;
-        if file_type.is_dir() {
-            copy_dir_recursive(&entry.path(), &dst.join(entry.file_name()))?;
-        } else {
-            fs::copy(entry.path(), dst.join(entry.file_name())).map_err(|e| e.to_string())?;
-        }
-    }
-    Ok(())
 }

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RomInfo {
     pub file: String,

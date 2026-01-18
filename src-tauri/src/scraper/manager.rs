@@ -11,6 +11,7 @@ use super::{
     ScrapeResult, RomHash, ProviderCapability,
 };
 use super::matcher::rank_results;
+use crate::settings::{get_settings, update_setting, ScraperConfig};
 
 /// Provider 配置
 #[derive(Debug, Clone)]
@@ -51,7 +52,19 @@ impl ScraperManager {
     pub fn register<P: ScraperProvider + 'static>(&mut self, provider: P) {
         let id = provider.id().to_string();
         self.providers.insert(id.clone(), Arc::new(provider));
-        self.configs.insert(id, ProviderConfig::default());
+        
+        // 从持久化设置中加载配置，如果不存在则使用默认值
+        let settings = get_settings();
+        let config = if let Some(saved_config) = settings.scrapers.get(&id) {
+            ProviderConfig {
+                enabled: saved_config.enabled,
+                priority: 100, // 暂时默认优先级
+            }
+        } else {
+            ProviderConfig::default()
+        };
+        
+        self.configs.insert(id, config);
     }
 
     /// 注册 provider 并指定配置
@@ -238,6 +251,34 @@ impl ScraperManager {
     pub fn set_enabled(&mut self, provider_id: &str, enabled: bool) {
         if let Some(config) = self.configs.get_mut(provider_id) {
             config.enabled = enabled;
+            
+            // 持久化保存
+            let provider_id_owned = provider_id.to_string();
+            let _ = update_setting(move |settings| {
+                let entry = settings.scrapers.entry(provider_id_owned).or_default();
+                entry.enabled = enabled;
+            });
+        }
+    }
+
+    /// 获取 Provider 的持久化配置 (API Key 等)
+    pub fn get_credentials(&self, provider_id: &str) -> Option<ScraperConfig> {
+        let settings = get_settings();
+        settings.scrapers.get(provider_id).cloned()
+    }
+
+    /// 更新 Provider 的凭证配置
+    pub fn set_credentials(&mut self, provider_id: &str, config: ScraperConfig) {
+        let provider_id_owned = provider_id.to_string();
+        let config_clone = config.clone();
+        
+        let _ = update_setting(move |settings| {
+            settings.scrapers.insert(provider_id_owned, config_clone);
+        });
+        
+        // 同时也更新内存中的启用状态
+        if let Some(mem_config) = self.configs.get_mut(provider_id) {
+            mem_config.enabled = config.enabled;
         }
     }
 
