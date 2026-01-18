@@ -48,9 +48,10 @@ export default function Settings() {
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<ScraperCredentials>({});
 
-  // 拖拽排序状态
+  // 拖拽排序状态（改用 mouse 事件）
   const [draggedProvider, setDraggedProvider] = useState<string | null>(null);
   const [dragOverProvider, setDragOverProvider] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDirPath, setNewDirPath] = useState("");
@@ -74,6 +75,14 @@ export default function Settings() {
   useEffect(() => {
     fetchProviders();
   }, [fetchProviders]);
+
+  // 全局 mouseUp 监听器
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => window.removeEventListener('mouseup', handleMouseUp);
+    }
+  }, [isDragging, draggedProvider, dragOverProvider]);
 
   useEffect(() => {
     const loadPaths = async () => {
@@ -214,37 +223,47 @@ export default function Settings() {
     }
   };
 
-  // 拖拽处理函数
-  const handleDragStart = (e: React.DragEvent, providerId: string) => {
-    console.log("🎯 Drag start:", providerId);
+  // 拖拽处理函数（改用 mouse 事件）
+  const handleMouseDown = (e: React.MouseEvent, providerId: string) => {
+    // 如果点击的是按钮或开关，不启动拖拽
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('label')) {
+      return;
+    }
+
+    console.log("🎯 Mouse down:", providerId);
     setDraggedProvider(providerId);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", providerId);
-
-    // 手动设置拖拽图像（Tauri webview 可能需要这个）
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    e.dataTransfer.setDragImage(target, rect.width / 2, rect.height / 2);
+    setIsDragging(true);
   };
 
-  const handleDragOver = (e: React.DragEvent, providerId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverProvider(providerId);
-    console.log("📍 Drag over:", providerId);
+  const handleMouseEnter = (providerId: string) => {
+    if (isDragging && draggedProvider && draggedProvider !== providerId) {
+      console.log("📍 Mouse enter:", providerId);
+      setDragOverProvider(providerId);
+    }
   };
 
-  const handleDrop = async (e: React.DragEvent, targetProviderId: string) => {
-    e.preventDefault();
-    console.log("🎯 Drop on:", targetProviderId, "from:", draggedProvider);
-    if (!draggedProvider || draggedProvider === targetProviderId) return;
+  const handleMouseUp = async () => {
+    if (!isDragging || !draggedProvider || !dragOverProvider) {
+      setDraggedProvider(null);
+      setDragOverProvider(null);
+      setIsDragging(false);
+      return;
+    }
+
+    console.log("🎯 Mouse up - Drop on:", dragOverProvider, "from:", draggedProvider);
 
     // 获取排序后的 provider 列表
     const sortedProviders = [...providers].sort((a, b) => a.priority - b.priority);
     const draggedIndex = sortedProviders.findIndex(p => p.id === draggedProvider);
-    const targetIndex = sortedProviders.findIndex(p => p.id === targetProviderId);
+    const targetIndex = sortedProviders.findIndex(p => p.id === dragOverProvider);
 
-    if (draggedIndex === -1 || targetIndex === -1) return;
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedProvider(null);
+      setDragOverProvider(null);
+      setIsDragging(false);
+      return;
+    }
 
     // 重新排列
     const newProviders = [...sortedProviders];
@@ -265,11 +284,7 @@ export default function Settings() {
 
     setDraggedProvider(null);
     setDragOverProvider(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedProvider(null);
-    setDragOverProvider(null);
+    setIsDragging(false);
   };
 
   // 按优先级排序的 providers
@@ -460,11 +475,8 @@ export default function Settings() {
               {sortedProviders.map((p) => (
                 <div
                   key={p.id}
-                  draggable={true}
-                  onDragStart={(e) => handleDragStart(e, p.id)}
-                  onDragOver={(e) => handleDragOver(e, p.id)}
-                  onDrop={(e) => handleDrop(e, p.id)}
-                  onDragEnd={handleDragEnd}
+                  onMouseDown={(e) => handleMouseDown(e, p.id)}
+                  onMouseEnter={() => handleMouseEnter(p.id)}
                   className={clsx(
                     "group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-move select-none",
                     p.enabled ? "bg-bg-secondary border-border-hover" : "bg-bg-primary/50 border-border-default opacity-70",
@@ -472,7 +484,7 @@ export default function Settings() {
                     dragOverProvider === p.id && "ring-2 ring-accent-primary"
                   )}
                 >
-                  <div className="flex items-center p-5 pointer-events-none">
+                  <div className="flex items-center p-5">
                     <div className="cursor-grab active:cursor-grabbing text-text-muted hover:text-accent-primary transition-colors mr-3">
                       <GripVertical className="w-5 h-5" />
                     </div>
@@ -497,9 +509,8 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 pointer-events-auto" onDragStart={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-4">
                       <button
-                        draggable={false}
                         onClick={() => handleEditConfig(p)}
                         className="p-2.5 rounded-xl bg-bg-tertiary text-text-secondary hover:text-accent-primary hover:bg-bg-primary transition-all border border-transparent hover:border-accent-primary/30"
                         title="编辑配置"
@@ -507,7 +518,7 @@ export default function Settings() {
                         <Key className="w-5 h-5" />
                       </button>
 
-                      <label draggable={false} className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
