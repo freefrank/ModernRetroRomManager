@@ -106,7 +106,7 @@ export default function CnName() {
   const [matchProgress, setMatchProgress] = useState<MatchProgress | null>(null);
 
   // 编辑状态管理
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingFile, setEditingFile] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
 
   // 排序状态
@@ -432,21 +432,26 @@ export default function CnName() {
   };
 
   // 开始编辑英文名
-  const handleStartEdit = (index: number, currentValue: string) => {
-    setEditingIndex(index);
+  const handleStartEdit = (file: string, currentValue: string) => {
+    setEditingFile(file);
     setEditingValue(currentValue || "");
   };
 
   // 确认编辑
-  const handleConfirmEdit = async (index: number) => {
-    if (editingIndex !== index) return;
+  const handleConfirmEdit = async (file: string) => {
+    if (editingFile !== file) return;
 
-    const result = checkResults[index];
     const newValue = editingValue.trim();
+
+    // 在 checkResults 中查找对应的条目
+    const resultIndex = checkResults.findIndex(r => r.file === file);
+    if (resultIndex === -1) return;
+
+    const result = checkResults[resultIndex];
 
     // 更新本地状态
     const updatedResults = [...checkResults];
-    updatedResults[index] = { ...result, english_name: newValue || undefined };
+    updatedResults[resultIndex] = { ...result, english_name: newValue || undefined };
     setCheckResults(updatedResults);
 
     // 调用后端API保存更改
@@ -455,7 +460,7 @@ export default function CnName() {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("update_english_name", {
           directory: checkPath,
-          file: result.file,
+          file: file,
           englishName: newValue,
         });
       }
@@ -464,13 +469,13 @@ export default function CnName() {
       alert("保存失败: " + String(error));
     }
 
-    setEditingIndex(null);
+    setEditingFile(null);
     setEditingValue("");
   };
 
   // 取消编辑
   const handleCancelEdit = () => {
-    setEditingIndex(null);
+    setEditingFile(null);
     setEditingValue("");
   };
 
@@ -633,7 +638,7 @@ export default function CnName() {
                   <tbody className="divide-y divide-border-default">
                     {sortedResults.map((res, idx) => {
                       const isMissing = !res.english_name;
-                      const isEditing = editingIndex === idx;
+                      const isEditing = editingFile === res.file;
                       const bgColor = getConfidenceColor(res.confidence);
 
                       return (
@@ -659,19 +664,19 @@ export default function CnName() {
                                 onChange={(e) => setEditingValue(e.target.value)}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
-                                    handleConfirmEdit(idx);
+                                    handleConfirmEdit(res.file);
                                   } else if (e.key === "Escape") {
                                     handleCancelEdit();
                                   }
                                 }}
-                                onBlur={() => handleConfirmEdit(idx)}
+                                onBlur={() => handleConfirmEdit(res.file)}
                                 onFocus={(e) => e.target.select()}
                                 autoFocus
                                 className="w-full bg-bg-tertiary border border-accent-primary rounded px-2 py-1 text-sm text-text-primary focus:outline-none"
                               />
                             ) : (
                               <button
-                                onClick={() => handleStartEdit(idx, res.english_name || "")}
+                                onClick={() => handleStartEdit(res.file, res.english_name || "")}
                                 className={clsx(
                                   "w-full text-left truncate hover:underline cursor-pointer",
                                   res.english_name ? "text-blue-400" : "text-text-muted italic"
