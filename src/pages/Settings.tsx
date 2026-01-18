@@ -457,7 +457,7 @@ export default function Settings() {
                   onDrop={(e) => handleDrop(e, p.id)}
                   onDragEnd={handleDragEnd}
                   className={clsx(
-                    "group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-move",
+                    "group relative overflow-hidden rounded-2xl border transition-all duration-300 cursor-move select-none",
                     p.enabled ? "bg-bg-secondary border-border-hover" : "bg-bg-primary/50 border-border-default opacity-70",
                     draggedProvider === p.id && "opacity-50 scale-95",
                     dragOverProvider === p.id && "ring-2 ring-accent-primary"
@@ -491,6 +491,7 @@ export default function Settings() {
                     <div className="flex items-center gap-4">
                       <button
                         draggable={false}
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={() => handleEditConfig(p)}
                         className="p-2.5 rounded-xl bg-bg-tertiary text-text-secondary hover:text-accent-primary hover:bg-bg-primary transition-all border border-transparent hover:border-accent-primary/30"
                         title="编辑配置"
@@ -498,7 +499,7 @@ export default function Settings() {
                         <Key className="w-5 h-5" />
                       </button>
 
-                      <label draggable={false} className="relative inline-flex items-center cursor-pointer">
+                      <label draggable={false} onMouseDown={(e) => e.stopPropagation()} className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
