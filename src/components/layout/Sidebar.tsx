@@ -1,16 +1,10 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Library, Database, ArrowRightLeft, Settings, Gamepad2, ChevronDown, ChevronRight, Languages } from "lucide-react";
+import { Library, Database, ArrowRightLeft, Settings, Gamepad2, ChevronDown, ChevronRight, Languages, PenTool } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { useRomStore } from "@/stores/romStore";
-
-const NAV_ITEMS = [
-  { to: "/scraper", icon: Database, labelKey: "nav.scraper" },
-  { to: "/import", icon: ArrowRightLeft, labelKey: "nav.import" },
-  { to: "/settings", icon: Settings, labelKey: "nav.settings" },
-];
 
 const TOOL_ITEMS = [
   { to: "/cn-repo", icon: Languages, labelKey: "nav.cnRepo" },
@@ -23,8 +17,10 @@ export default function Sidebar() {
   const { availableSystems, selectedSystem, setSelectedSystem } = useRomStore();
   
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
+  const [isToolsExpanded, setIsToolsExpanded] = useState(false);
 
   const isLibraryActive = location.pathname === "/";
+  const isToolsActive = TOOL_ITEMS.some(item => location.pathname === item.to);
 
   const handleLibraryClick = () => {
     navigate("/");
@@ -56,7 +52,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-        {/* Library Item with Expansion */}
+        {/* Library Item */}
         <div className="space-y-1">
             <div
                 className={clsx(
@@ -102,7 +98,6 @@ export default function Sidebar() {
                 </button>
             </div>
 
-            {/* Sub-items (Systems) */}
             <AnimatePresence initial={false}>
                 {isLibraryExpanded && (
                     <motion.div
@@ -138,90 +133,188 @@ export default function Sidebar() {
             </AnimatePresence>
         </div>
 
-        {/* Tools Section */}
-        <div className="pt-4 pb-2">
-          <div className="px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 opacity-70">
-            {t("nav.tools", { defaultValue: "工具" })}
-          </div>
-          {TOOL_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                clsx(
-                  "relative flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group overflow-hidden",
-                  isActive
+        {/* Scraper Item */}
+        <NavLink
+          to="/scraper"
+          className={({ isActive }) =>
+            clsx(
+              "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden",
+              isActive
+                ? "text-text-primary"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                />
+              )}
+              <Database
+                className={clsx(
+                  "w-5 h-5 z-10 transition-transform duration-300",
+                  isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                )}
+              />
+              <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
+                {t("nav.scraper")}
+              </span>
+            </>
+          )}
+        </NavLink>
+
+        {/* Import Item */}
+        <NavLink
+          to="/import"
+          className={({ isActive }) =>
+            clsx(
+              "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden",
+              isActive
+                ? "text-text-primary"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                />
+              )}
+              <ArrowRightLeft
+                className={clsx(
+                  "w-5 h-5 z-10 transition-transform duration-300",
+                  isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                )}
+              />
+              <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
+                {t("nav.import")}
+              </span>
+            </>
+          )}
+        </NavLink>
+
+        {/* Tools Section (Expandable) */}
+        <div className="space-y-1">
+            <div
+                className={clsx(
+                "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group cursor-pointer select-none",
+                isToolsActive
                     ? "text-text-primary"
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
-                )
-              }
+                )}
+                onClick={() => setIsToolsExpanded(!isToolsExpanded)}
             >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                    />
-                  )}
-
-                  <item.icon
+                {/* 只有当 Tools 下的子项激活且 Tools 未展开时，才高亮 Tools 本身？或者 Tools 作为一个容器不需要 active 状态的背景条？ */}
+                {/* 设计决策：Tools 作为一个 Section Header，本身不作为 Link。如果内部有 Active Item，保持文字高亮，但不显示左侧 Border。 */}
+                
+                <PenTool
                     className={clsx(
-                      "w-4 h-4 z-10 transition-transform duration-300",
-                      isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                    "w-5 h-5 z-10 transition-transform duration-300",
+                    isToolsActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
                     )}
-                  />
-                  <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
-                    {t(item.labelKey)}
-                  </span>
-                </>
-              )}
-            </NavLink>
-          ))}
+                />
+                <span className="font-medium z-10 text-sm tracking-wide flex-1">
+                    {t("nav.tools", { defaultValue: "工具箱" })}
+                </span>
+                
+                <div className="z-10 p-1 rounded-md text-text-muted transition-colors">
+                    {isToolsExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                    ) : (
+                        <ChevronRight className="w-4 h-4" />
+                    )}
+                </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+                {isToolsExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden ml-4 pl-4 border-l border-border-default space-y-1"
+                    >
+                        {TOOL_ITEMS.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                className={({ isActive }) =>
+                                    clsx(
+                                    "relative flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all duration-200 group overflow-hidden",
+                                    isActive
+                                        ? "text-text-primary bg-accent-primary/10"
+                                        : "text-text-muted hover:text-text-primary hover:bg-bg-tertiary"
+                                    )
+                                }
+                            >
+                                {({ isActive }) => (
+                                    <>
+                                        <item.icon
+                                            className={clsx(
+                                            "w-4 h-4 z-10 transition-transform duration-300",
+                                            isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                                            )}
+                                        />
+                                        <span className={clsx("font-medium z-10 tracking-wide")}>
+                                            {t(item.labelKey)}
+                                        </span>
+                                    </>
+                                )}
+                            </NavLink>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
 
-        {/* Other Nav Items */}
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              clsx(
-                "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden",
-                isActive
-                  ? "text-text-primary"
-                  : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.div
-                    layoutId="activeNav"
-                    className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  />
-                )}
-
-                <item.icon
-                  className={clsx(
-                    "w-5 h-5 z-10 transition-transform duration-300",
-                    isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
-                  )}
+        {/* Settings Item */}
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            clsx(
+              "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group overflow-hidden",
+              isActive
+                ? "text-text-primary"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-tertiary"
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.div
+                  layoutId="activeNav"
+                  className="absolute inset-0 bg-gradient-to-r from-accent-primary/20 to-transparent border-l-4 border-accent-primary rounded-xl"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                 />
-                <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
-                  {t(item.labelKey)}
-                </span>
-              </>
-            )}
-          </NavLink>
-        ))}
+              )}
+              <Settings
+                className={clsx(
+                  "w-5 h-5 z-10 transition-transform duration-300",
+                  isActive ? "text-accent-secondary scale-110" : "group-hover:scale-110"
+                )}
+              />
+              <span className={clsx("font-medium z-10 text-sm tracking-wide")}>
+                {t("nav.settings")}
+              </span>
+            </>
+          )}
+        </NavLink>
       </nav>
 
       {/* Footer Info */}

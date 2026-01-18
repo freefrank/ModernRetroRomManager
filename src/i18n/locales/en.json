@@ -7,7 +7,9 @@
     "library": "Library",
     "scraper": "Scraper",
     "import": "Import/Export",
-    "settings": "Settings"
+    "settings": "Settings",
+    "tools": "Tools",
+    "cnRepo": "Chinese DB"
   },
   "library": {
     "title": "ROM Library",

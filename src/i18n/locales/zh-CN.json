@@ -7,7 +7,9 @@
     "library": "ROM 库",
     "scraper": "Scraper",
     "import": "导入/导出",
-    "settings": "设置"
+    "settings": "设置",
+    "tools": "工具箱",
+    "cnRepo": "中文数据库"
   },
   "library": {
     "title": "ROM 库",
