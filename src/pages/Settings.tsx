@@ -52,6 +52,8 @@ export default function Settings() {
   const [draggedProvider, setDraggedProvider] = useState<string | null>(null);
   const [dragOverProvider, setDragOverProvider] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newDirPath, setNewDirPath] = useState("");
@@ -76,11 +78,15 @@ export default function Settings() {
     fetchProviders();
   }, [fetchProviders]);
 
-  // 全局 mouseUp 监听器
+  // 全局 mouseUp 和 mouseMove 监听器
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mouseup', handleMouseUp);
-      return () => window.removeEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', handleMouseMove);
+      return () => {
+        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('mousemove', handleMouseMove);
+      };
     }
   }, [isDragging, draggedProvider, dragOverProvider]);
 
@@ -232,6 +238,15 @@ export default function Settings() {
     }
 
     console.log("🎯 Mouse down:", providerId);
+
+    // 记录鼠标相对于元素的偏移
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    setMousePos({ x: e.clientX, y: e.clientY });
+
     setDraggedProvider(providerId);
     setIsDragging(true);
   };
@@ -240,6 +255,12 @@ export default function Settings() {
     if (isDragging && draggedProvider && draggedProvider !== providerId) {
       console.log("📍 Mouse enter:", providerId);
       setDragOverProvider(providerId);
+    }
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setMousePos({ x: e.clientX, y: e.clientY });
     }
   };
 
@@ -697,6 +718,52 @@ export default function Settings() {
         onImportAsRoot={handleImportAsRoot}
         onSelectSubDirectory={handleSelectSubDirectory}
       />
+
+      {/* 拖拽幽灵元素 */}
+      {isDragging && draggedProvider && (
+        <div
+          className="fixed pointer-events-none z-50 opacity-80"
+          style={{
+            left: mousePos.x - dragOffset.x,
+            top: mousePos.y - dragOffset.y,
+            width: '600px'
+          }}
+        >
+          {(() => {
+            const provider = providers.find(p => p.id === draggedProvider);
+            if (!provider) return null;
+
+            return (
+              <div className="group relative overflow-hidden rounded-2xl border bg-bg-secondary border-border-hover shadow-2xl">
+                <div className="flex items-center p-5">
+                  <div className="cursor-grab text-text-muted mr-3">
+                    <GripVertical className="w-5 h-5" />
+                  </div>
+                  <div className={clsx("w-12 h-12 rounded-xl flex items-center justify-center border", getProviderColor(provider.id))}>
+                    {getProviderIcon(provider.id)}
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-text-primary text-lg">{provider.name}</h3>
+                      {provider.has_credentials && (
+                        <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-tighter border border-green-500/20">
+                          已认证
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs text-text-muted flex items-center gap-1">
+                        <Activity className="w-3 h-3" />
+                        {provider.capabilities.join(", ").toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }
