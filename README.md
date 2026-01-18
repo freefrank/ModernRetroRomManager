@@ -16,6 +16,13 @@
 - **Backend**: Rust, Tauri v2
 - **Tooling**: Vite, pnpm, Cargo
 
+## 📚 资源与致谢
+
+- **中文 ROM 数据库**: [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) - 提供了极其宝贵的 ROM 中英文对照数据，使得本软件能够实现精确的中文名匹配与搜索。
+- **Scraper 数据源**:
+  - [ScreenScraper](https://www.screenscraper.fr/)
+  - [SteamGridDB](https://www.steamgriddb.com/)
+
 ## 🚀 快速开始
 
 ### 前置要求
