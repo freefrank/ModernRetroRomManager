@@ -158,8 +158,15 @@ pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckRe
     // 检测元数据格式
     let format = detect_format(dir_path);
 
+    // 从目录名推断系统名称
+    let system_name = dir_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
     // 读取 ROM 列表
-    let roms = get_roms_from_directory(dir_path, &format, "unknown")?;
+    let roms = get_roms_from_directory(dir_path, &format, &system_name)?;
 
     // 读取临时元数据
     let temp_entries = load_temp_cn_metadata(&path).unwrap_or_default();
