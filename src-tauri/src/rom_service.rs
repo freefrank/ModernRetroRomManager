@@ -467,19 +467,69 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
     if let Ok(entries) = fs::read_dir(dir_path) {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            if path.is_file() {
+
+            // PS3 特殊处理：扫描文件夹作为 ROM
+            if system_name.to_lowercase() == "ps3" && path.is_dir() {
+                let folder_name = path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                // 可选：验证是否为有效的 PS3 游戏文件夹
+                // 检查是否包含 PS3_GAME 目录
+                let ps3_game_dir = path.join("PS3_GAME");
+                let is_valid_ps3_folder = ps3_game_dir.exists() && ps3_game_dir.is_dir();
+
+                // 如果包含 PS3_GAME 目录，或者我们不做严格验证，就添加这个文件夹
+                if is_valid_ps3_folder || true {  // 暂时不做严格验证
+                    roms.push(RomInfo {
+                        file: folder_name.clone(),
+                        name: folder_name,
+                        description: None,
+                        summary: None,
+                        developer: None,
+                        publisher: None,
+                        genre: None,
+                        players: None,
+                        release: None,
+                        rating: None,
+                        directory: dir_path.to_string_lossy().to_string(),
+                        system: system_name.to_string(),
+                        box_front: None,
+                        box_back: None,
+                        box_spine: None,
+                        box_full: None,
+                        cartridge: None,
+                        logo: None,
+                        marquee: None,
+                        bezel: None,
+                        gridicon: None,
+                        flyer: None,
+                        background: None,
+                        music: None,
+                        screenshot: None,
+                        titlescreen: None,
+                        video: None,
+                        english_name: None,
+                        has_temp_metadata: false,
+                        temp_data: None,
+                    });
+                }
+            }
+            // 常规文件处理
+            else if path.is_file() {
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if rom_extensions.contains(&ext.to_lowercase().as_str()) {
                         let filename = path.file_name()
                             .and_then(|n| n.to_str())
                             .unwrap_or("Unknown")
                             .to_string();
-                        
+
                         let name = path.file_stem()
                             .and_then(|n| n.to_str())
                             .unwrap_or("Unknown")
                             .to_string();
-                        
+
                         roms.push(RomInfo {
                             file: filename,
                             name,
