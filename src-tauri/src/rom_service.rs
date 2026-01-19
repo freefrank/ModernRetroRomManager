@@ -470,7 +470,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
             let path = entry.path();
 
             // PS3 特殊处理：扫描文件夹作为 ROM
-            if system_name.to_lowercase() == "ps3" && path.is_dir() {
+            if system_name.to_lowercase().contains("ps3") && path.is_dir() {
                 let folder_name = path.file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("Unknown")
@@ -560,7 +560,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                             .to_string();
 
                         // PS3 ISO 特殊处理：尝试从 ISO 中提取 PARAM.SFO
-                        let (game_name, game_description) = if system_name.to_lowercase() == "ps3"
+                        let (game_name, game_description) = if system_name.to_lowercase().contains("ps3")
                             && ext.to_lowercase() == "iso" {
                             println!("[DEBUG] Attempting to parse PS3 ISO: {}", path.display());
                             match ps3_sfo::parse_param_sfo_from_iso(&path) {
