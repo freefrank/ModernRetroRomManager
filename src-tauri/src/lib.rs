@@ -34,6 +34,8 @@ pub fn run() {
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,
+            commands::directory::scan_directory,
+            commands::directory::detect_metadata_files,
             // Config
             commands::config::validate_path,
             commands::config::list_directory,
