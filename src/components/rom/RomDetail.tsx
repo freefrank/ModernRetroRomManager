@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  X, Calendar, User, Building2, Globe, Gamepad2, Star, 
-  Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Loader2, Play
+import {
+  X, Calendar, User, Building2, Globe, Gamepad2, Star,
+  Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Loader2, Play, Wand2
 } from "lucide-react";
-import { resolveMediaUrlAsync, scraperApi } from "@/lib/api";
+import { resolveMediaUrlAsync, scraperApi, ps3Api } from "@/lib/api";
 import type { Rom } from "@/types";
 import { useRomStore } from "@/stores/romStore";
 import { useTranslation } from "react-i18next";
@@ -36,6 +36,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Rom & { _activeTab: string }>>({});
   const [tempMedia, setTempMedia] = useState<{ asset_type: string, path: string }[]>([]);
+  const [isGeneratingBoxart, setIsGeneratingBoxart] = useState(false);
 
   useEffect(() => {
     if (rom) {
@@ -114,6 +115,26 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
       setTempMedia(newList);
     } catch (error) {
       console.error("Delete media failed:", error);
+    }
+  };
+
+  const handleGenerateBoxart = async () => {
+    if (!rom) return;
+
+    setIsGeneratingBoxart(true);
+    try {
+      const result = await ps3Api.generateBoxart(rom.file, rom.directory, rom.system);
+      if (result.success) {
+        alert(`Boxart 生成成功！\n路径: ${result.boxartPath}`);
+        // 可以在这里刷新 ROM 数据或更新显示
+      } else {
+        alert(`Boxart 生成失败: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Generate boxart failed:", error);
+      alert(`Boxart 生成失败: ${error}`);
+    } finally {
+      setIsGeneratingBoxart(false);
     }
   };
 
@@ -350,6 +371,16 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <div className="flex gap-2">
                         <button onClick={() => setIsScrapeDialogOpen(true)} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.scrape")}><Download className="w-5 h-5" /></button>
                         <button onClick={handleStartEdit} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.edit")}><Edit2 className="w-5 h-5" /></button>
+                        {rom.system.toLowerCase().includes('ps3') && (
+                          <button
+                            onClick={handleGenerateBoxart}
+                            disabled={isGeneratingBoxart}
+                            className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="生成 PS3 Boxart"
+                          >
+                            {isGeneratingBoxart ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+                          </button>
+                        )}
                       </div>
                       <div className="flex gap-3">
                         {isPreview ? (

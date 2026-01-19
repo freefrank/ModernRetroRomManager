@@ -245,3 +245,19 @@ export const scraperApi = {
     }
   },
 };
+
+// ============ PS3 API ============
+
+export const ps3Api = {
+  /** 为单个 PS3 ROM 生成 boxart */
+  async generateBoxart(romFile: string, romDirectory: string, system: string): Promise<{ success: boolean; boxartPath: string; error?: string }> {
+    if (isTauri()) {
+      return tauriInvoke("generate_ps3_boxart", {
+        romFile,
+        romDirectory,
+        system
+      });
+    }
+    return { success: false, boxartPath: "", error: "Not supported in web mode" };
+  },
+};

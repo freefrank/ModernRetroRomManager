@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X, Grid3X3 } from "lucide-react";
+import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X, Grid3X3, Wand2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { useRomStore } from "@/stores/romStore";
@@ -7,6 +7,7 @@ import { useAppStore } from "@/stores/appStore";
 import { clsx } from "clsx";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Rom } from "@/types";
+import { ps3Api } from "@/lib/api";
 
 import RomView from "@/components/rom/RomView";
 import RomDetail from "@/components/rom/RomDetail";
@@ -45,7 +46,8 @@ export default function Library() {
     toggleRomSelection,
     clearSelection,
     isBatchScraping,
-    batchProgress
+    batchProgress,
+    selectedSystem
   } = useRomStore();
   const { viewMode, setViewMode, searchQuery, setSearchQuery } = useAppStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -53,6 +55,8 @@ export default function Library() {
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [isAddDirDialogOpen, setIsAddDirDialogOpen] = useState(false);
   const [newDirPath, setNewDirPath] = useState("");
+  const [isGeneratingBoxart, setIsGeneratingBoxart] = useState(false);
+  const [boxartProgress, setBoxartProgress] = useState({ current: 0, total: 0 });
   const [isValidPath, setIsValidPath] = useState(false);
 
   // 元数据检测状态
@@ -165,6 +169,40 @@ export default function Library() {
     setActiveRom(rom);
   };
 
+  const handleBatchGenerateBoxart = async () => {
+    if (!selectedSystem?.toLowerCase().includes('ps3')) return;
+
+    setIsGeneratingBoxart(true);
+    setBoxartProgress({ current: 0, total: roms.length });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < roms.length; i++) {
+      const rom = roms[i];
+      setBoxartProgress({ current: i + 1, total: roms.length });
+
+      try {
+        const result = await ps3Api.generateBoxart(rom.file, rom.directory, rom.system);
+        if (result.success) {
+          successCount++;
+        } else {
+          failCount++;
+          console.error(`Failed to generate boxart for ${rom.name}:`, result.error);
+        }
+      } catch (error) {
+        failCount++;
+        console.error(`Error generating boxart for ${rom.name}:`, error);
+      }
+    }
+
+    setIsGeneratingBoxart(false);
+    alert(`Boxart 生成完成！\n成功: ${successCount}\n失败: ${failCount}`);
+
+    // 刷新 ROM 列表以显示新生成的 boxart
+    await fetchRoms();
+  };
+
   return (
     <div className="flex flex-col h-full space-y-6 max-w-[1600px] mx-auto w-full relative">
       {/* Batch Actions Toolbar (Floating) */}
@@ -228,6 +266,23 @@ export default function Library() {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* PS3 Boxart Generation Button */}
+          {selectedSystem?.toLowerCase().includes('ps3') && (
+            <button
+              onClick={handleBatchGenerateBoxart}
+              disabled={isGeneratingBoxart || roms.length === 0}
+              className="flex items-center gap-2 px-4 py-2.5 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-bold transition-all shadow-lg shadow-accent-primary/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="为所有 PS3 ROM 生成 Boxart"
+            >
+              <Wand2 className="w-5 h-5" />
+              <span className="hidden md:inline">
+                {isGeneratingBoxart
+                  ? `生成中 ${boxartProgress.current}/${boxartProgress.total}`
+                  : '生成 Boxart'}
+              </span>
+            </button>
+          )}
+
           {/* Spotlight Search */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl blur opacity-20 group-hover:opacity-40 transition duration-200"></div>
