@@ -130,10 +130,20 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
 
         if dir_config.is_root_directory {
             // ROMs 根目录模式：扫描子目录和根目录本身
+            let mut root_ps3_games = Vec::new(); // 收集根目录下的PS3游戏文件夹
+
             if let Ok(entries) = std::fs::read_dir(dir_path) {
                 for entry in entries.filter_map(|e| e.ok()) {
                     let sub_path = entry.path();
                     if sub_path.is_dir() {
+                        // 检查是否是PS3游戏文件夹（包含PS3_GAME目录）
+                        let ps3_game_dir = sub_path.join("PS3_GAME");
+                        if ps3_game_dir.exists() && ps3_game_dir.is_dir() {
+                            // 这是PS3游戏文件夹，归入根目录的PS3系统
+                            root_ps3_games.push(sub_path);
+                            continue;
+                        }
+
                         let system_name = sub_path
                             .file_name()
                             .and_then(|n| n.to_str())
@@ -159,7 +169,7 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                 }
             }
 
-            // 也扫描根目录本身的文件（用于混合目录）
+            // 扫描根目录本身的文件和收集到的PS3游戏文件夹
             let root_system_name = dir_path
                 .file_name()
                 .and_then(|n| n.to_str())
@@ -168,6 +178,76 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
 
             let format = detect_metadata_format(dir_path);
             if let Ok(mut roms) = get_roms_from_directory(dir_path, &format, &root_system_name) {
+                // 添加根目录下的PS3游戏文件夹
+                for ps3_game_path in root_ps3_games {
+                    let folder_name = ps3_game_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+
+                    println!("[DEBUG] Found PS3 game folder in root: {}", ps3_game_path.display());
+
+                    let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
+                    let game_info = if param_sfo_path.exists() {
+                        println!("[DEBUG] Attempting to parse PARAM.SFO: {}", param_sfo_path.display());
+                        match ps3_sfo::parse_param_sfo(&param_sfo_path) {
+                            Ok(info) => {
+                                println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
+                                    info.title, info.title_id);
+                                Some(info)
+                            }
+                            Err(e) => {
+                                println!("[ERROR] Failed to parse PARAM.SFO {}: {}", param_sfo_path.display(), e);
+                                None
+                            }
+                        }
+                    } else {
+                        println!("[DEBUG] PARAM.SFO not found at: {}", param_sfo_path.display());
+                        None
+                    };
+
+                    let game_name = game_info.as_ref()
+                        .and_then(|info| info.title.clone())
+                        .unwrap_or_else(|| folder_name.clone());
+
+                    let game_id = game_info.as_ref()
+                        .and_then(|info| info.title_id.clone());
+
+                    roms.push(RomInfo {
+                        file: folder_name,
+                        name: game_name,
+                        description: game_id.map(|id| format!("Game ID: {}", id)),
+                        summary: None,
+                        developer: None,
+                        publisher: None,
+                        genre: None,
+                        players: None,
+                        release: None,
+                        rating: None,
+                        directory: dir_path.to_string_lossy().to_string(),
+                        system: root_system_name.clone(),
+                        box_front: None,
+                        box_back: None,
+                        box_spine: None,
+                        box_full: None,
+                        cartridge: None,
+                        logo: None,
+                        marquee: None,
+                        bezel: None,
+                        gridicon: None,
+                        flyer: None,
+                        background: None,
+                        music: None,
+                        screenshot: None,
+                        titlescreen: None,
+                        video: None,
+                        english_name: None,
+                        has_temp_metadata: false,
+                        temp_data: None,
+                    });
+                }
+
                 if !roms.is_empty() {
                     apply_temp_metadata(&mut roms, &root_system_name);
 
