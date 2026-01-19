@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, RefreshCw, Search, Tag, FileText, AlertTriangle, FileDown, ChevronDown, X, ArrowUp, ArrowDown } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
+import type { GameSystem } from "@/types";
 
 interface MatchProgress {
   current: number;
@@ -17,75 +18,6 @@ interface CheckResult {
   confidence?: number; // 匹配置信度 0-100
 }
 
-// Pegasus 支持的所有系统 (基于用户实际配置)
-const PEGASUS_SYSTEMS: { id: string; name: string; aliases: string[] }[] = [
-  // Nintendo
-  { id: "fc", name: "FC / NES", aliases: ["fc", "nes", "famicom"] },
-  { id: "fc-hd", name: "FC HD", aliases: ["fc-hd", "fc hd"] },
-  { id: "fc hack", name: "FC Hack", aliases: ["fc hack"] },
-  { id: "sfc", name: "SFC / SNES", aliases: ["sfc", "snes", "super famicom"] },
-  { id: "sfc hack", name: "SFC Hack", aliases: ["sfc hack"] },
-  { id: "sfc-msu1", name: "SFC MSU-1", aliases: ["sfc-msu1"] },
-  { id: "n64", name: "Nintendo 64", aliases: ["n64"] },
-  { id: "ngc", name: "Nintendo GameCube", aliases: ["ngc", "gc", "gamecube"] },
-  { id: "wii", name: "Nintendo Wii", aliases: ["wii"] },
-  { id: "wii ware", name: "Wii Ware", aliases: ["wii ware", "wiiware"] },
-  { id: "gb", name: "Game Boy", aliases: ["gb", "gameboy"] },
-  { id: "gbc", name: "Game Boy Color", aliases: ["gbc"] },
-  { id: "gba", name: "Game Boy Advance", aliases: ["gba"] },
-  { id: "nds", name: "Nintendo DS", aliases: ["nds", "ds"] },
-  { id: "3ds", name: "Nintendo 3DS", aliases: ["3ds"] },
-  { id: "virtual boy", name: "Virtual Boy", aliases: ["virtual boy", "vb"] },
-  { id: "game watch", name: "Game & Watch", aliases: ["game watch", "game & watch"] },
-  { id: "poke mini", name: "Pokemon Mini", aliases: ["poke mini", "pokemini"] },
-  // Sega
-  { id: "sms", name: "Sega Master System", aliases: ["sms", "master system"] },
-  { id: "md", name: "Mega Drive / Genesis", aliases: ["md", "megadrive", "genesis"] },
-  { id: "md hack", name: "MD Hack", aliases: ["md hack"] },
-  { id: "md-32x", name: "Sega 32X", aliases: ["md-32x", "32x", "sega 32x"] },
-  { id: "gg", name: "Sega Game Gear", aliases: ["gg", "gamegear"] },
-  { id: "ss", name: "Sega Saturn", aliases: ["ss", "saturn"] },
-  { id: "dc", name: "Sega Dreamcast", aliases: ["dc", "dreamcast"] },
-  { id: "dc hack", name: "DC Hack", aliases: ["dc hack"] },
-  { id: "naomi", name: "Sega NAOMI", aliases: ["naomi"] },
-  // Sony
-  { id: "ps1", name: "PlayStation", aliases: ["ps1", "psx", "playstation"] },
-  { id: "ps1 hack", name: "PS1 Hack", aliases: ["ps1 hack"] },
-  { id: "ps2", name: "PlayStation 2", aliases: ["ps2"] },
-  { id: "ps3", name: "PlayStation 3", aliases: ["ps3"] },
-  { id: "psp", name: "PlayStation Portable", aliases: ["psp"] },
-  // NEC
-  { id: "pce", name: "PC Engine / TurboGrafx-16", aliases: ["pce", "pcengine", "tg16"] },
-  // SNK
-  { id: "ngpc", name: "Neo Geo Pocket Color", aliases: ["ngpc", "neogeo pocket"] },
-  // Bandai
-  { id: "ws", name: "WonderSwan", aliases: ["ws", "wonderswan"] },
-  { id: "wsc", name: "WonderSwan Color", aliases: ["wsc"] },
-  // Atari
-  { id: "atari2600", name: "Atari 2600", aliases: ["atari2600", "2600"] },
-  { id: "atari5200", name: "Atari 5200", aliases: ["atari5200", "5200"] },
-  { id: "atari7800", name: "Atari 7800", aliases: ["atari7800", "7800"] },
-  { id: "lynx", name: "Atari Lynx", aliases: ["lynx"] },
-  // Arcade
-  { id: "fbneo act", name: "FBNeo 动作", aliases: ["fbneo act"] },
-  { id: "fbneo stg", name: "FBNeo 射击", aliases: ["fbneo stg"] },
-  { id: "fbneo ftg", name: "FBNeo 格斗", aliases: ["fbneo ftg"] },
-  { id: "fbneo fly", name: "FBNeo 飞行", aliases: ["fbneo fly"] },
-  { id: "fbneo rac", name: "FBNeo 竞速", aliases: ["fbneo rac"] },
-  { id: "fbneo spo", name: "FBNeo 体育", aliases: ["fbneo spo"] },
-  { id: "fbneo etc", name: "FBNeo 其他", aliases: ["fbneo etc"] },
-  { id: "mame act", name: "MAME 动作", aliases: ["mame act"] },
-  { id: "mame stg", name: "MAME 射击", aliases: ["mame stg"] },
-  { id: "mame ftg", name: "MAME 格斗", aliases: ["mame ftg"] },
-  { id: "mame fly", name: "MAME 飞行", aliases: ["mame fly"] },
-  { id: "mame rac", name: "MAME 竞速", aliases: ["mame rac"] },
-  { id: "mame spo", name: "MAME 体育", aliases: ["mame spo"] },
-  { id: "mame etc", name: "MAME 其他", aliases: ["mame etc"] },
-  { id: "light gun", name: "光枪游戏", aliases: ["light gun"] },
-  // PC
-  { id: "dos", name: "DOS", aliases: ["dos"] },
-];
-
 export default function CnName() {
   const { t } = useTranslation();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -97,11 +29,27 @@ export default function CnName() {
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  
+
+  // 系统列表（从后端获取）
+  const [systems, setSystems] = useState<GameSystem[]>([]);
+
   // 系统选择相关
-  const [selectedSystem, setSelectedSystem] = useState<typeof PEGASUS_SYSTEMS[0] | null>(null);
+  const [selectedSystem, setSelectedSystem] = useState<GameSystem | null>(null);
   const [showSystemPicker, setShowSystemPicker] = useState(false);
   const [systemFilter, setSystemFilter] = useState("");
+
+  // 加载系统列表
+  useEffect(() => {
+    const loadSystems = async () => {
+      try {
+        const systemList = await api.getSystems();
+        setSystems(systemList);
+      } catch (error) {
+        console.error("Failed to load systems:", error);
+      }
+    };
+    loadSystems();
+  }, []);
 
   // 匹配进度
   const [matchProgress, setMatchProgress] = useState<MatchProgress | null>(null);
@@ -227,17 +175,16 @@ export default function CnName() {
 
   // 过滤后的系统列表
   const filteredSystems = useMemo(() => {
-    if (!systemFilter.trim()) return PEGASUS_SYSTEMS;
+    if (!systemFilter.trim()) return systems;
     const lower = systemFilter.toLowerCase();
-    return PEGASUS_SYSTEMS.filter(s => 
-      s.name.toLowerCase().includes(lower) || 
-      s.id.toLowerCase().includes(lower) ||
-      s.aliases.some(a => a.includes(lower))
+    return systems.filter(s =>
+      s.name.toLowerCase().includes(lower) ||
+      s.id.toLowerCase().includes(lower)
     );
-  }, [systemFilter]);
+  }, [systemFilter, systems]);
 
   // 从目录名匹配系统（优先当前目录，其次上级目录）
-  const matchSystemFromPath = (path: string): typeof PEGASUS_SYSTEMS[0] | null => {
+  const matchSystemFromPath = (path: string): GameSystem | null => {
     const parts = path.split(/[/\\]/).filter(Boolean);
 
     // 尝试匹配的目录名列表：当前目录优先，然后是上级目录
@@ -247,8 +194,8 @@ export default function CnName() {
     ].filter(Boolean);
 
     for (const dirName of dirsToTry) {
-      for (const sys of PEGASUS_SYSTEMS) {
-        if (sys.id === dirName || sys.aliases.some(a => a === dirName)) {
+      for (const sys of systems) {
+        if (sys.id === dirName) {
           return sys;
         }
       }
