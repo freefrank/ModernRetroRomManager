@@ -14,6 +14,11 @@ interface RomViewProps {
   onToggleSelect: (id: string) => void;
 }
 
+// 获取 ROM 封面路径，优先使用 temp_data
+function getRomCover(rom: Rom): string | undefined {
+  return rom.temp_data?.box_front || rom.box_front || rom.gridicon;
+}
+
 // Shared hook for async media URL resolution with cache support
 function useMediaUrl(path: string | undefined): string | null {
   // Check cache first for instant display
@@ -114,7 +119,7 @@ interface CardProps {
 
 // Cover Card - Compact, image-focused
 function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
-  const coverUrl = useMediaUrl(rom.box_front || rom.gridicon);
+  const coverUrl = useMediaUrl(getRomCover(rom));
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -187,7 +192,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
 // Grid Card - Larger with metadata
 function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
-  const coverUrl = useMediaUrl(rom.box_front || rom.gridicon);
+  const coverUrl = useMediaUrl(getRomCover(rom));
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -279,7 +284,7 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 // List Row - Compact table-like row
 function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
   const { t } = useTranslation();
-  const coverUrl = useMediaUrl(rom.box_front || rom.gridicon);
+  const coverUrl = useMediaUrl(getRomCover(rom));
   const [imgError, setImgError] = useState(false);
 
   return (

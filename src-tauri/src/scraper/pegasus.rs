@@ -238,6 +238,10 @@ fn apply_key_value(
     collection: &mut Option<PegasusCollection>,
     game: &mut Option<PegasusGame>,
 ) {
+    // 转小写进行匹配，支持 camelCase 和 snake_case
+    let key_lower = key.to_lowercase();
+    let key = key_lower.as_str();
+    
     if let Some(ref mut g) = game {
         let first_value = || value.split_whitespace().next().map(|v| v.to_string());
         

@@ -23,7 +23,7 @@ export function getCachedMediaUrl(path: string | undefined): string | null {
 export async function preloadMediaUrls(roms: Rom[], limit = 50): Promise<void> {
   const paths = roms
     .slice(0, limit)
-    .map(rom => rom.box_front || rom.gridicon)
+    .map(rom => rom.temp_data?.box_front || rom.box_front || rom.gridicon)
     .filter((path): path is string => !!path && !mediaUrlCache.has(path));
 
   await Promise.all(
@@ -224,24 +224,24 @@ export const scraperApi = {
   },
 
   /** 保存手动编辑的临时元数据 */
-  async saveTempMetadata(system: string, directory: string, rom_id: string, metadata: ScraperGameMetadata): Promise<void> {
+  async saveTempMetadata(system: string, directory: string, romId: string, metadata: ScraperGameMetadata): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("save_temp_metadata", { system, directory, rom_id, metadata });
+      await tauriInvoke("save_temp_metadata", { system, directory, romId, metadata });
     }
   },
 
   /** 获取临时媒体列表 */
-  async getTempMediaList(system: string, rom_id: string): Promise<{ asset_type: string, path: string }[]> {
+  async getTempMediaList(system: string, romId: string, romDirectory: string): Promise<{ asset_type: string, path: string }[]> {
     if (isTauri()) {
-      return tauriInvoke("get_temp_media_list", { system, rom_id });
+      return tauriInvoke("get_temp_media_list", { system, romId, romDirectory });
     }
     return [];
   },
 
   /** 删除临时媒体 */
-  async deleteTempMedia(system: string, rom_id: string, assetType: string): Promise<void> {
+  async deleteTempMedia(system: string, romId: string, assetType: string): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("delete_temp_media", { system, rom_id, assetType });
+      await tauriInvoke("delete_temp_media", { system, romId, assetType });
     }
   },
 };

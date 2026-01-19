@@ -1,5 +1,27 @@
 # ModernRetroManager - 现代化 Retro ROM 管理软件
 
+## 📝 最近更新 (2026-01-19)
+
+### 本次会话完成的修复
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| **临时元数据合并** | `naming_check.rs` | `auto_fix_naming` 现在会保留用户手动编辑 (confidence=100) 的条目 |
+| **媒体目录结构** | `ps3.rs`, `persistence.rs` | 统一为嵌套结构 `media/{file_stem}/asset_type.png` |
+| **library_path 计算** | `persistence.rs` | 修复为使用 `rom.directory.parent()` 获取库根目录 |
+| **PS3 Logo 生成** | `ps3.rs`, `boxart.rs` | 新增 `extract_ps3_logo()` 函数，生成 boxart 时同时提取 logo |
+| **Pegasus 解析器** | `pegasus.rs` | 键名大小写不敏感 (`boxFront` → `boxfront`) |
+| **ROM 封面显示** | `RomView.tsx` | 新增 `getRomCover()` 优先检查 `temp_data?.box_front` |
+| **生成后刷新** | `RomDetail.tsx` | 生成 boxart 后自动刷新库视图和临时媒体列表 |
+
+### 待验证项目
+
+- [ ] PS3 boxart 生成后是否正确显示在库视图
+- [ ] Scraper 媒体下载是否使用正确的嵌套目录结构
+- [ ] 中文 ROM 工具重新运行是否保留用户编辑
+
+---
+
 ## 🎯 项目愿景
 
 打造一款**现代化、跨平台、开源**的 Retro ROM 管理软件，替代老旧的 ARRM 和 Skraper，摆脱对 screenscraper.fr 的过度依赖。
@@ -107,11 +129,17 @@
 │  Services Layer                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  rom_service: ROM 扫描、解析、管理                  │   │
+│  │    └─ apply_temp_metadata(): 临时数据加载与合并    │   │
 │  │  system_mapping: 系统名称映射 (60+ 平台)           │   │
 │  │  settings: 配置管理 (settings.json)                │   │
+│  │  config: 配置目录管理                               │   │
+│  │    ├─ get_temp_dir_for_library(): 临时目录计算      │   │
+│  │    └─ normalize_path_to_dirname(): 路径规范化       │   │
 │  │  ps3: PS3 平台专用模块                             │   │
 │  │    ├─ sfo: PARAM.SFO 解析 (文件/ISO)              │   │
-│  │    └─ boxart: Boxart 自动生成 (PIC1+ICON0)        │   │
+│  │    ├─ boxart: Boxart 生成 (PIC1+ICON0)            │   │
+│  │    ├─ iso: ISO9660 文件系统提取                    │   │
+│  │    └─ extract_ps3_logo(): Logo 提取                │   │
 │  └─────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │  Scraper Module                                             │
@@ -129,15 +157,22 @@
 │  │  Supporting:                                         │   │
 │  │    ├─ types: 标准化数据结构                        │   │
 │  │    ├─ matcher: 智能匹配算法                        │   │
-│  │    ├─ persistence: 元数据持久化                    │   │
-│  │    └─ pegasus: Pegasus 格式解析                    │   │
+│  │    ├─ persistence: 元数据持久化 (temp/永久)        │   │
+│  │    └─ pegasus: Pegasus 格式解析 (大小写不敏感)     │   │
 │  └─────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │  Storage Layer                                              │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  config/settings.json: 应用配置                     │   │
-│  │  config/media/: 媒体资产缓存                        │   │
-│  │  ROM 目录/metadata.txt: Pegasus 元数据             │   │
+│  │  config/media/: 永久媒体资产缓存                    │   │
+│  │  config/temp/{library}/{system}/: 临时数据          │   │
+│  │    ├─ metadata.txt: 临时 Pegasus 元数据            │   │
+│  │    ├─ gamelist.xml: 临时 EmulationStation 元数据   │   │
+│  │    └─ media/{rom_stem}/: 临时媒体资产              │   │
+│  │        ├─ boxfront.png                              │   │
+│  │        ├─ logo.png                                  │   │
+│  │        └─ screenshot.png                            │   │
+│  │  ROM 目录/metadata.txt: Pegasus 元数据 (永久)      │   │
 │  │  ROM 目录/gamelist.xml: EmulationStation 元数据    │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
@@ -464,7 +499,8 @@
 - [x] PS3 模块架构重构
   - [x] 创建 ps3/ 目录统一管理 PS3 功能
   - [x] ps3/sfo.rs - PARAM.SFO 解析模块
-  - [x] ps3/boxart.rs - Boxart 生成模块
+  - [x] ps3/boxart.rs - Boxart/Logo 生成模块
+  - [x] ps3/iso.rs - ISO9660 文件系统提取模块
   - [x] ps3/mod.rs - 模块入口和接口导出
 - [x] PARAM.SFO 解析
   - [x] 从 PS3_GAME 文件夹解析游戏信息
@@ -481,8 +517,196 @@
   - [x] ICON0.PNG 图标叠加（左下角，128x128）
   - [x] Tauri command 接口（generate_ps3_boxart）
   - [x] 生成结果保存到 temp 目录
+  - [x] 同时生成 Logo（直接提取 ICON0.PNG）
+  - [x] 生成后自动刷新 ROM 库和详情页
+- [ ] 批量 Boxart 生成
+  - [ ] 为目录下所有 PS3 ROM 批量生成
+  - [ ] 进度回调和取消支持
 
-### Phase 5: 配置架构重构 (本地/Docker 双模式)
+### Phase 5: 临时元数据架构 (Temp Metadata)
+
+#### 5.1 目录结构设计
+- [x] 统一临时数据目录结构
+  ```
+  {config_dir}/temp/{library_normalized}/{system}/
+  ├── metadata.txt            # 临时 Pegasus 元数据文件
+  ├── gamelist.xml            # 临时 EmulationStation 元数据文件
+  └── media/
+      └── {rom_file_stem}/    # 每个 ROM 独立媒体目录
+          ├── boxfront.png    # 封面 (scraper/PS3 生成)
+          ├── logo.png        # Logo (PS3 ICON0.PNG)
+          ├── screenshot.png  # 截图
+          └── video.mp4       # 视频预览
+  ```
+- [x] library_path 计算
+  - [x] `rom.directory` 是 ROM 所在目录 (如 `Z:\ps3`)
+  - [x] `library_path` = `rom.directory.parent()` (如 `Z:\`)
+  - [x] 在 `persistence.rs`, `ps3.rs`, `naming_check.rs` 统一实现
+- [x] 路径规范化 (`config.rs::normalize_path_to_dirname`)
+  - [x] `Z:\` → `z`
+  - [x] `D:\games\` → `d_games`
+- [x] 支持多库隔离（不同驱动器/路径的 ROM 库独立存储）
+
+#### 5.2 后端实现
+
+##### 5.2.1 配置模块 (`src-tauri/src/config.rs`)
+```rust
+// 核心函数
+get_config_dir()           // 配置根目录 (环境变量 CONFIG_DIR 或 exe/config/)
+get_temp_dir()             // 临时目录 (config/temp/)
+get_temp_dir_for_library() // 特定库的临时目录 (temp/{library}/{system}/)
+normalize_path_to_dirname() // 路径规范化 (Z:\ → z)
+```
+
+##### 5.2.2 持久化模块 (`src-tauri/src/scraper/persistence.rs`)
+- [x] `download_media()` - 下载媒体到 `media/{file_stem}/asset_type.ext`
+- [x] `save_metadata_pegasus()` - 写入 Pegasus 格式元数据
+- [x] `save_metadata_emulationstation()` - 写入 EmulationStation 格式元数据
+- [x] 所有函数使用 `rom.directory.parent()` 计算 library_path
+
+##### 5.2.3 Pegasus 解析器 (`src-tauri/src/scraper/pegasus.rs`)
+- [x] 大小写不敏感键名匹配
+  - [x] `assets.boxFront` / `assets.boxfront` / `assets.box_front` 统一处理
+  - [x] 使用 `key.to_lowercase()` 进行匹配
+- [x] 支持相对路径解析为绝对路径
+
+##### 5.2.4 PS3 命令 (`src-tauri/src/commands/ps3.rs`)
+```rust
+#[tauri::command]
+async fn generate_ps3_boxart(request: GenerateBoxartRequest) -> Result<GenerateBoxartResponse>
+
+// Response 包含:
+// - boxart_path / relative_boxart_path  (PIC1+ICON0 合成)
+// - logo_path / relative_logo_path      (ICON0 直接提取)
+```
+- [x] 支持文件夹 ROM (PS3_GAME 目录)
+- [x] 支持 ISO ROM (ISO9660 文件系统提取)
+- [x] 输出到 `temp/{library}/{system}/media/{file_stem}/boxfront.png`
+- [x] 同时生成 `logo.png` (ICON0.PNG)
+- [x] 自动更新 metadata.txt 中的 assets 路径
+
+##### 5.2.5 中文 ROM 工具 (`src-tauri/src/commands/naming_check.rs`)
+- [x] `auto_fix_naming()` 合并逻辑
+  ```rust
+  // 1. 加载现有临时数据
+  let existing = parse_existing_temp_metadata();
+  // 2. 合并新数据，保留用户编辑
+  for (key, new_entry) in new_entries {
+      if existing[key].confidence == 100 {
+          continue; // 跳过用户手动编辑的条目
+      }
+      merged.insert(key, new_entry);
+  }
+  // 3. 写入合并后的数据
+  ```
+- [x] `clean_english_name()` - 去除区域标签 `(USA)`, `[Europe]` 等
+
+#### 5.3 前端实现
+
+##### 5.3.1 封面优先级 (`src/components/rom/RomView.tsx`)
+```typescript
+// 获取 ROM 封面，优先使用 temp_data
+function getRomCover(rom: Rom): string | undefined {
+  return rom.temp_data?.box_front || rom.box_front || rom.gridicon;
+}
+```
+
+##### 5.3.2 媒体 URL 预加载 (`src/lib/api.ts`)
+```typescript
+export async function preloadMediaUrls(roms: Rom[]): Promise<void> {
+  const paths = roms.slice(0, PRELOAD_LIMIT).flatMap((rom) => {
+    // 优先检查 temp_data
+    const cover = rom.temp_data?.box_front || rom.box_front;
+    return cover ? [cover] : [];
+  });
+  // 并发解析所有路径
+  await Promise.all(paths.map(resolveMediaUrlAsync));
+}
+```
+
+##### 5.3.3 生成后刷新 (`src/components/rom/RomDetail.tsx`)
+```typescript
+const handleGenerateBoxart = async () => {
+  const result = await toolsApi.generatePs3Boxart(request);
+  if (result.success) {
+    // 刷新临时媒体列表
+    await scraperApi.getTempMediaList(selectedLibrary.path);
+    // 刷新 ROM 列表以更新封面
+    await fetchRoms();
+  }
+};
+```
+
+##### 5.3.4 Rom 类型定义 (`src/types/index.ts`)
+```typescript
+interface Rom {
+  // ... 基础字段
+  temp_data?: {
+    box_front?: string;
+    logo?: string;
+    screenshot?: string;
+    video?: string;
+    name?: string;
+    english_name?: string;
+    confidence?: number;
+    [key: string]: any;
+  };
+}
+```
+
+#### 5.4 数据流图
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Temp Metadata Data Flow                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. 生成/抓取阶段:                                            │
+│     User Action (Scrape / Generate Boxart / Auto-fix CN)    │
+│       → Backend Command (generate_ps3_boxart, etc.)         │
+│       → library_path = rom.directory.parent()               │
+│       → temp_dir = get_temp_dir_for_library(library_path)   │
+│       → 写入 temp_dir/media/{file_stem}/boxfront.png        │
+│       → 更新 temp_dir/metadata.txt                          │
+│                                                              │
+│  2. 加载阶段:                                                 │
+│     scan_directory() / fetchRoms()                          │
+│       → apply_temp_metadata(roms, library_path)             │
+│       → 解析 temp_dir/metadata.txt                          │
+│       → 填充 rom.temp_data (box_front, logo, etc.)          │
+│       → 相对路径解析为绝对路径                                │
+│                                                              │
+│  3. 显示阶段:                                                 │
+│     RomView.tsx                                              │
+│       → getRomCover(rom) 获取封面路径                        │
+│       → useMediaUrl(path) 转换为可显示的 URL                 │
+│       → 显示图片                                             │
+│                                                              │
+│  4. 导入阶段 (TODO):                                          │
+│     import_temp_data()                                       │
+│       → 将 temp 数据复制到 ROM 目录                          │
+│       → 合并 metadata 到 ROM 目录的 metadata.txt             │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 5.5 关键文件清单
+
+| 文件 | 职责 |
+|------|------|
+| `src-tauri/src/config.rs` | 配置目录管理、路径规范化 |
+| `src-tauri/src/scraper/persistence.rs` | 媒体下载、元数据写入 |
+| `src-tauri/src/scraper/pegasus.rs` | Pegasus 格式解析 |
+| `src-tauri/src/commands/ps3.rs` | PS3 boxart/logo 生成命令 |
+| `src-tauri/src/commands/scraper.rs` | get_temp_media_list API |
+| `src-tauri/src/commands/naming_check.rs` | 中文 ROM 工具 |
+| `src-tauri/src/rom_service.rs` | ROM 扫描、临时数据应用 |
+| `src/components/rom/RomView.tsx` | 封面显示组件 |
+| `src/components/rom/RomDetail.tsx` | ROM 详情面板 |
+| `src/lib/api.ts` | 媒体 URL 解析、预加载 |
+| `src/types/index.ts` | Rom 接口定义 |
+
+### Phase 6: 配置架构重构 (本地/Docker 双模式)
 
 #### 5.1 配置目录结构
 - [x] 统一配置目录到 `./config/`

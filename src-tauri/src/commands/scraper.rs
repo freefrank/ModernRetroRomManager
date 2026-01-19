@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use tauri::{State, Emitter};
 use tokio::sync::RwLock;
-use crate::config::get_temp_dir;
+use crate::config::{get_temp_dir, get_temp_dir_for_library};
 use crate::scraper::{
     manager::ScraperManager,
     types::{ScrapeQuery, SearchResult, GameMetadata, MediaAsset, ScrapeResult},
@@ -430,23 +430,30 @@ pub struct TempMediaInfo {
 pub async fn get_temp_media_list(
     system: String,
     rom_id: String,
+    rom_directory: String,
 ) -> Result<Vec<TempMediaInfo>, String> {
+    // 从 rom_id (filename) 提取文件名主体
     let file_stem = Path::new(&rom_id)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or(&rom_id);
 
-    let media_dir = get_temp_dir()
+    // 计算 library_path (rom_directory 的父目录)
+    let rom_dir = Path::new(&rom_directory);
+    let library_path = rom_dir.parent().unwrap_or(rom_dir);
+    
+    // 媒体存储在: {temp_dir}/{library}/{system}/media/{file_stem}/
+    let media_dir = get_temp_dir_for_library(library_path, &system)
         .join("media")
-        .join(&system)
         .join(file_stem);
 
     let mut list = Vec::new();
-    if media_dir.exists() {
-        for entry in fs::read_dir(media_dir).map_err(|e| e.to_string())? {
+    if media_dir.exists() && media_dir.is_dir() {
+        for entry in fs::read_dir(&media_dir).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
             if path.is_file() {
+                // asset_type 是文件名主体 (e.g., "boxfront" from "boxfront.png")
                 if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
                     list.push(TempMediaInfo {
                         asset_type: stem.to_string(),

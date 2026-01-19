@@ -37,6 +37,27 @@ pub fn get_temp_dir() -> PathBuf {
     get_config_dir().join("temp")
 }
 
+/// 将路径规范化为合法的目录名
+/// 例如: z:\ -> z, d:\games\ -> d_games
+fn normalize_path_to_dirname(path: &std::path::Path) -> String {
+    let path_str = path.to_string_lossy();
+
+    // 移除驱动器冒号和路径分隔符，用下划线替换
+    path_str
+        .replace(':', "")
+        .replace('\\', "_")
+        .replace('/', "_")
+        .trim_matches('_')
+        .to_string()
+}
+
+/// 获取特定ROM库和系统的临时目录路径
+/// 例如: get_temp_dir_for_library("z:\", "gba") -> config/temp/z/gba/
+pub fn get_temp_dir_for_library(library_path: &std::path::Path, system: &str) -> PathBuf {
+    let normalized_library = normalize_path_to_dirname(library_path);
+    get_temp_dir().join(normalized_library).join(system)
+}
+
 /// 获取设置文件路径
 pub fn get_settings_path() -> PathBuf {
     get_config_dir().join("settings.json")

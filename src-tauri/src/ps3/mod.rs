@@ -7,4 +7,4 @@ pub mod boxart;
 
 // 重新导出常用类型和函数
 pub use sfo::{parse_param_sfo, parse_param_sfo_from_iso, Ps3GameInfo};
-pub use boxart::generate_ps3_boxart;
+pub use boxart::{generate_ps3_boxart, generate_ps3_boxart_from_iso, extract_ps3_logo, extract_ps3_logo_from_iso};

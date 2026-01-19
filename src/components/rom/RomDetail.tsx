@@ -43,7 +43,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
       setIsPreview(rom.has_temp_metadata);
       setIsEditing(false);
       if (rom.has_temp_metadata) {
-        scraperApi.getTempMediaList(rom.system, rom.file).then(setTempMedia);
+        scraperApi.getTempMediaList(rom.system, rom.file, rom.directory).then(setTempMedia);
       } else {
         setTempMedia([]);
       }
@@ -111,7 +111,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
     if (!rom) return;
     try {
       await deleteTempMedia(rom.system, rom.file, assetType);
-      const newList = await scraperApi.getTempMediaList(rom.system, rom.file);
+      const newList = await scraperApi.getTempMediaList(rom.system, rom.file, rom.directory);
       setTempMedia(newList);
     } catch (error) {
       console.error("Delete media failed:", error);
@@ -125,8 +125,14 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
     try {
       const result = await ps3Api.generateBoxart(rom.file, rom.directory, rom.system);
       if (result.success) {
-        alert(`Boxart 生成成功！\n路径: ${result.boxartPath}`);
-        // 可以在这里刷新 ROM 数据或更新显示
+        // 刷新 tempMedia 列表
+        const newTempMedia = await scraperApi.getTempMediaList(rom.system, rom.file, rom.directory);
+        setTempMedia(newTempMedia);
+        setIsPreview(true);
+        
+        // 刷新 ROM store 以更新库视图
+        const { fetchRoms } = useRomStore.getState();
+        await fetchRoms();
       } else {
         alert(`Boxart 生成失败: ${result.error}`);
       }

@@ -96,20 +96,254 @@ impl From<PegasusGame> for RomInfo {
 }
 
 
-use crate::config::get_temp_dir;
+use crate::config::{get_temp_dir, get_temp_dir_for_library};
+use std::path::PathBuf;
+use std::fs;
+use std::io::Write;
 
-/// 尝试加载并应用临时元数据
-fn apply_temp_metadata(roms: &mut [RomInfo], system: &str) {
-    let temp_metadata_path = get_temp_dir().join(system).join("metadata.txt");
-    if !temp_metadata_path.exists() {
-        return;
+/// 确保temp目录存在
+fn ensure_temp_metadata_dir(library_path: &Path, system: &str) -> Result<PathBuf, String> {
+    let temp_dir = get_temp_dir_for_library(library_path, system);
+    fs::create_dir_all(&temp_dir)
+        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    Ok(temp_dir)
+}
+
+/// 创建或更新metadata.pegasus.txt文件
+/// 优先复制ROM目录下的现有metadata，如果不存在则创建新的
+fn create_or_update_metadata(library_path: &Path, system_dir: &Path, system: &str, roms: &[RomInfo]) -> Result<(), String> {
+    let temp_dir = ensure_temp_metadata_dir(library_path, system)?;
+    let metadata_path = temp_dir.join("metadata.pegasus.txt");
+
+    // 如果temp metadata文件已存在，跳过创建
+    if metadata_path.exists() {
+        return Ok(());
     }
 
-    if let Ok(temp_metadata) = parse_pegasus_file(&temp_metadata_path) {
+    // 检查系统目录下是否有现有的metadata文件
+    let source_metadata_pegasus = system_dir.join("metadata.pegasus.txt");
+    let source_metadata_txt = system_dir.join("metadata.txt");
+
+    // 如果ROM目录下有metadata文件，复制到temp目录
+    if source_metadata_pegasus.exists() {
+        fs::copy(&source_metadata_pegasus, &metadata_path)
+            .map_err(|e| format!("Failed to copy metadata.pegasus.txt: {}", e))?;
+        return Ok(());
+    } else if source_metadata_txt.exists() {
+        fs::copy(&source_metadata_txt, &metadata_path)
+            .map_err(|e| format!("Failed to copy metadata.txt: {}", e))?;
+        return Ok(());
+    }
+
+    // 如果没有现有metadata，生成新的Pegasus格式的metadata内容
+    let mut content = String::new();
+    content.push_str(&format!("collection: {}\n", system));
+    content.push_str(&format!("launch: {{file.path}}\n\n"));
+
+    for rom in roms {
+        content.push_str(&format!("game: {}\n", rom.name));
+        content.push_str(&format!("file: {}\n", rom.file));
+
+        if let Some(desc) = &rom.description {
+            content.push_str(&format!("description: {}\n", desc));
+        }
+        if let Some(dev) = &rom.developer {
+            content.push_str(&format!("developer: {}\n", dev));
+        }
+        if let Some(pub_) = &rom.publisher {
+            content.push_str(&format!("publisher: {}\n", pub_));
+        }
+        if let Some(genre) = &rom.genre {
+            content.push_str(&format!("genre: {}\n", genre));
+        }
+        if let Some(release) = &rom.release {
+            content.push_str(&format!("release: {}\n", release));
+        }
+        if let Some(rating) = &rom.rating {
+            content.push_str(&format!("rating: {}\n", rating));
+        }
+
+        content.push_str("\n");
+    }
+
+    // 写入文件
+    let mut file = fs::File::create(&metadata_path)
+        .map_err(|e| format!("Failed to create metadata file: {}", e))?;
+    file.write_all(content.as_bytes())
+        .map_err(|e| format!("Failed to write metadata file: {}", e))?;
+
+    Ok(())
+}
+
+/// 更新metadata文件中特定ROM的媒体资源路径
+pub fn update_rom_media_in_metadata(
+    library_path: &Path,
+    system: &str,
+    rom_file: &str,
+    asset_type: &str,
+    asset_path: &str,
+) -> Result<(), String> {
+    let temp_dir = ensure_temp_metadata_dir(library_path, system)?;
+    let metadata_path = temp_dir.join("metadata.pegasus.txt");
+
+    // 读取现有metadata文件
+    let mut metadata = if metadata_path.exists() {
+        parse_pegasus_file(&metadata_path).unwrap_or_default()
+    } else {
+        // 如果文件不存在，创建一个新的
+        crate::scraper::pegasus::PegasusMetadata {
+            collections: vec![],
+            games: vec![],
+        }
+    };
+
+    // 查找或创建对应的ROM条目
+    let game = metadata.games.iter_mut().find(|g| g.file == Some(rom_file.to_string()));
+
+    if let Some(game) = game {
+        // 更新现有ROM的媒体资源
+        match asset_type {
+            "boxfront" => game.box_front = Some(asset_path.to_string()),
+            "boxback" => game.box_back = Some(asset_path.to_string()),
+            "logo" => game.logo = Some(asset_path.to_string()),
+            "screenshot" => game.screenshot = Some(asset_path.to_string()),
+            "video" => game.video = Some(asset_path.to_string()),
+            "background" => game.background = Some(asset_path.to_string()),
+            _ => {}
+        }
+    } else {
+        // 创建新的ROM条目
+        let mut new_game = PegasusGame {
+            name: rom_file.to_string(),
+            file: Some(rom_file.to_string()),
+            ..Default::default()
+        };
+
+        match asset_type {
+            "boxfront" => new_game.box_front = Some(asset_path.to_string()),
+            "boxback" => new_game.box_back = Some(asset_path.to_string()),
+            "logo" => new_game.logo = Some(asset_path.to_string()),
+            "screenshot" => new_game.screenshot = Some(asset_path.to_string()),
+            "video" => new_game.video = Some(asset_path.to_string()),
+            "background" => new_game.background = Some(asset_path.to_string()),
+            _ => {}
+        }
+
+        metadata.games.push(new_game);
+    }
+
+    // 重新生成metadata文件内容
+    let mut content = String::new();
+
+    // 输出collection信息（如果有）
+    if !metadata.collections.is_empty() {
+        for collection in &metadata.collections {
+            content.push_str(&format!("collection: {}\n", collection.name));
+        }
+    } else {
+        // 如果没有collection，使用系统名称
+        content.push_str(&format!("collection: {}\n", system));
+    }
+    content.push_str("launch: {file.path}\n\n");
+
+    for game in &metadata.games {
+        content.push_str(&format!("game: {}\n", game.name));
+        if let Some(file) = &game.file {
+            content.push_str(&format!("file: {}\n", file));
+        }
+        if let Some(desc) = &game.description {
+            content.push_str(&format!("description: {}\n", desc));
+        }
+        if let Some(dev) = &game.developer {
+            content.push_str(&format!("developer: {}\n", dev));
+        }
+        if let Some(pub_) = &game.publisher {
+            content.push_str(&format!("publisher: {}\n", pub_));
+        }
+        if let Some(genre) = &game.genre {
+            content.push_str(&format!("genre: {}\n", genre));
+        }
+        if let Some(release) = &game.release {
+            content.push_str(&format!("release: {}\n", release));
+        }
+        if let Some(rating) = &game.rating {
+            content.push_str(&format!("rating: {}\n", rating));
+        }
+
+        // 媒体资源
+        if let Some(box_front) = &game.box_front {
+            content.push_str(&format!("assets.boxFront: {}\n", box_front));
+        }
+        if let Some(box_back) = &game.box_back {
+            content.push_str(&format!("assets.boxBack: {}\n", box_back));
+        }
+        if let Some(logo) = &game.logo {
+            content.push_str(&format!("assets.logo: {}\n", logo));
+        }
+        if let Some(screenshot) = &game.screenshot {
+            content.push_str(&format!("assets.screenshot: {}\n", screenshot));
+        }
+        if let Some(video) = &game.video {
+            content.push_str(&format!("assets.video: {}\n", video));
+        }
+        if let Some(background) = &game.background {
+            content.push_str(&format!("assets.background: {}\n", background));
+        }
+
+        content.push_str("\n");
+    }
+
+    // 写入文件
+    let mut file = fs::File::create(&metadata_path)
+        .map_err(|e| format!("Failed to write metadata file: {}", e))?;
+    file.write_all(content.as_bytes())
+        .map_err(|e| format!("Failed to write metadata file: {}", e))?;
+
+    Ok(())
+}
+
+/// 尝试加载并应用临时元数据
+fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) {
+    // 使用新的目录结构: temp/{library}/{system}/metadata.pegasus.txt
+    let temp_dir = get_temp_dir_for_library(library_path, system);
+    let temp_metadata_path = temp_dir.join("metadata.pegasus.txt");
+
+    // 兼容旧的目录结构: temp/{system}/metadata.txt
+    let legacy_temp_metadata_path = get_temp_dir().join(system).join("metadata.txt");
+
+    // 优先使用新结构，如果不存在则尝试旧结构
+    let (metadata_path, base_dir) = if temp_metadata_path.exists() {
+        (temp_metadata_path, temp_dir.clone())
+    } else if legacy_temp_metadata_path.exists() {
+        (legacy_temp_metadata_path, get_temp_dir().join(system))
+    } else {
+        return;
+    };
+
+    if let Ok(temp_metadata) = parse_pegasus_file(&metadata_path) {
         for rom in roms {
             if let Some(temp_game) = temp_metadata.games.iter().find(|g| g.file == Some(rom.file.clone())) {
                 rom.has_temp_metadata = true;
-                rom.temp_data = Some(temp_game.clone());
+                // 克隆并解析媒体路径为绝对路径
+                let mut resolved_game = temp_game.clone();
+
+                // 解析所有媒体路径
+                let resolve = |path: &mut Option<String>| {
+                    if let Some(p) = path.as_ref() {
+                        if !p.starts_with("http") && !Path::new(p).is_absolute() {
+                            *path = Some(base_dir.join(p).to_string_lossy().to_string());
+                        }
+                    }
+                };
+
+                resolve(&mut resolved_game.box_front);
+                resolve(&mut resolved_game.box_back);
+                resolve(&mut resolved_game.logo);
+                resolve(&mut resolved_game.screenshot);
+                resolve(&mut resolved_game.video);
+                resolve(&mut resolved_game.background);
+
+                rom.temp_data = Some(resolved_game);
             }
         }
     }
@@ -120,11 +354,17 @@ fn apply_temp_metadata(roms: &mut [RomInfo], system: &str) {
 pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
     let settings = get_settings();
     let mut all_systems = Vec::new();
-    
+
+    println!("[DEBUG] get_all_roms() called, scanning {} directories", settings.directories.len());
+
     for dir_config in &settings.directories {
         let dir_path = Path::new(&dir_config.path);
-        
+
+        println!("[DEBUG] Checking directory: {:?}, is_root_directory={}",
+            dir_path, dir_config.is_root_directory);
+
         if !dir_path.exists() {
+            println!("[DEBUG] Directory does not exist, skipping");
             continue;
         }
 
@@ -155,8 +395,14 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
 
                         if let Ok(mut roms) = get_roms_from_directory(&sub_path, &format, &system_name) {
                             if !roms.is_empty() {
+                                // 创建temp目录和初始metadata文件（如果不存在）
+                                // 根目录模式：library_path = dir_path, system_dir = sub_path
+                                println!("[DEBUG] Root mode (subdir): dir_path={:?}, sub_path={:?}, system={}",
+                                    dir_path, sub_path, system_name);
+                                let _ = create_or_update_metadata(dir_path, &sub_path, &system_name, &roms);
+
                                 // 尝试加载临时元数据
-                                apply_temp_metadata(&mut roms, &system_name);
+                                apply_temp_metadata(&mut roms, dir_path, &system_name);
 
                                 all_systems.push(SystemRoms {
                                     system: system_name,
@@ -186,24 +432,13 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                         .unwrap_or("Unknown")
                         .to_string();
 
-                    println!("[DEBUG] Found PS3 game folder in root: {}", ps3_game_path.display());
-
                     let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
-                        println!("[DEBUG] Attempting to parse PARAM.SFO: {}", param_sfo_path.display());
                         match ps3::parse_param_sfo(&param_sfo_path) {
-                            Ok(info) => {
-                                println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
-                                    info.title, info.title_id);
-                                Some(info)
-                            }
-                            Err(e) => {
-                                println!("[ERROR] Failed to parse PARAM.SFO {}: {}", param_sfo_path.display(), e);
-                                None
-                            }
+                            Ok(info) => Some(info),
+                            Err(_) => None
                         }
                     } else {
-                        println!("[DEBUG] PARAM.SFO not found at: {}", param_sfo_path.display());
                         None
                     };
 
@@ -249,7 +484,14 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                 }
 
                 if !roms.is_empty() {
-                    apply_temp_metadata(&mut roms, &root_system_name);
+                    // 创建temp目录和初始metadata文件（如果不存在）
+                    // 根目录模式：如果目录名是系统名，使用父目录作为library_path
+                    let library_path = dir_path.parent().unwrap_or(dir_path);
+                    println!("[DEBUG] Root mode (root itself): dir_path={:?}, library_path={:?}, system={}",
+                        dir_path, library_path, root_system_name);
+                    let _ = create_or_update_metadata(library_path, dir_path, &root_system_name, &roms);
+
+                    apply_temp_metadata(&mut roms, library_path, &root_system_name);
 
                     all_systems.push(SystemRoms {
                         system: root_system_name,
@@ -267,11 +509,17 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                     .unwrap_or("Unknown")
                     .to_string()
             });
-            
+
             if let Ok(mut roms) = get_roms_from_directory(dir_path, &dir_config.metadata_format, &system_name) {
                 if !roms.is_empty() {
+                    // 单系统模式：library_path = 父目录, system_dir = dir_path
+                    let library_path = dir_path.parent().unwrap_or(dir_path);
+                    println!("[DEBUG] Single-system mode: dir_path={:?}, library_path={:?}, system={}",
+                        dir_path, library_path, system_name);
+                    let _ = create_or_update_metadata(library_path, dir_path, &system_name, &roms);
+
                     // 尝试加载临时元数据
-                    apply_temp_metadata(&mut roms, &system_name);
+                    apply_temp_metadata(&mut roms, library_path, &system_name);
 
                     all_systems.push(SystemRoms {
                         system: system_name,
@@ -576,8 +824,6 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     .unwrap_or("Unknown")
                     .to_string();
 
-                println!("[DEBUG] Found PS3 folder: {}", path.display());
-
                 // 检查是否包含 PS3_GAME 目录
                 let ps3_game_dir = path.join("PS3_GAME");
                 let is_valid_ps3_folder = ps3_game_dir.exists() && ps3_game_dir.is_dir();
@@ -586,20 +832,11 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     // 尝试解析 PARAM.SFO 获取游戏信息
                     let param_sfo_path = ps3_game_dir.join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
-                        println!("[DEBUG] Attempting to parse PARAM.SFO: {}", param_sfo_path.display());
                         match ps3::parse_param_sfo(&param_sfo_path) {
-                            Ok(info) => {
-                                println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
-                                    info.title, info.title_id);
-                                Some(info)
-                            }
-                            Err(e) => {
-                                println!("[ERROR] Failed to parse PARAM.SFO {}: {}", param_sfo_path.display(), e);
-                                None
-                            }
+                            Ok(info) => Some(info),
+                            Err(_) => None
                         }
                     } else {
-                        println!("[DEBUG] PARAM.SFO not found at: {}", param_sfo_path.display());
                         None
                     };
 
@@ -662,19 +899,13 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                         // PS3 ISO 特殊处理：尝试从 ISO 中提取 PARAM.SFO
                         let (game_name, game_description) = if system_name.to_lowercase().contains("ps3")
                             && ext.to_lowercase() == "iso" {
-                            println!("[DEBUG] Attempting to parse PS3 ISO: {}", path.display());
                             match ps3::parse_param_sfo_from_iso(&path) {
                                 Ok(game_info) => {
-                                    println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
-                                        game_info.title, game_info.title_id);
                                     let name = game_info.title.clone().unwrap_or_else(|| default_name.clone());
                                     let desc = game_info.title_id.map(|id| format!("Game ID: {}", id));
                                     (name, desc)
                                 }
-                                Err(e) => {
-                                    println!("[ERROR] Failed to parse PS3 ISO {}: {}", path.display(), e);
-                                    (default_name.clone(), None)
-                                }
+                                Err(_) => (default_name.clone(), None)
                             }
                         } else {
                             (default_name, None)

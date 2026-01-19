@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 use std::fs;
-use crate::config::{get_media_dir, get_temp_dir};
+use crate::config::{get_media_dir, get_temp_dir, get_temp_dir_for_library};
 use crate::scraper::{GameMetadata, MediaAsset, MediaType};
 use crate::rom_service::RomInfo;
 use quick_xml::events::{BytesStart, Event};
@@ -19,7 +19,10 @@ pub fn save_metadata_emulationstation(
     is_temp: bool,
 ) -> Result<(), String> {
     let gamelist_path = if is_temp {
-        let temp_sys_dir = get_temp_dir().join(&rom.system);
+        // rom.directory 是 ROM 所在目录，library_path 是其父目录
+        let rom_dir = Path::new(&rom.directory);
+        let library_path = rom_dir.parent().unwrap_or(rom_dir);
+        let temp_sys_dir = get_temp_dir_for_library(library_path, &rom.system);
         fs::create_dir_all(&temp_sys_dir).map_err(|e| e.to_string())?;
         temp_sys_dir.join("gamelist.xml")
     } else {
@@ -118,21 +121,23 @@ pub async fn download_media(
     let client = reqwest::Client::new();
     let mut downloaded = Vec::new();
 
-    // 确定下载目录: {base_dir}/{system}/{file_stem}/
+    // 确定下载目录: {base_dir}/media/{file_stem}/
     let file_stem = Path::new(&rom.file)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or(&rom.name);
-    
+
     let base_dir = if is_temp {
-        get_temp_dir().join("media")
+        // rom.directory 是 ROM 所在目录 (如 Z:\ps3)
+        // library_path 应该是其父目录 (如 Z:\)
+        let rom_dir = Path::new(&rom.directory);
+        let library_path = rom_dir.parent().unwrap_or(rom_dir);
+        get_temp_dir_for_library(library_path, &rom.system)
     } else {
-        get_media_dir()
+        get_media_dir().join(&rom.system)
     };
 
-    let target_dir = base_dir
-        .join(&rom.system)
-        .join(file_stem);
+    let target_dir = base_dir.join("media").join(file_stem);
 
     fs::create_dir_all(&target_dir).map_err(|e| format!("无法创建媒体目录: {}", e))?;
 
@@ -160,7 +165,10 @@ pub fn save_metadata_pegasus(
     is_temp: bool,
 ) -> Result<(), String> {
     let metadata_path = if is_temp {
-        let temp_sys_dir = get_temp_dir().join(&rom.system);
+        // rom.directory 是 ROM 所在目录，library_path 是其父目录
+        let rom_dir = Path::new(&rom.directory);
+        let library_path = rom_dir.parent().unwrap_or(rom_dir);
+        let temp_sys_dir = get_temp_dir_for_library(library_path, &rom.system);
         fs::create_dir_all(&temp_sys_dir).map_err(|e| e.to_string())?;
         temp_sys_dir.join("metadata.txt")
     } else {

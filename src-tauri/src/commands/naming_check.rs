@@ -278,8 +278,8 @@ pub async fn auto_fix_naming(
     let mut success_count = 0;
     let mut failed_count = 0;
 
-    // 收集需要写入的数据
-    let mut entries: Vec<TempMetadataEntry> = Vec::new();
+    // 加载现有的临时元数据，保留用户手动编辑的数据
+    let mut entries = load_temp_cn_metadata(&path).unwrap_or_default();
 
     for (idx, rom) in roms.into_iter().enumerate() {
         // 发送进度事件
@@ -288,7 +288,16 @@ pub async fn auto_fix_naming(
             total,
         });
 
-        // 如果已经有英文名，跳过
+        // 检查是否已有用户手动编辑的数据（confidence = 100）
+        let existing_entry = entries.iter().find(|e| e.file == rom.file);
+        if let Some(entry) = existing_entry {
+            // 用户手动编辑的数据（满分），跳过自动匹配
+            if entry.confidence == Some(100.0) && entry.english_name.is_some() {
+                continue;
+            }
+        }
+
+        // 如果 ROM 本身已经有英文名（来自原始 metadata），跳过
         if rom.english_name.is_some() && rom.name != rom.file {
              continue;
         }
@@ -308,13 +317,24 @@ pub async fn auto_fix_naming(
             if confidence > 0.95 || confidence > 0.75 {
                 // 清理英文名，去除括号中的区域信息
                 let cleaned_eng_name = clean_english_name(&eng_name);
+                let new_confidence = confidence * 100.0;
 
-                entries.push(TempMetadataEntry {
-                    file: rom.file.clone(),
-                    name: extracted_cn.clone(),
-                    english_name: Some(cleaned_eng_name),
-                    confidence: Some(confidence * 100.0), // 转换为百分比
-                });
+                // 更新或新增条目
+                if let Some(entry) = entries.iter_mut().find(|e| e.file == rom.file) {
+                    entry.english_name = Some(cleaned_eng_name);
+                    entry.confidence = Some(new_confidence);
+                    // 保留现有的 name（如果用户已设置）
+                    if entry.name.is_none() {
+                        entry.name = extracted_cn.clone();
+                    }
+                } else {
+                    entries.push(TempMetadataEntry {
+                        file: rom.file.clone(),
+                        name: extracted_cn.clone(),
+                        english_name: Some(cleaned_eng_name),
+                        confidence: Some(new_confidence),
+                    });
+                }
                 success_count += 1;
             } else {
                 failed_count += 1;
