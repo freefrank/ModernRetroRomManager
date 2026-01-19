@@ -127,9 +127,9 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
         if !dir_path.exists() {
             continue;
         }
-        
+
         if dir_config.is_root_directory {
-            // ROMs 根目录模式：扫描子目录
+            // ROMs 根目录模式：扫描子目录和根目录本身
             if let Ok(entries) = std::fs::read_dir(dir_path) {
                 for entry in entries.filter_map(|e| e.ok()) {
                     let sub_path = entry.path();
@@ -139,15 +139,15 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                             .and_then(|n| n.to_str())
                             .unwrap_or("Unknown")
                             .to_string();
-                        
+
                         // 自动检测子目录的 metadata 格式
                         let format = detect_metadata_format(&sub_path);
-                        
+
                         if let Ok(mut roms) = get_roms_from_directory(&sub_path, &format, &system_name) {
                             if !roms.is_empty() {
                                 // 尝试加载临时元数据
                                 apply_temp_metadata(&mut roms, &system_name);
-                                
+
                                 all_systems.push(SystemRoms {
                                     system: system_name,
                                     path: sub_path.to_string_lossy().to_string(),
@@ -156,6 +156,26 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                             }
                         }
                     }
+                }
+            }
+
+            // 也扫描根目录本身的文件（用于混合目录）
+            let root_system_name = dir_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Unknown")
+                .to_string();
+
+            let format = detect_metadata_format(dir_path);
+            if let Ok(mut roms) = get_roms_from_directory(dir_path, &format, &root_system_name) {
+                if !roms.is_empty() {
+                    apply_temp_metadata(&mut roms, &root_system_name);
+
+                    all_systems.push(SystemRoms {
+                        system: root_system_name,
+                        path: dir_config.path.clone(),
+                        roms,
+                    });
                 }
             }
         } else {
