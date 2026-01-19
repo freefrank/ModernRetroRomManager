@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod ps3_sfo;
 mod rom_service;
 mod scraper;
 pub mod settings;

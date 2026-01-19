@@ -2,6 +2,7 @@
 //!
 //! 不存储到数据库，运行时直接解析 metadata 文件
 
+use crate::ps3_sfo;
 use crate::scraper::pegasus::{parse_pegasus_file, PegasusGame};
 use crate::settings::get_settings;
 use serde::{Deserialize, Serialize};
@@ -475,17 +476,31 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     .unwrap_or("Unknown")
                     .to_string();
 
-                // 可选：验证是否为有效的 PS3 游戏文件夹
                 // 检查是否包含 PS3_GAME 目录
                 let ps3_game_dir = path.join("PS3_GAME");
                 let is_valid_ps3_folder = ps3_game_dir.exists() && ps3_game_dir.is_dir();
 
-                // 如果包含 PS3_GAME 目录，或者我们不做严格验证，就添加这个文件夹
                 if is_valid_ps3_folder || true {  // 暂时不做严格验证
+                    // 尝试解析 PARAM.SFO 获取游戏信息
+                    let param_sfo_path = ps3_game_dir.join("PARAM.SFO");
+                    let game_info = if param_sfo_path.exists() {
+                        ps3_sfo::parse_param_sfo(&param_sfo_path).ok()
+                    } else {
+                        None
+                    };
+
+                    // 使用解析出的信息或默认值
+                    let game_name = game_info.as_ref()
+                        .and_then(|info| info.title.clone())
+                        .unwrap_or_else(|| folder_name.clone());
+
+                    let game_id = game_info.as_ref()
+                        .and_then(|info| info.title_id.clone());
+
                     roms.push(RomInfo {
-                        file: folder_name.clone(),
-                        name: folder_name,
-                        description: None,
+                        file: folder_name,
+                        name: game_name,
+                        description: game_id.map(|id| format!("Game ID: {}", id)),
                         summary: None,
                         developer: None,
                         publisher: None,
@@ -525,15 +540,30 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                             .unwrap_or("Unknown")
                             .to_string();
 
-                        let name = path.file_stem()
+                        let default_name = path.file_stem()
                             .and_then(|n| n.to_str())
                             .unwrap_or("Unknown")
                             .to_string();
 
+                        // PS3 ISO 特殊处理：尝试从 ISO 中提取 PARAM.SFO
+                        let (game_name, game_description) = if system_name.to_lowercase() == "ps3"
+                            && ext.to_lowercase() == "iso" {
+                            match ps3_sfo::parse_param_sfo_from_iso(&path) {
+                                Ok(game_info) => {
+                                    let name = game_info.title.clone().unwrap_or_else(|| default_name.clone());
+                                    let desc = game_info.title_id.map(|id| format!("Game ID: {}", id));
+                                    (name, desc)
+                                }
+                                Err(_) => (default_name.clone(), None)
+                            }
+                        } else {
+                            (default_name, None)
+                        };
+
                         roms.push(RomInfo {
                             file: filename,
-                            name,
-                            description: None,
+                            name: game_name,
+                            description: game_description,
                             summary: None,
                             developer: None,
                             publisher: None,
