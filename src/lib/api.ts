@@ -253,9 +253,11 @@ export const ps3Api = {
   async generateBoxart(romFile: string, romDirectory: string, system: string): Promise<{ success: boolean; boxartPath: string; error?: string }> {
     if (isTauri()) {
       return tauriInvoke("generate_ps3_boxart", {
-        romFile,
-        romDirectory,
-        system
+        request: {
+          romFile,
+          romDirectory,
+          system
+        }
       });
     }
     return { success: false, boxartPath: "", error: "Not supported in web mode" };
