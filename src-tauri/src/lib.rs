@@ -34,6 +34,16 @@ pub fn run() {
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,
+            // Config
+            commands::config::validate_path,
+            commands::config::list_directory,
+            commands::config::get_config_dir,
+            commands::config::get_media_dir,
+            commands::config::get_app_settings,
+            commands::config::save_app_settings,
+            commands::config::update_app_setting,
+            commands::config::get_scraper_configs,
+            commands::config::save_scraper_config,
             // Scraper (Updated)
             commands::scraper::get_scraper_providers,
             commands::scraper::configure_scraper_provider,
