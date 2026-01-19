@@ -65,6 +65,8 @@ export interface GameSystem {
   manufacturer?: string;
   releaseYear?: number;
   extensions: string[];
+  logo?: string;
+  romType: "File" | "Folder";
   igdbPlatformId?: number;
   thegamesdbPlatformId?: number;
 }

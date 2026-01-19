@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum RomType {
+    File,   // 文件格式ROM
+    Folder, // 文件夹格式ROM（如PS3）
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemInfo {
     pub id: String,
@@ -8,6 +14,8 @@ pub struct SystemInfo {
     pub manufacturer: Option<String>,
     pub release_year: Option<i32>,
     pub extensions: Vec<String>,
+    pub logo: Option<String>,  // Logo文件名（相对于resources/logo/）
+    pub rom_type: RomType,     // ROM处理方式
 }
 
 fn get_preset_systems_data() -> Vec<SystemInfo> {
@@ -20,6 +28,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1983),
             extensions: vec![".nes".to_string(), ".zip".to_string()],
+            logo: Some("FC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fc".to_string(),
@@ -28,6 +38,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1983),
             extensions: vec![".nes".to_string(), ".zip".to_string()],
+            logo: Some("FC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fc-hd".to_string(),
@@ -36,6 +48,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: None,
             extensions: vec![".nes".to_string(), ".zip".to_string()],
+            logo: Some("FC-HD.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fc hack".to_string(),
@@ -44,6 +58,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: None,
             extensions: vec![".nes".to_string(), ".zip".to_string()],
+            logo: Some("FC hack.png".to_string()),
+            rom_type: RomType::File,
         },
         // Nintendo - SFC/SNES 系列
         SystemInfo {
@@ -53,6 +69,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1990),
             extensions: vec![".sfc".to_string(), ".smc".to_string(), ".zip".to_string()],
+            logo: Some("SFC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "sfc".to_string(),
@@ -61,6 +79,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1990),
             extensions: vec![".sfc".to_string(), ".smc".to_string(), ".zip".to_string()],
+            logo: Some("SFC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "sfc hack".to_string(),
@@ -69,6 +89,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: None,
             extensions: vec![".sfc".to_string(), ".smc".to_string(), ".zip".to_string()],
+            logo: Some("SFC hack.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "sfc-msu1".to_string(),
@@ -77,6 +99,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: None,
             extensions: vec![".sfc".to_string(), ".smc".to_string(), ".zip".to_string()],
+            logo: Some("SFC-MSU1.png".to_string()),
+            rom_type: RomType::File,
         },
         // Nintendo - N64
         SystemInfo {
@@ -86,6 +110,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1996),
             extensions: vec![".z64".to_string(), ".n64".to_string(), ".zip".to_string()],
+            logo: Some("N64.png".to_string()),
+            rom_type: RomType::File,
         },
         // Nintendo - GameCube
         SystemInfo {
@@ -95,6 +121,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2001),
             extensions: vec![".iso".to_string(), ".gcm".to_string()],
+            logo: Some("NGC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ngc".to_string(),
@@ -103,6 +131,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2001),
             extensions: vec![".iso".to_string(), ".gcm".to_string()],
+            logo: Some("NGC.png".to_string()),
+            rom_type: RomType::File,
         },
         // Nintendo - Wii
         SystemInfo {
@@ -112,6 +142,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2006),
             extensions: vec![".iso".to_string(), ".wbfs".to_string()],
+            logo: Some("Wii.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "wii ware".to_string(),
@@ -120,6 +152,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: None,
             extensions: vec![".wad".to_string()],
+            logo: Some("Wii.png".to_string()),
+            rom_type: RomType::File,
         },
         // Nintendo - 掌机系列
         SystemInfo {
@@ -129,6 +163,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1989),
             extensions: vec![".gb".to_string(), ".zip".to_string()],
+            logo: Some("GB.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "gbc".to_string(),
@@ -137,6 +173,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1998),
             extensions: vec![".gbc".to_string(), ".zip".to_string()],
+            logo: Some("GBC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "gba".to_string(),
@@ -145,6 +183,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2001),
             extensions: vec![".gba".to_string(), ".zip".to_string()],
+            logo: Some("GBA.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "nds".to_string(),
@@ -153,6 +193,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2004),
             extensions: vec![".nds".to_string(), ".zip".to_string()],
+            logo: Some("NDS.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "3ds".to_string(),
@@ -161,6 +203,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2011),
             extensions: vec![".3ds".to_string(), ".cia".to_string()],
+            logo: Some("3DS.png".to_string()),
+            rom_type: RomType::File,
         },
         // Nintendo - 其他
         SystemInfo {
@@ -170,6 +214,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1995),
             extensions: vec![".vb".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "game watch".to_string(),
@@ -178,6 +224,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1980),
             extensions: vec![".mgw".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "poke mini".to_string(),
@@ -186,6 +234,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2001),
             extensions: vec![".min".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         // Sega - 主机系列
         SystemInfo {
@@ -195,6 +245,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1985),
             extensions: vec![".sms".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "genesis".to_string(),
@@ -203,6 +255,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1988),
             extensions: vec![".md".to_string(), ".bin".to_string(), ".gen".to_string(), ".zip".to_string()],
+            logo: Some("MD.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "md".to_string(),
@@ -211,6 +265,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1988),
             extensions: vec![".md".to_string(), ".bin".to_string(), ".gen".to_string(), ".zip".to_string()],
+            logo: Some("MD.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "md hack".to_string(),
@@ -219,6 +275,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: None,
             extensions: vec![".md".to_string(), ".bin".to_string(), ".zip".to_string()],
+            logo: Some("MD hack.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "md-32x".to_string(),
@@ -227,6 +285,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1994),
             extensions: vec![".32x".to_string(), ".zip".to_string()],
+            logo: Some("MD-32X.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "gg".to_string(),
@@ -235,6 +295,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1990),
             extensions: vec![".gg".to_string(), ".zip".to_string()],
+            logo: Some("GG.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "saturn".to_string(),
@@ -243,6 +305,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1994),
             extensions: vec![".iso".to_string(), ".cue".to_string(), ".bin".to_string()],
+            logo: Some("SS.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ss".to_string(),
@@ -251,6 +315,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1994),
             extensions: vec![".iso".to_string(), ".cue".to_string(), ".bin".to_string()],
+            logo: Some("SS.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "dreamcast".to_string(),
@@ -259,6 +325,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1998),
             extensions: vec![".cdi".to_string(), ".gdi".to_string(), ".iso".to_string()],
+            logo: Some("DC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "dc".to_string(),
@@ -267,6 +335,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1998),
             extensions: vec![".cdi".to_string(), ".gdi".to_string(), ".iso".to_string()],
+            logo: Some("DC.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "dc hack".to_string(),
@@ -275,6 +345,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: None,
             extensions: vec![".cdi".to_string(), ".gdi".to_string()],
+            logo: Some("DC hack.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "naomi".to_string(),
@@ -283,6 +355,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1998),
             extensions: vec![".zip".to_string(), ".bin".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         // Sony - PlayStation 系列
         SystemInfo {
@@ -292,6 +366,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: Some(1994),
             extensions: vec![".iso".to_string(), ".bin".to_string(), ".cue".to_string(), ".pbp".to_string()],
+            logo: Some("PS1.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ps1".to_string(),
@@ -300,6 +376,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: Some(1994),
             extensions: vec![".iso".to_string(), ".bin".to_string(), ".cue".to_string(), ".pbp".to_string()],
+            logo: Some("PS1.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ps1 hack".to_string(),
@@ -308,6 +386,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: None,
             extensions: vec![".iso".to_string(), ".bin".to_string(), ".cue".to_string()],
+            logo: Some("PS1 hack.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ps2".to_string(),
@@ -316,6 +396,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: Some(2000),
             extensions: vec![".iso".to_string(), ".bin".to_string()],
+            logo: Some("PS2.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ps3".to_string(),
@@ -324,6 +406,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: Some(2006),
             extensions: vec![".iso".to_string(), ".pkg".to_string(), ".bin".to_string()],
+            logo: Some("PS3.png".to_string()),
+            rom_type: RomType::Folder,
         },
         SystemInfo {
             id: "psp".to_string(),
@@ -332,6 +416,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: Some(2004),
             extensions: vec![".iso".to_string(), ".cso".to_string()],
+            logo: Some("PSP.png".to_string()),
+            rom_type: RomType::File,
         },
         // NEC
         SystemInfo {
@@ -341,6 +427,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("NEC".to_string()),
             release_year: Some(1987),
             extensions: vec![".pce".to_string(), ".zip".to_string()],
+            logo: Some("PCE.png".to_string()),
+            rom_type: RomType::File,
         },
         // SNK
         SystemInfo {
@@ -350,6 +438,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("SNK".to_string()),
             release_year: Some(1990),
             extensions: vec![".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "ngpc".to_string(),
@@ -358,6 +448,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("SNK".to_string()),
             release_year: Some(1999),
             extensions: vec![".ngc".to_string(), ".ngp".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         // Bandai
         SystemInfo {
@@ -367,6 +459,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Bandai".to_string()),
             release_year: Some(1999),
             extensions: vec![".ws".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "wsc".to_string(),
@@ -375,6 +469,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Bandai".to_string()),
             release_year: Some(2000),
             extensions: vec![".wsc".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         // Atari
         SystemInfo {
@@ -384,6 +480,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1977),
             extensions: vec![".a26".to_string(), ".bin".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "atari5200".to_string(),
@@ -392,6 +490,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1982),
             extensions: vec![".a52".to_string(), ".bin".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "atari7800".to_string(),
@@ -400,6 +500,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1986),
             extensions: vec![".a78".to_string(), ".bin".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "lynx".to_string(),
@@ -408,6 +510,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1989),
             extensions: vec![".lnx".to_string(), ".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         // Arcade - FBNeo 分类
         SystemInfo {
@@ -417,6 +521,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("动作街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fbneo stg".to_string(),
@@ -425,6 +531,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("射击街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fbneo ftg".to_string(),
@@ -433,6 +541,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("格斗街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fbneo fly".to_string(),
@@ -441,6 +551,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("飞行街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fbneo rac".to_string(),
@@ -449,6 +561,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("竞速街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fbneo spo".to_string(),
@@ -457,6 +571,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("体育街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "fbneo etc".to_string(),
@@ -465,6 +581,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("其他街机.png".to_string()),
+            rom_type: RomType::File,
         },
         // Arcade - MAME 分类
         SystemInfo {
@@ -474,6 +592,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("动作街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "mame stg".to_string(),
@@ -482,6 +602,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("射击街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "mame ftg".to_string(),
@@ -490,6 +612,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("格斗街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "mame fly".to_string(),
@@ -498,6 +622,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("飞行街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "mame rac".to_string(),
@@ -506,6 +632,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("竞速街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "mame spo".to_string(),
@@ -514,6 +642,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("体育街机.png".to_string()),
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "mame etc".to_string(),
@@ -522,6 +652,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("其他街机.png".to_string()),
+            rom_type: RomType::File,
         },
         // Arcade - 其他
         SystemInfo {
@@ -531,6 +663,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: None,
+            rom_type: RomType::File,
         },
         SystemInfo {
             id: "light gun".to_string(),
@@ -539,6 +673,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
+            logo: Some("光枪街机.png".to_string()),
+            rom_type: RomType::File,
         },
         // PC
         SystemInfo {
@@ -548,6 +684,8 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".exe".to_string(), ".bat".to_string(), ".com".to_string()],
+            logo: Some("DOS.png".to_string()),
+            rom_type: RomType::File,
         },
     ]
 }
