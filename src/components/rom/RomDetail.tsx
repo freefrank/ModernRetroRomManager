@@ -248,6 +248,63 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                 ))}
               </div>
 
+              {/* Action Buttons */}
+              <div className="p-4 border-b border-border-default bg-bg-secondary/30">
+                <div className="flex justify-between items-center gap-3">
+                  {isEditing ? (
+                    <>
+                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-text-secondary hover:text-text-primary font-bold text-sm transition-all">{t("romDetail.actions.cancelEdit")}</button>
+                      <button onClick={handleSaveEdit} className="flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 active:scale-95 transition-all">
+                        <Check className="w-4 h-4 stroke-[3px]" /> {t("romDetail.actions.saveEdit")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="flex items-center justify-center gap-2 px-6 py-2.5 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-bold transition-all shadow-lg shadow-accent-primary/20 active:scale-95">
+                        <Play className="w-4 h-4 fill-current" />
+                        <span className="hidden sm:inline">{t("romDetail.actions.play")}</span>
+                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setIsScrapeDialogOpen(true)} className="p-2.5 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.scrape")}><Download className="w-4 h-4" /></button>
+                        <button onClick={handleStartEdit} className="p-2.5 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.edit")}><Edit2 className="w-4 h-4" /></button>
+                        {rom.system && rom.system.toLowerCase().includes('ps3') && (
+                          <button
+                            onClick={handleGenerateBoxart}
+                            disabled={isGeneratingBoxart}
+                            className="p-2.5 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="生成 PS3 Boxart"
+                          >
+                            {isGeneratingBoxart ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                          </button>
+                        )}
+                        {isPreview ? (
+                          <button onClick={handleExport} disabled={isExporting} className="group relative flex items-center gap-2 px-4 py-2 bg-accent-primary text-bg-primary rounded-xl font-bold text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 overflow-hidden">
+                            {isExporting ? (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span className="hidden sm:inline">{exportProgress ? t("romDetail.actions.exporting", { progress: exportProgress.current }) : t("romDetail.actions.exportingSimple")}</span>
+                              </div>
+                            ) : (
+                              <>
+                                <Save className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">{t("romDetail.actions.export")}</span>
+                              </>
+                            )}
+                            {isExporting && exportProgress && (
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${exportProgress.current}%` }} className="absolute bottom-0 left-0 h-1 bg-white/30" />
+                            )}
+                          </button>
+                        ) : (
+                          <button onClick={onClose} className="flex items-center gap-2 px-4 py-2 bg-bg-tertiary text-text-primary rounded-xl font-bold text-sm hover:bg-border-hover transition-all active:scale-95">
+                            <Check className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t("common.finish")}</span>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div className="flex-1 p-6 space-y-8 overflow-y-auto custom-scrollbar">
                 {(editForm._activeTab || "info") === "info" ? (
                   <>
@@ -349,65 +406,6 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <span className="text-text-primary truncate" title={rom.directory}>{rom.directory}</span>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="p-6 border-t border-border-default bg-bg-secondary/30 shrink-0">
-                <div className="flex justify-between items-center px-2">
-                  {isEditing ? (
-                    <>
-                      <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-text-secondary hover:text-text-primary font-bold text-sm transition-all">{t("romDetail.actions.cancelEdit")}</button>
-                      <button onClick={handleSaveEdit} className="flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 active:scale-95 transition-all">
-                        <Check className="w-4 h-4 stroke-[3px]" /> {t("romDetail.actions.saveEdit")}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-bold transition-all shadow-lg shadow-accent-primary/20 active:scale-95">
-                        <Play className="w-5 h-5 fill-current" />
-                        {t("romDetail.actions.play")}
-                      </button>
-                      <div className="flex gap-2">
-                        <button onClick={() => setIsScrapeDialogOpen(true)} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.scrape")}><Download className="w-5 h-5" /></button>
-                        <button onClick={handleStartEdit} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.edit")}><Edit2 className="w-5 h-5" /></button>
-                        {rom.system && rom.system.toLowerCase().includes('ps3') && (
-                          <button
-                            onClick={handleGenerateBoxart}
-                            disabled={isGeneratingBoxart}
-                            className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="生成 PS3 Boxart"
-                          >
-                            {isGeneratingBoxart ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        {isPreview ? (
-                          <button onClick={handleExport} disabled={isExporting} className="group relative flex items-center gap-2 px-8 py-2.5 bg-accent-primary text-bg-primary rounded-xl font-black text-sm shadow-xl shadow-accent-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 overflow-hidden">
-                            {isExporting ? (
-                              <div className="flex items-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>{exportProgress ? t("romDetail.actions.exporting", { progress: exportProgress.current }) : t("romDetail.actions.exportingSimple")}</span>
-                              </div>
-                            ) : (
-                              <>
-                                <Save className="w-4 h-4" />
-                                <span>{t("romDetail.actions.export")}</span>
-                              </>
-                            )}
-                            {isExporting && exportProgress && (
-                              <motion.div initial={{ width: 0 }} animate={{ width: `${exportProgress.current}%` }} className="absolute bottom-0 left-0 h-1 bg-white/30" />
-                            )}
-                          </button>
-                        ) : (
-                          <button onClick={onClose} className="flex items-center gap-2 px-8 py-2.5 bg-bg-tertiary text-text-primary rounded-xl font-black text-sm hover:bg-border-hover transition-all active:scale-95">
-                            <Check className="w-4 h-4" /> {t("common.finish")}
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             </motion.div>
