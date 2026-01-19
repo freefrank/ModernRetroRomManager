@@ -98,12 +98,20 @@
 │  │  export  │ │  import  │ │  naming  │ │  tools   │       │
 │  │ commands │ │ commands │ │  check   │ │ commands │       │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
+│       │                                                      │
+│  ┌────┴─────┐                                               │
+│  │   ps3    │                                               │
+│  │ commands │                                               │
+│  └──────────┘                                               │
 ├─────────────────────────────────────────────────────────────┤
 │  Services Layer                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  rom_service: ROM 扫描、解析、管理                  │   │
 │  │  system_mapping: 系统名称映射 (60+ 平台)           │   │
 │  │  settings: 配置管理 (settings.json)                │   │
+│  │  ps3: PS3 平台专用模块                             │   │
+│  │    ├─ sfo: PARAM.SFO 解析 (文件/ISO)              │   │
+│  │    └─ boxart: Boxart 自动生成 (PIC1+ICON0)        │   │
 │  └─────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │  Scraper Module                                             │
@@ -191,6 +199,11 @@
 - 支持多种 ROM 格式 (.zip, .7z, .iso, .bin/.cue, etc.)
 - 支持文件夹格式 ROM (PS3 平台特殊支持)
 - ROM 文件校验 (CRC32, MD5, SHA1)
+- **PS3 平台增强支持**：
+  - PARAM.SFO 解析（从文件夹和 ISO 提取游戏信息）
+  - 自动识别 PS3_GAME 目录结构
+  - 混合目录支持（ISO 和文件夹混合扫描）
+  - Boxart 自动生成（PIC1.PNG 背景 + ICON0.PNG 图标合成）
 
 ### 2. 元数据导入/导出
 - EmulationStation gamelist.xml
@@ -446,6 +459,28 @@
 - [ ] 自定义爬虫规则
 - [ ] 代理设置
 - [ ] 速率限制配置
+
+#### 4.4 PS3 平台增强
+- [x] PS3 模块架构重构
+  - [x] 创建 ps3/ 目录统一管理 PS3 功能
+  - [x] ps3/sfo.rs - PARAM.SFO 解析模块
+  - [x] ps3/boxart.rs - Boxart 生成模块
+  - [x] ps3/mod.rs - 模块入口和接口导出
+- [x] PARAM.SFO 解析
+  - [x] 从 PS3_GAME 文件夹解析游戏信息
+  - [x] 从 ISO 文件解析游戏信息（ISO9660 文件系统）
+  - [x] 提取游戏标题、ID、版本等元数据
+- [x] ROM 扫描增强
+  - [x] 自动识别 PS3_GAME 目录结构
+  - [x] 混合目录支持（ISO 和文件夹混合扫描）
+  - [x] 异步扫描避免 UI 阻塞
+  - [x] 根目录模式下正确分组 PS3 游戏
+- [x] Boxart 自动生成
+  - [x] 图像合成引擎（image crate）
+  - [x] PIC1.PNG 背景居中裁切（512x512）
+  - [x] ICON0.PNG 图标叠加（左下角，128x128）
+  - [x] Tauri command 接口（generate_ps3_boxart）
+  - [x] 生成结果保存到 temp 目录
 
 ### Phase 5: 配置架构重构 (本地/Docker 双模式)
 
