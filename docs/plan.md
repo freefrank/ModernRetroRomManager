@@ -187,7 +187,7 @@
 
 ### 1. ROM 库管理
 - 扫描本地 ROM 目录
-- 自动识别 ROM 系统/平台 (17+ 预置系统)
+- 自动识别 ROM 系统/平台 (18+ 预置系统)
 - 支持多种 ROM 格式 (.zip, .7z, .iso, .bin/.cue, etc.)
 - ROM 文件校验 (CRC32, MD5, SHA1)
 
@@ -282,7 +282,7 @@
 #### 1.2 数据服务层 (Refactored)
 - [x] 移除 SQLite/Diesel 依赖
 - [x] 实现 Metadata 文件解析器 (Pegasus / EmulationStation)
-- [x] 预置 17 种游戏系统数据 (Config file)
+- [x] 预置 18 种游戏系统数据 (Config file)
 - [x] 系统名称映射配置 (60+ 平台，统一 CSV/Logo 映射)
 - [x] 基础 Tauri Commands (get_roms, get_stats)
 - [x] 目录扫描替代旧导入流程

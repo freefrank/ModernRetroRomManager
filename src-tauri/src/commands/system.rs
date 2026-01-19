@@ -117,6 +117,14 @@ fn get_preset_systems_data() -> Vec<SystemInfo> {
             extensions: vec![".iso".to_string(), ".bin".to_string()],
         },
         SystemInfo {
+            id: "ps3".to_string(),
+            name: "PlayStation 3".to_string(),
+            short_name: "PS3".to_string(),
+            manufacturer: Some("Sony".to_string()),
+            release_year: Some(2006),
+            extensions: vec![".iso".to_string(), ".pkg".to_string(), ".bin".to_string()],
+        },
+        SystemInfo {
             id: "psp".to_string(),
             name: "PlayStation Portable".to_string(),
             short_name: "PSP".to_string(),
