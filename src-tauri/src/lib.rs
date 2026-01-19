@@ -1,7 +1,6 @@
 mod commands;
 mod config;
-mod ps3_boxart;
-mod ps3_sfo;
+mod ps3;
 mod rom_service;
 mod scraper;
 pub mod settings;

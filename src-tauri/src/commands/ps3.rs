@@ -1,5 +1,5 @@
 use crate::config::get_temp_dir;
-use crate::ps3_boxart;
+use crate::ps3;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -77,7 +77,7 @@ fn generate_ps3_boxart_impl(request: GenerateBoxartRequest) -> Result<GenerateBo
     let output_path = temp_dir.join(&output_filename);
 
     // 生成 boxart
-    match ps3_boxart::generate_ps3_boxart(&ps3_game_dir, &output_path) {
+    match ps3::generate_ps3_boxart(&ps3_game_dir, &output_path) {
         Ok(_) => Ok(GenerateBoxartResponse {
             boxart_path: output_path.to_string_lossy().to_string(),
             success: true,

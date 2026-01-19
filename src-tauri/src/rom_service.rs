@@ -2,7 +2,7 @@
 //!
 //! 不存储到数据库，运行时直接解析 metadata 文件
 
-use crate::ps3_sfo;
+use crate::ps3;
 use crate::scraper::pegasus::{parse_pegasus_file, PegasusGame};
 use crate::settings::get_settings;
 use serde::{Deserialize, Serialize};
@@ -191,7 +191,7 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
                     let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
                         println!("[DEBUG] Attempting to parse PARAM.SFO: {}", param_sfo_path.display());
-                        match ps3_sfo::parse_param_sfo(&param_sfo_path) {
+                        match ps3::parse_param_sfo(&param_sfo_path) {
                             Ok(info) => {
                                 println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
                                     info.title, info.title_id);
@@ -587,7 +587,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     let param_sfo_path = ps3_game_dir.join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
                         println!("[DEBUG] Attempting to parse PARAM.SFO: {}", param_sfo_path.display());
-                        match ps3_sfo::parse_param_sfo(&param_sfo_path) {
+                        match ps3::parse_param_sfo(&param_sfo_path) {
                             Ok(info) => {
                                 println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
                                     info.title, info.title_id);
@@ -663,7 +663,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                         let (game_name, game_description) = if system_name.to_lowercase().contains("ps3")
                             && ext.to_lowercase() == "iso" {
                             println!("[DEBUG] Attempting to parse PS3 ISO: {}", path.display());
-                            match ps3_sfo::parse_param_sfo_from_iso(&path) {
+                            match ps3::parse_param_sfo_from_iso(&path) {
                                 Ok(game_info) => {
                                     println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
                                         game_info.title, game_info.title_id);
