@@ -371,7 +371,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
                       <div className="flex gap-2">
                         <button onClick={() => setIsScrapeDialogOpen(true)} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.scrape")}><Download className="w-5 h-5" /></button>
                         <button onClick={handleStartEdit} className="p-3 bg-bg-tertiary hover:bg-border-hover text-text-primary rounded-xl font-bold border border-border-default transition-all" title={t("romDetail.actions.edit")}><Edit2 className="w-5 h-5" /></button>
-                        {rom.system.toLowerCase().includes('ps3') && (
+                        {rom.system && rom.system.toLowerCase().includes('ps3') && (
                           <button
                             onClick={handleGenerateBoxart}
                             disabled={isGeneratingBoxart}
