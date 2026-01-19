@@ -1,0 +1,127 @@
+//! PS3 Boxart 自动生成
+//!
+//! 从 PS3_GAME 目录中提取 PIC1.PNG (背景) 和 ICON0.PNG (图标)
+//! 合成为 boxart 图片
+
+use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba, RgbaImage};
+use std::path::Path;
+
+/// Boxart 标准尺寸
+const BOXART_WIDTH: u32 = 512;
+const BOXART_HEIGHT: u32 = 512;
+
+/// ICON0 在 boxart 中的位置和大小
+const ICON_SIZE: u32 = 128;
+const ICON_MARGIN: u32 = 16;
+
+/// 生成 PS3 boxart
+///
+/// # 参数
+/// - `ps3_game_dir`: PS3_GAME 目录路径
+/// - `output_path`: 输出 boxart 图片路径
+///
+/// # 返回
+/// - `Ok(())`: 成功生成
+/// - `Err(String)`: 错误信息
+pub fn generate_ps3_boxart(ps3_game_dir: &Path, output_path: &Path) -> Result<(), String> {
+    // 加载 PIC1.PNG (背景)
+    let pic1_path = ps3_game_dir.join("PIC1.PNG");
+    if !pic1_path.exists() {
+        return Err("PIC1.PNG not found".to_string());
+    }
+
+    let pic1 = image::open(&pic1_path)
+        .map_err(|e| format!("Failed to load PIC1.PNG: {}", e))?;
+
+    // 加载 ICON0.PNG (图标)
+    let icon0_path = ps3_game_dir.join("ICON0.PNG");
+    let icon0 = if icon0_path.exists() {
+        Some(
+            image::open(&icon0_path)
+                .map_err(|e| format!("Failed to load ICON0.PNG: {}", e))?,
+        )
+    } else {
+        None
+    };
+
+    // 创建 boxart
+    let boxart = composite_boxart(&pic1, icon0.as_ref())?;
+
+    // 确保输出目录存在
+    if let Some(parent) = output_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create output directory: {}", e))?;
+    }
+
+    // 保存 boxart
+    boxart
+        .save(output_path)
+        .map_err(|e| format!("Failed to save boxart: {}", e))?;
+
+    Ok(())
+}
+
+/// 合成 boxart 图片
+///
+/// # 参数
+/// - `pic1`: PIC1.PNG 背景图片
+/// - `icon0`: ICON0.PNG 图标 (可选)
+///
+/// # 返回
+/// - 合成后的 boxart 图片
+fn composite_boxart(pic1: &DynamicImage, icon0: Option<&DynamicImage>) -> Result<DynamicImage, String> {
+    // 创建 boxart 画布
+    let mut canvas: RgbaImage = ImageBuffer::new(BOXART_WIDTH, BOXART_HEIGHT);
+
+    // 1. 处理背景 (PIC1.PNG) - 居中裁切
+    let bg = center_crop(pic1, BOXART_WIDTH, BOXART_HEIGHT);
+
+    // 将背景绘制到画布
+    image::imageops::overlay(&mut canvas, &bg, 0, 0);
+
+    // 2. 如果有 ICON0.PNG，绘制到左下角
+    if let Some(icon) = icon0 {
+        let icon_resized = icon.resize_exact(ICON_SIZE, ICON_SIZE, image::imageops::FilterType::Lanczos3);
+        let icon_rgba = icon_resized.to_rgba8();
+
+        // 计算左下角位置
+        let x = ICON_MARGIN as i64;
+        let y = (BOXART_HEIGHT - ICON_SIZE - ICON_MARGIN) as i64;
+
+        image::imageops::overlay(&mut canvas, &icon_rgba, x, y);
+    }
+
+    Ok(DynamicImage::ImageRgba8(canvas))
+}
+
+/// 居中裁切图片
+///
+/// # 参数
+/// - `img`: 原始图片
+/// - `target_width`: 目标宽度
+/// - `target_height`: 目标高度
+///
+/// # 返回
+/// - 裁切后的图片
+fn center_crop(img: &DynamicImage, target_width: u32, target_height: u32) -> RgbaImage {
+    let (img_width, img_height) = img.dimensions();
+
+    // 计算缩放比例，确保图片完全覆盖目标区域
+    let scale_x = target_width as f32 / img_width as f32;
+    let scale_y = target_height as f32 / img_height as f32;
+    let scale = scale_x.max(scale_y);
+
+    // 缩放图片
+    let scaled_width = (img_width as f32 * scale) as u32;
+    let scaled_height = (img_height as f32 * scale) as u32;
+    let scaled = img.resize_exact(scaled_width, scaled_height, image::imageops::FilterType::Lanczos3);
+
+    // 计算裁切起始位置（居中）
+    let crop_x = (scaled_width - target_width) / 2;
+    let crop_y = (scaled_height - target_height) / 2;
+
+    // 裁切
+    let cropped = image::imageops::crop_imm(&scaled, crop_x, crop_y, target_width, target_height);
+
+    cropped.to_image()
+}

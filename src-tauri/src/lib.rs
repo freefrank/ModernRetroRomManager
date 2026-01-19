@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod ps3_boxart;
 mod ps3_sfo;
 mod rom_service;
 mod scraper;
@@ -76,6 +77,9 @@ pub fn run() {
 
             // Tools
             commands::tools::update_cn_repo,
+
+            // PS3
+            commands::ps3::generate_ps3_boxart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
