@@ -259,18 +259,24 @@ fn find_and_read_sfo(iso: &mut ISO9660) -> Result<Vec<u8>, String> {
     // 读取根目录
     let root_entries: Vec<_> = iso.read_root().collect();
 
-    // 查找 PS3_GAME 目录（不区分大小写）
+    // 查找 PS3_GAME 目录（不区分大小写，支持版本号）
     let ps3_game_entry = root_entries.iter()
-        .find(|entry| entry.name.to_uppercase() == "PS3_GAME" && entry.is_folder())
+        .find(|entry| {
+            let name = entry.name.to_uppercase();
+            (name == "PS3_GAME" || name.starts_with("PS3_GAME;")) && entry.is_folder()
+        })
         .ok_or_else(|| "PS3_GAME directory not found".to_string())?;
 
     // 读取 PS3_GAME 目录内容
     let ps3_game_lba = ps3_game_entry.lsb_position() as usize;
     let ps3_game_entries: Vec<_> = iso.read_directory(ps3_game_lba).collect();
 
-    // 查找 PARAM.SFO 文件（不区分大小写）
+    // 查找 PARAM.SFO 文件（不区分大小写，支持版本号）
     let param_sfo_entry = ps3_game_entries.iter()
-        .find(|entry| entry.name.to_uppercase() == "PARAM.SFO" && entry.is_file())
+        .find(|entry| {
+            let name = entry.name.to_uppercase();
+            (name == "PARAM.SFO" || name.starts_with("PARAM.SFO;")) && entry.is_file()
+        })
         .ok_or_else(|| "PARAM.SFO file not found".to_string())?;
 
     // 读取 PARAM.SFO 文件内容

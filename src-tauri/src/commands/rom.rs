@@ -16,8 +16,13 @@ pub struct RomStats {
 
 /// 获取 ROM 列表 (按系统分组或扁平化)
 #[tauri::command]
-pub fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, String> {
-    let all_systems = get_all_roms()?;
+pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, String> {
+    // 在后台线程中执行IO密集型操作，避免阻塞UI
+    let all_systems = tokio::task::spawn_blocking(|| {
+        get_all_roms()
+    })
+    .await
+    .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
     
     if let Some(f) = filter {
         let mut filtered_systems = Vec::new();
@@ -57,8 +62,13 @@ pub fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, String> {
 
 /// 获取 ROM 统计信息
 #[tauri::command]
-pub fn get_rom_stats() -> Result<RomStats, String> {
-    let all_systems = get_all_roms()?;
+pub async fn get_rom_stats() -> Result<RomStats, String> {
+    // 在后台线程中执行IO密集型操作，避免阻塞UI
+    let all_systems = tokio::task::spawn_blocking(|| {
+        get_all_roms()
+    })
+    .await
+    .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
     
     let total_systems = all_systems.len();
     let total_roms = all_systems.iter().map(|s| s.roms.len()).sum();
