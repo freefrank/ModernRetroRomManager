@@ -476,6 +476,8 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     .unwrap_or("Unknown")
                     .to_string();
 
+                println!("[DEBUG] Found PS3 folder: {}", path.display());
+
                 // 检查是否包含 PS3_GAME 目录
                 let ps3_game_dir = path.join("PS3_GAME");
                 let is_valid_ps3_folder = ps3_game_dir.exists() && ps3_game_dir.is_dir();
@@ -484,8 +486,20 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     // 尝试解析 PARAM.SFO 获取游戏信息
                     let param_sfo_path = ps3_game_dir.join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
-                        ps3_sfo::parse_param_sfo(&param_sfo_path).ok()
+                        println!("[DEBUG] Attempting to parse PARAM.SFO: {}", param_sfo_path.display());
+                        match ps3_sfo::parse_param_sfo(&param_sfo_path) {
+                            Ok(info) => {
+                                println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
+                                    info.title, info.title_id);
+                                Some(info)
+                            }
+                            Err(e) => {
+                                println!("[ERROR] Failed to parse PARAM.SFO {}: {}", param_sfo_path.display(), e);
+                                None
+                            }
+                        }
                     } else {
+                        println!("[DEBUG] PARAM.SFO not found at: {}", param_sfo_path.display());
                         None
                     };
 
@@ -548,13 +562,19 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                         // PS3 ISO 特殊处理：尝试从 ISO 中提取 PARAM.SFO
                         let (game_name, game_description) = if system_name.to_lowercase() == "ps3"
                             && ext.to_lowercase() == "iso" {
+                            println!("[DEBUG] Attempting to parse PS3 ISO: {}", path.display());
                             match ps3_sfo::parse_param_sfo_from_iso(&path) {
                                 Ok(game_info) => {
+                                    println!("[DEBUG] Successfully parsed PARAM.SFO: title={:?}, id={:?}",
+                                        game_info.title, game_info.title_id);
                                     let name = game_info.title.clone().unwrap_or_else(|| default_name.clone());
                                     let desc = game_info.title_id.map(|id| format!("Game ID: {}", id));
                                     (name, desc)
                                 }
-                                Err(_) => (default_name.clone(), None)
+                                Err(e) => {
+                                    println!("[ERROR] Failed to parse PS3 ISO {}: {}", path.display(), e);
+                                    (default_name.clone(), None)
+                                }
                             }
                         } else {
                             (default_name, None)
