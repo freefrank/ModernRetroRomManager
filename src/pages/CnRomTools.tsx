@@ -52,6 +52,7 @@ const PEGASUS_SYSTEMS: { id: string; name: string; aliases: string[] }[] = [
   { id: "ps1", name: "PlayStation", aliases: ["ps1", "psx", "playstation"] },
   { id: "ps1 hack", name: "PS1 Hack", aliases: ["ps1 hack"] },
   { id: "ps2", name: "PlayStation 2", aliases: ["ps2"] },
+  { id: "ps3", name: "PlayStation 3", aliases: ["ps3"] },
   { id: "psp", name: "PlayStation Portable", aliases: ["psp"] },
   // NEC
   { id: "pce", name: "PC Engine / TurboGrafx-16", aliases: ["pce", "pcengine", "tg16"] },
