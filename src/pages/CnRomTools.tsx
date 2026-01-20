@@ -281,10 +281,7 @@ const handleCheck = async () => {
       return;
     }
 
-    const result = await autoFix(selectedSystem.id);
-    if (result) {
-      alert(t("cnRomTools.alerts.matchComplete", { success: result.success, failed: result.failed }));
-    }
+    await autoFix(selectedSystem.id);
   };
 
   const handleSetAsRomName = async () => {
