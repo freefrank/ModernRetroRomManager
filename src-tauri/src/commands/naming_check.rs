@@ -182,6 +182,7 @@ struct RomScanEntry {
 /// 如果ROM在子文件夹中，使用清理后的文件夹名作为游戏名
 /// 如果子文件夹有多个文件，只返回最大的那个（主ROM）
 fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
+    eprintln!("[DEBUG] scan_directory_with_folders: {:?}", dir_path);
     let mut entries = Vec::new();
     
     // ROM 文件扩展名
@@ -193,9 +194,14 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
         "zip", "7z", "rar",
     ].iter().cloned().collect();
     
+    eprintln!("[DEBUG] Starting to read directory...");
     if let Ok(dir_entries) = fs::read_dir(dir_path) {
-        for entry in dir_entries.filter_map(|e| e.ok()) {
+        let dir_entries: Vec<_> = dir_entries.filter_map(|e| e.ok()).collect();
+        eprintln!("[DEBUG] Found {} entries in directory", dir_entries.len());
+        
+        for (idx, entry) in dir_entries.into_iter().enumerate() {
             let path = entry.path();
+            eprintln!("[DEBUG] Processing entry {}: {:?}", idx, path.file_name());
             
             if path.is_file() {
                 // 根目录下的文件
@@ -225,51 +231,69 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                     "boxart", "snap", "wheel", "marquee", "named_boxarts", "named_snaps",
                 ];
                 if skip_dirs.iter().any(|&d| folder_name.eq_ignore_ascii_case(d)) {
+                    eprintln!("[DEBUG] Skipping media directory: {}", folder_name);
                     continue;
                 }
                 
-                // 扫描子文件夹中的ROM文件，记录文件大小
-                let mut subfolder_roms: Vec<(String, u64)> = Vec::new();
+                // 先收集子文件夹中的ROM文件名（不获取大小）
+                eprintln!("[DEBUG] Scanning subfolder: {}", folder_name);
+                let mut subfolder_rom_paths: Vec<PathBuf> = Vec::new();
                 if let Ok(sub_entries) = fs::read_dir(&path) {
                     for sub_entry in sub_entries.filter_map(|e| e.ok()) {
                         let sub_path = sub_entry.path();
                         if sub_path.is_file() {
                             if let Some(ext) = sub_path.extension().and_then(|e| e.to_str()) {
                                 if rom_extensions.contains(ext.to_lowercase().as_str()) {
-                                    let filename = sub_path.file_name()
-                                        .and_then(|n| n.to_str())
-                                        .unwrap_or("")
-                                        .to_string();
-                                    let file_size = sub_path.metadata()
-                                        .map(|m| m.len())
-                                        .unwrap_or(0);
-                                    subfolder_roms.push((filename, file_size));
+                                    subfolder_rom_paths.push(sub_path);
                                 }
                             }
                         }
                     }
                 }
                 
-                if subfolder_roms.is_empty() {
+                eprintln!("[DEBUG] Found {} ROMs in subfolder {}", subfolder_rom_paths.len(), folder_name);
+                
+                if subfolder_rom_paths.is_empty() {
                     continue;
                 }
                 
                 // 清理文件夹名
                 let cleaned_name = clean_folder_name(&folder_name);
                 
-                // 如果只有一个ROM，直接使用
-                // 如果有多个ROM，只取最大的那个（主ROM），其他是补丁
-                if subfolder_roms.len() == 1 {
+                // 如果只有一个ROM，直接使用（不需要获取文件大小）
+                if subfolder_rom_paths.len() == 1 {
+                    let filename = subfolder_rom_paths[0].file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("")
+                        .to_string();
                     entries.push(RomScanEntry {
-                        file: subfolder_roms[0].0.clone(),
+                        file: filename,
                         subfolder: Some(folder_name),
                         cleaned_folder_name: Some(cleaned_name),
                     });
                 } else {
-                    // 找最大的文件作为主ROM
-                    if let Some((largest_file, _)) = subfolder_roms.iter().max_by_key(|(_, size)| size) {
+                    // 多个ROM，需要获取文件大小找最大的
+                    eprintln!("[DEBUG] Multiple ROMs, getting file sizes...");
+                    let mut largest_file: Option<(String, u64)> = None;
+                    for sub_path in subfolder_rom_paths {
+                        let filename = sub_path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("")
+                            .to_string();
+                        eprintln!("[DEBUG] Getting file size for: {}", filename);
+                        let file_size = sub_path.metadata()
+                            .map(|m| m.len())
+                            .unwrap_or(0);
+                        eprintln!("[DEBUG] File size: {} bytes", file_size);
+                        
+                        if largest_file.is_none() || file_size > largest_file.as_ref().unwrap().1 {
+                            largest_file = Some((filename, file_size));
+                        }
+                    }
+                    
+                    if let Some((largest_filename, _)) = largest_file {
                         entries.push(RomScanEntry {
-                            file: largest_file.clone(),
+                            file: largest_filename,
                             subfolder: Some(folder_name),
                             cleaned_folder_name: Some(cleaned_name),
                         });
@@ -279,6 +303,7 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
         }
     }
     
+    eprintln!("[DEBUG] scan_directory_with_folders complete, found {} ROM entries", entries.len());
     entries
 }
 
