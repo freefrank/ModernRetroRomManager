@@ -46,4 +46,5 @@ pinyin = "0.10"
 iso9660_simple = "0.2.2"
 image = "0.25"
 rayon = "1.8"
+regex = "1.12.2"
 

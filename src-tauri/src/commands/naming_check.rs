@@ -6,6 +6,7 @@ use crate::rom_service::get_roms_from_directory;
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
 use crate::scraper::local_cn::smart_cn_similarity;
 use crate::config::{get_temp_dir, get_data_dir};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -136,6 +137,151 @@ fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
     }
 }
 
+/// 清理文件夹/文件名，去除版本号、汉化组等信息
+fn clean_folder_name(name: &str) -> String {
+    let mut result = name.to_string();
+    
+    // 去除括号内容：(xxx), [xxx]
+    let bracket_re = Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap();
+    result = bracket_re.replace_all(&result, "").to_string();
+    
+    // 去除常见汉化组标识
+    let groups = [
+        "汉化", "中文", "简体", "繁体", "简中", "繁中", "CN", "SC", "TC",
+        "老游戏", "怀旧游戏", "翻译", "民间", "完美", "正式",
+    ];
+    for g in groups {
+        result = result.replace(g, "");
+    }
+    
+    // 去除版本号: v1.0, V2.1, ver1.0 等
+    let version_re = Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap();
+    result = version_re.replace_all(&result, "").to_string();
+    
+    // 去除尾部的分隔符和空格
+    result = result.trim_end_matches(|c: char| c == '_' || c == '-' || c == '.' || c.is_whitespace()).to_string();
+    
+    // 去除多余空格
+    let multi_space_re = Regex::new(r"\s+").unwrap();
+    result = multi_space_re.replace_all(&result, " ").to_string();
+    
+    result.trim().to_string()
+}
+
+/// ROM 扫描条目（包含文件夹信息）
+#[derive(Debug, Clone)]
+struct RomScanEntry {
+    file: String,
+    /// ROM 所在的子文件夹路径（相对于扫描根目录）
+    subfolder: Option<String>,
+    /// 清理后的文件夹名（如果ROM在单独文件夹中）
+    cleaned_folder_name: Option<String>,
+}
+
+/// 扫描目录，检测子文件夹中的ROM
+/// 如果ROM在子文件夹中，使用清理后的文件夹名作为游戏名
+/// 如果子文件夹有多个文件，只返回最大的那个（主ROM）
+fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
+    let mut entries = Vec::new();
+    
+    // ROM 文件扩展名
+    let rom_extensions: std::collections::HashSet<&str> = [
+        "iso", "cso", "chd", "bin", "cue", "img", "mdf", "nrg",
+        "nes", "sfc", "smc", "gba", "gbc", "gb", "nds", "3ds",
+        "n64", "z64", "v64", "gcm", "wbfs", "wad", "rvz",
+        "psx", "pbp", "pkg",
+        "zip", "7z", "rar",
+    ].iter().cloned().collect();
+    
+    if let Ok(dir_entries) = fs::read_dir(dir_path) {
+        for entry in dir_entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            
+            if path.is_file() {
+                // 根目录下的文件
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if rom_extensions.contains(ext.to_lowercase().as_str()) {
+                        let filename = path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("")
+                            .to_string();
+                        entries.push(RomScanEntry {
+                            file: filename,
+                            subfolder: None,
+                            cleaned_folder_name: None,
+                        });
+                    }
+                }
+            } else if path.is_dir() {
+                // 子文件夹
+                let folder_name = path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                
+                // 跳过常见的媒体资源目录
+                let skip_dirs = [
+                    "media", "images", "artwork", "videos", "screenshots",
+                    "boxart", "snap", "wheel", "marquee", "named_boxarts", "named_snaps",
+                ];
+                if skip_dirs.iter().any(|&d| folder_name.eq_ignore_ascii_case(d)) {
+                    continue;
+                }
+                
+                // 扫描子文件夹中的ROM文件，记录文件大小
+                let mut subfolder_roms: Vec<(String, u64)> = Vec::new();
+                if let Ok(sub_entries) = fs::read_dir(&path) {
+                    for sub_entry in sub_entries.filter_map(|e| e.ok()) {
+                        let sub_path = sub_entry.path();
+                        if sub_path.is_file() {
+                            if let Some(ext) = sub_path.extension().and_then(|e| e.to_str()) {
+                                if rom_extensions.contains(ext.to_lowercase().as_str()) {
+                                    let filename = sub_path.file_name()
+                                        .and_then(|n| n.to_str())
+                                        .unwrap_or("")
+                                        .to_string();
+                                    let file_size = sub_path.metadata()
+                                        .map(|m| m.len())
+                                        .unwrap_or(0);
+                                    subfolder_roms.push((filename, file_size));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if subfolder_roms.is_empty() {
+                    continue;
+                }
+                
+                // 清理文件夹名
+                let cleaned_name = clean_folder_name(&folder_name);
+                
+                // 如果只有一个ROM，直接使用
+                // 如果有多个ROM，只取最大的那个（主ROM），其他是补丁
+                if subfolder_roms.len() == 1 {
+                    entries.push(RomScanEntry {
+                        file: subfolder_roms[0].0.clone(),
+                        subfolder: Some(folder_name),
+                        cleaned_folder_name: Some(cleaned_name),
+                    });
+                } else {
+                    // 找最大的文件作为主ROM
+                    if let Some((largest_file, _)) = subfolder_roms.iter().max_by_key(|(_, size)| size) {
+                        entries.push(RomScanEntry {
+                            file: largest_file.clone(),
+                            subfolder: Some(folder_name),
+                            cleaned_folder_name: Some(cleaned_name),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    
+    entries
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AutoFixResult {
     pub success: usize,
@@ -155,33 +301,28 @@ pub fn scan_directory_for_naming_check(path: String) -> Result<Vec<NamingCheckRe
         return Err("Directory does not exist".to_string());
     }
 
-    // 检测元数据格式
-    let format = detect_format(dir_path);
-
-    // 从目录名推断系统名称
-    let system_name = dir_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
-
-    // 读取 ROM 列表
-    let roms = get_roms_from_directory(dir_path, &format, &system_name)?;
+    // 使用新的扫描函数，检测子文件夹ROM
+    let scan_entries = scan_directory_with_folders(dir_path);
 
     // 读取临时元数据
     let temp_entries = load_temp_cn_metadata(&path).unwrap_or_default();
 
     // 转换为检查结果，合并临时数据
-    let results = roms.into_iter().map(|r| {
-        let extracted = parse_cn_name_from_filename(&r.file);
+    let results = scan_entries.into_iter().map(|entry| {
+        // 优先使用清理后的文件夹名，否则从文件名提取
+        let extracted = if let Some(ref folder_name) = entry.cleaned_folder_name {
+            Some(folder_name.clone())
+        } else {
+            parse_cn_name_from_filename(&entry.file)
+        };
 
         // 查找临时数据中的匹配项
-        let temp_data = temp_entries.iter().find(|e| e.file == r.file);
+        let temp_data = temp_entries.iter().find(|e| e.file == entry.file);
 
         NamingCheckResult {
-            file: r.file.clone(),
-            name: temp_data.and_then(|t| t.name.clone()).unwrap_or(r.name),
-            english_name: temp_data.and_then(|t| t.english_name.clone()).or(r.english_name),
+            file: entry.file.clone(),
+            name: temp_data.and_then(|t| t.name.clone()).or_else(|| extracted.clone()).unwrap_or_else(|| entry.file.clone()),
+            english_name: temp_data.and_then(|t| t.english_name.clone()),
             extracted_cn_name: extracted,
             confidence: temp_data.and_then(|t| t.confidence),
         }
@@ -245,13 +386,14 @@ pub async fn auto_fix_naming(
         return Err("Directory does not exist".to_string());
     }
 
-    let format = detect_format(dir_path);
+    // 使用新的扫描函数
+    let scan_entries = scan_directory_with_folders(dir_path);
+    let total = scan_entries.len();
+
     // 优先使用传入的系统名，否则从目录名获取
     let system_name = system.unwrap_or_else(|| {
         dir_path.file_name().unwrap_or_default().to_string_lossy().to_string()
     });
-    let roms = get_roms_from_directory(dir_path, &format, &system_name)?;
-    let total = roms.len();
 
     // 一次性加载 CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
@@ -281,7 +423,7 @@ pub async fn auto_fix_naming(
     // 加载现有的临时元数据，保留用户手动编辑的数据
     let mut entries = load_temp_cn_metadata(&path).unwrap_or_default();
 
-    for (idx, rom) in roms.into_iter().enumerate() {
+    for (idx, scan_entry) in scan_entries.into_iter().enumerate() {
         // 发送进度事件
         let _ = app.emit("naming-match-progress", MatchProgress {
             current: idx + 1,
@@ -289,7 +431,7 @@ pub async fn auto_fix_naming(
         });
 
         // 检查是否已有用户手动编辑的数据（confidence = 100）
-        let existing_entry = entries.iter().find(|e| e.file == rom.file);
+        let existing_entry = entries.iter().find(|e| e.file == scan_entry.file);
         if let Some(entry) = existing_entry {
             // 用户手动编辑的数据（满分），跳过自动匹配
             if entry.confidence == Some(100.0) && entry.english_name.is_some() {
@@ -297,15 +439,15 @@ pub async fn auto_fix_naming(
             }
         }
 
-        // 如果 ROM 本身已经有英文名（来自原始 metadata），跳过
-        if rom.english_name.is_some() && rom.name != rom.file {
-             continue;
-        }
+        // 优先使用清理后的文件夹名，否则从文件名提取
+        let extracted_cn = if let Some(ref folder_name) = scan_entry.cleaned_folder_name {
+            Some(folder_name.clone())
+        } else {
+            parse_cn_name_from_filename(&scan_entry.file)
+        };
+        let english_suffix = extract_english_suffix(&scan_entry.file);
 
-        let extracted_cn = parse_cn_name_from_filename(&rom.file);
-        let english_suffix = extract_english_suffix(&rom.file);
-
-        let query_name = extracted_cn.clone().unwrap_or_else(|| rom.name.clone());
+        let query_name = extracted_cn.clone().unwrap_or_else(|| scan_entry.file.clone());
 
         // 使用内存中的快速匹配
         if let Some((eng_name, _cn_name, confidence)) = fast_match(
@@ -320,7 +462,7 @@ pub async fn auto_fix_naming(
                 let new_confidence = confidence * 100.0;
 
                 // 更新或新增条目
-                if let Some(entry) = entries.iter_mut().find(|e| e.file == rom.file) {
+                if let Some(entry) = entries.iter_mut().find(|e| e.file == scan_entry.file) {
                     entry.english_name = Some(cleaned_eng_name);
                     entry.confidence = Some(new_confidence);
                     // 保留现有的 name（如果用户已设置）
@@ -329,7 +471,7 @@ pub async fn auto_fix_naming(
                     }
                 } else {
                     entries.push(TempMetadataEntry {
-                        file: rom.file.clone(),
+                        file: scan_entry.file.clone(),
                         name: extracted_cn.clone(),
                         english_name: Some(cleaned_eng_name),
                         confidence: Some(new_confidence),
