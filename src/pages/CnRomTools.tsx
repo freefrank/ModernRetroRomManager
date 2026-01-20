@@ -277,10 +277,6 @@ const handleCheck = async () => {
       return;
     }
 
-    if (!confirm(t("cnRomTools.confirms.autoFixNaming"))) {
-      return;
-    }
-
     await autoFix(selectedSystem.id);
   };
 

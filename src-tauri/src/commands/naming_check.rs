@@ -650,12 +650,12 @@ pub async fn auto_fix_naming(
             continue;
         }
 
-        // 使用保存的 extracted_cn_name，否则从文件名提取
-        let extracted_cn = entry.extracted_cn_name.clone()
-            .or_else(|| parse_cn_name_from_filename(&entry.file));
+        // 查询名优先级：name（用户编辑/已生成）> extracted_cn_name > 从文件名提取
+        let query_name = entry.name.clone()
+            .or_else(|| entry.extracted_cn_name.clone())
+            .or_else(|| parse_cn_name_from_filename(&entry.file))
+            .unwrap_or_else(|| entry.file.clone());
         let english_suffix = extract_english_suffix(&entry.file);
-
-        let query_name = extracted_cn.clone().unwrap_or_else(|| entry.file.clone());
 
         // 使用内存中的快速匹配
         if let Some((eng_name, _cn_name, confidence)) = fast_match(
@@ -671,10 +671,7 @@ pub async fn auto_fix_naming(
 
                 entry.english_name = Some(cleaned_eng_name);
                 entry.confidence = Some(new_confidence);
-                // 保留现有的 name（如果用户已设置）
-                if entry.name.is_none() {
-                    entry.name = extracted_cn.clone();
-                }
+                // name 已在扫描时设置，无需再修改
                 success_count += 1;
             } else {
                 failed_count += 1;
