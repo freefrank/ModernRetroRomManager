@@ -82,13 +82,13 @@ fn composite_boxart(pic1: &DynamicImage, icon0: Option<&DynamicImage>) -> Result
     // 将背景绘制到画布
     image::imageops::overlay(&mut canvas, &bg, 0, 0);
 
-    // 2. 如果有 ICON0.PNG，绘制到左下角
+    // 2. 如果有 ICON0.PNG，绘制到下部居中
     if let Some(icon) = icon0 {
         let icon_resized = icon.resize_exact(ICON_SIZE, ICON_SIZE, image::imageops::FilterType::Lanczos3);
         let icon_rgba = icon_resized.to_rgba8();
 
-        // 计算左下角位置
-        let x = ICON_MARGIN as i64;
+        // 计算下部居中位置
+        let x = ((BOXART_WIDTH - ICON_SIZE) / 2) as i64;
         let y = (BOXART_HEIGHT - ICON_SIZE - ICON_MARGIN) as i64;
 
         image::imageops::overlay(&mut canvas, &icon_rgba, x, y);
