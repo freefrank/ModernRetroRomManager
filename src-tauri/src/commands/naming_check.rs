@@ -108,39 +108,24 @@ fn clean_english_name(name: &str) -> String {
     result.trim().to_string()
 }
 
-fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
-    // 1. 去除扩展名
-    let stem = std::path::Path::new(filename)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(filename);
-
-    // 2. 清理括号及内容 []()
-    // 策略：找到第一个 [ 或 (，截断
-    let clean_name = if let Some(idx) = stem.find(|c| c == '[' || c == '(') {
-        &stem[..idx]
+/// 统一的游戏名提取函数
+/// - 如果 ROM 在子文件夹中，从文件夹名提取
+/// - 如果 ROM 直接在平台文件夹中，从文件名提取
+/// 
+/// # Arguments
+/// * `name` - 文件名或文件夹名
+/// * `is_filename` - true 表示输入是文件名（需要先去除扩展名）
+fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
+    let mut result = if is_filename {
+        // 去除扩展名
+        std::path::Path::new(name)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(name)
+            .to_string()
     } else {
-        stem
+        name.to_string()
     };
-
-    // 3. 处理全角字符，去除空格
-    let normalized = clean_name
-        .replace('－', "-")
-        .replace('　', "")   // 全角空格移除
-        .replace(' ', "")    // 半角空格移除
-        .trim()
-        .to_string();
-
-    if normalized.is_empty() {
-        None
-    } else {
-        Some(normalized)
-    }
-}
-
-/// 清理文件夹/文件名，去除版本号、汉化组等信息
-fn clean_folder_name(name: &str) -> String {
-    let mut result = name.to_string();
     
     // 去除括号内容：(xxx), [xxx]
     let bracket_re = Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap();
@@ -159,6 +144,11 @@ fn clean_folder_name(name: &str) -> String {
     let version_re = Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap();
     result = version_re.replace_all(&result, "").to_string();
     
+    // 处理全角字符
+    result = result
+        .replace('－', "-")
+        .replace('　', " ");  // 全角空格转半角
+    
     // 去除尾部的分隔符和空格
     result = result.trim_end_matches(|c: char| c == '_' || c == '-' || c == '.' || c.is_whitespace()).to_string();
     
@@ -166,7 +156,22 @@ fn clean_folder_name(name: &str) -> String {
     let multi_space_re = Regex::new(r"\s+").unwrap();
     result = multi_space_re.replace_all(&result, " ").to_string();
     
-    result.trim().to_string()
+    let result = result.trim().to_string();
+    
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+fn parse_cn_name_from_filename(filename: &str) -> Option<String> {
+    extract_game_name(filename, true)
+}
+
+/// 清理文件夹/文件名，去除版本号、汉化组等信息
+fn clean_folder_name(name: &str) -> String {
+    extract_game_name(name, false).unwrap_or_else(|| name.to_string())
 }
 
 /// ROM 扫描条目（包含文件夹信息）
@@ -755,7 +760,8 @@ pub fn get_naming_check_results(path: String) -> Result<Vec<NamingCheckResult>, 
             file: entry.file.clone(),
             name: entry.name.unwrap_or_else(|| entry.file.clone()),
             english_name: entry.english_name,
-            extracted_cn_name: parse_cn_name_from_filename(&entry.file),
+            // 直接使用已保存的 extracted_cn_name，不再重复提取
+            extracted_cn_name: entry.extracted_cn_name,
             confidence: entry.confidence,
         };
         
