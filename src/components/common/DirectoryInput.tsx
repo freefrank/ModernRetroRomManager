@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { clsx } from "clsx";
@@ -33,6 +33,10 @@ export default function DirectoryInput({
     const [isValidating, setIsValidating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // 使用 ref 存储 onValidPath，避免作为依赖导致重复验证
+    const onValidPathRef = useRef(onValidPath);
+    onValidPathRef.current = onValidPath;
+
     useEffect(() => {
         if (!value.trim()) {
             setValidation(null);
@@ -40,16 +44,20 @@ export default function DirectoryInput({
             return;
         }
 
+        console.log("[DEBUG] DirectoryInput: 开始验证, value:", value);
         const timer = setTimeout(async () => {
+            console.log("[DEBUG] DirectoryInput: 执行验证...");
             setIsValidating(true);
             setError(null);
             try {
                 const result = await invoke<PathValidation>("validate_path", { path: value });
+                console.log("[DEBUG] DirectoryInput: 验证结果:", result);
                 setValidation(result);
                 if (result.exists && result.is_directory && result.readable) {
-                    onValidPath?.(result);
+                    onValidPathRef.current?.(result);
                 }
             } catch (err) {
+                console.error("[DEBUG] DirectoryInput: 验证错误:", err);
                 setError(String(err));
                 setValidation(null);
             } finally {
@@ -58,7 +66,7 @@ export default function DirectoryInput({
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [value, onValidPath]);
+    }, [value]);
 
     const handleBrowse = async () => {
         try {

@@ -2504,6 +2504,7 @@ dependencies = [
  "md5",
  "pinyin",
  "quick-xml 0.39.0",
+ "rayon",
  "reqwest 0.13.1",
  "serde",
  "serde_json",

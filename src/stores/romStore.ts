@@ -252,11 +252,57 @@ export const useRomStore = create<RomState>((set, get) => ({
       console.error("Failed to fetch directories:", error);
     }
   },
-  addScanDirectory: async (path: string, metadataFormat="none") => {
+addScanDirectory: async (path: string, metadataFormat="none") => {
     try {
+      // 先添加目录到配置
       await api.addDirectory(path, metadataFormat, false, null);
       await get().fetchScanDirectories();
-      await get().fetchRoms();
+      
+      // 只扫描新添加的目录，而不是全部目录
+      const newSystems = await api.getRomsForDirectory(path, metadataFormat, false, null);
+      
+      // 合并到现有的 systemRoms
+      const { systemRoms, selectedSystem } = get();
+      const updatedSystemRoms = [...systemRoms];
+      
+      for (const newSystem of newSystems) {
+        const existingIndex = updatedSystemRoms.findIndex(s => s.system === newSystem.system);
+        if (existingIndex >= 0) {
+          // 系统已存在，合并 ROMs（避免重复）
+          const existingFiles = new Set(updatedSystemRoms[existingIndex].roms.map(r => r.file));
+          const uniqueRoms = newSystem.roms.filter(r => !existingFiles.has(r.file));
+          updatedSystemRoms[existingIndex].roms.push(...uniqueRoms);
+        } else {
+          // 新系统
+          updatedSystemRoms.push(newSystem);
+        }
+      }
+      
+      const availableSystems = updatedSystemRoms.map(s => ({
+        name: s.system,
+        romCount: s.roms.length,
+      }));
+      
+      let roms: Rom[];
+      if (selectedSystem) {
+        const filtered = updatedSystemRoms.find(s => s.system === selectedSystem);
+        roms = filtered ? filtered.roms : [];
+      } else {
+        roms = updatedSystemRoms.flatMap(s => s.roms);
+      }
+      
+      const totalRoms = updatedSystemRoms.reduce((sum, s) => sum + s.roms.length, 0);
+      
+      set({
+        systemRoms: updatedSystemRoms,
+        availableSystems,
+        roms,
+        stats: {
+          totalRoms,
+          scrapedRoms: 0,
+          totalSize: 0,
+        },
+      });
     } catch (error) {
       console.error("Failed to add directory:", error);
       throw error;

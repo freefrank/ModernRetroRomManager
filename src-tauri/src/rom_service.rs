@@ -6,6 +6,8 @@ use crate::commands::system::get_preset_systems_data;
 use crate::ps3;
 use crate::scraper::pegasus::{parse_pegasus_file, PegasusGame};
 use crate::settings::get_settings;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -465,250 +467,502 @@ fn try_load_from_temp_metadata(
 
 /// 获取所有目录的 ROM 列表
 
+/// 获取单个目录的ROM列表
+pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> Vec<SystemRoms> {
+    let mut systems = Vec::new();
+    let dir_path = Path::new(&dir_config.path);
+
+    println!(
+        "[DEBUG] scan_single_directory: {:?}, is_root_directory={}",
+        dir_path, dir_config.is_root_directory
+    );
+
+    if !dir_path.exists() {
+        println!("[DEBUG] Directory does not exist, skipping");
+        return systems;
+    }
+
+    if dir_config.is_root_directory {
+        // ROMs 根目录模式：扫描子目录和根目录本身
+        let mut root_ps3_games = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(dir_path) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let sub_path = entry.path();
+                if sub_path.is_dir() {
+                    // 检查是否是PS3游戏文件夹
+                    let ps3_game_dir = sub_path.join("PS3_GAME");
+                    if ps3_game_dir.exists() && ps3_game_dir.is_dir() {
+                        root_ps3_games.push(sub_path);
+                        continue;
+                    }
+
+                    let system_name = sub_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+
+                    // 尝试加载临时元数据
+                    if let Some(roms) =
+                        try_load_from_temp_metadata(dir_path, &sub_path, &system_name)
+                    {
+                        println!(
+                            "[DEBUG] Root mode (subdir): 使用临时元数据跳过扫描: system={}",
+                            system_name
+                        );
+                        systems.push(SystemRoms {
+                            system: system_name,
+                            path: sub_path.to_string_lossy().to_string(),
+                            roms,
+                        });
+                        continue;
+                    }
+
+                    // 自动检测子目录的 metadata 格式
+                    let format = detect_metadata_format(&sub_path);
+
+                    if let Ok(mut roms) = get_roms_from_directory(&sub_path, &format, &system_name)
+                    {
+                        if !roms.is_empty() {
+                            println!(
+                                "[DEBUG] Root mode (subdir): dir_path={:?}, sub_path={:?}, system={}",
+                                dir_path, sub_path, system_name
+                            );
+                            let _ =
+                                create_or_update_metadata(dir_path, &sub_path, &system_name, &roms);
+
+                            apply_temp_metadata(&mut roms, dir_path, &system_name);
+
+                            systems.push(SystemRoms {
+                                system: system_name,
+                                path: sub_path.to_string_lossy().to_string(),
+                                roms,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 扫描根目录本身的文件和收集到的PS3游戏文件夹
+        let root_system_name = dir_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown")
+            .to_string();
+
+        let format = detect_metadata_format(dir_path);
+        if let Ok(mut roms) = get_roms_from_directory(dir_path, &format, &root_system_name) {
+            // 添加根目录下的PS3游戏文件夹
+            for ps3_game_path in root_ps3_games {
+                let folder_name = ps3_game_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
+                let game_info = if param_sfo_path.exists() {
+                    match ps3::parse_param_sfo(&param_sfo_path) {
+                        Ok(info) => Some(info),
+                        Err(_) => None,
+                    }
+                } else {
+                    None
+                };
+
+                let game_name = game_info
+                    .as_ref()
+                    .and_then(|info| info.title.clone())
+                    .unwrap_or_else(|| folder_name.clone());
+
+                let game_id = game_info.as_ref().and_then(|info| info.title_id.clone());
+
+                roms.push(RomInfo {
+                    file: folder_name,
+                    name: game_name,
+                    description: game_id.map(|id| format!("Game ID: {}", id)),
+                    summary: None,
+                    developer: None,
+                    publisher: None,
+                    genre: None,
+                    players: None,
+                    release: None,
+                    rating: None,
+                    directory: dir_path.to_string_lossy().to_string(),
+                    system: root_system_name.clone(),
+                    box_front: None,
+                    box_back: None,
+                    box_spine: None,
+                    box_full: None,
+                    cartridge: None,
+                    logo: None,
+                    marquee: None,
+                    bezel: None,
+                    gridicon: None,
+                    flyer: None,
+                    background: None,
+                    music: None,
+                    screenshot: None,
+                    titlescreen: None,
+                    video: None,
+                    english_name: None,
+                    has_temp_metadata: false,
+                    temp_data: None,
+                });
+            }
+
+            if !roms.is_empty() {
+                let library_path = dir_path.parent().unwrap_or(dir_path);
+                println!(
+                    "[DEBUG] Root mode (root itself): dir_path={:?}, library_path={:?}, system={}",
+                    dir_path, library_path, root_system_name
+                );
+                let _ = create_or_update_metadata(library_path, dir_path, &root_system_name, &roms);
+
+                apply_temp_metadata(&mut roms, library_path, &root_system_name);
+
+                systems.push(SystemRoms {
+                    system: root_system_name,
+                    path: dir_config.path.clone(),
+                    roms,
+                });
+            }
+        }
+    } else {
+        // 单系统目录模式
+        let system_name = dir_config.system_id.clone().unwrap_or_else(|| {
+            dir_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Unknown")
+                .to_string()
+        });
+
+        println!(
+            "[DEBUG] 开始扫描单系统目录: {:?}, system={}",
+            dir_path, system_name
+        );
+
+        let library_path = dir_path.parent().unwrap_or(dir_path);
+
+        // 尝试加载临时元数据
+        if let Some(roms) = try_load_from_temp_metadata(library_path, dir_path, &system_name) {
+            println!(
+                "[DEBUG] Single-system mode: 使用临时元数据跳过扫描: system={}",
+                system_name
+            );
+            systems.push(SystemRoms {
+                system: system_name,
+                path: dir_config.path.clone(),
+                roms,
+            });
+        } else {
+            println!("[DEBUG] metadata_format={}", dir_config.metadata_format);
+
+            if let Ok(mut roms) =
+                get_roms_from_directory(dir_path, &dir_config.metadata_format, &system_name)
+            {
+                println!("[DEBUG] 扫描完成, 找到 {} 个 ROM", roms.len());
+                if !roms.is_empty() {
+                    println!(
+                        "[DEBUG] Single-system mode: dir_path={:?}, library_path={:?}, system={}",
+                        dir_path, library_path, system_name
+                    );
+
+                    println!("[DEBUG] 开始 create_or_update_metadata...");
+                    let _ = create_or_update_metadata(library_path, dir_path, &system_name, &roms);
+                    println!("[DEBUG] create_or_update_metadata 完成");
+
+                    println!("[DEBUG] 开始 apply_temp_metadata...");
+                    apply_temp_metadata(&mut roms, library_path, &system_name);
+                    println!("[DEBUG] apply_temp_metadata 完成");
+
+                    systems.push(SystemRoms {
+                        system: system_name,
+                        path: dir_config.path.clone(),
+                        roms,
+                    });
+                    println!("[DEBUG] 已添加到 systems");
+                }
+            } else {
+                println!("[DEBUG] get_roms_from_directory 返回错误");
+            }
+        }
+    }
+
+    systems
+}
+
 pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
     let settings = get_settings();
-    let mut all_systems = Vec::new();
 
     println!(
         "[DEBUG] get_all_roms() called, scanning {} directories",
         settings.directories.len()
     );
 
-    for dir_config in &settings.directories {
-        let dir_path = Path::new(&dir_config.path);
+    let all_systems: Vec<SystemRoms> = settings
+        .directories
+        .par_iter()
+        .flat_map(|dir_config| {
+            let mut systems = Vec::new();
+            let dir_path = Path::new(&dir_config.path);
 
-        println!(
-            "[DEBUG] Checking directory: {:?}, is_root_directory={}",
-            dir_path, dir_config.is_root_directory
-        );
+            println!(
+                "[DEBUG] Checking directory: {:?}, is_root_directory={}",
+                dir_path, dir_config.is_root_directory
+            );
 
-        if !dir_path.exists() {
-            println!("[DEBUG] Directory does not exist, skipping");
-            continue;
-        }
+            if !dir_path.exists() {
+                println!("[DEBUG] Directory does not exist, skipping");
+                return systems;
+            }
 
-        if dir_config.is_root_directory {
-            // ROMs 根目录模式：扫描子目录和根目录本身
-            let mut root_ps3_games = Vec::new(); // 收集根目录下的PS3游戏文件夹
+            if dir_config.is_root_directory {
+                // ROMs 根目录模式：扫描子目录和根目录本身
+                let mut root_ps3_games = Vec::new(); // 收集根目录下的PS3游戏文件夹
 
-            if let Ok(entries) = std::fs::read_dir(dir_path) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    let sub_path = entry.path();
-                    if sub_path.is_dir() {
-                        // 检查是否是PS3游戏文件夹（包含PS3_GAME目录）
-                        let ps3_game_dir = sub_path.join("PS3_GAME");
-                        if ps3_game_dir.exists() && ps3_game_dir.is_dir() {
-                            // 这是PS3游戏文件夹，归入根目录的PS3系统
-                            root_ps3_games.push(sub_path);
-                            continue;
+                if let Ok(entries) = std::fs::read_dir(dir_path) {
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        let sub_path = entry.path();
+                        if sub_path.is_dir() {
+                            // 检查是否是PS3游戏文件夹（包含PS3_GAME目录）
+                            let ps3_game_dir = sub_path.join("PS3_GAME");
+                            if ps3_game_dir.exists() && ps3_game_dir.is_dir() {
+                                // 这是PS3游戏文件夹，归入根目录的PS3系统
+                                root_ps3_games.push(sub_path);
+                                continue;
+                            }
+
+                            let system_name = sub_path
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("Unknown")
+                                .to_string();
+
+                            // 尝试加载临时元数据
+                            if let Some(roms) =
+                                try_load_from_temp_metadata(dir_path, &sub_path, &system_name)
+                            {
+                                println!(
+                                    "[DEBUG] Root mode (subdir): 使用临时元数据跳过扫描: system={}",
+                                    system_name
+                                );
+                                systems.push(SystemRoms {
+                                    system: system_name,
+                                    path: sub_path.to_string_lossy().to_string(),
+                                    roms,
+                                });
+                                continue;
+                            }
+
+                            // 自动检测子目录的 metadata 格式
+                            let format = detect_metadata_format(&sub_path);
+
+                            if let Ok(mut roms) =
+                                get_roms_from_directory(&sub_path, &format, &system_name)
+                            {
+                                if !roms.is_empty() {
+                                    // 创建temp目录和初始metadata文件（如果不存在）
+                                    // 根目录模式：library_path = dir_path, system_dir = sub_path
+                                    println!(
+                                        "[DEBUG] Root mode (subdir): dir_path={:?}, sub_path={:?}, system={}",
+                                        dir_path, sub_path, system_name
+                                    );
+                                    let _ = create_or_update_metadata(
+                                        dir_path,
+                                        &sub_path,
+                                        &system_name,
+                                        &roms,
+                                    );
+
+                                    // 尝试加载临时元数据
+                                    apply_temp_metadata(&mut roms, dir_path, &system_name);
+
+                                    systems.push(SystemRoms {
+                                        system: system_name,
+                                        path: sub_path.to_string_lossy().to_string(),
+                                        roms,
+                                    });
+                                }
+                            }
                         }
+                    }
+                }
 
-                        let system_name = sub_path
+                // 扫描根目录本身的文件和收集到的PS3游戏文件夹
+                let root_system_name = dir_path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Unknown")
+                    .to_string();
+
+                let format = detect_metadata_format(dir_path);
+                if let Ok(mut roms) =
+                    get_roms_from_directory(dir_path, &format, &root_system_name)
+                {
+                    // 添加根目录下的PS3游戏文件夹
+                    for ps3_game_path in root_ps3_games {
+                        let folder_name = ps3_game_path
                             .file_name()
                             .and_then(|n| n.to_str())
                             .unwrap_or("Unknown")
                             .to_string();
 
-                        // 尝试加载临时元数据
-                        if let Some(roms) =
-                            try_load_from_temp_metadata(dir_path, &sub_path, &system_name)
-                        {
-                            println!(
-                                "[DEBUG] Root mode (subdir): 使用临时元数据跳过扫描: system={}",
-                                system_name
-                            );
-                            all_systems.push(SystemRoms {
-                                system: system_name,
-                                path: sub_path.to_string_lossy().to_string(),
-                                roms,
-                            });
-                            continue;
-                        }
-
-                        // 自动检测子目录的 metadata 格式
-                        let format = detect_metadata_format(&sub_path);
-
-                        if let Ok(mut roms) =
-                            get_roms_from_directory(&sub_path, &format, &system_name)
-                        {
-                            if !roms.is_empty() {
-                                // 创建temp目录和初始metadata文件（如果不存在）
-                                // 根目录模式：library_path = dir_path, system_dir = sub_path
-                                println!("[DEBUG] Root mode (subdir): dir_path={:?}, sub_path={:?}, system={}",
-                                    dir_path, sub_path, system_name);
-                                let _ = create_or_update_metadata(
-                                    dir_path,
-                                    &sub_path,
-                                    &system_name,
-                                    &roms,
-                                );
-
-                                // 尝试加载临时元数据
-                                apply_temp_metadata(&mut roms, dir_path, &system_name);
-
-                                all_systems.push(SystemRoms {
-                                    system: system_name,
-                                    path: sub_path.to_string_lossy().to_string(),
-                                    roms,
-                                });
+                        let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
+                        let game_info = if param_sfo_path.exists() {
+                            match ps3::parse_param_sfo(&param_sfo_path) {
+                                Ok(info) => Some(info),
+                                Err(_) => None,
                             }
-                        }
+                        } else {
+                            None
+                        };
+
+                        let game_name = game_info
+                            .as_ref()
+                            .and_then(|info| info.title.clone())
+                            .unwrap_or_else(|| folder_name.clone());
+
+                        let game_id = game_info.as_ref().and_then(|info| info.title_id.clone());
+
+                        roms.push(RomInfo {
+                            file: folder_name,
+                            name: game_name,
+                            description: game_id.map(|id| format!("Game ID: {}", id)),
+                            summary: None,
+                            developer: None,
+                            publisher: None,
+                            genre: None,
+                            players: None,
+                            release: None,
+                            rating: None,
+                            directory: dir_path.to_string_lossy().to_string(),
+                            system: root_system_name.clone(),
+                            box_front: None,
+                            box_back: None,
+                            box_spine: None,
+                            box_full: None,
+                            cartridge: None,
+                            logo: None,
+                            marquee: None,
+                            bezel: None,
+                            gridicon: None,
+                            flyer: None,
+                            background: None,
+                            music: None,
+                            screenshot: None,
+                            titlescreen: None,
+                            video: None,
+                            english_name: None,
+                            has_temp_metadata: false,
+                            temp_data: None,
+                        });
                     }
-                }
-            }
 
-            // 扫描根目录本身的文件和收集到的PS3游戏文件夹
-            let root_system_name = dir_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unknown")
-                .to_string();
-
-            let format = detect_metadata_format(dir_path);
-            if let Ok(mut roms) = get_roms_from_directory(dir_path, &format, &root_system_name) {
-                // 添加根目录下的PS3游戏文件夹
-                for ps3_game_path in root_ps3_games {
-                    let folder_name = ps3_game_path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("Unknown")
-                        .to_string();
-
-                    let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
-                    let game_info = if param_sfo_path.exists() {
-                        match ps3::parse_param_sfo(&param_sfo_path) {
-                            Ok(info) => Some(info),
-                            Err(_) => None,
-                        }
-                    } else {
-                        None
-                    };
-
-                    let game_name = game_info
-                        .as_ref()
-                        .and_then(|info| info.title.clone())
-                        .unwrap_or_else(|| folder_name.clone());
-
-                    let game_id = game_info.as_ref().and_then(|info| info.title_id.clone());
-
-                    roms.push(RomInfo {
-                        file: folder_name,
-                        name: game_name,
-                        description: game_id.map(|id| format!("Game ID: {}", id)),
-                        summary: None,
-                        developer: None,
-                        publisher: None,
-                        genre: None,
-                        players: None,
-                        release: None,
-                        rating: None,
-                        directory: dir_path.to_string_lossy().to_string(),
-                        system: root_system_name.clone(),
-                        box_front: None,
-                        box_back: None,
-                        box_spine: None,
-                        box_full: None,
-                        cartridge: None,
-                        logo: None,
-                        marquee: None,
-                        bezel: None,
-                        gridicon: None,
-                        flyer: None,
-                        background: None,
-                        music: None,
-                        screenshot: None,
-                        titlescreen: None,
-                        video: None,
-                        english_name: None,
-                        has_temp_metadata: false,
-                        temp_data: None,
-                    });
-                }
-
-                if !roms.is_empty() {
-                    // 创建temp目录和初始metadata文件（如果不存在）
-                    // 根目录模式：如果目录名是系统名，使用父目录作为library_path
-                    let library_path = dir_path.parent().unwrap_or(dir_path);
-                    println!("[DEBUG] Root mode (root itself): dir_path={:?}, library_path={:?}, system={}",
-                        dir_path, library_path, root_system_name);
-                    let _ =
-                        create_or_update_metadata(library_path, dir_path, &root_system_name, &roms);
-
-                    apply_temp_metadata(&mut roms, library_path, &root_system_name);
-
-                    all_systems.push(SystemRoms {
-                        system: root_system_name,
-                        path: dir_config.path.clone(),
-                        roms,
-                    });
-                }
-            }
-        } else {
-            // 单系统目录模式
-            let system_name = dir_config.system_id.clone().unwrap_or_else(|| {
-                dir_path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("Unknown")
-                    .to_string()
-            });
-
-            println!(
-                "[DEBUG] 开始扫描单系统目录: {:?}, system={}",
-                dir_path, system_name
-            );
-
-            // 单系统模式：library_path = 父目录
-            let library_path = dir_path.parent().unwrap_or(dir_path);
-
-            // 尝试加载临时元数据
-            if let Some(roms) = try_load_from_temp_metadata(library_path, dir_path, &system_name) {
-                println!(
-                    "[DEBUG] Single-system mode: 使用临时元数据跳过扫描: system={}",
-                    system_name
-                );
-                all_systems.push(SystemRoms {
-                    system: system_name,
-                    path: dir_config.path.clone(),
-                    roms,
-                });
-            } else {
-                println!("[DEBUG] metadata_format={}", dir_config.metadata_format);
-
-                if let Ok(mut roms) =
-                    get_roms_from_directory(dir_path, &dir_config.metadata_format, &system_name)
-                {
-                    println!("[DEBUG] 扫描完成, 找到 {} 个 ROM", roms.len());
                     if !roms.is_empty() {
-                        // 单系统模式：library_path = 父目录, system_dir = dir_path
+                        // 创建temp目录和初始metadata文件（如果不存在）
+                        // 根目录模式：如果目录名是系统名，使用父目录作为library_path
+                        let library_path = dir_path.parent().unwrap_or(dir_path);
                         println!(
-                            "[DEBUG] Single-system mode: dir_path={:?}, library_path={:?}, system={}",
-                            dir_path, library_path, system_name
+                            "[DEBUG] Root mode (root itself): dir_path={:?}, library_path={:?}, system={}",
+                            dir_path, library_path, root_system_name
+                        );
+                        let _ = create_or_update_metadata(
+                            library_path,
+                            dir_path,
+                            &root_system_name,
+                            &roms,
                         );
 
-                        println!("[DEBUG] 开始 create_or_update_metadata...");
-                        let _ =
-                            create_or_update_metadata(library_path, dir_path, &system_name, &roms);
-                        println!("[DEBUG] create_or_update_metadata 完成");
+                        apply_temp_metadata(&mut roms, library_path, &root_system_name);
 
-                        // 尝试加载临时元数据
-                        println!("[DEBUG] 开始 apply_temp_metadata...");
-                        apply_temp_metadata(&mut roms, library_path, &system_name);
-                        println!("[DEBUG] apply_temp_metadata 完成");
-
-                        all_systems.push(SystemRoms {
-                            system: system_name,
+                        systems.push(SystemRoms {
+                            system: root_system_name,
                             path: dir_config.path.clone(),
                             roms,
                         });
-                        println!("[DEBUG] 已添加到 all_systems");
                     }
+                }
+            } else {
+                // 单系统目录模式
+                let system_name = dir_config.system_id.clone().unwrap_or_else(|| {
+                    dir_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string()
+                });
+
+                println!(
+                    "[DEBUG] 开始扫描单系统目录: {:?}, system={}",
+                    dir_path, system_name
+                );
+
+                // 单系统模式：library_path = 父目录
+                let library_path = dir_path.parent().unwrap_or(dir_path);
+
+                // 尝试加载临时元数据
+                if let Some(roms) =
+                    try_load_from_temp_metadata(library_path, dir_path, &system_name)
+                {
+                    println!(
+                        "[DEBUG] Single-system mode: 使用临时元数据跳过扫描: system={}",
+                        system_name
+                    );
+                    systems.push(SystemRoms {
+                        system: system_name,
+                        path: dir_config.path.clone(),
+                        roms,
+                    });
                 } else {
-                    println!("[DEBUG] get_roms_from_directory 返回错误");
+                    println!("[DEBUG] metadata_format={}", dir_config.metadata_format);
+
+                    if let Ok(mut roms) = get_roms_from_directory(
+                        dir_path,
+                        &dir_config.metadata_format,
+                        &system_name,
+                    ) {
+                        println!("[DEBUG] 扫描完成, 找到 {} 个 ROM", roms.len());
+                        if !roms.is_empty() {
+                            // 单系统模式：library_path = 父目录, system_dir = dir_path
+                            println!(
+                                "[DEBUG] Single-system mode: dir_path={:?}, library_path={:?}, system={}",
+                                dir_path, library_path, system_name
+                            );
+
+                            println!("[DEBUG] 开始 create_or_update_metadata...");
+                            let _ = create_or_update_metadata(
+                                library_path,
+                                dir_path,
+                                &system_name,
+                                &roms,
+                            );
+                            println!("[DEBUG] create_or_update_metadata 完成");
+
+                            // 尝试加载临时元数据
+                            println!("[DEBUG] 开始 apply_temp_metadata...");
+                            apply_temp_metadata(&mut roms, library_path, &system_name);
+                            println!("[DEBUG] apply_temp_metadata 完成");
+
+                            systems.push(SystemRoms {
+                                system: system_name,
+                                path: dir_config.path.clone(),
+                                roms,
+                            });
+                            println!("[DEBUG] 已添加到 all_systems");
+                        }
+                    } else {
+                        println!("[DEBUG] get_roms_from_directory 返回错误");
+                    }
                 }
             }
-        }
-    }
+
+            systems
+        })
+        .collect();
 
     Ok(all_systems)
 }

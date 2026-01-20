@@ -18,7 +18,7 @@ pub struct SystemInfo {
     pub rom_type: RomType,     // ROM处理方式
 }
 
-fn get_preset_systems_data() -> Vec<SystemInfo> {
+pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
     vec![
         // Nintendo - FC/NES 系列
         SystemInfo {

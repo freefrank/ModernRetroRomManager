@@ -110,7 +110,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Nintendo - Pokemon Mini.csv"),
             logo_name: Some("POKE MINI.png"),
         },
-
         // Sega 系列
         SystemMapping {
             folder_name: "MD",
@@ -162,7 +161,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Arcade - NAOMI.csv"),
             logo_name: Some("NAOMI.png"),
         },
-
         // Sony 系列
         SystemMapping {
             folder_name: "PS1",
@@ -180,11 +178,15 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             logo_name: Some("PS2.png"),
         },
         SystemMapping {
+            folder_name: "PS3",
+            csv_name: Some("Sony - PlayStation 3.csv"),
+            logo_name: Some("PS3.png"),
+        },
+        SystemMapping {
             folder_name: "PSP",
             csv_name: Some("Sony - PlayStation Portable.csv"),
             logo_name: Some("PSP.png"),
         },
-
         // Bandai 系列
         SystemMapping {
             folder_name: "WS",
@@ -196,14 +198,12 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Bandai - WonderSwan Color.csv"),
             logo_name: Some("WSC.png"),
         },
-
         // SNK 系列
         SystemMapping {
             folder_name: "NGPC",
             csv_name: Some("SNK - Neo Geo Pocket Color.csv"),
             logo_name: Some("NGPC.png"),
         },
-
         // NEC 系列
         SystemMapping {
             folder_name: "PCE",
@@ -220,14 +220,12 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("NEC - PC-FX.csv"),
             logo_name: Some("PC-FX.png"),
         },
-
         // Panasonic
         SystemMapping {
             folder_name: "3DO",
             csv_name: Some("Panasonic - 3DO Interactive Multiplayer.csv"),
             logo_name: Some("3DO.png"),
         },
-
         // Atari 系列
         SystemMapping {
             folder_name: "LYNX",
@@ -239,7 +237,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Atari - Atari 2600.csv"),
             logo_name: Some("ATARI.png"),
         },
-
         // Arcade 系列
         SystemMapping {
             folder_name: "NEOGEO-CD",
@@ -256,7 +253,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Arcade - MODEL3.csv"),
             logo_name: Some("MODEL3.png"),
         },
-
         // Microsoft
         SystemMapping {
             folder_name: "PC",
@@ -268,7 +264,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Microsoft - DOS.csv"),
             logo_name: Some("DOS.png"),
         },
-
         // 其他
         SystemMapping {
             folder_name: "OPENBOR",
@@ -285,7 +280,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: Some("Arcade - TeknoParrot.csv"),
             logo_name: Some("TeknoParrot.png"),
         },
-
         // FBNEO 街机分类
         SystemMapping {
             folder_name: "FBNEO ACT",
@@ -322,7 +316,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: None,
             logo_name: None,
         },
-
         // MAME 街机分类
         SystemMapping {
             folder_name: "MAME ACT",
@@ -359,7 +352,6 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
             csv_name: None,
             logo_name: None,
         },
-
         // 光枪游戏
         SystemMapping {
             folder_name: "Light Gun",

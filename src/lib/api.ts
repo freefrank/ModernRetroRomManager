@@ -80,10 +80,17 @@ export const api = {
     }
   },
 
-  async removeDirectory(path: string): Promise<void> {
+async removeDirectory(path: string): Promise<void> {
     if (isTauri()) {
       await tauriInvoke("remove_directory", { path });
     }
+  },
+
+  async getRomsForDirectory(path: string, metadataFormat: string, isRoot: boolean, systemId: string | null): Promise<SystemRoms[]> {
+    if (isTauri()) {
+      return tauriInvoke<SystemRoms[]>("get_roms_for_single_directory", { path, metadataFormat, isRoot, systemId });
+    }
+    return [];
   },
 
   async getStats(): Promise<{ total_roms: number; total_systems: number }> {

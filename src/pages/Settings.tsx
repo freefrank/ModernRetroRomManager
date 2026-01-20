@@ -108,34 +108,51 @@ export default function Settings() {
   }, []);
 
   const handleAddDirectory = async () => {
+    console.log("[DEBUG] handleAddDirectory 开始, path:", newDirPath, "isValidPath:", isValidPath);
     if (!isValidPath || !newDirPath.trim()) return;
     try {
+      console.log("[DEBUG] 调用 scan_directory...");
       const scanResult = await invoke<DirectoryScanResult>("scan_directory", { path: newDirPath });
+      console.log("[DEBUG] scan_directory 返回:", scanResult);
 
       if (scanResult.metadata_files.length > 0) {
+        console.log("[DEBUG] 检测到 metadata 文件，打开 MetadataImportDialog");
         setPendingDirPath(newDirPath);
         setDetectedMetadata(scanResult.metadata_files);
         setIsAddDialogOpen(false);
         setIsMetadataDialogOpen(true);
       } else if (scanResult.is_root_directory && scanResult.sub_directories.length > 0) {
+        console.log("[DEBUG] 检测到 root 目录，打开 RootDirectoryDialog");
         setPendingDirPath(newDirPath);
         setDetectedSubDirs(scanResult.sub_directories);
         setIsAddDialogOpen(false);
         setIsRootDialogOpen(true);
       } else if (scanResult.sub_directories.length > 0) {
+        console.log("[DEBUG] 有子目录但非 root，打开 RootDirectoryDialog");
         setPendingDirPath(newDirPath);
         setDetectedSubDirs(scanResult.sub_directories);
         setIsAddDialogOpen(false);
         setIsRootDialogOpen(true);
       } else {
-        await addScanDirectory(newDirPath);
+        console.log("[DEBUG] 直接添加目录");
+        // 先关闭弹窗，避免 UI 阻塞感
         setIsAddDialogOpen(false);
+        console.log("[DEBUG] 关闭弹窗 (后台继续扫描)");
+
+        try {
+          console.log("[DEBUG] 调用 addScanDirectory...");
+          await addScanDirectory(newDirPath);
+          console.log("[DEBUG] addScanDirectory 成功");
+        } catch (err) {
+          console.error("[DEBUG] addScanDirectory 失败:", err);
+          // 这里虽然弹窗已关，但可以通过全局错误处理或 Toast 显示错误
+        }
       }
 
       setNewDirPath("");
       setIsValidPath(false);
     } catch (error) {
-      console.error("Error adding directory:", error);
+      console.error("[DEBUG] Error adding directory:", error);
     }
   };
 
@@ -690,7 +707,10 @@ export default function Settings() {
                 {t("common.cancel")}
               </button>
               <button
-                onClick={handleAddDirectory}
+                onClick={() => {
+                  console.log("[DEBUG] 添加目录按钮被点击");
+                  handleAddDirectory();
+                }}
                 disabled={!isValidPath}
                 className="px-6 py-2 bg-accent-primary hover:bg-accent-primary/90 text-text-primary rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >

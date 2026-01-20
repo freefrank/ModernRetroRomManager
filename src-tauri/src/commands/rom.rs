@@ -1,4 +1,5 @@
-use crate::rom_service::{get_all_roms, SystemRoms};
+use crate::rom_service::{get_all_roms, get_roms_for_directory, SystemRoms};
+use crate::settings::DirectoryConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -77,4 +78,29 @@ pub async fn get_rom_stats() -> Result<RomStats, String> {
         total_roms,
         total_systems,
     })
+}
+
+/// 获取单个目录的ROM列表
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn get_roms_for_single_directory(
+    path: String,
+    metadataFormat: String,
+    isRoot: bool,
+    systemId: Option<String>,
+) -> Result<Vec<SystemRoms>, String> {
+    let dir_config = DirectoryConfig {
+        path,
+        metadata_format: metadataFormat,
+        is_root_directory: isRoot,
+        system_id: systemId,
+    };
+    
+    let systems = tokio::task::spawn_blocking(move || {
+        get_roms_for_directory(&dir_config)
+    })
+    .await
+    .map_err(|e| format!("Failed to spawn blocking task: {}", e))?;
+    
+    Ok(systems)
 }

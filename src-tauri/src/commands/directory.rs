@@ -6,7 +6,7 @@ use std::path::Path;
 /// 规范化路径：统一使用正斜杠，小写盘符
 fn normalize_path(path: &str) -> String {
     let normalized = path.replace('\\', "/");
-    
+
     // 处理 Windows 盘符 (如 Z:/ -> z:/)
     if normalized.len() >= 2 && normalized.chars().nth(1) == Some(':') {
         let mut chars: Vec<char> = normalized.chars().collect();
@@ -38,7 +38,6 @@ pub struct DirectoryScanResult {
     pub metadata_files: Vec<MetadataFileInfo>,
     pub sub_directories: Vec<SubDirectoryInfo>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DirectoryInfo {
@@ -72,7 +71,11 @@ pub fn add_directory(
 
     update_setting(|settings| {
         // 使用规范化路径去重
-        if !settings.directories.iter().any(|d| normalize_path(&d.path) == normalized) {
+        if !settings
+            .directories
+            .iter()
+            .any(|d| normalize_path(&d.path) == normalized)
+        {
             settings.directories.push(DirectoryConfig {
                 path: normalized.clone(),
                 metadata_format: metadataFormat.clone(),
@@ -89,7 +92,6 @@ pub fn add_directory(
         metadata_format: metadataFormat,
         system_id: systemId,
     })
-
 }
 
 /// 从配置移除目录
@@ -97,7 +99,9 @@ pub fn add_directory(
 pub fn remove_directory(path: String) -> Result<(), String> {
     let normalized = normalize_path(&path);
     update_setting(|settings| {
-        settings.directories.retain(|d| normalize_path(&d.path) != normalized);
+        settings
+            .directories
+            .retain(|d| normalize_path(&d.path) != normalized);
     })
     .map_err(|e| e.to_string())?;
 
@@ -166,6 +170,7 @@ pub fn detect_metadata_files(path: String) -> Result<Vec<MetadataFileInfo>, Stri
 
 #[tauri::command]
 pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
+    println!("[DEBUG] scan_directory 开始, path: {}", path);
     let base_path = Path::new(&path);
 
     if !base_path.exists() {
@@ -177,9 +182,11 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
     }
 
     let metadata_files = detect_metadata_in_dir(base_path);
-    
+    println!("[DEBUG] 检测到 metadata 文件数量: {}", metadata_files.len());
+
     // 如果当前目录有 metadata 文件，这是单系统目录
     if !metadata_files.is_empty() {
+        println!("[DEBUG] 返回: 单系统目录 (有 metadata)");
         return Ok(DirectoryScanResult {
             is_root_directory: false,
             metadata_files,
@@ -188,13 +195,17 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
     }
 
     // 检查当前目录名或父目录名是否匹配已定义的 retro system
-    let dir_name = base_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
-    
+    let dir_name = base_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+    println!(
+        "[DEBUG] 目录名: '{}', find_mapping_by_folder 结果: {:?}",
+        dir_name,
+        find_mapping_by_folder(dir_name).is_some()
+    );
+
     if find_mapping_by_folder(dir_name).is_some() {
         // 当前目录名匹配已定义的系统，这是单系统目录
+        println!("[DEBUG] 返回: 单系统目录 (目录名匹配系统)");
         return Ok(DirectoryScanResult {
             is_root_directory: false,
             metadata_files: Vec::new(),
@@ -204,7 +215,7 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
 
     // 扫描子目录
     let mut sub_directories = Vec::new();
-    
+
     if let Ok(entries) = std::fs::read_dir(base_path) {
         for entry in entries.filter_map(|e| e.ok()) {
             let sub_path = entry.path();
@@ -215,7 +226,7 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
                     .and_then(|n| n.to_str())
                     .unwrap_or("Unknown")
                     .to_string();
-                
+
                 sub_directories.push(SubDirectoryInfo {
                     name,
                     path: sub_path.to_string_lossy().to_string(),
@@ -226,11 +237,14 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
     }
 
     sub_directories.sort_by(|a, b| a.name.cmp(&b.name));
+    println!("[DEBUG] 子目录数量: {}", sub_directories.len());
 
     // 判断是否为根目录：子目录名匹配已定义的系统，或子目录中有 metadata 文件
-    let is_root = sub_directories.iter().any(|d| {
-        !d.metadata_files.is_empty() || find_mapping_by_folder(&d.name).is_some()
-    });
+    let is_root = sub_directories
+        .iter()
+        .any(|d| !d.metadata_files.is_empty() || find_mapping_by_folder(&d.name).is_some());
+
+    println!("[DEBUG] 返回: is_root_directory={}", is_root);
 
     Ok(DirectoryScanResult {
         is_root_directory: is_root,
@@ -238,4 +252,3 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
         sub_directories,
     })
 }
-

@@ -29,8 +29,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::system::get_systems,
             commands::system::get_system,
-            commands::rom::get_roms,
+commands::rom::get_roms,
             commands::rom::get_rom_stats,
+            commands::rom::get_roms_for_single_directory,
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,
