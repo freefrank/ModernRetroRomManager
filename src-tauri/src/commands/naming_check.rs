@@ -6,6 +6,7 @@ use crate::rom_service::get_roms_from_directory;
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
 use crate::scraper::local_cn::smart_cn_similarity;
 use crate::config::{get_temp_dir, get_data_dir};
+use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -201,9 +202,15 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
         
         for (idx, entry) in dir_entries.into_iter().enumerate() {
             let path = entry.path();
+            // 使用 file_type() 避免额外的 stat 调用
+            let file_type = match entry.file_type() {
+                Ok(ft) => ft,
+                Err(_) => continue,
+            };
+            
             eprintln!("[DEBUG] Processing entry {}: {:?}", idx, path.file_name());
             
-            if path.is_file() {
+            if file_type.is_file() {
                 // 根目录下的文件
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if rom_extensions.contains(ext.to_lowercase().as_str()) {
@@ -218,7 +225,7 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                         });
                     }
                 }
-            } else if path.is_dir() {
+            } else if file_type.is_dir() {
                 // 子文件夹
                 let folder_name = path.file_name()
                     .and_then(|n| n.to_str())
@@ -241,7 +248,12 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                 if let Ok(sub_entries) = fs::read_dir(&path) {
                     for sub_entry in sub_entries.filter_map(|e| e.ok()) {
                         let sub_path = sub_entry.path();
-                        if sub_path.is_file() {
+                        // 使用 file_type() 避免额外的 stat 调用
+                        let sub_file_type = match sub_entry.file_type() {
+                            Ok(ft) => ft,
+                            Err(_) => continue,
+                        };
+                        if sub_file_type.is_file() {
                             if let Some(ext) = sub_path.extension().and_then(|e| e.to_str()) {
                                 if rom_extensions.contains(ext.to_lowercase().as_str()) {
                                     subfolder_rom_paths.push(sub_path);
@@ -272,26 +284,25 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                         cleaned_folder_name: Some(cleaned_name),
                     });
                 } else {
-                    // 多个ROM，需要获取文件大小找最大的
-                    eprintln!("[DEBUG] Multiple ROMs, getting file sizes...");
-                    let mut largest_file: Option<(String, u64)> = None;
-                    for sub_path in subfolder_rom_paths {
-                        let filename = sub_path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("")
-                            .to_string();
-                        eprintln!("[DEBUG] Getting file size for: {}", filename);
-                        let file_size = sub_path.metadata()
-                            .map(|m| m.len())
-                            .unwrap_or(0);
-                        eprintln!("[DEBUG] File size: {} bytes", file_size);
-                        
-                        if largest_file.is_none() || file_size > largest_file.as_ref().unwrap().1 {
-                            largest_file = Some((filename, file_size));
-                        }
-                    }
+                    // 多个ROM，并行获取文件大小找最大的
+                    eprintln!("[DEBUG] Multiple ROMs ({}), getting file sizes in parallel...", subfolder_rom_paths.len());
                     
-                    if let Some((largest_filename, _)) = largest_file {
+                    let sizes: Vec<(String, u64)> = subfolder_rom_paths
+                        .par_iter()
+                        .map(|sub_path| {
+                            let filename = sub_path.file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let file_size = sub_path.metadata()
+                                .map(|m| m.len())
+                                .unwrap_or(0);
+                            (filename, file_size)
+                        })
+                        .collect();
+                    
+                    if let Some((largest_filename, largest_size)) = sizes.into_iter().max_by_key(|(_, size)| *size) {
+                        eprintln!("[DEBUG] Largest file: {} ({} bytes)", largest_filename, largest_size);
                         entries.push(RomScanEntry {
                             file: largest_filename,
                             subfolder: Some(folder_name),
