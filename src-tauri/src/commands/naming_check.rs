@@ -484,6 +484,8 @@ pub async fn scan_directory_for_naming_check(
         // 转换为检查结果，合并临时数据
         // 使用 HashMap 进行去重，以 file 字段为 key
         let mut results_map: std::collections::HashMap<String, NamingCheckResult> = std::collections::HashMap::new();
+        // 同时构建需要保存的临时条目
+        let mut new_temp_entries: Vec<TempMetadataEntry> = Vec::new();
         
         for entry in scan_entries {
             // 优先使用清理后的文件夹名，否则从文件名提取
@@ -500,9 +502,19 @@ pub async fn scan_directory_for_naming_check(
                 file: entry.file.clone(),
                 name: temp_data.and_then(|t| t.name.clone()).or_else(|| extracted.clone()).unwrap_or_else(|| entry.file.clone()),
                 english_name: temp_data.and_then(|t| t.english_name.clone()),
-                extracted_cn_name: extracted,
+                extracted_cn_name: extracted.clone(),
                 confidence: temp_data.and_then(|t| t.confidence),
             };
+            
+            // 构建临时条目（保留已有数据，更新 extracted_cn_name）
+            let temp_entry = TempMetadataEntry {
+                file: entry.file.clone(),
+                name: temp_data.and_then(|t| t.name.clone()),
+                english_name: temp_data.and_then(|t| t.english_name.clone()),
+                confidence: temp_data.and_then(|t| t.confidence),
+                extracted_cn_name: extracted,
+            };
+            new_temp_entries.push(temp_entry);
             
             // 去重：如果已存在，保留有更多信息的条目
             if let Some(existing) = results_map.get(&entry.file) {
@@ -522,6 +534,9 @@ pub async fn scan_directory_for_naming_check(
                 results_map.insert(entry.file, result);
             }
         }
+        
+        // 保存扫描结果到临时 metadata（包含 extracted_cn_name）
+        let _ = save_temp_cn_metadata(&path_clone, &new_temp_entries);
         
         let results: Vec<NamingCheckResult> = results_map.into_values().collect();
 
@@ -586,9 +601,12 @@ pub async fn auto_fix_naming(
         return Err("Directory does not exist".to_string());
     }
 
-    // 使用新的扫描函数
-    let scan_entries = scan_directory_with_folders(dir_path);
-    let total = scan_entries.len();
+    // 从临时 metadata 读取已扫描的条目（不再重新扫描文件系统）
+    let mut entries = load_temp_cn_metadata(&path).unwrap_or_default();
+    if entries.is_empty() {
+        return Err("No scan data found. Please scan the directory first.".to_string());
+    }
+    let total = entries.len();
 
     // 优先使用传入的系统名，否则从目录名获取
     let system_name = system.unwrap_or_else(|| {
@@ -598,21 +616,21 @@ pub async fn auto_fix_naming(
     // 一次性加载 CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
     let csv_entries = {
-        let mut entries = Vec::new();
+        let mut csv_data = Vec::new();
         for repo_path in &repo_paths {
             if let Some(csv_path) = find_csv_in_dir(repo_path, &system_name) {
                 eprintln!("[auto_fix_naming] Found CSV at: {:?}", csv_path);
                 if let Ok(loaded) = read_csv(&csv_path) {
-                    entries = loaded;
+                    csv_data = loaded;
                     break;
                 }
             }
         }
-        if entries.is_empty() {
+        if csv_data.is_empty() {
             eprintln!("[auto_fix_naming] No CSV found for system: {} in paths: {:?}", system_name, repo_paths);
             return Err(format!("No CSV database found for system: {}", system_name));
         }
-        entries
+        csv_data
     };
 
     eprintln!("[auto_fix_naming] Loaded {} entries from CSV", csv_entries.len());
@@ -620,10 +638,7 @@ pub async fn auto_fix_naming(
     let mut success_count = 0;
     let mut failed_count = 0;
 
-    // 加载现有的临时元数据，保留用户手动编辑的数据
-    let mut entries = load_temp_cn_metadata(&path).unwrap_or_default();
-
-    for (idx, scan_entry) in scan_entries.into_iter().enumerate() {
+    for (idx, entry) in entries.iter_mut().enumerate() {
         // 发送进度事件
         let _ = app.emit("naming-match-progress", MatchProgress {
             current: idx + 1,
@@ -631,23 +646,16 @@ pub async fn auto_fix_naming(
         });
 
         // 检查是否已有用户手动编辑的数据（confidence = 100）
-        let existing_entry = entries.iter().find(|e| e.file == scan_entry.file);
-        if let Some(entry) = existing_entry {
-            // 用户手动编辑的数据（满分），跳过自动匹配
-            if entry.confidence == Some(100.0) && entry.english_name.is_some() {
-                continue;
-            }
+        if entry.confidence == Some(100.0) && entry.english_name.is_some() {
+            continue;
         }
 
-        // 优先使用清理后的文件夹名，否则从文件名提取
-        let extracted_cn = if let Some(ref folder_name) = scan_entry.cleaned_folder_name {
-            Some(folder_name.clone())
-        } else {
-            parse_cn_name_from_filename(&scan_entry.file)
-        };
-        let english_suffix = extract_english_suffix(&scan_entry.file);
+        // 使用保存的 extracted_cn_name，否则从文件名提取
+        let extracted_cn = entry.extracted_cn_name.clone()
+            .or_else(|| parse_cn_name_from_filename(&entry.file));
+        let english_suffix = extract_english_suffix(&entry.file);
 
-        let query_name = extracted_cn.clone().unwrap_or_else(|| scan_entry.file.clone());
+        let query_name = extracted_cn.clone().unwrap_or_else(|| entry.file.clone());
 
         // 使用内存中的快速匹配
         if let Some((eng_name, _cn_name, confidence)) = fast_match(
@@ -661,21 +669,11 @@ pub async fn auto_fix_naming(
                 let cleaned_eng_name = clean_english_name(&eng_name);
                 let new_confidence = confidence * 100.0;
 
-                // 更新或新增条目
-                if let Some(entry) = entries.iter_mut().find(|e| e.file == scan_entry.file) {
-                    entry.english_name = Some(cleaned_eng_name);
-                    entry.confidence = Some(new_confidence);
-                    // 保留现有的 name（如果用户已设置）
-                    if entry.name.is_none() {
-                        entry.name = extracted_cn.clone();
-                    }
-                } else {
-                    entries.push(TempMetadataEntry {
-                        file: scan_entry.file.clone(),
-                        name: extracted_cn.clone(),
-                        english_name: Some(cleaned_eng_name),
-                        confidence: Some(new_confidence),
-                    });
+                entry.english_name = Some(cleaned_eng_name);
+                entry.confidence = Some(new_confidence);
+                // 保留现有的 name（如果用户已设置）
+                if entry.name.is_none() {
+                    entry.name = extracted_cn.clone();
                 }
                 success_count += 1;
             } else {
@@ -703,6 +701,9 @@ struct TempMetadataEntry {
     name: Option<String>,
     english_name: Option<String>,
     confidence: Option<f32>,
+    /// 从文件夹名或文件名提取的中文名（用于匹配查询）
+    #[serde(default)]
+    extracted_cn_name: Option<String>,
 }
 
 /// 保存临时元数据到 temp 目录
@@ -811,6 +812,7 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
                     name: Some(cn_name),
                     english_name: None,
                     confidence: None,
+                    extracted_cn_name: None,
                 });
             }
             success_count += 1;
@@ -872,6 +874,7 @@ pub async fn update_english_name(
                 Some(english_name)
             },
             confidence: Some(100.0), // 用户手动编辑的自动设置为满分
+            extracted_cn_name: None,
         });
     }
 
