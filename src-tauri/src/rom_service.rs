@@ -570,13 +570,23 @@ fn read_pegasus_roms(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>,
             return Ok(metadata
                 .games
                 .into_iter()
-                .map(|g| {
+                .filter_map(|g| {
                     let mut rom: RomInfo = g.into();
                     rom.directory = dir_path.to_string_lossy().to_string();
                     rom.system = system_name.to_string();
+                    
+                    // 验证 ROM 文件是否存在
+                    if !rom.file.is_empty() {
+                        let rom_path = dir_path.join(&rom.file);
+                        if !rom_path.exists() {
+                            // ROM 文件不存在，跳过此条目
+                            return None;
+                        }
+                    }
+                    
                     resolve_all_media_paths(&mut rom, dir_path);
                     scan_media_directory(&mut rom, dir_path);
-                    rom
+                    Some(rom)
                 })
                 .collect());
         }
@@ -748,8 +758,18 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
     Ok(game_list
         .games
         .into_iter()
-        .map(|g| {
+        .filter_map(|g| {
             let file = g.path.trim_start_matches("./").to_string();
+            
+            // 验证 ROM 文件是否存在
+            if !file.is_empty() {
+                let rom_path = dir_path.join(&file);
+                if !rom_path.exists() {
+                    // ROM 文件不存在，跳过此条目
+                    return None;
+                }
+            }
+            
             let name = g.name.unwrap_or_else(|| {
                 Path::new(&file)
                     .file_stem()
@@ -758,7 +778,7 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                     .to_string()
             });
             
-            RomInfo {
+            Some(RomInfo {
                 file,
                 name,
                 description: g.desc,
@@ -789,7 +809,7 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 titlescreen: None,
                 video: None,
                 english_name: g.english_name,
-            }
+            })
         })
         .collect())
 
