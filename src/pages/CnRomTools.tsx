@@ -4,31 +4,31 @@ import { Languages, Download, Loader2, Info, ExternalLink, FolderSearch, Refresh
 import { isTauri, api } from "@/lib/api";
 import { clsx } from "clsx";
 import type { GameSystem } from "@/types";
-
-interface MatchProgress {
-  current: number;
-  total: number;
-}
-
-interface CheckResult {
-  file: string;
-  name: string;
-  english_name?: string;
-  extracted_cn_name?: string;
-  confidence?: number; // 匹配置信度 0-100
-}
+import { useCnRomToolsStore, type MatchProgress, type ScanProgress } from "@/stores/cnRomToolsStore";
 
 export default function CnName() {
   const { t } = useTranslation();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [checkPath, setCheckPath] = useState("");
-  const [checkResults, setCheckResults] = useState<CheckResult[]>([]);
-  const [isChecking, setIsChecking] = useState(false);
-  const [isFixing, setIsFixing] = useState(false);
   const [isSettingName, setIsSettingName] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // 从 store 获取状态
+  const {
+    checkPath,
+    setCheckPath,
+    checkResults,
+    isScanning: isChecking,
+    isFixing,
+    scanProgress,
+    matchProgress,
+    setScanProgress,
+    setMatchProgress,
+    scan,
+    autoFix,
+    updateEnglishName,
+  } = useCnRomToolsStore();
 
   // 系统列表（从后端获取）
   const [systems, setSystems] = useState<GameSystem[]>([]);
@@ -50,9 +50,6 @@ export default function CnName() {
     };
     loadSystems();
   }, []);
-
-  // 匹配进度
-  const [matchProgress, setMatchProgress] = useState<MatchProgress | null>(null);
 
   // 编辑状态管理
   const [editingFile, setEditingFile] = useState<string | null>(null);
@@ -153,7 +150,7 @@ export default function CnName() {
     return `rgba(220, 38, 38, ${(50 - normalized) / 50 * 0.7 + 0.3})`; // dark red
   };
 
-  // 监听匹配进度事件
+// 监听匹配进度事件
   useEffect(() => {
     if (!isTauri()) return;
 
@@ -163,6 +160,26 @@ export default function CnName() {
       const { listen } = await import("@tauri-apps/api/event");
       unlisten = await listen<MatchProgress>("naming-match-progress", (event) => {
         setMatchProgress(event.payload);
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // 监听扫描进度事件
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    let unlisten: (() => void) | undefined;
+
+    const setupListener = async () => {
+      const { listen } = await import("@tauri-apps/api/event");
+      unlisten = await listen<ScanProgress>("scan-progress", (event) => {
+        setScanProgress(event.payload);
       });
     };
 
@@ -230,7 +247,7 @@ export default function CnName() {
         directory: true,
         multiple: false,
       });
-      if (selected && typeof selected === "string") {
+if (selected && typeof selected === "string") {
         setCheckPath(selected);
         // 尝试从目录名匹配系统
         const matched = matchSystemFromPath(selected);
@@ -239,35 +256,17 @@ export default function CnName() {
         if (!matched) {
           setShowSystemPicker(true);
         }
-        // 清空之前的结果并自动扫描
-        setCheckResults([]);
         // 自动触发扫描
-        setIsChecking(true);
-        try {
-          const results = await api.scanDirectoryForNamingCheck(selected);
-          setCheckResults(results);
-        } catch (error) {
-          console.error("Failed to check directory:", error);
-        } finally {
-          setIsChecking(false);
-        }
+        scan(selected);
       }
     } catch (error) {
       console.error("Failed to select directory:", error);
     }
   };
 
-  const handleCheck = async () => {
+const handleCheck = async () => {
     if (!checkPath) return;
-    setIsChecking(true);
-    try {
-      const results = await api.scanDirectoryForNamingCheck(checkPath);
-      setCheckResults(results);
-    } catch (error) {
-      console.error("Failed to check directory:", error);
-    } finally {
-      setIsChecking(false);
-    }
+    scan();
   };
 
   const handleAutoFix = async () => {
@@ -282,19 +281,9 @@ export default function CnName() {
       return;
     }
 
-    setIsFixing(true);
-    setMatchProgress(null);
-    try {
-      const result = await api.autoFixNaming(checkPath, selectedSystem.id);
+    const result = await autoFix(selectedSystem.id);
+    if (result) {
       alert(t("cnRomTools.alerts.matchComplete", { success: result.success, failed: result.failed }));
-      // 重新扫描以显示最新状态
-      handleCheck();
-    } catch (error) {
-      console.error("Failed to auto fix:", error);
-      alert(t("cnRomTools.alerts.matchFailed", { error: String(error) }));
-    } finally {
-      setIsFixing(false);
-      setMatchProgress(null);
     }
   };
 
@@ -393,14 +382,10 @@ export default function CnName() {
 
     // 在 checkResults 中查找对应的条目
     const resultIndex = checkResults.findIndex(r => r.file === file);
-    if (resultIndex === -1) return;
+if (resultIndex === -1) return;
 
-    const result = checkResults[resultIndex];
-
-    // 更新本地状态
-    const updatedResults = [...checkResults];
-    updatedResults[resultIndex] = { ...result, english_name: newValue || undefined };
-    setCheckResults(updatedResults);
+    // 更新本地状态（通过store）
+    updateEnglishName(file, newValue || "");
 
     // 调用后端API保存更改
     try {
@@ -508,13 +493,15 @@ export default function CnName() {
                 {t("cnRomTools.browse")}
               </button>
             </div>
-            <button
+<button
               onClick={handleCheck}
               disabled={!checkPath || isChecking || isFixing}
               className="px-6 py-2 bg-accent-primary text-bg-primary font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-accent-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-2 whitespace-nowrap"
             >
               {isChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              {t("cnRomTools.refresh")}
+              {isChecking && scanProgress 
+                ? `(${scanProgress.current}/${scanProgress.total})`
+                : t("cnRomTools.refresh")}
             </button>
           </div>
 

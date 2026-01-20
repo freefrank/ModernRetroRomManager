@@ -104,10 +104,18 @@ async removeDirectory(path: string): Promise<void> {
     };
   },
 
-  /** 扫描目录进行命名检查 */
+/** 扫描目录进行命名检查 */
   async scanDirectoryForNamingCheck(path: string): Promise<{ file: string; name: string; english_name?: string }[]> {
     if (isTauri()) {
       return await tauriInvoke("scan_directory_for_naming_check", { path });
+    }
+    return [];
+  },
+
+  /** 获取命名检查结果（只读取临时元数据，不扫描文件系统） */
+  async getNamingCheckResults(path: string): Promise<{ file: string; name: string; english_name?: string }[]> {
+    if (isTauri()) {
+      return await tauriInvoke("get_naming_check_results", { path });
     }
     return [];
   },

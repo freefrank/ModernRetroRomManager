@@ -718,7 +718,25 @@ fn load_temp_cn_metadata(source_dir: &str) -> Result<Vec<TempMetadataEntry>, Str
     
     let content = fs::read_to_string(&target_file).map_err(|e| e.to_string())?;
     let entries: Vec<TempMetadataEntry> = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-    Ok(entries)
+Ok(entries)
+}
+
+/// 只读取临时元数据，不扫描文件系统（用于快速刷新）
+#[tauri::command]
+pub fn get_naming_check_results(path: String) -> Result<Vec<NamingCheckResult>, String> {
+    let entries = load_temp_cn_metadata(&path).unwrap_or_default();
+    
+    let results = entries.into_iter().map(|entry| {
+        NamingCheckResult {
+            file: entry.file.clone(),
+            name: entry.name.unwrap_or_else(|| entry.file.clone()),
+            english_name: entry.english_name,
+            extracted_cn_name: parse_cn_name_from_filename(&entry.file),
+            confidence: entry.confidence,
+        }
+    }).collect();
+    
+    Ok(results)
 }
 
 /// 将提取的中文名设置为 ROM 名 (写入临时 metadata)
