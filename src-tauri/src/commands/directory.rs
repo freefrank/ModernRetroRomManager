@@ -1,4 +1,5 @@
 use crate::settings::{get_settings, update_setting, DirectoryConfig};
+use crate::system_mapping::find_mapping_by_folder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -160,6 +161,7 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
 
     let metadata_files = detect_metadata_in_dir(base_path);
     
+    // 如果当前目录有 metadata 文件，这是单系统目录
     if !metadata_files.is_empty() {
         return Ok(DirectoryScanResult {
             is_root_directory: false,
@@ -168,6 +170,22 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
         });
     }
 
+    // 检查当前目录名或父目录名是否匹配已定义的 retro system
+    let dir_name = base_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
+    
+    if find_mapping_by_folder(dir_name).is_some() {
+        // 当前目录名匹配已定义的系统，这是单系统目录
+        return Ok(DirectoryScanResult {
+            is_root_directory: false,
+            metadata_files: Vec::new(),
+            sub_directories: Vec::new(),
+        });
+    }
+
+    // 扫描子目录
     let mut sub_directories = Vec::new();
     
     if let Ok(entries) = std::fs::read_dir(base_path) {
@@ -192,10 +210,13 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
 
     sub_directories.sort_by(|a, b| a.name.cmp(&b.name));
 
-    let has_any_metadata = sub_directories.iter().any(|d| !d.metadata_files.is_empty());
+    // 判断是否为根目录：子目录名匹配已定义的系统，或子目录中有 metadata 文件
+    let is_root = sub_directories.iter().any(|d| {
+        !d.metadata_files.is_empty() || find_mapping_by_folder(&d.name).is_some()
+    });
 
     Ok(DirectoryScanResult {
-        is_root_directory: has_any_metadata,
+        is_root_directory: is_root,
         metadata_files: Vec::new(),
         sub_directories,
     })
