@@ -2,13 +2,10 @@
 
 use std::path::{Path, PathBuf};
 use std::fs;
-use crate::config::{get_media_dir, get_temp_dir, get_temp_dir_for_library};
+use crate::config::{get_media_dir, get_temp_dir_for_library};
 use crate::scraper::{GameMetadata, MediaAsset, MediaType};
+use crate::scraper::pegasus::{PegasusGame, PegasusExportOptions, write_pegasus_file};
 use crate::rom_service::RomInfo;
-use quick_xml::events::{BytesStart, Event};
-use quick_xml::reader::Reader;
-use quick_xml::writer::Writer;
-use std::io::Cursor;
 
 // ... existing code ...
 
@@ -159,6 +156,8 @@ pub async fn download_media(
 
 /// 将元数据写入 metadata.txt (Pegasus 格式)
 /// 如果 is_temp 为 true，则写入程序目录下的 temp/{system}/metadata.txt
+/// 
+/// 使用统一的 pegasus 模块进行文件写入，支持合并模式
 pub fn save_metadata_pegasus(
     rom: &RomInfo,
     metadata: &GameMetadata,
@@ -175,72 +174,32 @@ pub fn save_metadata_pegasus(
         Path::new(&rom.directory).join("metadata.txt")
     };
 
-    // 简单实现：由于 Pegasus 格式是文本追加，我们先读取全部内容
-    let mut content = if metadata_path.exists() {
-        fs::read_to_string(&metadata_path).map_err(|e| e.to_string())?
-    } else {
-        format!("collection: {}\n", rom.system)
+    // 转换为 PegasusGame
+    let mut game = PegasusGame {
+        name: metadata.name.clone(),
+        file: Some(rom.file.clone()),
+        developer: metadata.developer.clone(),
+        publisher: metadata.publisher.clone(),
+        genre: metadata.genres.first().cloned(),
+        players: metadata.players.clone(),
+        description: metadata.description.clone(),
+        release: metadata.release_date.clone(),
+        rating: metadata.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
+        ..Default::default()
     };
-
-    // 查找是否已存在该文件
-    let file_marker = format!("file: {}", rom.file);
     
-    let mut game_entry = String::new();
-    game_entry.push_str(&format!("\ngame: {}\n", metadata.name));
-    game_entry.push_str(&format!("file: {}\n", rom.file));
-    if let Some(ref en) = metadata.english_name { game_entry.push_str(&format!("x-english-name: {}\n", en)); }
-    if let Some(ref d) = metadata.description { game_entry.push_str(&format!("description: {}\n", d.replace('\n', " "))); }
-    if let Some(ref d) = metadata.developer { game_entry.push_str(&format!("developer: {}\n", d)); }
-    if let Some(ref p) = metadata.publisher { game_entry.push_str(&format!("publisher: {}\n", p)); }
-    if !metadata.genres.is_empty() { game_entry.push_str(&format!("genres: {}\n", metadata.genres.join(", "))); }
-    if let Some(ref r) = metadata.release_date { game_entry.push_str(&format!("release: {}\n", r)); }
-    if let Some(ref p) = metadata.players { game_entry.push_str(&format!("players: {}\n", p)); }
-    if let Some(ref r) = metadata.rating { game_entry.push_str(&format!("rating: {}%\n", (r * 100.0) as i32)); }
-
-    // 极简处理：如果包含文件名则替换
-    if content.contains(&file_marker) {
-        let lines: Vec<&str> = content.lines().collect();
-        let mut new_lines = Vec::new();
-        let mut in_target_block = false;
-
-        // 首先找到包含 file_marker 的 block 的起始索引
-        let mut target_start_idx = None;
-        for (i, line) in lines.iter().enumerate() {
-            if line.starts_with("game:") {
-                let mut j = i + 1;
-                while j < lines.len() && !lines[j].starts_with("game:") {
-                    if lines[j].trim() == file_marker {
-                        target_start_idx = Some(i);
-                        break;
-                    }
-                    j += 1;
-                }
-            }
-            if target_start_idx.is_some() { break; }
-        }
-
-        if let Some(start_idx) = target_start_idx {
-            for (i, line) in lines.iter().enumerate() {
-                if i == start_idx {
-                    in_target_block = true;
-                    new_lines.push(game_entry.trim());
-                    continue;
-                }
-                if in_target_block && line.starts_with("game:") {
-                    in_target_block = false;
-                }
-                if !in_target_block {
-                    new_lines.push(line);
-                }
-            }
-            content = new_lines.join("\n");
-        } else {
-            content.push_str(&game_entry);
-        }
-    } else {
-        content.push_str(&game_entry);
+    // 添加英文名到 extra 字段
+    if let Some(ref en) = metadata.english_name {
+        game.extra.insert("x-english-name".to_string(), en.clone());
     }
 
-    fs::write(metadata_path, content).map_err(|e| e.to_string())?;
-    Ok(())
+    // 导出选项：包含 collection header（仅当文件不存在时）
+    let options = PegasusExportOptions {
+        include_collection: !metadata_path.exists(),
+        collection_name: Some(rom.system.clone()),
+        ..Default::default()
+    };
+
+    // 使用 merge 模式写入，更新已存在的游戏或追加新游戏
+    write_pegasus_file(&metadata_path, &[game], &options, true)
 }
