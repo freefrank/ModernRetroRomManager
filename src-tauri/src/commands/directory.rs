@@ -3,6 +3,20 @@ use crate::system_mapping::find_mapping_by_folder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+/// 规范化路径：统一使用正斜杠，小写盘符
+fn normalize_path(path: &str) -> String {
+    let normalized = path.replace('\\', "/");
+    
+    // 处理 Windows 盘符 (如 Z:/ -> z:/)
+    if normalized.len() >= 2 && normalized.chars().nth(1) == Some(':') {
+        let mut chars: Vec<char> = normalized.chars().collect();
+        chars[0] = chars[0].to_ascii_lowercase();
+        chars.into_iter().collect()
+    } else {
+        normalized
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MetadataFileInfo {
     pub format: String,
@@ -54,11 +68,13 @@ pub fn add_directory(
     isRoot: bool,
     systemId: Option<String>,
 ) -> Result<DirectoryInfo, String> {
+    let normalized = normalize_path(&path);
 
     update_setting(|settings| {
-        if !settings.directories.iter().any(|d| d.path == path) {
+        // 使用规范化路径去重
+        if !settings.directories.iter().any(|d| normalize_path(&d.path) == normalized) {
             settings.directories.push(DirectoryConfig {
-                path: path.clone(),
+                path: normalized.clone(),
                 metadata_format: metadataFormat.clone(),
                 is_root_directory: isRoot,
                 system_id: systemId.clone(),
@@ -68,7 +84,7 @@ pub fn add_directory(
     .map_err(|e| e.to_string())?;
 
     Ok(DirectoryInfo {
-        path,
+        path: normalized,
         is_root_directory: isRoot,
         metadata_format: metadataFormat,
         system_id: systemId,
@@ -79,8 +95,9 @@ pub fn add_directory(
 /// 从配置移除目录
 #[tauri::command]
 pub fn remove_directory(path: String) -> Result<(), String> {
+    let normalized = normalize_path(&path);
     update_setting(|settings| {
-        settings.directories.retain(|d| d.path != path);
+        settings.directories.retain(|d| normalize_path(&d.path) != normalized);
     })
     .map_err(|e| e.to_string())?;
 
