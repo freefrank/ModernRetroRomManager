@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X, Grid3X3, Wand2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
@@ -67,9 +67,40 @@ export default function Library() {
   const [isRootDialogOpen, setIsRootDialogOpen] = useState(false);
   const [detectedSubDirs, setDetectedSubDirs] = useState<SubDirectoryInfo[]>([]);
 
+  // 搜索过滤 - 仅在搜索词变化时从已有数据中筛选，不重新请求后端
+  // App.tsx 启动时已加载 ROM 数据，这里只做本地过滤
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    fetchRoms({ searchQuery: debouncedSearch });
-  }, [fetchRoms, debouncedSearch]);
+    // 首次渲染跳过，因为 App.tsx 已经加载过数据
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    
+    const { systemRoms, selectedSystem } = useRomStore.getState();
+    let filteredRoms: Rom[];
+    
+    if (debouncedSearch) {
+      // 有搜索词时，从 store 中的 systemRoms 筛选
+      const lowerQuery = debouncedSearch.toLowerCase();
+      if (selectedSystem) {
+        const systemData = systemRoms.find(s => s.system === selectedSystem);
+        filteredRoms = systemData?.roms.filter(r => r.name.toLowerCase().includes(lowerQuery)) || [];
+      } else {
+        filteredRoms = systemRoms.flatMap(s => s.roms).filter(r => r.name.toLowerCase().includes(lowerQuery));
+      }
+    } else {
+      // 无搜索词时，恢复完整列表
+      if (selectedSystem) {
+        const systemData = systemRoms.find(s => s.system === selectedSystem);
+        filteredRoms = systemData?.roms || [];
+      } else {
+        filteredRoms = systemRoms.flatMap(s => s.roms);
+      }
+    }
+    
+    useRomStore.setState({ roms: filteredRoms });
+  }, [debouncedSearch]);
 
   const handleAddDirectory = async () => {
     if (!isValidPath || !newDirPath.trim()) return;

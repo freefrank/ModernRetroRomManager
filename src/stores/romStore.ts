@@ -109,8 +109,19 @@ export const useRomStore = create<RomState>((set, get) => ({
       } else {
         roms = systemRoms.flatMap(s => s.roms);
       }
-      set({ systemRoms, availableSystems, roms, isLoadingRoms: false });
-      get().fetchStats();
+      // 直接从 systemRoms 计算 stats，避免额外的后端调用
+      const totalRoms = systemRoms.reduce((sum, s) => sum + s.roms.length, 0);
+      set({
+        systemRoms,
+        availableSystems,
+        roms,
+        isLoadingRoms: false,
+        stats: {
+          totalRoms,
+          scrapedRoms: 0,
+          totalSize: 0,
+        },
+      });
     } catch (error) {
       console.error("Failed to fetch roms:", error);
       set({ isLoadingRoms: false });

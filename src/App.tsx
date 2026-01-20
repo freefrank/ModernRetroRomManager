@@ -50,13 +50,21 @@ export default function App() {
         fetchScanDirectories(),
       ]);
 
-      // 3. Flatten ROMs and update store
+      // 3. 展平 ROM 列表并更新 store（包含统计信息）
       const roms = systemRoms.flatMap(s => s.roms);
+      const totalRoms = roms.length;
+      const totalSystems = systemRoms.length;
+      
       useRomStore.setState({
         systemRoms,
         availableSystems: systemRoms.map(s => ({ name: s.system, romCount: s.roms.length })),
         roms,
         isLoadingRoms: false,
+        stats: {
+          totalRoms,
+          scrapedRoms: 0,
+          totalSize: 0,
+        },
       });
 
       // 4. Preload first 50 ROM covers BEFORE showing UI
