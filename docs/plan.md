@@ -1,24 +1,42 @@
 # ModernRetroManager - 现代化 Retro ROM 管理软件
 
-## 📝 最近更新 (2026-01-19)
+## 📝 最近更新 (2026-01-20)
 
-### 本次会话完成的修复
+### 本次会话完成的功能
 
-| 修复项 | 文件 | 说明 |
-|--------|------|------|
-| **临时元数据合并** | `naming_check.rs` | `auto_fix_naming` 现在会保留用户手动编辑 (confidence=100) 的条目 |
-| **媒体目录结构** | `ps3.rs`, `persistence.rs` | 统一为嵌套结构 `media/{file_stem}/asset_type.png` |
-| **library_path 计算** | `persistence.rs` | 修复为使用 `rom.directory.parent()` 获取库根目录 |
-| **PS3 Logo 生成** | `ps3.rs`, `boxart.rs` | 新增 `extract_ps3_logo()` 函数，生成 boxart 时同时提取 logo |
-| **Pegasus 解析器** | `pegasus.rs` | 键名大小写不敏感 (`boxFront` → `boxfront`) |
-| **ROM 封面显示** | `RomView.tsx` | 新增 `getRomCover()` 优先检查 `temp_data?.box_front` |
-| **生成后刷新** | `RomDetail.tsx` | 生成 boxart 后自动刷新库视图和临时媒体列表 |
+| 修复/优化项 | 文件 | 说明 |
+|------------|------|------|
+| **扫描结果去重** | `naming_check.rs` | 基于 `file` 字段 HashMap 去重，保留更完整的条目 |
+| **Pegasus 模块统一** | `pegasus.rs`, `persistence.rs`, `naming_check.rs` | 将分散的 Pegasus metadata 生成逻辑统一到 `pegasus.rs` |
+| **增强 Pegasus 导出** | `pegasus.rs` | 新增 `PegasusExportOptions`、`write_pegasus_file()` 支持合并模式 |
+| **匹配英文名优化** | `naming_check.rs` | 不再重复扫描文件夹，直接读取临时 metadata |
+| **移除无用弹窗** | `CnRomTools.tsx` | 移除匹配英文名的确认弹窗和完成提示 |
+| **统一游戏名提取** | `naming_check.rs` | 合并 `parse_cn_name_from_filename` 和 `clean_folder_name` 为 `extract_game_name` |
+| **查询名优先级** | `naming_check.rs` | 匹配时优先使用已生成的 `name` 字段，而非重新提取 |
 
-### 待验证项目
+### 架构改进
 
-- [ ] PS3 boxart 生成后是否正确显示在库视图
-- [ ] Scraper 媒体下载是否使用正确的嵌套目录结构
-- [ ] 中文 ROM 工具重新运行是否保留用户编辑
+#### Pegasus Metadata 模块统一化
+```
+scraper/pegasus.rs (唯一入口)
+├── PegasusExportOptions     # 导出配置（collection header、assets 等）
+├── export_to_pegasus()      # 生成 metadata 字符串
+├── write_pegasus_file()     # 文件写入 + 合并逻辑
+├── write_multiline_field()  # 多行值处理（符合官方规范）
+└── write_asset_field()      # 资源路径字段
+
+调用方:
+├── persistence.rs::save_metadata_pegasus()  # 使用新模块
+└── naming_check.rs::export_pegasus_format() # 使用新模块
+```
+
+#### 游戏名提取逻辑统一化
+```rust
+extract_game_name(name: &str, is_filename: bool) -> Option<String>
+// - 子文件夹 ROM → 从文件夹名提取 (is_filename=false)
+// - 平台文件夹 ROM → 从文件名提取 (is_filename=true)
+// - 统一清理：括号、汉化组、版本号、全角字符
+```
 
 ---
 
