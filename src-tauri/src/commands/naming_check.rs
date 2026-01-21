@@ -2,7 +2,7 @@
 //! 
 //! 用于检查目录下的 ROM 命名情况 (中英文对照)
 
-use crate::rom_service::get_roms_from_directory;
+use crate::rom_service::{get_roms_from_directory, detect_metadata_format};
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
 use crate::scraper::local_cn::smart_cn_similarity;
 use crate::config::{get_temp_dir, get_data_dir};
@@ -480,11 +480,75 @@ pub async fn scan_directory_for_naming_check(
     tokio::task::spawn_blocking(move || {
         let dir_path = Path::new(&path_clone);
 
-        // 使用新的扫描函数，检测子文件夹ROM（带进度回调）
-        let scan_entries = scan_directory_with_folders_progress(dir_path, &app);
+        // 1. 检测是否存在 metadata 文件
+        let metadata_format = detect_metadata_format(dir_path);
+        
+        // 2. 根据 metadata 存在与否决定扫描方式
+        let (scan_entries, metadata_entries) = if metadata_format != "none" {
+            let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            eprintln!("[naming_check] Found metadata ({}), loading directly...", metadata_format);
+            
+            if let Ok(roms) = get_roms_from_directory(dir_path, &metadata_format, &system_name) {
+                // 将 RomInfo 转换为 RomScanEntry
+                let entries: Vec<RomScanEntry> = roms.iter().map(|rom| {
+                    let path = Path::new(&rom.file);
+                    // 如果文件路径包含目录分隔符，则认为是在子文件夹中
+                    let subfolder = path.parent()
+                        .and_then(|p| p.to_str())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string());
+                    
+                    let cleaned_folder_name = subfolder.as_ref().map(|s| clean_folder_name(s));
+                    
+                    RomScanEntry {
+                        file: rom.file.clone(),
+                        subfolder,
+                        cleaned_folder_name,
+                    }
+                }).collect();
+                
+                // 将 RomInfo 转换为 TempMetadataEntry 以预填充数据
+                let meta_entries: Vec<TempMetadataEntry> = roms.iter().map(|rom| {
+                    TempMetadataEntry {
+                        file: rom.file.clone(),
+                        name: Some(rom.name.clone()),
+                        english_name: rom.english_name.clone(),
+                        // 如果 metadata 中有英文名，我们假设它是正确的（confidence=100）
+                        confidence: if rom.english_name.is_some() { Some(100.0) } else { None },
+                        extracted_cn_name: None, // 将在后续循环中重新计算
+                    }
+                }).collect();
+                
+                (entries, Some(meta_entries))
+            } else {
+                eprintln!("[naming_check] Failed to parse metadata, falling back to file scan.");
+                (scan_directory_with_folders_progress(dir_path, &app), None)
+            }
+        } else {
+            // 没有 metadata，执行常规文件扫描
+            (scan_directory_with_folders_progress(dir_path, &app), None)
+        };
 
-        // 读取临时元数据
-        let temp_entries = load_temp_cn_metadata(&path_clone).unwrap_or_default();
+        // 读取现有的临时元数据
+        let mut temp_entries = load_temp_cn_metadata(&path_clone).unwrap_or_default();
+
+        // 如果从 metadata 加载了数据，将其合并到 temp_entries 中（如果不冲突）
+        if let Some(meta_entries) = metadata_entries {
+            for meta in meta_entries {
+                // 如果 temp 中没有这个文件，或者 temp 中没有 english_name 但 metadata 有
+                if let Some(existing) = temp_entries.iter_mut().find(|e| e.file == meta.file) {
+                    if existing.english_name.is_none() && meta.english_name.is_some() {
+                        existing.english_name = meta.english_name;
+                        existing.confidence = meta.confidence;
+                    }
+                    if existing.name.is_none() && meta.name.is_some() {
+                        existing.name = meta.name;
+                    }
+                } else {
+                    temp_entries.push(meta);
+                }
+            }
+        }
 
         // 转换为检查结果，合并临时数据
         // 使用 HashMap 进行去重，以 file 字段为 key

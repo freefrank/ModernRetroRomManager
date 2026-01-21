@@ -278,6 +278,7 @@ const handleCheck = async () => {
     }
 
     await autoFix(selectedSystem.id);
+    setSortOrder(null); // 重置排序状态，防止编辑时列表跳动
   };
 
   const handleSetAsRomName = async () => {
@@ -306,18 +307,13 @@ const handleCheck = async () => {
   const handleAddAsTag = async () => {
     if (!checkPath) return;
     
-    if (!confirm(t("cnRomTools.confirms.addAsTag"))) {
-      return;
-    }
-
     setIsAddingTag(true);
     try {
       if (isTauri()) {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("add_english_as_tag", { directory: checkPath });
       }
-      alert(t("cnRomTools.alerts.addComplete"));
-      handleCheck();
+      // handleCheck(); // 不需要重新扫描，后端并未修改数据结构
     } catch (error) {
       console.error("Failed to add tag:", error);
       alert(t("cnRomTools.alerts.addFailed", { error: String(error) }));

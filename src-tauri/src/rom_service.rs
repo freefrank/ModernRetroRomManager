@@ -968,7 +968,7 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
 }
 
 /// 自动检测目录的 metadata 格式
-fn detect_metadata_format(dir_path: &Path) -> String {
+pub fn detect_metadata_format(dir_path: &Path) -> String {
     if dir_path.join("metadata.pegasus.txt").exists() || dir_path.join("metadata.txt").exists() {
         "pegasus".to_string()
     } else if dir_path.join("gamelist.xml").exists() {

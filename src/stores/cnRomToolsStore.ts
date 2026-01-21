@@ -76,7 +76,16 @@ export const useCnRomToolsStore = create<CnRomToolsState>((set, get) => ({
       const result = await api.autoFixNaming(checkPath, system);
       // 使用快速API读取临时元数据，不重新扫描文件系统
       const results = await api.getNamingCheckResults(checkPath);
-      set({ checkResults: results as CheckResult[] });
+      
+      // 默认按置信度升序排序（未匹配/低置信度在前），方便用户处理
+      const sorted = (results as CheckResult[]).sort((a, b) => {
+        const confA = a.confidence ?? -1;
+        const confB = b.confidence ?? -1;
+        if (confA !== confB) return confA - confB;
+        return a.file.localeCompare(b.file);
+      });
+      
+      set({ checkResults: sorted });
       return result;
     } catch (error) {
       console.error("Failed to auto fix:", error);
