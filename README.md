@@ -18,7 +18,9 @@ MRRM
 
 ## 📚 资源与致谢
 
-- **中文 ROM 数据库**: [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) - 提供了极其宝贵的 ROM 中英文对照数据，使得本软件能够实现精确的中文名匹配与搜索。
+- **中文 ROM 数据库**: 
+  - [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) - 提供了极其宝贵的 ROM 中英文对照数据，使得本软件能够实现精确的中文名匹配与搜索。
+  - [emu.jy6d.com](http://emu.jy6d.com/dz/) - 提供了丰富的游戏中英文对照数据，作为补充数据源增强匹配覆盖率。
 - **Scraper 数据源**:
   - [ScreenScraper](https://www.screenscraper.fr/)
   - [SteamGridDB](https://www.steamgriddb.com/)

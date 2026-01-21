@@ -4,9 +4,11 @@
 
 use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
+use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::pegasus::parse_pegasus_file;
 use crate::scraper::local_cn::smart_cn_similarity;
 use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
+use crate::system_mapping::find_mapping_by_folder;
 use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -258,6 +260,18 @@ fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
     }
 
     paths
+}
+
+/// 获取 jy6d-dz CSV 文件路径（打包资源目录）
+fn get_jy6d_csv_path(app: &AppHandle, csv_name: &str) -> Option<PathBuf> {
+    if let Ok(resource_path) = app.path().resolve("cn-mapping", tauri::path::BaseDirectory::Resource) {
+        let csv_path = resource_path.join(csv_name);
+        if csv_path.exists() {
+            eprintln!("[get_jy6d_csv_path] Found jy6d CSV at: {:?}", csv_path);
+            return Some(csv_path);
+        }
+    }
+    None
 }
 
 #[derive(Debug, Serialize)]
@@ -789,6 +803,49 @@ fn fast_match(
     best_match
 }
 
+/// 在 jy6d-dz 数据中进行快速匹配
+fn fast_match_jy6d(
+    query_cn: &str,
+    english_suffix: Option<&str>,
+    jy6d_entries: &[Jy6dDzEntry],
+) -> Option<(String, String, f32)> {
+    let query_lower = query_cn.to_lowercase();
+    let mut best_match: Option<(String, String, f32)> = None;
+
+    for entry in jy6d_entries {
+        let chinese_lower = entry.chinese_name.to_lowercase();
+
+        // 1. 精确匹配
+        if chinese_lower == query_lower {
+            return Some((entry.english_name.clone(), entry.chinese_name.clone(), 1.0));
+        }
+
+        // 2. 如果有英文后缀（如 OG2），优先匹配包含该后缀的中文名
+        if let Some(suffix) = english_suffix {
+            if entry.chinese_name.contains(suffix) {
+                let score = smart_cn_similarity(&query_lower, &chinese_lower);
+                if score > 0.5 {
+                    return Some((entry.english_name.clone(), entry.chinese_name.clone(), 0.98));
+                }
+            }
+        }
+
+        // 3. 智能相似度匹配
+        let score = smart_cn_similarity(&query_lower, &chinese_lower);
+        if score > 0.75 {
+            if let Some((_, _, best_score)) = &best_match {
+                if score > *best_score {
+                    best_match = Some((entry.english_name.clone(), entry.chinese_name.clone(), score));
+                }
+            } else {
+                best_match = Some((entry.english_name.clone(), entry.chinese_name.clone(), score));
+            }
+        }
+    }
+
+    best_match
+}
+
 #[tauri::command]
 pub async fn auto_fix_naming(
     app: AppHandle,
@@ -812,27 +869,45 @@ pub async fn auto_fix_naming(
         dir_path.file_name().unwrap_or_default().to_string_lossy().to_string()
     });
 
-    // 一次性加载 CSV 到内存（优先使用打包资源）
+    // 一次性加载 cn_repo CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
-    let csv_entries = {
+    let csv_entries: Vec<CnRomEntry> = {
         let mut csv_data = Vec::new();
         for repo_path in &repo_paths {
             if let Some(csv_path) = find_csv_in_dir(repo_path, &system_name) {
-                eprintln!("[auto_fix_naming] Found CSV at: {:?}", csv_path);
+                eprintln!("[auto_fix_naming] Found cn_repo CSV at: {:?}", csv_path);
                 if let Ok(loaded) = read_csv(&csv_path) {
                     csv_data = loaded;
                     break;
                 }
             }
         }
-        if csv_data.is_empty() {
-            eprintln!("[auto_fix_naming] No CSV found for system: {} in paths: {:?}", system_name, repo_paths);
-            return Err(format!("No CSV database found for system: {}", system_name));
-        }
         csv_data
     };
 
-    eprintln!("[auto_fix_naming] Loaded {} entries from CSV", csv_entries.len());
+    // 加载 jy6d-dz CSV 到内存（作为补充数据源）
+    let jy6d_entries: Vec<Jy6dDzEntry> = {
+        let mut jy6d_data = Vec::new();
+        if let Some(mapping) = find_mapping_by_folder(&system_name) {
+            if let Some(jy6d_csv_name) = mapping.jy6d_csv_name {
+                if let Some(csv_path) = get_jy6d_csv_path(&app, jy6d_csv_name) {
+                    eprintln!("[auto_fix_naming] Found jy6d CSV at: {:?}", csv_path);
+                    if let Ok(loaded) = load_jy6d_csv(&csv_path) {
+                        jy6d_data = loaded;
+                    }
+                }
+            }
+        }
+        jy6d_data
+    };
+
+    // 如果两个数据源都没有数据，返回错误
+    if csv_entries.is_empty() && jy6d_entries.is_empty() {
+        eprintln!("[auto_fix_naming] No CSV found for system: {} in paths: {:?}", system_name, repo_paths);
+        return Err(format!("No CSV database found for system: {}", system_name));
+    }
+
+    eprintln!("[auto_fix_naming] Loaded {} entries from cn_repo, {} entries from jy6d", csv_entries.len(), jy6d_entries.len());
 
     let mut success_count = 0;
     let mut failed_count = 0;
@@ -856,12 +931,34 @@ pub async fn auto_fix_naming(
             .unwrap_or_else(|| entry.file.clone());
         let english_suffix = extract_english_suffix(&entry.file);
 
-        // 使用内存中的快速匹配
-        if let Some((eng_name, _cn_name, confidence)) = fast_match(
-            &query_name,
-            english_suffix.as_deref(),
-            &csv_entries,
-        ) {
+        // 双数据源匹配：先查 cn_repo，再查 jy6d，取最高置信度结果
+        let cn_repo_match = if !csv_entries.is_empty() {
+            fast_match(&query_name, english_suffix.as_deref(), &csv_entries)
+        } else {
+            None
+        };
+
+        let jy6d_match = if !jy6d_entries.is_empty() {
+            fast_match_jy6d(&query_name, english_suffix.as_deref(), &jy6d_entries)
+        } else {
+            None
+        };
+
+        // 选择置信度更高的结果
+        let best_result = match (cn_repo_match, jy6d_match) {
+            (Some((eng1, cn1, conf1)), Some((eng2, cn2, conf2))) => {
+                if conf1 >= conf2 {
+                    Some((eng1, cn1, conf1))
+                } else {
+                    Some((eng2, cn2, conf2))
+                }
+            }
+            (Some(r), None) => Some(r),
+            (None, Some(r)) => Some(r),
+            (None, None) => None,
+        };
+
+        if let Some((eng_name, _cn_name, confidence)) = best_result {
             // 只有一个匹配且置信度 > 0.75，或高置信度 > 0.95
             if confidence > 0.95 || confidence > 0.75 {
                 // 清理英文名，去除括号中的区域信息
