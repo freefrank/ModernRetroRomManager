@@ -65,7 +65,12 @@ impl Into<crate::scraper::GameMetadata> for PegasusGame {
     fn into(self) -> crate::scraper::GameMetadata {
         crate::scraper::GameMetadata {
             name: self.name,
-            english_name: self.extra.get("x-english-name").cloned(),
+            // 优先读取 x-mrrm-eng (CN ROM Tool 写入的)，其次读取 x-english-name
+            english_name: self
+                .extra
+                .get("x-mrrm-eng")
+                .or_else(|| self.extra.get("x-english-name"))
+                .cloned(),
             description: self.description,
             release_date: self.release,
             developer: self.developer,

@@ -283,10 +283,6 @@ const handleCheck = async () => {
 
   const handleSetAsRomName = async () => {
     if (!checkPath) return;
-    
-    if (!confirm(t("cnRomTools.confirms.setAsRomName"))) {
-      return;
-    }
 
     setIsSettingName(true);
     try {
@@ -294,7 +290,6 @@ const handleCheck = async () => {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("set_extracted_cn_as_name", { directory: checkPath });
       }
-      alert(t("cnRomTools.alerts.setComplete"));
       handleCheck();
     } catch (error) {
       console.error("Failed to set ROM name:", error);

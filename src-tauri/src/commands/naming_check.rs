@@ -2,16 +2,236 @@
 //! 
 //! 用于检查目录下的 ROM 命名情况 (中英文对照)
 
-use crate::rom_service::{get_roms_from_directory, detect_metadata_format};
+use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
+use crate::scraper::pegasus::parse_pegasus_file;
 use crate::scraper::local_cn::smart_cn_similarity;
-use crate::config::{get_temp_dir, get_data_dir};
+use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
 use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::fs;
 use tauri::{AppHandle, Emitter, Manager};
+
+fn find_preferred_pegasus_metadata_path(dir_path: &Path, system_name: &str) -> Option<PathBuf> {
+    // App 逻辑可能会将系统目录下的 metadata 复制到 temp/{library}/{system}/metadata.pegasus.txt
+    // 这里用于兜底读取（例如源目录没有 metadata，但 temp 里还保留着）
+
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    // 1) 猜测 library_path = dir_path.parent() (常见: library=.../samba, system=.../psp)
+    if let Some(parent) = dir_path.parent() {
+        candidates.push(get_temp_dir_for_library(parent, system_name).join("metadata.pegasus.txt"));
+    }
+
+    // 2) 兼容：library_path = dir_path（如果用户把 system 目录本身当作 library）
+    candidates.push(get_temp_dir_for_library(dir_path, system_name).join("metadata.pegasus.txt"));
+
+    // 3) 兼容旧结构: temp/{system}/metadata.*
+    candidates.push(get_temp_dir().join(system_name).join("metadata.pegasus.txt"));
+    candidates.push(get_temp_dir().join(system_name).join("metadata.txt"));
+
+    candidates.into_iter().find(|p| p.exists())
+}
+
+fn sync_source_metadata_to_temp(dir_path: &Path, system_name: &str) -> Result<Option<PathBuf>, String> {
+    // 用户期望：如果系统目录里存在 metadata，则直接复制到 temp（覆盖更新）。
+    // 这样 CN ROM Tool 显示与后续处理都基于 temp 的 metadata。
+
+    let source_pegasus = dir_path.join("metadata.pegasus.txt");
+    let source_txt = dir_path.join("metadata.txt");
+    let source = if source_pegasus.exists() {
+        source_pegasus
+    } else if source_txt.exists() {
+        source_txt
+    } else {
+        return Ok(None);
+    };
+
+    // 不覆盖已存在的 temp metadata（避免擦掉用户在 temp 中的编辑）
+    let target = temp_pegasus_metadata_path(dir_path, system_name);
+    if target.exists() {
+        return Ok(Some(target));
+    }
+
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    // 无论源文件名是什么，都复制到 temp 的 metadata.pegasus.txt，保持一致
+    fs::copy(&source, &target).map_err(|e| format!("Failed to copy metadata to temp: {}", e))?;
+
+    Ok(Some(target))
+}
+
+fn temp_pegasus_metadata_path(dir_path: &Path, system_name: &str) -> PathBuf {
+    // 约定：temp metadata 按 library/system 分层；library 通常是 system 目录的父级
+    let library_path = dir_path.parent().unwrap_or(dir_path);
+    get_temp_dir_for_library(library_path, system_name).join("metadata.pegasus.txt")
+}
+
+fn ensure_temp_pegasus_metadata_exists(dir_path: &Path, system_name: &str) -> Result<PathBuf, String> {
+    let metadata_path = temp_pegasus_metadata_path(dir_path, system_name);
+
+    if metadata_path.exists() {
+        return Ok(metadata_path);
+    }
+
+    // 如果源目录有 metadata，复制一份到 temp
+    if let Some(p) = sync_source_metadata_to_temp(dir_path, system_name)? {
+        return Ok(p);
+    }
+
+    // 否则创建一个最小可用的 metadata（写入到 temp）
+    if let Some(parent) = metadata_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    let content = format!("collection: {}\nlaunch: {{file.path}}\n\n", system_name);
+    fs::write(&metadata_path, content).map_err(|e| e.to_string())?;
+    Ok(metadata_path)
+}
+
+fn write_updated_pegasus_games(
+    metadata_path: &Path,
+    system_name: &str,
+    metadata: crate::scraper::pegasus::PegasusMetadata,
+) -> Result<(), String> {
+    use crate::scraper::pegasus::{PegasusExportOptions, write_pegasus_file};
+
+    let (collection_name, extensions_vec, launch_command, workdir) = metadata
+        .collections
+        .first()
+        .map(|c| {
+            (
+                Some(c.name.clone()),
+                c.extensions.clone(),
+                c.launch_command.clone(),
+                c.workdir.clone(),
+            )
+        })
+        .unwrap_or((Some(system_name.to_string()), Vec::new(), None, None));
+
+    let extensions = if extensions_vec.is_empty() {
+        None
+    } else {
+        Some(extensions_vec)
+    };
+
+    let options = PegasusExportOptions {
+        include_collection: true,
+        collection_name,
+        extensions,
+        launch_command,
+        workdir,
+        include_assets: true,
+    };
+
+    write_pegasus_file(metadata_path, &metadata.games, &options, false)
+}
+
+fn upsert_temp_pegasus_game_english_name(
+    dir_path: &Path,
+    system_name: &str,
+    rom_file: &str,
+    english_name: Option<&str>,
+) -> Result<(), String> {
+    use crate::scraper::pegasus::PegasusGame;
+
+    let metadata_path = ensure_temp_pegasus_metadata_exists(dir_path, system_name)?;
+    let mut metadata = parse_pegasus_file(&metadata_path).unwrap_or_default();
+
+    let game = metadata
+        .games
+        .iter_mut()
+        .find(|g| g.file.as_deref() == Some(rom_file));
+
+    if let Some(game) = game {
+        match english_name {
+            Some(v) if !v.is_empty() => {
+                game.extra.insert("x-mrrm-eng".to_string(), v.to_string());
+            }
+            _ => {
+                game.extra.remove("x-mrrm-eng");
+                game.extra.remove("x-english-name");
+            }
+        }
+    } else {
+        let mut new_game = PegasusGame {
+            name: rom_file.to_string(),
+            file: Some(rom_file.to_string()),
+            ..Default::default()
+        };
+        if let Some(v) = english_name {
+            if !v.is_empty() {
+                new_game.extra.insert("x-mrrm-eng".to_string(), v.to_string());
+            }
+        }
+        metadata.games.push(new_game);
+    }
+
+    write_updated_pegasus_games(&metadata_path, system_name, metadata)
+}
+
+fn upsert_temp_pegasus_game_name(
+    dir_path: &Path,
+    system_name: &str,
+    rom_file: &str,
+    new_name: &str,
+) -> Result<(), String> {
+    use crate::scraper::pegasus::PegasusGame;
+
+    let metadata_path = ensure_temp_pegasus_metadata_exists(dir_path, system_name)?;
+    let mut metadata = parse_pegasus_file(&metadata_path).unwrap_or_default();
+
+    let game = metadata
+        .games
+        .iter_mut()
+        .find(|g| g.file.as_deref() == Some(rom_file));
+
+    if let Some(game) = game {
+        if !new_name.is_empty() {
+            game.name = new_name.to_string();
+        }
+    } else {
+        let new_game = PegasusGame {
+            name: new_name.to_string(),
+            file: Some(rom_file.to_string()),
+            ..Default::default()
+        };
+        metadata.games.push(new_game);
+    }
+
+    write_updated_pegasus_games(&metadata_path, system_name, metadata)
+}
+
+fn read_pegasus_roms_light(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, String> {
+    // source 目录存在 metadata 时：确保 temp metadata 存在（只在不存在时复制），然后读取 temp
+    // 这样显示/编辑都基于 temp，并且不会覆盖 temp 中的用户修改。
+    let metadata_path = ensure_temp_pegasus_metadata_exists(dir_path, system_name)?;
+
+    let metadata = parse_pegasus_file(&metadata_path)?;
+    Ok(metadata
+        .games
+        .into_iter()
+        .filter_map(|g| {
+            let mut rom: RomInfo = g.into();
+            rom.directory = dir_path.to_string_lossy().to_string();
+            rom.system = system_name.to_string();
+
+            // 轻量模式：只验证 ROM 文件存在，不做媒体扫描
+            if !rom.file.is_empty() {
+                let rom_path = dir_path.join(&rom.file);
+                if !rom_path.exists() {
+                    return None;
+                }
+            }
+
+            Some(rom)
+        })
+        .collect())
+}
 
 /// 获取 rom-name-cn 数据目录列表（优先打包资源，其次用户数据目录）
 fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
@@ -488,7 +708,14 @@ pub async fn scan_directory_for_naming_check(
             let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
             eprintln!("[naming_check] Found metadata ({}), loading directly...", metadata_format);
             
-            if let Ok(roms) = get_roms_from_directory(dir_path, &metadata_format, &system_name) {
+            let roms_result = if metadata_format == "pegasus" {
+                // CN ROM Tool 只需要 file/name/english_name；避免 get_roms_from_directory 的媒体扫描
+                read_pegasus_roms_light(dir_path, &system_name)
+            } else {
+                get_roms_from_directory(dir_path, &metadata_format, &system_name)
+            };
+
+            if let Ok(roms) = roms_result {
                 // 将 RomInfo 转换为 RomScanEntry
                 let entries: Vec<RomScanEntry> = roms.iter().map(|rom| {
                     let path = Path::new(&rom.file);
@@ -765,6 +992,38 @@ pub async fn auto_fix_naming(
         }
     }
 
+    // 同步写入 temp pegasus metadata（将 english_name 落盘到 x-mrrm-eng）
+    {
+        let metadata_path = ensure_temp_pegasus_metadata_exists(dir_path, &system_name)?;
+        let mut pegasus_metadata = parse_pegasus_file(&metadata_path).unwrap_or_default();
+
+        for entry in entries.iter() {
+            let Some(ref eng_name) = entry.english_name else {
+                continue;
+            };
+
+            if let Some(game) = pegasus_metadata
+                .games
+                .iter_mut()
+                .find(|g| g.file.as_deref() == Some(entry.file.as_str()))
+            {
+                game.extra.insert("x-mrrm-eng".to_string(), eng_name.clone());
+            } else {
+                let mut new_game = crate::scraper::pegasus::PegasusGame {
+                    name: entry.name.clone().unwrap_or_else(|| entry.file.clone()),
+                    file: Some(entry.file.clone()),
+                    ..Default::default()
+                };
+                new_game
+                    .extra
+                    .insert("x-mrrm-eng".to_string(), eng_name.clone());
+                pegasus_metadata.games.push(new_game);
+            }
+        }
+
+        write_updated_pegasus_games(&metadata_path, &system_name, pegasus_metadata)?;
+    }
+
     // 保存到 temp 目录
     save_temp_cn_metadata(&path, &entries)?;
 
@@ -873,35 +1132,40 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
     if !dir_path.exists() {
         return Err("Directory does not exist".to_string());
     }
-
-    let format = detect_format(dir_path);
     let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let roms = get_roms_from_directory(dir_path, &format, &system_name)?;
 
     let mut entries = load_temp_cn_metadata(&directory).unwrap_or_default();
     let mut success_count = 0;
 
-    for rom in roms {
-        let extracted_cn = parse_cn_name_from_filename(&rom.file);
-        if let Some(cn_name) = extracted_cn {
-            // 更新或新增
-            if let Some(entry) = entries.iter_mut().find(|e| e.file == rom.file) {
-                entry.name = Some(cn_name);
-                // 保留原有的 english_name 和 confidence
+    // 同步写入 temp 的 pegasus metadata（不扫描媒体）
+    let metadata_path = ensure_temp_pegasus_metadata_exists(dir_path, &system_name)?;
+    let mut pegasus_metadata = parse_pegasus_file(&metadata_path).unwrap_or_default();
+
+    for entry in entries.iter_mut() {
+        if let Some(cn_name) = parse_cn_name_from_filename(&entry.file) {
+            entry.name = Some(cn_name.clone());
+            success_count += 1;
+
+            // 写入 pegasus: 更新 game name
+            if let Some(game) = pegasus_metadata
+                .games
+                .iter_mut()
+                .find(|g| g.file.as_deref() == Some(entry.file.as_str()))
+            {
+                game.name = cn_name;
             } else {
-                entries.push(TempMetadataEntry {
-                    file: rom.file,
-                    name: Some(cn_name),
-                    english_name: None,
-                    confidence: None,
-                    extracted_cn_name: None,
+                pegasus_metadata.games.push(crate::scraper::pegasus::PegasusGame {
+                    name: cn_name,
+                    file: Some(entry.file.clone()),
+                    ..Default::default()
                 });
             }
-            success_count += 1;
         }
     }
 
     save_temp_cn_metadata(&directory, &entries)?;
+
+    write_updated_pegasus_games(&metadata_path, &system_name, pegasus_metadata)?;
 
     Ok(AutoFixResult {
         success: success_count,
@@ -935,32 +1199,35 @@ pub async fn update_english_name(
 ) -> Result<(), String> {
     let mut entries = load_temp_cn_metadata(&directory).unwrap_or_default();
 
+    let english_opt = if english_name.is_empty() {
+        None
+    } else {
+        Some(english_name.clone())
+    };
+
     // 查找或创建条目
     if let Some(entry) = entries.iter_mut().find(|e| e.file == file) {
         // 更新现有条目
-        entry.english_name = if english_name.is_empty() {
-            None
-        } else {
-            Some(english_name)
-        };
+        entry.english_name = english_opt.clone();
         // 用户手动编辑的自动设置为满分
         entry.confidence = Some(100.0);
     } else {
         // 创建新条目
         entries.push(TempMetadataEntry {
-            file,
+            file: file.clone(),
             name: None,
-            english_name: if english_name.is_empty() {
-                None
-            } else {
-                Some(english_name)
-            },
+            english_name: english_opt.clone(),
             confidence: Some(100.0), // 用户手动编辑的自动设置为满分
             extracted_cn_name: None,
         });
     }
 
     save_temp_cn_metadata(&directory, &entries)?;
+
+    // 同步写入 temp pegasus metadata
+    let dir_path = Path::new(&directory);
+    let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    upsert_temp_pegasus_game_english_name(dir_path, &system_name, &file, english_opt.as_deref())?;
     Ok(())
 }
 

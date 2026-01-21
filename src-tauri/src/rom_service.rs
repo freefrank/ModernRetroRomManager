@@ -88,7 +88,11 @@ impl From<PegasusGame> for RomInfo {
             screenshot: game.screenshot,
             titlescreen: game.titlescreen,
             video: game.video,
-            english_name: game.extra.get("x-english-name").cloned(),
+            english_name: game
+                .extra
+                .get("x-mrrm-eng")
+                .or_else(|| game.extra.get("x-english-name"))
+                .cloned(),
             temp_data: None,
 
             has_temp_metadata: false,
