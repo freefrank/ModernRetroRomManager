@@ -1,5 +1,5 @@
 # ModernRetroRomManager - 现代化 Retro ROM 管理软件
-
+MRRM
 打造一款**现代化、跨平台、开源**的 Retro ROM 管理软件，替代老旧的 ARRM 和 Skraper。
 
 ## ✨ 特性
