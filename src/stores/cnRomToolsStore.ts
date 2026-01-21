@@ -35,6 +35,7 @@ interface CnRomToolsState {
   scan: (path?: string) => Promise<void>;
   autoFix: (system: string) => Promise<{ success: number; failed: number } | null>;
   updateEnglishName: (file: string, englishName: string) => void;
+  updateExtractedCnName: (file: string, extractedCnName: string) => void;
 }
 
 export const useCnRomToolsStore = create<CnRomToolsState>((set, get) => ({
@@ -99,6 +100,17 @@ export const useCnRomToolsStore = create<CnRomToolsState>((set, get) => ({
     const { checkResults } = get();
     const updated = checkResults.map((r) =>
       r.file === file ? { ...r, english_name: englishName, confidence: 100 } : r
+    );
+    set({ checkResults: updated });
+  },
+
+  updateExtractedCnName: (file: string, extractedCnName: string) => {
+    const { checkResults } = get();
+    const value = extractedCnName.trim();
+    const updated = checkResults.map((r) =>
+      r.file === file
+        ? { ...r, extracted_cn_name: value ? value : undefined }
+        : r
     );
     set({ checkResults: updated });
   },

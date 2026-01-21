@@ -12,7 +12,12 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter, Manager};
+
+static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
+static VERSION_RE: OnceLock<Regex> = OnceLock::new();
+static MULTI_SPACE_RE: OnceLock<Regex> = OnceLock::new();
 
 fn find_preferred_pegasus_metadata_path(dir_path: &Path, system_name: &str) -> Option<PathBuf> {
     // App 逻辑可能会将系统目录下的 metadata 复制到 temp/{library}/{system}/metadata.pegasus.txt
@@ -348,7 +353,7 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     };
     
     // 去除括号内容：(xxx), [xxx]
-    let bracket_re = Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap();
+    let bracket_re = BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap());
     result = bracket_re.replace_all(&result, "").to_string();
     
     // 去除常见汉化组标识
@@ -361,7 +366,7 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     }
     
     // 去除版本号: v1.0, V2.1, ver1.0 等
-    let version_re = Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap();
+    let version_re = VERSION_RE.get_or_init(|| Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap());
     result = version_re.replace_all(&result, "").to_string();
     
     // 处理全角字符
@@ -373,7 +378,7 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     result = result.trim_end_matches(|c: char| c == '_' || c == '-' || c == '.' || c.is_whitespace()).to_string();
     
     // 去除多余空格
-    let multi_space_re = Regex::new(r"\s+").unwrap();
+    let multi_space_re = MULTI_SPACE_RE.get_or_init(|| Regex::new(r"\s+").unwrap());
     result = multi_space_re.replace_all(&result, " ").to_string();
     
     let result = result.trim().to_string();
@@ -404,13 +409,14 @@ struct RomScanEntry {
     cleaned_folder_name: Option<String>,
 }
 
-/// 扫描目录，检测子文件夹中的ROM
-/// 如果ROM在子文件夹中，使用清理后的文件夹名作为游戏名
-/// 如果子文件夹有多个文件，只返回最大的那个（主ROM）
-fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
-    eprintln!("[DEBUG] scan_directory_with_folders: {:?}", dir_path);
+/// 统一的目录扫描函数
+fn scan_directory_internal<F>(dir_path: &Path, callback: Option<F>) -> Vec<RomScanEntry>
+where
+    F: Fn(usize, usize, &str),
+{
+    eprintln!("[DEBUG] scan_directory_internal: {:?}", dir_path);
     let mut entries = Vec::new();
-    
+
     // ROM 文件扩展名
     let rom_extensions: std::collections::HashSet<&str> = [
         "iso", "cso", "chd", "bin", "cue", "img", "mdf", "nrg",
@@ -419,32 +425,35 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
         "psx", "pbp", "pkg",
         "zip", "7z", "rar",
     ].iter().cloned().collect();
-    
-    eprintln!("[DEBUG] Starting to read directory...");
+
     if let Ok(dir_entries) = fs::read_dir(dir_path) {
         let dir_entries: Vec<_> = dir_entries.filter_map(|e| e.ok()).collect();
-        eprintln!("[DEBUG] Found {} entries in directory", dir_entries.len());
-        
+        let total = dir_entries.len();
+        eprintln!("[DEBUG] Found {} entries in directory", total);
+
         for (idx, entry) in dir_entries.into_iter().enumerate() {
             let path = entry.path();
-            // 使用 file_type() 避免额外的 stat 调用
             let file_type = match entry.file_type() {
                 Ok(ft) => ft,
                 Err(_) => continue,
             };
-            
-            eprintln!("[DEBUG] Processing entry {}: {:?}", idx, path.file_name());
-            
+
+            let folder_name = path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            // 如果有回调，发送进度
+            if let Some(ref cb) = callback {
+                cb(idx + 1, total, &folder_name);
+            }
+
             if file_type.is_file() {
                 // 根目录下的文件
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if rom_extensions.contains(ext.to_lowercase().as_str()) {
-                        let filename = path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("")
-                            .to_string();
                         entries.push(RomScanEntry {
-                            file: filename,
+                            file: folder_name,
                             subfolder: None,
                             cleaned_folder_name: None,
                         });
@@ -452,28 +461,19 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                 }
             } else if file_type.is_dir() {
                 // 子文件夹
-                let folder_name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("")
-                    .to_string();
-                
-                // 跳过常见的媒体资源目录
                 let skip_dirs = [
                     "media", "images", "artwork", "videos", "screenshots",
                     "boxart", "snap", "wheel", "marquee", "named_boxarts", "named_snaps",
                 ];
                 if skip_dirs.iter().any(|&d| folder_name.eq_ignore_ascii_case(d)) {
-                    eprintln!("[DEBUG] Skipping media directory: {}", folder_name);
                     continue;
                 }
-                
-                // 先收集子文件夹中的ROM文件名（不获取大小）
-                eprintln!("[DEBUG] Scanning subfolder: {}", folder_name);
+
+                // 扫描子文件夹中的ROM
                 let mut subfolder_rom_paths: Vec<PathBuf> = Vec::new();
                 if let Ok(sub_entries) = fs::read_dir(&path) {
                     for sub_entry in sub_entries.filter_map(|e| e.ok()) {
                         let sub_path = sub_entry.path();
-                        // 使用 file_type() 避免额外的 stat 调用
                         let sub_file_type = match sub_entry.file_type() {
                             Ok(ft) => ft,
                             Err(_) => continue,
@@ -487,17 +487,13 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                         }
                     }
                 }
-                
-                eprintln!("[DEBUG] Found {} ROMs in subfolder {}", subfolder_rom_paths.len(), folder_name);
-                
+
                 if subfolder_rom_paths.is_empty() {
                     continue;
                 }
-                
-                // 清理文件夹名
+
                 let cleaned_name = clean_folder_name(&folder_name);
-                
-                // 如果只有一个ROM，直接使用（不需要获取文件大小）
+
                 if subfolder_rom_paths.len() == 1 {
                     let filename = subfolder_rom_paths[0].file_name()
                         .and_then(|n| n.to_str())
@@ -510,8 +506,6 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                     });
                 } else {
                     // 多个ROM，并行获取文件大小找最大的
-                    eprintln!("[DEBUG] Multiple ROMs ({}), getting file sizes in parallel...", subfolder_rom_paths.len());
-                    
                     let sizes: Vec<(String, u64)> = subfolder_rom_paths
                         .par_iter()
                         .map(|sub_path| {
@@ -525,129 +519,7 @@ fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
                             (filename, file_size)
                         })
                         .collect();
-                    
-                    if let Some((largest_filename, largest_size)) = sizes.into_iter().max_by_key(|(_, size)| *size) {
-                        eprintln!("[DEBUG] Largest file: {} ({} bytes)", largest_filename, largest_size);
-                        entries.push(RomScanEntry {
-                            file: largest_filename,
-                            subfolder: Some(folder_name),
-                            cleaned_folder_name: Some(cleaned_name),
-                        });
-                    }
-                }
-            }
-        }
-    }
-    
-    eprintln!("[DEBUG] scan_directory_with_folders complete, found {} ROM entries", entries.len());
-    entries
-}
 
-/// 带进度回调的扫描函数
-fn scan_directory_with_folders_progress(dir_path: &Path, app: &AppHandle) -> Vec<RomScanEntry> {
-    eprintln!("[DEBUG] scan_directory_with_folders_progress: {:?}", dir_path);
-    let mut entries = Vec::new();
-    
-    // ROM 文件扩展名
-    let rom_extensions: std::collections::HashSet<&str> = [
-        "iso", "cso", "chd", "bin", "cue", "img", "mdf", "nrg",
-        "nes", "sfc", "smc", "gba", "gbc", "gb", "nds", "3ds",
-        "n64", "z64", "v64", "gcm", "wbfs", "wad", "rvz",
-        "psx", "pbp", "pkg",
-        "zip", "7z", "rar",
-    ].iter().cloned().collect();
-    
-    if let Ok(dir_entries) = fs::read_dir(dir_path) {
-        let dir_entries: Vec<_> = dir_entries.filter_map(|e| e.ok()).collect();
-        let total = dir_entries.len();
-        
-        for (idx, entry) in dir_entries.into_iter().enumerate() {
-            let path = entry.path();
-            let file_type = match entry.file_type() {
-                Ok(ft) => ft,
-                Err(_) => continue,
-            };
-            
-            let folder_name = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("")
-                .to_string();
-            
-            // 发送进度事件
-            let _ = app.emit("scan-progress", ScanProgress {
-                current: idx + 1,
-                total,
-                current_folder: folder_name.clone(),
-            });
-            
-            if file_type.is_file() {
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if rom_extensions.contains(ext.to_lowercase().as_str()) {
-                        entries.push(RomScanEntry {
-                            file: folder_name,
-                            subfolder: None,
-                            cleaned_folder_name: None,
-                        });
-                    }
-                }
-            } else if file_type.is_dir() {
-                let skip_dirs = [
-                    "media", "images", "artwork", "videos", "screenshots",
-                    "boxart", "snap", "wheel", "marquee", "named_boxarts", "named_snaps",
-                ];
-                if skip_dirs.iter().any(|&d| folder_name.eq_ignore_ascii_case(d)) {
-                    continue;
-                }
-                
-                let mut subfolder_rom_paths: Vec<PathBuf> = Vec::new();
-                if let Ok(sub_entries) = fs::read_dir(&path) {
-                    for sub_entry in sub_entries.filter_map(|e| e.ok()) {
-                        let sub_path = sub_entry.path();
-                        let sub_file_type = match sub_entry.file_type() {
-                            Ok(ft) => ft,
-                            Err(_) => continue,
-                        };
-                        if sub_file_type.is_file() {
-                            if let Some(ext) = sub_path.extension().and_then(|e| e.to_str()) {
-                                if rom_extensions.contains(ext.to_lowercase().as_str()) {
-                                    subfolder_rom_paths.push(sub_path);
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if subfolder_rom_paths.is_empty() {
-                    continue;
-                }
-                
-                let cleaned_name = clean_folder_name(&folder_name);
-                
-                if subfolder_rom_paths.len() == 1 {
-                    let filename = subfolder_rom_paths[0].file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("")
-                        .to_string();
-                    entries.push(RomScanEntry {
-                        file: filename,
-                        subfolder: Some(folder_name),
-                        cleaned_folder_name: Some(cleaned_name),
-                    });
-                } else {
-                    let sizes: Vec<(String, u64)> = subfolder_rom_paths
-                        .par_iter()
-                        .map(|sub_path| {
-                            let filename = sub_path.file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or("")
-                                .to_string();
-                            let file_size = sub_path.metadata()
-                                .map(|m| m.len())
-                                .unwrap_or(0);
-                            (filename, file_size)
-                        })
-                        .collect();
-                    
                     if let Some((largest_filename, _)) = sizes.into_iter().max_by_key(|(_, size)| *size) {
                         entries.push(RomScanEntry {
                             file: largest_filename,
@@ -659,8 +531,24 @@ fn scan_directory_with_folders_progress(dir_path: &Path, app: &AppHandle) -> Vec
             }
         }
     }
-    
+
+    eprintln!("[DEBUG] scan_directory_internal complete, found {} ROM entries", entries.len());
     entries
+}
+
+fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
+    scan_directory_internal(dir_path, None::<fn(usize, usize, &str)>)
+}
+
+fn scan_directory_with_folders_progress(dir_path: &Path, app: &AppHandle) -> Vec<RomScanEntry> {
+    let app_handle = app.clone();
+    scan_directory_internal(dir_path, Some(move |current, total, folder: &str| {
+        let _ = app_handle.emit("scan-progress", ScanProgress {
+            current,
+            total,
+            current_folder: folder.to_string(),
+        });
+    }))
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1142,24 +1030,47 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
     let mut pegasus_metadata = parse_pegasus_file(&metadata_path).unwrap_or_default();
 
     for entry in entries.iter_mut() {
-        if let Some(cn_name) = parse_cn_name_from_filename(&entry.file) {
-            entry.name = Some(cn_name.clone());
-            success_count += 1;
+        // "设置ROM名" 以提取的中文名为准（extracted_cn_name）
+        let Some(cn_name) = entry.extracted_cn_name.clone() else {
+            continue;
+        };
 
-            // 写入 pegasus: 更新 game name
-            if let Some(game) = pegasus_metadata
-                .games
-                .iter_mut()
-                .find(|g| g.file.as_deref() == Some(entry.file.as_str()))
-            {
-                game.name = cn_name;
-            } else {
-                pegasus_metadata.games.push(crate::scraper::pegasus::PegasusGame {
-                    name: cn_name,
-                    file: Some(entry.file.clone()),
-                    ..Default::default()
-                });
+        entry.name = Some(cn_name.clone());
+        success_count += 1;
+
+        let entry_basename = Path::new(&entry.file)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(entry.file.as_str());
+
+        // 写入 pegasus: 更新 game name
+        // 兼容：metadata 里可能是纯文件名，也可能是 subfolder/filename
+        if let Some(game) = pegasus_metadata.games.iter_mut().find(|g| {
+            let Some(ref gf) = g.file else {
+                return false;
+            };
+            if gf == &entry.file {
+                return true;
             }
+            Path::new(gf)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|bn| bn == entry_basename)
+        }) {
+            game.name = cn_name;
+
+            // 如果 pegasus 里还是纯文件名，顺便升级成完整相对路径
+            if let Some(ref gf) = game.file {
+                if !gf.contains('/') && entry.file.contains('/') {
+                    game.file = Some(entry.file.clone());
+                }
+            }
+        } else {
+            pegasus_metadata.games.push(crate::scraper::pegasus::PegasusGame {
+                name: cn_name,
+                file: Some(entry.file.clone()),
+                ..Default::default()
+            });
         }
     }
 
@@ -1228,6 +1139,39 @@ pub async fn update_english_name(
     let dir_path = Path::new(&directory);
     let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
     upsert_temp_pegasus_game_english_name(dir_path, &system_name, &file, english_opt.as_deref())?;
+    Ok(())
+}
+
+/// 更新提取的中文名（仅影响 CN ROM Tool 的 extracted_cn_name 字段）
+/// 该字段会被 "设置ROM名" 功能用于写入 pegasus metadata 的 game name。
+#[tauri::command]
+pub async fn update_extracted_cn_name(
+    directory: String,
+    file: String,
+    extracted_cn_name: String,
+) -> Result<(), String> {
+    let mut entries = load_temp_cn_metadata(&directory).unwrap_or_default();
+
+    let extracted_opt = if extracted_cn_name.trim().is_empty() {
+        None
+    } else {
+        Some(extracted_cn_name.trim().to_string())
+    };
+
+    if let Some(entry) = entries.iter_mut().find(|e| e.file == file) {
+        entry.extracted_cn_name = extracted_opt;
+    } else {
+        // 兼容：如果临时数据里还没有该文件，则创建新条目
+        entries.push(TempMetadataEntry {
+            file,
+            name: None,
+            english_name: None,
+            confidence: None,
+            extracted_cn_name: extracted_opt,
+        });
+    }
+
+    save_temp_cn_metadata(&directory, &entries)?;
     Ok(())
 }
 

@@ -53,7 +53,6 @@ export default function App() {
       // 3. 展平 ROM 列表并更新 store（包含统计信息）
       const roms = systemRoms.flatMap(s => s.roms);
       const totalRoms = roms.length;
-      const totalSystems = systemRoms.length;
       
       useRomStore.setState({
         systemRoms,

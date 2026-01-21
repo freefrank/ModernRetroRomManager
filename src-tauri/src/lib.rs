@@ -75,6 +75,7 @@ commands::rom::get_roms,
             commands::naming_check::add_english_as_tag,
             commands::naming_check::export_cn_metadata,
             commands::naming_check::update_english_name,
+            commands::naming_check::update_extracted_cn_name,
 
             // Tools
             commands::tools::update_cn_repo,

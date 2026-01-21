@@ -28,6 +28,7 @@ export default function CnName() {
     scan,
     autoFix,
     updateEnglishName,
+    updateExtractedCnName,
   } = useCnRomToolsStore();
 
   // 系统列表（从后端获取）
@@ -54,6 +55,9 @@ export default function CnName() {
   // 编辑状态管理
   const [editingFile, setEditingFile] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
+
+  const [editingExtractedFile, setEditingExtractedFile] = useState<string | null>(null);
+  const [editingExtractedValue, setEditingExtractedValue] = useState("");
 
   // 排序状态
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
@@ -354,8 +358,19 @@ const handleCheck = async () => {
 
   // 开始编辑英文名
   const handleStartEdit = (file: string, currentValue: string) => {
+    // 切换编辑类型时，关闭另一种编辑
+    setEditingExtractedFile(null);
+    setEditingExtractedValue("");
     setEditingFile(file);
     setEditingValue(currentValue || "");
+  };
+
+  const handleStartEditExtracted = (file: string, currentValue: string) => {
+    // 切换编辑类型时，关闭另一种编辑
+    setEditingFile(null);
+    setEditingValue("");
+    setEditingExtractedFile(file);
+    setEditingExtractedValue(currentValue || "");
   };
 
   // 确认编辑
@@ -390,10 +405,42 @@ if (resultIndex === -1) return;
     setEditingValue("");
   };
 
+  const handleConfirmEditExtracted = async (file: string) => {
+    if (editingExtractedFile !== file) return;
+
+    const newValue = editingExtractedValue.trim();
+
+    // 更新本地状态（通过store）
+    updateExtractedCnName(file, newValue || "");
+
+    // 调用后端API保存更改
+    try {
+      if (isTauri()) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("update_extracted_cn_name", {
+          directory: checkPath,
+          file: file,
+          extractedCnName: newValue,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save extracted cn name:", error);
+      alert(t("cnRomTools.alerts.saveFailed", { error: String(error) }));
+    }
+
+    setEditingExtractedFile(null);
+    setEditingExtractedValue("");
+  };
+
   // 取消编辑
   const handleCancelEdit = () => {
     setEditingFile(null);
     setEditingValue("");
+  };
+
+  const handleCancelEditExtracted = () => {
+    setEditingExtractedFile(null);
+    setEditingExtractedValue("");
   };
 
   const missingCount = checkResults.filter(r => !r.english_name).length;
@@ -557,6 +604,7 @@ if (resultIndex === -1) return;
                     {sortedResults.map((res, idx) => {
                       const isMissing = !res.english_name;
                       const isEditing = editingFile === res.file;
+                      const isEditingExtracted = editingExtractedFile === res.file;
                       const bgColor = getConfidenceColor(res.confidence);
 
                       return (
@@ -567,8 +615,36 @@ if (resultIndex === -1) return;
                             {res.name === res.file ? t("cnRomTools.table.notSet") : res.name}
                           </td>
 
-                          <td className={clsx("px-6 py-3 font-medium truncate", res.extracted_cn_name ? "text-green-400" : "text-text-muted italic")}>
-                            {res.extracted_cn_name || "-"}
+                          <td className="px-6 py-3 font-medium truncate">
+                            {isEditingExtracted ? (
+                              <input
+                                type="text"
+                                value={editingExtractedValue}
+                                onChange={(e) => setEditingExtractedValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleConfirmEditExtracted(res.file);
+                                  } else if (e.key === "Escape") {
+                                    handleCancelEditExtracted();
+                                  }
+                                }}
+                                onBlur={() => handleConfirmEditExtracted(res.file)}
+                                onFocus={(e) => e.target.select()}
+                                autoFocus
+                                className="w-full bg-bg-tertiary border border-accent-primary rounded px-2 py-1 text-sm text-text-primary focus:outline-none"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => handleStartEditExtracted(res.file, res.extracted_cn_name || "")}
+                                className={clsx(
+                                  "w-full text-left truncate hover:underline cursor-pointer",
+                                  res.extracted_cn_name ? "text-green-400" : "text-text-muted italic"
+                                )}
+                                title={t("cnRomTools.table.clickToEdit")}
+                              >
+                                {res.extracted_cn_name || "-"}
+                              </button>
+                            )}
                           </td>
 
                           <td
