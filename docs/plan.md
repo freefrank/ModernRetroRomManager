@@ -1,8 +1,16 @@
 # ModernRetroManager - 现代化 Retro ROM 管理软件
 
-## 📝 最近更新 (2026-01-20)
+## 📝 最近更新 (2026-01-21)
 
 ### 本次会话完成的功能
+
+| 修复/优化项 | 文件 | 说明 |
+|------------|------|------|
+| **双数据源匹配** | `naming_check.rs`, `jy6d_dz.rs` | 集成 jy6d-dz 数据源作为 cn_repo 的补充，自动选择置信度更高的匹配结果 |
+| **jy6d-dz CSV Reader** | `scraper/jy6d_dz.rs` | 新增 jy6d-dz 数据格式读取模块 |
+| **系统映射扩展** | `system_mapping.rs` | 新增 `jy6d_csv_name` 字段支持 jy6d 数据源 |
+
+### 之前完成的功能 (2026-01-20)
 
 | 修复/优化项 | 文件 | 说明 |
 |------------|------|------|
@@ -52,170 +60,127 @@ extract_game_name(name: &str, is_filename: bool) -> Option<String>
 
 ---
 
-## 🏗️ 技术架构
+## 🏗️ 技术架构与调用关系
 
-### 技术栈
+### 1. 核心架构图
 
+```mermaid
+graph TD
+    subgraph "Frontend (React 19 + TypeScript)"
+        UI[UI Components] --> Stores[Zustand Stores]
+        Stores --> APIFacade[API Facade - api.ts]
+    end
+
+    subgraph "Backend - Desktop (Tauri + Rust)"
+        APIFacade -- "tauri::invoke" --> Commands[Tauri Commands]
+        Commands --> RomService[Rom Service]
+        Commands --> ScraperManager[Scraper Manager]
+        Commands --> PS3Module[PS3 Module]
+        Commands --> NamingTools[Naming Tools]
+        
+        RomService --> PegasusParser[Pegasus Parser/Writer]
+        RomService --> ESParser[ES XML Parser]
+        RomService --> Config[Config/Settings]
+        
+        ScraperManager --> Providers[Scraper Providers]
+        ScraperManager --> Matcher[Fuzzy Matcher]
+        Providers --> Persistence[Persistence/Media Downloader]
+    end
+
+    subgraph "Backend - Web (Node.js)"
+        APIFacade -- "HTTP Fetch" --> Express[Express API]
+        Express --> NodeRomService[Node Rom Service]
+    end
+
+    subgraph "Storage Layer"
+        RomService --> ROMS[(ROM Files)]
+        RomService --> Metadata[(metadata.txt / gamelist.xml)]
+        Persistence --> MediaDir[(Media Folders)]
+        Persistence --> TempDir[(Temp Metadata)]
+    end
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Frontend Layer                         │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │    React 19 + TypeScript + TailwindCSS v4           │   │
-│  │   (Vite + Framer Motion + Lucide React)             │   │
-│  └─────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│                      Backend Layer                          │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │     桌面版: Rust (Tauri Framework v2)               │   │
-│  │     - 轻量级 (无内嵌浏览器开销)                     │   │
-│  │     - Metadata 驱动 (直接读写 XML/TXT)              │   │
-│  │     - 跨平台编译 (Win/Mac/Linux)                    │   │
-│  ├─────────────────────────────────────────────────────┤   │
-│  │     Web版: Node.js (Express + TypeScript)           │   │
-│  │     - Docker 容器部署                               │   │
-│  │     - Volume 映射 ROM 目录                          │   │
-│  │     - 媒体文件代理 API                              │   │
-│  └─────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│                      Storage Layer                          │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │             File System (Metadata Files)            │   │
-│  │           pegasus.txt / gamelist.xml                │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
 
-### 详细架构图
+### 2. 调用关系说明
 
-#### 后端架构 (Rust)
-
-```
-src-tauri/src/
-├── main.rs (App Entry)
-├── lib.rs (Tauri Setup)
-├── config.rs (Path/Config Mgmt)
-├── system_mapping.rs (Platform Mapping)
-├── rom_service.rs (Core Service)
-│
-├── commands/ (Tauri APIs)
-│   ├── mod.rs
-│   ├── rom.rs          # ROM listing/scanning
-│   ├── scraper.rs      # Scraper interactions
-│   ├── naming_check.rs # CN naming tools
-│   ├── ps3.rs          # PS3 tools
-│   └── ...
-│
-├── scraper/ (Scraper Engine)
-│   ├── mod.rs
-│   ├── manager.rs      # Provider orchestration
-│   ├── types.rs        # Shared structs
-│   ├── pegasus.rs      # Metadata parser/writer
-│   ├── persistence.rs  # File saving
-│   ├── matcher.rs      # Fuzzy matching
-│   └── providers/      # Implementations
-│       ├── steamgriddb.rs
-│       └── screenscraper.rs
-│
-└── ps3/ (PS3 Module)
-    ├── mod.rs
-    ├── sfo.rs          # PARAM.SFO parser
-    └── boxart.rs       # Boxart generator
-```
+1.  **用户交互流**：用户在 UI（如 `RomView.tsx`）触发操作 → 调用 `romStore.ts` 中的 actions → 调用 `api.ts` 中的封装函数 → 进入后端处理。
+2.  **数据获取流**：后端 `rom_service.rs` 扫描目录，应用 `config/temp` 中的临时元数据（优先级最高），然后读取库目录下的 `metadata.txt` 或 `gamelist.xml`，最后返回给前端。
+3.  **Scraper 流**：`ScraperManager` 并行启动多个 Provider（SteamGridDB, ScreenScraper）进行搜索 → 聚合结果 → 生成置信度评分 → 用户确认后调用 `persistence.rs` 保存元数据到临时目录，并异步下载媒体文件。
+4.  **中文整理流**：`naming_check.rs` 读取本地 `rom-name-cn` CSV 数据库 → 快速模糊匹配 (Fast Match) → 将匹配结果（英文名、置信度）写入临时元数据，不破坏原始 ROM 命名。
 
 ---
 
 ## 📚 代码库详解 (Function Reference)
 
-### 1. 核心服务 (`src-tauri/src/rom_service.rs`)
+### 1. Tauri 命令入口 (`src-tauri/src/commands/`)
 
-核心业务逻辑层，负责协调文件扫描和元数据应用。
+这是前端与后端通信的桥梁。
 
-- `struct RomInfo`: 核心数据结构，表示一个 ROM 及其所有元数据（描述、开发者、媒体路径等）。
-- `struct SystemRoms`: 按系统分组的 ROM 列表。
-- `get_all_roms() -> Result<Vec<SystemRoms>>`: 获取所有配置目录下的 ROM，自动检测 EmulationStation 或 Pegasus 格式。
-- `get_roms_for_directory(config) -> Vec<SystemRoms>`: 扫描单个目录。支持“根目录模式”（包含多个系统子文件夹）和“单系统模式”。
-- `scan_rom_files(dir, system) -> Result<Vec<RomInfo>>`: 底层扫描函数，根据扩展名过滤文件。
-- `apply_temp_metadata(roms, library_path, system)`: 将临时目录 (`config/temp/...`) 中的元数据合并到文件扫描结果中。优先显示临时数据。
-- `try_load_from_temp_metadata(...)`: 尝试直接从临时 metadata 加载 ROM 列表，避免重复扫描文件系统（性能优化）。
-- `create_or_update_metadata(...)`: 在 temp 目录初始化 metadata 文件。
-- `update_rom_media_in_metadata(...)`: 更新 metadata 文件中特定 ROM 的媒体路径。
+- **ROM 管理 (`rom.rs`)**:
+  - `get_roms`: 获取所有配置库的 ROM 列表（核心入口）。
+  - `get_rom_stats`: 获取 ROM 统计信息（总数、系统数）。
+  - `get_roms_for_single_directory`: 获取特定库目录的 ROM。
+- **目录管理 (`directory.rs`)**:
+  - `add_directory`: 添加新的扫描目录。
+  - `get_directories`: 获取已配置的目录列表。
+  - `remove_directory`: 移除目录。
+  - `scan_directory`: 扫描目录并返回原始文件列表。
+- **配置与设置 (`config.rs`)**:
+  - `get_app_settings / save_app_settings`: 应用通用设置（语言、主题、API Key）。
+  - `get_scraper_configs / save_scraper_config`: 各个 Scraper 源的详细配置。
+  - `validate_path`: 后端验证路径合法性。
+- **抓取器 API (`scraper.rs`)**:
+  - `scraper_search`: 并行搜索多个源。
+  - `scraper_auto_scrape`: 自动匹配并聚合数据。
+  - `apply_scraped_data`: 将抓取的数据保存为临时元数据。
+  - `save_temp_metadata`: 手动编辑后保存临时数据。
+- **中文命名工具 (`naming_check.rs`)**:
+  - `scan_directory_for_naming_check`: 核心扫描函数，识别子文件夹 ROM。
+  - `auto_fix_naming`: 一键自动匹配中文/英文名（支持双数据源：cn_repo + jy6d-dz）。
+  - `update_english_name`: 用户手动修正英文名。
+- **jy6d-dz 数据源 (`scraper/jy6d_dz.rs`)**:
+  - `load_jy6d_csv`: 加载 jy6d-dz 格式的中英文对照 CSV。
+  - `Jy6dDzEntry`: 数据结构，包含 english_name, chinese_name, source_id, extra_json。
+- **PS3 工具 (`ps3.rs`)**:
+  - `generate_ps3_boxart`: 为 PS3 游戏合成封面（封面图+图标）。
 
-### 2. 配置管理 (`src-tauri/src/config.rs`)
+### 2. 核心业务逻辑 (`src-tauri/src/rom_service.rs`)
 
-负责所有路径解析和目录管理。
+- `get_all_roms / get_roms_for_directory`: 协调扫描、解析和元数据应用的高层函数。
+- `scan_rom_files`: 无 metadata 时，根据系统后缀过滤扫描文件。
+- `apply_temp_metadata`: **关键函数**。将 `config/temp` 下的临时数据合并到 ROM 信息中，实现非破坏性编辑。
+- `try_load_from_temp_metadata`: 性能优化，直接从生成的临时 metadata 读取，跳过文件系统扫描。
+- `detect_metadata_format`: 自动识别 Pegasus (`metadata.txt`) 或 EmulationStation (`gamelist.xml`)。
+- `scan_media_directory`: 在没有 metadata 定义路径时，自动猜测 `media` / `images` 文件夹下的资源。
 
-- `get_config_dir() -> PathBuf`: 获取配置根目录 (优先 `CONFIG_DIR` 环境变量，否则 `exe/config`).
-- `get_temp_dir() -> PathBuf`: 获取 `config/temp`。
-- `get_media_dir() -> PathBuf`: 获取 `config/media`。
-- `normalize_path_to_dirname(path) -> String`: 将绝对路径（如 `D:\Games`）转换为合法目录名（`d_games`），用于多库隔离。
-- `get_temp_dir_for_library(lib_path, system) -> PathBuf`: 获取特定库+系统的临时目录，如 `config/temp/z/gba/`.
+### 3. 解析器与持久化 (`src-tauri/src/scraper/`)
 
-### 3. Pegasus 解析器 (`src-tauri/src/scraper/pegasus.rs`)
+- **Pegasus 解析 (`pegasus.rs`)**:
+  - `parse_pegasus_file / parse_pegasus_content`: 实现完整的 Pegasus 规范解析，支持多行备注和自动编码检测 (UTF-8/GBK)。
+  - `write_pegasus_file / export_to_pegasus`: 序列化游戏信息回文件，支持 Merge 模式（保留未修改字段）。
+- **调度管理 (`manager.rs`)**:
+  - `ScraperManager::scrape`: 核心调度逻辑，实现 Hash 查找、名称搜索和多源数据聚合。
+  - `aggregate_metadata`: 将不同来源（如 IGDB 的描述 + SteamGridDB 的封面）按优先级合并。
+- **持久化 (`persistence.rs`)**:
+  - `save_metadata_pegasus / save_metadata_emulationstation`: 统一保存接口。
+  - `download_media`: 处理并发图片下载、路径规范化和增量更新。
 
-Pegasus 前端格式 (`metadata.txt`) 的读写引擎。
+### 4. PS3 模块 (`src-tauri/src/ps3/`)
 
-- `struct PegasusGame / PegasusCollection`: 对应文件结构的 Rust 结构体。
-- `struct PegasusExportOptions`: 导出配置（是否包含 assets，header 等）。
-- `parse_pegasus_file(path) -> Result<PegasusMetadata>`: 读取并解析文件，支持自动检测编码（UTF-8/GBK）。
-- `export_to_pegasus(games, options) -> String`: 将游戏列表序列化为 Pegasus 格式字符串。
-- `write_pegasus_file(path, games, options, merge) -> Result<()>`:
-  - **核心功能**：写入文件。
-  - **Merge 模式**：如果 `merge=true`，先读取现有文件，合并新旧数据（新数据覆盖旧数据，保留已有但未更新的字段），然后写回。
-- `write_multiline_field(...)`: 处理多行文本格式（Pegasus 规范）。
+- `sfo.rs`: `PARAM.SFO` 解析器，支持从目录或 ISO（ISO9660 提取）获取游戏名和 ID。
+- `boxart.rs`: 使用 `image` crate 进行图像合成，将 `PIC1.PNG` 作为背景，`ICON0.PNG` 作为图标合成专属预览图。
+- `iso.rs`: 底层 ISO 文件系统解析，用于提取镜像内的资源。
 
-### 4. 数据持久化 (`src-tauri/src/scraper/persistence.rs`)
+### 5. 前端 Store 与 API (`src/stores/`, `src/lib/api.ts`)
 
-负责将内存中的 `GameMetadata` 保存到磁盘。
-
-- `save_metadata_pegasus(rom, metadata, is_temp)`: 将通用元数据保存为 Pegasus 格式。调用 `pegasus::write_pegasus_file`。
-- `save_metadata_emulationstation(...)`: 保存为 `gamelist.xml`。使用 `quick-xml` 进行反序列化->修改->序列化，确保格式稳健。
-- `download_media(rom, assets, is_temp) -> Result<Vec<(MediaType, PathBuf)>>`: 下载网络图片到本地 `media` 目录。
-
-### 5. Scraper 引擎 (`src-tauri/src/scraper/manager.rs` & `types.rs`)
-
-- `struct ScraperManager`: 管理多个 Provider (SteamGridDB, ScreenScraper)。
-- `scrape(query) -> ScrapeResult`: 智能抓取流程：
-  1. Hash 查找 (精确)
-  2. 名字搜索 (模糊)
-  3. 聚合多个 Provider 的 Metadata (按优先级覆盖)
-  4. 并行下载 Media
-- `search(query) -> Vec<SearchResult>`: 并发调用所有 Provider 的搜索接口。
-- `aggregate_metadata(...)`: 合并不同来源的元数据（例如：IGDB 的描述 + SteamGridDB 的封面）。
-
-### 6. 中文 ROM 工具 (`src-tauri/src/commands/naming_check.rs`)
-
-专为中文 ROM 整理设计的工具集。
-
-- `scan_directory_for_naming_check(path)`: 扫描目录，生成 `NamingCheckResult`。
-  - 自动识别子文件夹中的 ROM。
-  - 读取临时 Metadata 状态。
-  - 返回：文件名、当前显示名、已匹配的英文名、置信度。
-- `auto_fix_naming(path, system)`: **一键修复**。
-  - 从 `rom-name-cn` CSV 数据库中查找匹配项。
-  - 使用 `fast_match` 算法（内存中匹配）。
-  - 将匹配结果写入临时 Metadata。
-- `extract_game_name(name, is_filename) -> Option<String>`: **核心清洗逻辑**。
-  - 去除括号 `(USA)`, `[汉化]`。
-  - 去除版本号 `v1.0`。
-  - 处理全角字符。
-  - 用于从文件名或文件夹名提取纯净的游戏标题。
-- `scan_directory_with_folders(path)`: 增强版扫描，支持识别 `ROM/子文件夹/game.iso` 结构。
-- `save_temp_cn_metadata / load_temp_cn_metadata`: 读写 `temp/cn_metadata/{dir}/metadata.json`，用于持久化用户的整理进度。
-
-### 7. 前端 Store (`src/stores/*.ts`)
-
-- `romStore.ts`:
-  - `fetchRoms()`: 调用后端 `get_roms`。
-  - `addScanDirectory()`: 添加新目录并刷新。
-  - `updateTempMetadata()`: 更新前端的临时修改。
-- `scraperStore.ts`:
-  - 管理 Provider 的开启状态、优先级和凭证。
-- `cnRomToolsStore.ts`:
-  - 管理中文工具页面的状态（扫描进度、匹配进度、结果列表）。
+- `romStore.ts`: 管理全局 ROM 数据流，控制扫描进度。
+- `scraperStore.ts`: 管理 Scraper 状态、优先级和搜索结果。
+- `api.ts`: **适配器层**。封装了 Tauri `invoke` 和 Web 端的 `fetch` 调用，实现环境自动感知。
+- `image.ts`: 媒体资源 URL 的统一解析，处理 `convertFileSrc` 与 Web 加密 URL。
 
 ---
 
-## 📋 功能模块状态
+
+---
 
 ### 1. ROM 库管理
 - [x] 目录递归扫描
@@ -232,6 +197,7 @@ Pegasus 前端格式 (`metadata.txt`) 的读写引擎。
 
 ### 3. 中文 ROM 整理
 - [x] CSV 数据库集成 (rom-name-cn)
+- [x] 双数据源支持 (cn_repo + jy6d-dz)
 - [x] 智能命名提取 (去除标签/版本号)
 - [x] 批量自动匹配
 - [x] 结果导出 (Pegasus / Gamelist)
@@ -245,433 +211,52 @@ Pegasus 前端格式 (`metadata.txt`) 的读写引擎。
 
 ---
 
+---
+
 ## 🚀 开发路线图
 
-### Phase 1: 基础框架 (MVP)
-
-#### 1.1 项目初始化
-- [x] 项目规划文档
+### Phase 1: 基础框架 (MVP) - [x] 已完成
 - [x] Tauri v2 + React 19 + TypeScript 项目搭建
-- [x] TailwindCSS v4 + 多主题配置 (8种主题: Light/Dark/Cyberpunk/Ocean/Forest/Sunset/Rose/Nord)
-- [x] 基础路由配置 (React Router 7)
+- [x] TailwindCSS v4 + 8 种主题配置
+- [x] Metadata 解析系统 (Pegasus / ES)
+- [x] 18 种游戏系统预设与图标映射
+- [x] 现代化单页 UI (Grid/List/Spotlight Search)
 
-#### 1.2 数据服务层 (Refactored)
-- [x] 移除 SQLite/Diesel 依赖
-- [x] 实现 Metadata 文件解析器 (Pegasus / EmulationStation)
-- [x] 预置 18 种游戏系统数据 (Config file)
-- [x] 系统名称映射配置 (60+ 平台，统一 CSV/Logo 映射)
-- [x] 基础 Tauri Commands (get_roms, get_stats)
-- [x] 目录扫描替代旧导入流程
-- [x] 前端 ROM 列表字段对齐
+### Phase 2: Scraper 核心 - [/] 进行中
+- [x] ScraperManager 统一调度层
+- [x] Standardized Data Models (GameMetadata, MediaAsset)
+- [x] SteamGridDB & ScreenScraper 集成
+- [x] 多源数据智能聚合 (Priority-based Merge)
+- [x] Hash 精确匹配 (CRC32/MD5/SHA1)
+- [x] 并行媒体下载与本地缓存
+- [ ] 批量 Scrape 任务队列与进度反馈 (Coming soon)
+- [ ] 更多 Provider 集成 (IGDB, MobyGames)
 
-#### 1.3 基础 UI
-- [x] 现代化 Cyberpunk 风格布局
-- [x] Glassmorphism 侧边栏导航
-- [x] 国际化支持 (i18n)
-- [x] ROM 列表视图（表格）
-- [x] ROM 列表视图（网格）
-- [x] ROM 详情面板
-- [x] 全局搜索 (Spotlight 风格)
-- [x] ROM 网格视图（封面）
+### Phase 3: 中文 ROM 专场 - [x] 已完成
+- [x] `rom-name-cn` 本地数据库集成
+- [x] 智能文件名提取与清洗 (版本号/标签过滤)
+- [x] 目录结构识别 (子文件夹 ROM 支持)
+- [x] 自动重命名/对照一键修复
+- [x] 整理进度持久化 (Temp Metadata)
 
-#### 1.4 ROM 扫描器
-- [x] 目录递归扫描 (Backend)
-- [x] 文件扩展名过滤 (Backend)
-- [x] CRC32/MD5/SHA1 计算 (Backend)
-- [x] 系统自动识别 (Backend)
-- [x] 扫描目录管理 UI (Frontend)
-- [x] 扫描进度展示 (Frontend)
+### Phase 4: PS3 专场 - [x] 已完成
+- [x] PARAM.SFO 与 ISO 镜像解析
+- [x] 封面预览图自动合成引擎
+- [x] 混合目录扫描支持
 
-### Phase 2: Scraper 核心
+### Phase 5: 临时元数据架构 (Temp Metadata) - [x] 已完成
+- [x] 统一样式：不修改原始 ROM 目录，所有修改存入 `config/temp`
+- [x] 多库隔离机制 (Path Normalization)
+- [x] 手动编辑实时保存与前端覆盖显示
+- [x] 媒体 URL 解析与预加载系统
 
-#### 2.1 ScraperManager 统一调度层
-- [x] ScraperManager 核心实现
-  - [x] Provider 注册/管理 (HashMap<String, Box<dyn Scraper>>)
-  - [x] 统一搜索接口 (并行查询多 provider)
-  - [x] 统一元数据/媒体获取接口
-  - [x] 智能 scrape (自动匹配 + 聚合)
-  - [ ] 批量 scrape (进度回调)
-- [x] 标准化数据结构
-  - [x] ScrapeQuery (name, system, hash, file_name)
-  - [x] SearchResult (provider, source_id, name, confidence)
-  - [x] GameMetadata (name, description, developer, publisher, genres, rating)
-  - [x] MediaAsset (provider, url, asset_type, dimensions)
-  - [x] MediaType 枚举 (BoxFront, Screenshot, Logo, Video, etc.)
-- [x] Provider trait (可扩展接口)
-  - [x] id() + display_name() -> 标识符
-  - [x] capabilities() -> 支持的功能 (search, hash_lookup, metadata, media)
-  - [x] search(query) -> Vec<SearchResult>
-  - [x] get_metadata(source_id) -> GameMetadata
-  - [x] get_media(source_id) -> Vec<MediaAsset>
-  - [x] lookup_by_hash() -> 可选实现
-
-#### 2.2 内置 Provider 实现
-- [x] SteamGridDB (媒体为主，适配新 trait)
-- [x] ScreenScraper (元数据+媒体，支持 Hash 查找)
-- [ ] IGDB (元数据为主)
-- [ ] TheGamesDB (免费，社区驱动)
-- [ ] MobyGames (老游戏数据丰富)
-- [ ] LaunchBox 本地数据库 (离线可用)
-- [ ] 搜索引擎 + AI Scraper (兜底方案)
-
-#### 2.3 智能匹配引擎
-- [x] ROM 文件名解析（No-Intro 命名规范）
-- [x] Hash 精确匹配 (CRC32/MD5/SHA1 → ScreenScraper)
-- [x] 名称模糊匹配 (Jaro-Winkler 相似度算法)
-- [x] 置信度评分 (名称+系统综合评估)
-- [x] 多源数据聚合（优先级合并规则）
-  - [x] 并行获取所有 provider 的元数据
-  - [x] 按优先级合并元数据（优先级高的数据优先）
-  - [x] 空字段由其他 provider 自动补充
-  - [x] genres 字段自动去重合并
-  - [x] 用户可配置 provider 优先级
-
-#### 2.4 媒体下载
-- [x] 并发下载队列 (Batch Scraper)
-- [x] 断点续传 (Basic Implementation)
-- [ ] 图片格式转换/压缩
-- [x] 本地缓存管理
-
-#### 2.6 中文数据库集成
-- [x] 本地 rom-name-cn 仓库管理 (Git Clone/Pull)
-- [x] CSV 解析与双路径搜索 (User Data + Resources)
-- [x] 智能匹配算法 (Jaro-Winkler)
-- [x] 独立管理页面与 Sidebar 入口
-- [x] 目录命名检查工具 (Scan & Report)
-- [x] 一键自动修复功能 (Auto-fix & Persistence)
-
-### Phase 3: 导入导出
-
-#### 3.1 导入功能 (即时读取)
-- [x] EmulationStation gamelist.xml 解析
-- [x] metadata.txt 解析
-- [x] 临时元数据合并预览 (Temp metadata merging)
-- [ ] LaunchBox XML 解析
-- [ ] RetroArch .lpl 解析
-- [x] 媒体资产关联 (Support local & temp media)
-
-#### 3.2 导出功能
-- [x] gamelist.xml 生成 (支持 <english-name>)
-- [x] metadata.txt 生成 (Pegasus 格式，支持 Block 级替换)
-- [ ] 自定义导出模板
-- [x] 异步导出任务 (Support media synchronization)
-- [x] 导出进度回调 (Tauri Emitter)
-
-### Phase 4: 高级功能
-
-#### 4.1 用户体验优化
-- [x] 拖拽添加 ROM
-- [ ] 批量编辑元数据
-- [ ] 快捷键系统
-- [x] 主题切换（暗/亮）
-- [x] 统一视图组件 (Cover/Grid/List 合并为 RomView.tsx)
-- [x] 视图切换平滑动画 (CSS transition，保持滚动位置)
-- [x] 动态行高计算 (根据容器宽度和 aspect-ratio 自适应)
-- [x] 启动 Splash Screen (HTML 内联，防止白屏闪烁)
-- [x] 封面预加载 (启动时预加载前 50 个 ROM 封面)
-- [x] Splash 加载步骤显示 (支持 i18n)
-- [x] 中文 ROM 工具 UI 优化
-  - [x] 响应式 Flex 布局
-  - [x] 表格列宽平均分布
-  - [x] 内容区域占满页面宽度
-  - [x] 修复内容被 footer 遮挡问题
-  - [x] 选择目录后自动扫描
-- [x] 中文 ROM 工具增强功能
-  - [x] 置信度可视化显示（背景色渐变：低分红色→高分透明）
-  - [x] 点击英文名可编辑（Enter确认/ESC取消）
-  - [x] 手动编辑实时保存到临时metadata
-  - [x] 用户编辑的英文名自动设置为满分（100分）
-  - [x] 自动去除英文名中的区域标签（如 (USA)）
-  - [x] 按置信度排序（点击列头切换：降序→升序→取消）
-  - [x] 表格列宽拖拽调整（鼠标拖拽列头分隔线）
-- [x] i18n 合规性修复
-  - [x] Settings.tsx - API 配置相关文字（13个翻译键）
-  - [x] Scraper.tsx - 未配置凭证警告（3个翻译键）
-  - [x] CnRomTools.tsx - 所有硬编码中文文字（50+个翻译键）
-  - [x] 更新翻译文件（zh-CN.json 和 en.json）
-
-
-#### 4.2 Settings & Configuration Management
-- [x] API 配置管理
-  - [x] 将 API 配置从 Scraper 页面移至 Settings 页面
-  - [x] Provider 列表展示（SteamGridDB、ScreenScraper）
-  - [x] 启用/禁用开关（支持未配置凭证时的状态保存）
-  - [x] 凭证配置面板（用户名/密码/API Key）
-  - [x] 配置持久化到 settings.json
-  - [x] 修复未注册 provider 的开关状态保存问题
-- [x] ChineseROMDB 架构调整
-  - [x] 从 scraper provider 列表中移除
-  - [x] 保留为独立的中文 ROM 工具
-  - [x] update_cn_repo 命令移至 tools 模块
-- [x] Provider 优先级管理
-  - [x] ScraperConfig 添加 priority 字段
-  - [x] 后端 set_priority() 方法和 API
-  - [x] 前端 setProviderPriority 方法
-  - [x] 优先级持久化到 settings.json
-- [x] Provider 拖拽排序 UI
-  - [x] 拖拽手柄图标和视觉反馈
-  - [x] HTML5 drag and drop 实现
-  - [x] 按 priority 排序显示
-  - [x] 拖拽后自动重新计算优先级
-  - [x] 乐观更新和错误回滚
-
-#### 4.3 高级 Scraper
-- [x] 批量 Scraper (Backend Queue & Auto-Match)
-- [x] 批量操作 UI (Frontend)
-- [ ] 自定义爬虫规则
-- [ ] 代理设置
-- [ ] 速率限制配置
-
-#### 4.4 PS3 平台增强
-- [x] PS3 模块架构重构
-  - [x] 创建 ps3/ 目录统一管理 PS3 功能
-  - [x] ps3/sfo.rs - PARAM.SFO 解析模块
-  - [x] ps3/boxart.rs - Boxart/Logo 生成模块
-  - [x] ps3/iso.rs - ISO9660 文件系统提取模块
-  - [x] ps3/mod.rs - 模块入口和接口导出
-- [x] PARAM.SFO 解析
-  - [x] 从 PS3_GAME 文件夹解析游戏信息
-  - [x] 从 ISO 文件解析游戏信息（ISO9660 文件系统）
-  - [x] 提取游戏标题、ID、版本等元数据
-- [x] ROM 扫描增强
-  - [x] 自动识别 PS3_GAME 目录结构
-  - [x] 混合目录支持（ISO 和文件夹混合扫描）
-  - [x] 异步扫描避免 UI 阻塞
-  - [x] 根目录模式下正确分组 PS3 游戏
-- [x] Boxart 自动生成
-  - [x] 图像合成引擎（image crate）
-  - [x] PIC1.PNG 背景居中裁切（512x512）
-  - [x] ICON0.PNG 图标叠加（左下角，128x128）
-  - [x] Tauri command 接口（generate_ps3_boxart）
-  - [x] 生成结果保存到 temp 目录
-  - [x] 同时生成 Logo（直接提取 ICON0.PNG）
-  - [x] 生成后自动刷新 ROM 库和详情页
-- [ ] 批量 Boxart 生成
-  - [ ] 为目录下所有 PS3 ROM 批量生成
-  - [ ] 进度回调和取消支持
-
-### Phase 5: 临时元数据架构 (Temp Metadata)
-
-#### 5.1 目录结构设计
-- [x] 统一临时数据目录结构
-  ```
-  {config_dir}/temp/{library_normalized}/{system}/
-  ├── metadata.txt            # 临时 Pegasus 元数据文件
-  ├── gamelist.xml            # 临时 EmulationStation 元数据文件
-  └── media/
-      └── {rom_file_stem}/    # 每个 ROM 独立媒体目录
-          ├── boxfront.png    # 封面 (scraper/PS3 生成)
-          ├── logo.png        # Logo (PS3 ICON0.PNG)
-          ├── screenshot.png  # 截图
-          └── video.mp4       # 视频预览
-  ```
-- [x] library_path 计算
-  - [x] `rom.directory` 是 ROM 所在目录 (如 `Z:\ps3`)
-  - [x] `library_path` = `rom.directory.parent()` (如 `Z:\`)
-  - [x] 在 `persistence.rs`, `ps3.rs`, `naming_check.rs` 统一实现
-- [x] 路径规范化 (`config.rs::normalize_path_to_dirname`)
-  - [x] `Z:\` → `z`
-  - [x] `D:\games\` → `d_games`
-- [x] 支持多库隔离（不同驱动器/路径的 ROM 库独立存储）
-
-#### 5.2 后端实现
-
-##### 5.2.1 配置模块 (`src-tauri/src/config.rs`)
-```rust
-// 核心函数
-get_config_dir()           // 配置根目录 (环境变量 CONFIG_DIR 或 exe/config/)
-get_temp_dir()             // 临时目录 (config/temp/)
-get_temp_dir_for_library() // 特定库的临时目录 (temp/{library}/{system}/)
-normalize_path_to_dirname() // 路径规范化 (Z:\ → z)
-```
-
-##### 5.2.2 持久化模块 (`src-tauri/src/scraper/persistence.rs`)
-- [x] `download_media()` - 下载媒体到 `media/{file_stem}/asset_type.ext`
-- [x] `save_metadata_pegasus()` - 写入 Pegasus 格式元数据
-- [x] `save_metadata_emulationstation()` - 写入 EmulationStation 格式元数据
-- [x] 所有函数使用 `rom.directory.parent()` 计算 library_path
-
-##### 5.2.3 Pegasus 解析器 (`src-tauri/src/scraper/pegasus.rs`)
-- [x] 大小写不敏感键名匹配
-  - [x] `assets.boxFront` / `assets.boxfront` / `assets.box_front` 统一处理
-  - [x] 使用 `key.to_lowercase()` 进行匹配
-- [x] 支持相对路径解析为绝对路径
-
-##### 5.2.4 PS3 命令 (`src-tauri/src/commands/ps3.rs`)
-```rust
-#[tauri::command]
-async fn generate_ps3_boxart(request: GenerateBoxartRequest) -> Result<GenerateBoxartResponse>
-
-// Response 包含:
-// - boxart_path / relative_boxart_path  (PIC1+ICON0 合成)
-// - logo_path / relative_logo_path      (ICON0 直接提取)
-```
-- [x] 支持文件夹 ROM (PS3_GAME 目录)
-- [x] 支持 ISO ROM (ISO9660 文件系统提取)
-- [x] 输出到 `temp/{library}/{system}/media/{file_stem}/boxfront.png`
-- [x] 同时生成 `logo.png` (ICON0.PNG)
-- [x] 自动更新 metadata.txt 中的 assets 路径
-
-##### 5.2.5 中文 ROM 工具 (`src-tauri/src/commands/naming_check.rs`)
-- [x] `auto_fix_naming()` 合并逻辑
-  ```rust
-  // 1. 加载现有临时数据
-  let existing = parse_existing_temp_metadata();
-  // 2. 合并新数据，保留用户编辑
-  for (key, new_entry) in new_entries {
-      if existing[key].confidence == 100 {
-          continue; // 跳过用户手动编辑的条目
-      }
-      merged.insert(key, new_entry);
-  }
-  // 3. 写入合并后的数据
-  ```
-- [x] `clean_english_name()` - 去除区域标签 `(USA)`, `[Europe]` 等
-
-#### 5.3 前端实现
-
-##### 5.3.1 封面优先级 (`src/components/rom/RomView.tsx`)
-```typescript
-// 获取 ROM 封面，优先使用 temp_data
-function getRomCover(rom: Rom): string | undefined {
-  return rom.temp_data?.box_front || rom.box_front || rom.gridicon;
-}
-```
-
-##### 5.3.2 媒体 URL 预加载 (`src/lib/api.ts`)
-```typescript
-export async function preloadMediaUrls(roms: Rom[]): Promise<void> {
-  const paths = roms.slice(0, PRELOAD_LIMIT).flatMap((rom) => {
-    // 优先检查 temp_data
-    const cover = rom.temp_data?.box_front || rom.box_front;
-    return cover ? [cover] : [];
-  });
-  // 并发解析所有路径
-  await Promise.all(paths.map(resolveMediaUrlAsync));
-}
-```
-
-##### 5.3.3 生成后刷新 (`src/components/rom/RomDetail.tsx`)
-```typescript
-const handleGenerateBoxart = async () => {
-  const result = await toolsApi.generatePs3Boxart(request);
-  if (result.success) {
-    // 刷新临时媒体列表
-    await scraperApi.getTempMediaList(selectedLibrary.path);
-    // 刷新 ROM 列表以更新封面
-    await fetchRoms();
-  }
-};
-```
-
-##### 5.3.4 Rom 类型定义 (`src/types/index.ts`)
-```typescript
-interface Rom {
-  // ... 基础字段
-  temp_data?: {
-    box_front?: string;
-    logo?: string;
-    screenshot?: string;
-    video?: string;
-    name?: string;
-    english_name?: string;
-    confidence?: number;
-    [key: string]: any;
-  };
-}
-```
-
-#### 5.4 数据流图
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 Temp Metadata Data Flow                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. 生成/抓取阶段:                                            │
-│     User Action (Scrape / Generate Boxart / Auto-fix CN)    │
-│       → Backend Command (generate_ps3_boxart, etc.)         │
-│       → library_path = rom.directory.parent()               │
-│       → temp_dir = get_temp_dir_for_library(library_path)   │
-│       → 写入 temp_dir/media/{file_stem}/boxfront.png        │
-│       → 更新 temp_dir/metadata.txt                          │
-│                                                              │
-│  2. 加载阶段:                                                 │
-│     scan_directory() / fetchRoms()                          │
-│       → apply_temp_metadata(roms, library_path)             │
-│       → 解析 temp_dir/metadata.txt                          │
-│       → 填充 rom.temp_data (box_front, logo, etc.)          │
-│       → 相对路径解析为绝对路径                                │
-│                                                              │
-│  3. 显示阶段:                                                 │
-│     RomView.tsx                                              │
-│       → getRomCover(rom) 获取封面路径                        │
-│       → useMediaUrl(path) 转换为可显示的 URL                 │
-│       → 显示图片                                             │
-│                                                              │
-│  4. 导入阶段 (TODO):                                          │
-│     import_temp_data()                                       │
-│       → 将 temp 数据复制到 ROM 目录                          │
-│       → 合并 metadata 到 ROM 目录的 metadata.txt             │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-#### 5.5 关键文件清单
-
-| 文件 | 职责 |
-|------|------|
-| `src-tauri/src/config.rs` | 配置目录管理、路径规范化 |
-| `src-tauri/src/scraper/persistence.rs` | 媒体下载、元数据写入 |
-| `src-tauri/src/scraper/pegasus.rs` | Pegasus 格式解析 |
-| `src-tauri/src/commands/ps3.rs` | PS3 boxart/logo 生成命令 |
-| `src-tauri/src/commands/scraper.rs` | get_temp_media_list API |
-| `src-tauri/src/commands/naming_check.rs` | 中文 ROM 工具 |
-| `src-tauri/src/rom_service.rs` | ROM 扫描、临时数据应用 |
-| `src/components/rom/RomView.tsx` | 封面显示组件 |
-| `src/components/rom/RomDetail.tsx` | ROM 详情面板 |
-| `src/lib/api.ts` | 媒体 URL 解析、预加载 |
-| `src/types/index.ts` | Rom 接口定义 |
-
-### Phase 6: 配置架构重构 (本地/Docker 双模式)
-
-#### 5.1 配置目录结构
-- [x] 统一配置目录到 `./config/`
-  - `config/settings.json` - 应用配置
-  - `config/media/` - 媒体资产缓存
-- [x] 环境变量支持 (`CONFIG_DIR` 覆盖默认路径)
-- [x] Docker volume 挂载支持
-
-#### 5.2 目录选择 UI 重构
-- [x] 移除 Tauri dialog 依赖（Web 端不可用）
-- [x] 新增手动输入路径 UI
-- [x] 路径验证 API（后端验证目录是否存在/可读）
-- [x] 目录浏览 API（后端返回目录列表供选择）
-
-#### 5.3 部署模式支持
-- [x] 本地模式：使用相对路径 `./config/`
-- [x] Docker 模式：挂载 `/roms` volume
-- [ ] 配置热重载支持
-
-### Phase 6: Web 版本 (Docker 部署)
-
-#### 6.1 Node.js 后端服务
-- [x] Express + TypeScript 服务端
-- [x] ROM 数据 API (`/api/roms`)
-- [x] 媒体文件代理 API (`/api/media`)
-- [x] Pegasus metadata 解析器 (移植自 Rust)
-- [x] Media 目录自动扫描
-
-#### 6.2 Docker 支持
-- [x] 多阶段 Dockerfile (前端构建 + 后端构建 + 生产镜像)
-- [x] docker-compose.yml 配置
-- [x] 环境变量配置 (`ROMS_DIR`, `PORT`)
-- [x] Volume 映射文档
-
-#### 6.3 前端适配
-- [x] 环境检测 (Tauri vs Web)
-- [x] API 调用适配层 (`src/lib/api.ts`)
-- [x] 媒体 URL 转换 (convertFileSrc vs HTTP URL)
+### Phase 6: 部署与 Web 版本 - [/] 进行中
+- [x] 环境变量覆盖配置 (`CONFIG_DIR`)
+- [x] Node.js Express 后端实现
+- [x] Docker 多阶段构建与 Compose 配置
+- [x] 前端 Web 模式 API 自动切换
+- [ ] 用户权限管理 (Web 版专用)
+- [ ] 在线导出与 ZIP 打包下载
 
 ---
 
@@ -679,10 +264,8 @@ interface Rom {
 
 ### API 文档
 - [SteamGridDB API](https://www.steamgriddb.com/api/v2)
-- [IGDB API](https://api-docs.igdb.com/)
-- [TheGamesDB API](https://thegamesdb.net/api/)
-- [MobyGames API](https://www.mobygames.com/info/api)
 - [ScreenScraper API](https://www.screenscraper.fr/webapi2.php)
+- [Pegasus Meta-files](https://pegasus-frontend.org/docs/user-guide/meta-files/)
 
 ### 技术框架
 - [Tauri](https://tauri.app/)
@@ -690,3 +273,5 @@ interface Rom {
 - [TailwindCSS](https://tailwindcss.com/)
 - [Express](https://expressjs.com/)
 - [Docker](https://www.docker.com/)
+
+---
