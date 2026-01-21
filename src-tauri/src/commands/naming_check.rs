@@ -500,8 +500,15 @@ pub async fn scan_directory_for_naming_check(
                     
                     let cleaned_folder_name = subfolder.as_ref().map(|s| clean_folder_name(s));
                     
+                    // file 只存储纯文件名，subfolder 单独存储
+                    // 这样后续逻辑可以统一处理：file_path = subfolder/file
+                    let filename = path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or(&rom.file)
+                        .to_string();
+                    
                     RomScanEntry {
-                        file: rom.file.clone(),
+                        file: filename,
                         subfolder,
                         cleaned_folder_name,
                     }
@@ -565,10 +572,18 @@ pub async fn scan_directory_for_naming_check(
             };
 
             // 查找临时数据中的匹配项
-            let temp_data = temp_entries.iter().find(|e| e.file == entry.file);
+            // file 字段使用完整相对路径: subfolder/filename 或纯 filename
+            let file_path = if let Some(ref subfolder) = entry.subfolder {
+                format!("{}/{}", subfolder, entry.file)
+            } else {
+                entry.file.clone()
+            };
+            // 优先按完整路径匹配，如果没找到再按纯文件名匹配（兼容旧数据）
+            let temp_data = temp_entries.iter().find(|e| e.file == file_path)
+                .or_else(|| temp_entries.iter().find(|e| e.file == entry.file));
 
             let result = NamingCheckResult {
-                file: entry.file.clone(),
+                file: file_path.clone(),
                 name: temp_data.and_then(|t| t.name.clone()).or_else(|| extracted.clone()).unwrap_or_else(|| entry.file.clone()),
                 english_name: temp_data.and_then(|t| t.english_name.clone()),
                 extracted_cn_name: extracted.clone(),
@@ -577,7 +592,7 @@ pub async fn scan_directory_for_naming_check(
             
             // 构建临时条目（保留已有数据，更新 extracted_cn_name）
             let temp_entry = TempMetadataEntry {
-                file: entry.file.clone(),
+                file: file_path.clone(),
                 name: temp_data.and_then(|t| t.name.clone()),
                 english_name: temp_data.and_then(|t| t.english_name.clone()),
                 confidence: temp_data.and_then(|t| t.confidence),
@@ -586,7 +601,7 @@ pub async fn scan_directory_for_naming_check(
             new_temp_entries.push(temp_entry);
             
             // 去重：如果已存在，保留有更多信息的条目
-            if let Some(existing) = results_map.get(&entry.file) {
+            if let Some(existing) = results_map.get(&file_path) {
                 // 保留有 english_name 或更高 confidence 的条目
                 let should_replace = match (&result.english_name, &existing.english_name) {
                     (Some(_), None) => true,
@@ -597,10 +612,10 @@ pub async fn scan_directory_for_naming_check(
                     _ => false,
                 };
                 if should_replace {
-                    results_map.insert(entry.file, result);
+                    results_map.insert(file_path, result);
                 }
             } else {
-                results_map.insert(entry.file, result);
+                results_map.insert(file_path, result);
             }
         }
         
