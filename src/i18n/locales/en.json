@@ -1,0 +1,336 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "Version {{version}}"
+  },
+  "nav": {
+    "library": "Library",
+    "scraper": "Scraper",
+    "import": "Import/Export",
+    "settings": "Settings",
+    "tools": "Tools",
+    "cnTools": "Chinese ROM Tools"
+  },
+  "library": {
+    "title": "ROM Library",
+    "gameCount": "{{count}} games",
+    "search": "Search...",
+    "empty": {
+      "title": "Library is empty",
+      "description": "Add a scan directory to start managing your ROM collection",
+      "addDirectory": "Add Directory"
+    },
+    "viewMode": {
+      "cover": "Cover View",
+      "grid": "Card View",
+      "list": "List View"
+    }
+  },
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Start Scrape",
+    "apiConfig": {
+      "title": "API Configuration",
+      "description": "Configure Scraper API keys to fetch game metadata and media assets",
+      "activeSources": "{{count}} active sources",
+      "credentialsNote": "Please enter your API credentials. They are stored securely on your machine."
+    },
+    "noCredentials": {
+      "title": "No API Credentials Configured",
+      "description": "Scraper requires API credentials to function. Please go to Settings to configure ScreenScraper or SteamGridDB API credentials.",
+      "goToSettings": "Go to Settings"
+    },
+    "status": {
+      "enabledSources": "Enabled Sources",
+      "avgConfidence": "Avg Confidence",
+      "configuredCredentials": "Configured Credentials",
+      "authenticated": "Authenticated"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Powered by Twitch, comprehensive data"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "High-quality covers/logos/icons"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "Community-driven, free"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Rich data for retro games"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Registration required, rich media"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "Username",
+      "password": "Password"
+    },
+    "dialog": {
+      "title": "Scrape Game Metadata",
+      "searchPlaceholder": "Search for game name...",
+      "searchButton": "Search",
+      "searching": "Searching...",
+      "resultsCount": "Results ({{count}})",
+      "noResults": "No results found",
+      "loadingDetails": "Loading details...",
+      "confidence": "Confidence",
+      "userRating": "Rating",
+      "releaseDate": "Release Date",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "sourceSystem": "Source System",
+      "description": "Description",
+      "noDescription": "No description available.",
+      "mediaAssets": "Media Assets ({{count}})",
+      "selectedAssets": "{{count}} selected",
+      "readyToScrape": "Ready to Scrape",
+      "readyToScrapeDesc": "Select a result from the left to preview metadata and select assets.",
+      "applyNote": "Select assets and click Apply to update the game info.",
+      "confirmAndApply": "Confirm and Apply"
+    },
+    "batch": {
+      "title": "Batch Scrape",
+      "scraping": "Scraping Data...",
+      "processed": "{{current}} / {{total}} games processed",
+      "preparing": "Preparing...",
+      "completed": "Scrape Completed!",
+      "completedDesc": "All selected games have been updated successfully.",
+      "pendingTitle": "Scraping {{count}} selected games",
+      "pendingDesc": "System will auto-match filenames and fetch the best metadata and covers.",
+      "selectSource": "Select Source",
+      "recommended": "ScreenScraper recommended",
+      "noSourceEnabled": "Enable at least one source in settings first",
+      "start": "Start Scrape"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "Info",
+      "media": "Media",
+      "files": "Files"
+    },
+    "preview": {
+      "mode": "Preview Data",
+      "raw": "Raw Data",
+      "active": "Previewing Scraped Data",
+      "inactive": "View Original Data",
+      "note": "Preview Data",
+      "noteDesc": "These data are stored in a temporary directory. Check description and covers, then click 'Export to Library' to apply them permanently."
+    },
+    "fields": {
+      "releaseDate": "Release Date",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "genre": "Genre",
+      "description": "Description",
+      "noDescription": "No description available.",
+      "filename": "Filename",
+      "localPath": "Local Path"
+    },
+    "actions": {
+      "play": "Play",
+      "scrape": "Scrape",
+      "edit": "Edit",
+      "remove": "Remove",
+      "export": "Export to Library",
+      "exporting": "Exporting {{progress}}%",
+      "exportingSimple": "Exporting",
+      "savePreview": "Save Preview",
+      "saveEdit": "Save Changes",
+      "cancelEdit": "Cancel"
+    },
+    "media": {
+      "title": "Media Management (Temp)",
+      "empty": "No scraped media assets",
+      "deleteNote": "Note: Deletion only affects the temp directory. After exporting, existing assets will be overwritten."
+    }
+  },
+  "import": {
+    "title": "Import/Export",
+    "importSection": {
+      "title": "Import",
+      "description": "Import metadata and media assets from existing software",
+      "deprecated": "This version uses directory scanning. Please add a directory in Library page.",
+      "success": "Switched to directory scan mode"
+    },
+    "exportSection": {
+      "title": "Export",
+      "description": "Export your library to other formats"
+    },
+    "formats": {
+      "emulationstation": {
+        "name": "EmulationStation",
+        "file": "gamelist.xml"
+      },
+      "pegasus": {
+        "name": "Pegasus/Recalbox",
+        "file": "metadata.txt"
+      },
+      "launchbox": {
+        "name": "LaunchBox",
+        "file": "XML"
+      },
+      "retroarch": {
+        "name": "RetroArch",
+        "file": ".lpl"
+      }
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance"
+    },
+    "scanDirectories": {
+      "title": "Scan Directories",
+      "description": "Configure ROM directories, software will detect games automatically",
+      "empty": "No scan directories added",
+      "addDirectory": "Add Directory",
+      "dialogTitle": "Add Scan Directory"
+    },
+    "storage": {
+      "title": "Storage Settings",
+      "configDirectory": "Config Directory",
+      "mediaDirectory": "Media Directory",
+      "defaultLocation": "Default Location"
+    },
+    "apiConfig": {
+      "title": "API Configuration",
+      "editConfig": "Edit Config",
+      "username": "Username",
+      "password": "Password",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Enter username",
+      "passwordPlaceholder": "Enter password",
+      "credentialsHint": "Please enter your API credentials. They are stored securely on your machine."
+    },
+    "language": {
+      "title": "Language",
+      "description": "Select interface language"
+    },
+    "about": {
+      "title": "About"
+    }
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "Scraped: {{count}}",
+    "storageUsed": "Storage: {{size}}"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "name": "Name",
+    "system": "System",
+    "size": "Size",
+    "date": "Date",
+    "notAvailable": "Unknown",
+    "finish": "Finish"
+  },
+  "splash": {
+    "initializing": "Initializing...",
+    "loadingSettings": "Loading settings...",
+    "loadingRoms": "Loading ROM data...",
+    "loadingCovers": "Loading covers...",
+    "ready": "Ready"
+  },
+  "metadataDialog": {
+    "title": "Metadata files detected",
+    "subtitle": "Choose metadata format",
+    "description": "Select a format:",
+    "skip": "Skip"
+  },
+  "directoryInput": {
+    "placeholder": "e.g. C:\\ROMs\\SNES or /home/user/roms",
+    "browse": "Browse...",
+    "browseTitle": "Select directory",
+    "status": {
+      "validating": "Validating...",
+      "error": "Error: {{error}}",
+      "missing": "Path missing",
+      "notDirectory": "Not a directory",
+      "notReadable": "No read access",
+      "notWritable": "Warning: No write access",
+      "valid": "Valid path ✓"
+    }
+  },
+  "cnRomTools": {
+    "selectPlatform": "Select Platform",
+    "selectDirectoryPlaceholder": "Select ROM directory to check...",
+    "browse": "Browse...",
+    "refresh": "Refresh",
+    "about": {
+      "title": "About This Project",
+      "description": {
+        "part1": "This software integrates data from the",
+        "part2": "project. This project provides comprehensive ROM Chinese-English name mappings covering most mainstream retro gaming platforms. Through fuzzy matching algorithms, we can automatically identify and match Chinese names when scraping metadata."
+      },
+      "dataSource": "Data Source: GitHub (yingw/rom-name-cn)",
+      "visitRepo": "Visit Repository",
+      "updateDatabase": "Update Database",
+      "updating": "Updating..."
+    },
+    "table": {
+      "fileName": "File Name",
+      "romName": "ROM Name (Meta)",
+      "extractedCnName": "Extracted CN Name",
+      "matchedEnglishName": "Matched English Name",
+      "setAsRomName": "Set as ROM Name",
+      "setAsRomNameTitle": "Set extracted Chinese name as ROM name",
+      "addAsTag": "Add as Extra Tag",
+      "addAsTagTitle": "Add English name as extra tag",
+      "clickToSort": "Click to sort",
+      "notSet": "Not Set",
+      "notMatched": "Not Matched",
+      "confidenceWithEdit": "Confidence: {{confidence}}% - Click to edit",
+      "clickToEdit": "Click to edit"
+    },
+    "footer": {
+      "totalFiles": "Total {{count}} files",
+      "missingEnglishNames": "{{count}} missing English names",
+      "matchEnglishName": "Match English Name",
+      "exportMetadata": "Export Metadata"
+    },
+    "systemPicker": {
+      "title": "Select Game Platform",
+      "searchPlaceholder": "Search platform...",
+      "noResults": "No matching platforms found"
+    },
+    "alerts": {
+      "databaseUpdateSuccess": "Database updated successfully",
+      "updateFailed": "Update failed: {{error}}",
+      "selectPlatformFirst": "Please select a game platform first",
+      "matchComplete": "Matching complete!\nSuccess: {{success}}\nFailed/Skipped: {{failed}}",
+      "matchFailed": "Matching failed: {{error}}",
+      "setComplete": "Set complete!",
+      "setFailed": "Set failed: {{error}}",
+      "addComplete": "Add complete!",
+      "addFailed": "Add failed: {{error}}",
+      "exportSuccess": "Export successful!\nFile saved to: {{path}}",
+      "exportFailed": "Export failed: {{error}}",
+      "saveFailed": "Save failed: {{error}}"
+    },
+    "confirms": {
+      "autoFixNaming": "Are you sure you want to match English names?\nThis will scan all ROMs in the directory and automatically match English names based on the local database.\nOnly matches with very high confidence (>95%) will be applied.\nResults will be saved to the temporary directory.",
+      "setAsRomName": "Are you sure you want to set extracted Chinese names as ROM names?\nThis will write the Chinese names extracted from filenames to temporary metadata.",
+      "addAsTag": "Are you sure you want to add English names as extra tags?\nThis will write matched English names as x-mrrm-eng tags to temporary metadata."
+    }
+  }
+}

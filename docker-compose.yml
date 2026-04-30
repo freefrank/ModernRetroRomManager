@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - /path/to/your/roms:/roms:ro
+    environment:
+      - ROMS_DIR=/roms
+      - PORT=3000
+    restart: unless-stopped
