@@ -90,9 +90,11 @@ impl ScraperProvider for SteamGridDBClient {
     }
 
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
+        // 统一清洗名称（去除区域标签/扩展名），避免原始文件名影响搜索命中率
+        let search_name = crate::scraper::matcher::normalize_game_name(&query.name);
         let url = format!(
             "https://www.steamgriddb.com/api/v2/search/autocomplete/{}",
-            urlencoding::encode(&query.name)
+            urlencoding::encode(&search_name)
         );
         let resp = self
             .client

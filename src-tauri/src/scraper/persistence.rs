@@ -10,9 +10,13 @@ use crate::rom_service::RomInfo;
 // ... existing code ...
 
 /// 将元数据写入 gamelist.xml (EmulationStation 格式)
+///
+/// `image` 为相对于目标目录的封面路径（如 "./media/xxx/boxfront.png"），
+/// 提供时会写入/更新 `<image>` 字段
 pub fn save_metadata_emulationstation(
     rom: &RomInfo,
     metadata: &GameMetadata,
+    image: Option<&str>,
     is_temp: bool,
 ) -> Result<(), String> {
     let gamelist_path = if is_temp {
@@ -75,6 +79,7 @@ pub fn save_metadata_emulationstation(
             if let Some(pub_) = &metadata.publisher { game.publisher = Some(pub_.clone()); }
             if !metadata.genres.is_empty() { game.genre = Some(metadata.genres[0].clone()); }
             if let Some(en) = &metadata.english_name { game.english_name = Some(en.clone()); }
+            if let Some(img) = image { game.image = Some(img.to_string()); }
             found = true;
             break;
         }
@@ -85,7 +90,7 @@ pub fn save_metadata_emulationstation(
             path: format!("./{}", rom.file),
             name: Some(metadata.name.clone()),
             desc: metadata.description.clone(),
-            image: None,
+            image: image.map(String::from),
             developer: metadata.developer.clone(),
             publisher: metadata.publisher.clone(),
             genre: metadata.genres.first().cloned(),
@@ -107,6 +112,52 @@ pub fn save_metadata_emulationstation(
 }
 
 /// 将元数据写入 gamelist.xml (EmulationStation 格式)
+
+/// 扫描临时媒体目录，把已存在的媒体文件以相对路径写入 PegasusGame 的 assets 字段
+///
+/// 媒体布局: {base_dir}/media/{file_stem}/{asset_type}.{ext}
+fn link_temp_media_assets(game: &mut PegasusGame, base_dir: &Path, rom_file: &str) {
+    let file_stem = match Path::new(rom_file).file_stem().and_then(|s| s.to_str()) {
+        Some(s) => s,
+        None => return,
+    };
+
+    let media_dir = base_dir.join("media").join(file_stem);
+    let entries = match fs::read_dir(&media_dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let (Some(stem), Some(file_name)) = (
+            path.file_stem().and_then(|s| s.to_str()),
+            path.file_name().and_then(|s| s.to_str()),
+        ) else {
+            continue;
+        };
+
+        let relative = format!("media/{}/{}", file_stem, file_name);
+        let field = match stem {
+            "boxfront" => &mut game.box_front,
+            "boxback" => &mut game.box_back,
+            "box3d" => &mut game.box_full,
+            "screenshot" => &mut game.screenshot,
+            "titlescreen" => &mut game.titlescreen,
+            "logo" => &mut game.logo,
+            "banner" => &mut game.marquee,
+            "background" | "hero" => &mut game.background,
+            "video" => &mut game.video,
+            _ => continue,
+        };
+        if field.is_none() {
+            *field = Some(relative);
+        }
+    }
+}
 
 /// 将抓取到的媒体资产下载到本地
 /// 如果 is_temp 为 true，则保存到程序目录下的 temp/media
@@ -171,7 +222,9 @@ pub fn save_metadata_pegasus(
         let library_path = rom_dir.parent().unwrap_or(rom_dir);
         let temp_sys_dir = get_temp_dir_for_library(library_path, &rom.system);
         fs::create_dir_all(&temp_sys_dir).map_err(|e| e.to_string())?;
-        temp_sys_dir.join("metadata.txt")
+        // 临时元数据统一使用 metadata.pegasus.txt，
+        // 与中文工具及 rom_service 的读取逻辑保持一致
+        temp_sys_dir.join("metadata.pegasus.txt")
     } else {
         Path::new(&rom.directory).join("metadata.txt")
     };
@@ -193,6 +246,14 @@ pub fn save_metadata_pegasus(
     // 添加英文名到 extra 字段
     if let Some(ref en) = metadata.english_name {
         game.extra.insert("x-english-name".to_string(), en.clone());
+    }
+
+    // 临时模式下，把已下载的媒体文件路径写入 assets 字段，
+    // 这样库视图无需额外扫描即可显示封面等媒体
+    if is_temp {
+        if let Some(base_dir) = metadata_path.parent() {
+            link_temp_media_assets(&mut game, base_dir, &rom.file);
+        }
     }
 
     // 导出选项：包含 collection header（仅当文件不存在时）

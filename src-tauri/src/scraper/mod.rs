@@ -8,6 +8,7 @@ pub mod types;
 pub mod manager;
 pub mod matcher;
 pub mod persistence;
+pub mod hash;
 
 use async_trait::async_trait;
 

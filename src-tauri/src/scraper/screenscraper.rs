@@ -83,7 +83,36 @@ impl ScreenScraperClient {
                 })
                 .collect(),
             players: jeu.joueurs.clone(),
-            rating: jeu.note.as_ref().and_then(|n| n.text.parse::<f64>().ok()),
+            // ScreenScraper 的 note 是 0~20 分制，统一归一化到 0~1
+            rating: jeu
+                .note
+                .as_ref()
+                .and_then(|n| n.text.parse::<f64>().ok())
+                .map(|n| (n / 20.0).clamp(0.0, 1.0)),
+        }
+    }
+
+    /// 从 SSGame 构建搜索结果
+    fn to_search_result(game: SSGame, system: Option<String>, confidence: f32) -> SearchResult {
+        let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
+        let year = game.dates.first().map(|d| {
+            // 提取年份 (格式可能是 YYYY-MM-DD 或 YYYY)
+            d.date.split('-').next().unwrap_or(&d.date).to_string()
+        });
+        let thumbnail = game
+            .medias
+            .iter()
+            .find(|m| m.media_type == "box-2D" || m.media_type == "box-2d")
+            .map(|m| m.url.clone());
+
+        SearchResult {
+            provider: PROVIDER_ID.to_string(),
+            source_id: game.id,
+            name,
+            year,
+            system,
+            thumbnail,
+            confidence,
         }
     }
 
@@ -132,6 +161,31 @@ impl ScreenScraperClient {
 
         Ok(ss_resp.response.and_then(|r| r.jeu))
     }
+
+    /// 调用 jeuRecherche API（按名称模糊搜索）
+    async fn fetch_game_search(
+        &self,
+        name: &str,
+        system_id: Option<u32>,
+    ) -> Result<Vec<SSGame>, String> {
+        let mut params = vec![("recherche", name.to_string())];
+        if let Some(id) = system_id {
+            params.push(("systemeid", id.to_string()));
+        }
+
+        let url = self.build_url("jeuRecherche", params);
+        let resp = self.client.get(&url).send().await.map_err(|e| e.to_string())?;
+
+        if !resp.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        // ScreenScraper 出错时可能返回纯文本，解析失败按无结果处理
+        match resp.json::<SSSearchResponse>().await {
+            Ok(ss_resp) => Ok(ss_resp.response.map(|r| r.jeux).unwrap_or_default()),
+            Err(_) => Ok(vec![]),
+        }
+    }
 }
 
 // ============================================================================
@@ -149,7 +203,37 @@ struct SSResponseData {
 }
 
 #[derive(Deserialize)]
+struct SSSearchResponse {
+    response: Option<SSSearchData>,
+}
+
+#[derive(Deserialize)]
+struct SSSearchData {
+    #[serde(default)]
+    jeux: Vec<SSGame>,
+}
+
+/// ScreenScraper 部分接口的 id 字段可能是数字或字符串
+fn de_string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrNumber {
+        String(String),
+        Number(i64),
+    }
+
+    Ok(match StringOrNumber::deserialize(deserializer)? {
+        StringOrNumber::String(s) => s,
+        StringOrNumber::Number(n) => n.to_string(),
+    })
+}
+
+#[derive(Deserialize)]
 struct SSGame {
+    #[serde(deserialize_with = "de_string_or_number")]
     id: String,
     #[serde(default)]
     noms: Vec<SSName>,
@@ -242,39 +326,34 @@ impl ScraperProvider for ScreenScraperClient {
     }
 
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
-        // ScreenScraper 使用 romnom 参数搜索，能映射时附带 systemeid 缩小范围
+        let system_id = query
+            .system
+            .as_deref()
+            .and_then(find_screenscraper_system_id);
+
+        // 1. 先用 romnom 做精确文件名匹配（置信度高）
         let mut params = vec![("romnom", query.file_name.clone())];
-        if let Some(sys) = &query.system {
-            if let Some(id) = find_screenscraper_system_id(sys) {
-                params.push(("systemeid", id.to_string()));
-            }
+        if let Some(id) = system_id {
+            params.push(("systemeid", id.to_string()));
         }
-        let jeu = self.fetch_game_info(params).await?;
-
-        match jeu {
-            Some(game) => {
-                let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
-                let year = game.dates.first().map(|d| {
-                    // 提取年份 (格式可能是 YYYY-MM-DD 或 YYYY)
-                    d.date.split('-').next().unwrap_or(&d.date).to_string()
-                });
-
-                Ok(vec![SearchResult {
-                    provider: PROVIDER_ID.to_string(),
-                    source_id: game.id,
-                    name,
-                    year,
-                    system: query.system.clone(),
-                    thumbnail: game
-                        .medias
-                        .iter()
-                        .find(|m| m.media_type == "box-2D" || m.media_type == "box-2d")
-                        .map(|m| m.url.clone()),
-                    confidence: 0.9, // 文件名匹配置信度较高
-                }])
-            }
-            None => Ok(vec![]),
+        if let Ok(Some(game)) = self.fetch_game_info(params).await {
+            return Ok(vec![Self::to_search_result(
+                game,
+                query.system.clone(),
+                0.9, // 文件名匹配置信度较高
+            )]);
         }
+
+        // 2. 精确匹配失败时回退到 jeuRecherche 按名称模糊搜索
+        //    统一清洗名称（去除区域标签/扩展名），避免调用方传入原始文件名导致搜索不到
+        let search_name = crate::scraper::matcher::normalize_game_name(&query.name);
+        let games = self.fetch_game_search(&search_name, system_id).await?;
+
+        Ok(games
+            .into_iter()
+            .take(10)
+            .map(|game| Self::to_search_result(game, query.system.clone(), 0.5))
+            .collect())
     }
 
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
@@ -326,24 +405,8 @@ impl ScraperProvider for ScreenScraperClient {
 
         let jeu = self.fetch_game_info(params).await?;
 
-        match jeu {
-            Some(game) => {
-                let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
-                Ok(Some(SearchResult {
-                    provider: PROVIDER_ID.to_string(),
-                    source_id: game.id,
-                    name,
-                    year: game.dates.first().map(|d| d.date.clone()),
-                    system: system.map(String::from),
-                    thumbnail: game
-                        .medias
-                        .iter()
-                        .find(|m| m.media_type == "box-2D")
-                        .map(|m| m.url.clone()),
-                    confidence: 1.0, // Hash 精确匹配
-                }))
-            }
-            None => Ok(None),
-        }
+        Ok(jeu.map(|game| {
+            Self::to_search_result(game, system.map(String::from), 1.0) // Hash 精确匹配
+        }))
     }
 }

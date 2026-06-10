@@ -318,6 +318,8 @@ fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) 
     // 使用新的目录结构: temp/{library}/{system}/metadata.pegasus.txt
     let temp_dir = get_temp_dir_for_library(library_path, system);
     let temp_metadata_path = temp_dir.join("metadata.pegasus.txt");
+    // 兼容旧版 scraper 在库级目录写入的 metadata.txt
+    let lib_txt_path = temp_dir.join("metadata.txt");
 
     // 兼容旧的目录结构: temp/{system}/metadata.txt
     let legacy_temp_metadata_path = get_temp_dir().join(system).join("metadata.txt");
@@ -325,6 +327,8 @@ fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) 
     // 优先使用新结构，如果不存在则尝试旧结构
     let (metadata_path, base_dir) = if temp_metadata_path.exists() {
         (temp_metadata_path, temp_dir.clone())
+    } else if lib_txt_path.exists() {
+        (lib_txt_path, temp_dir.clone())
     } else if legacy_temp_metadata_path.exists() {
         (legacy_temp_metadata_path, get_temp_dir().join(system))
     } else {
@@ -373,12 +377,16 @@ fn try_load_from_temp_metadata(
     // 1. 获取临时元数据路径
     let temp_dir = get_temp_dir_for_library(library_path, system_name);
     let metadata_path = temp_dir.join("metadata.pegasus.txt");
+    // 兼容旧版 scraper 在库级目录写入的 metadata.txt
+    let lib_txt_path = temp_dir.join("metadata.txt");
 
     // 兼容旧路径
     let legacy_path = get_temp_dir().join(system_name).join("metadata.txt");
 
     let (path_to_read, base_dir) = if metadata_path.exists() {
         (metadata_path, temp_dir)
+    } else if lib_txt_path.exists() {
+        (lib_txt_path, temp_dir)
     } else if legacy_path.exists() {
         let legacy_dir = get_temp_dir().join(system_name);
         (legacy_path, legacy_dir)
@@ -1268,6 +1276,8 @@ mod tests {
 </gameList>
 "#;
         fs::write(dir.join("gamelist.xml"), xml).expect("write gamelist.xml");
+        // 解析器会跳过 ROM 文件不存在的条目，因此需要创建对应文件
+        fs::write(dir.join("Super Mario World.sfc"), b"dummy").expect("write rom file");
 
         let roms = read_emulationstation_roms(&dir, "snes").expect("parse gamelist");
         assert_eq!(roms.len(), 1);

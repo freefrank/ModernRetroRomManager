@@ -208,6 +208,7 @@ mod tests {
         };
         
         let confidence = calculate_confidence(&query, &result);
-        assert!(confidence > 0.9);
+        // 完全同名时为名称相似度 0.7 + 完全匹配奖励 0.2
+        assert!(confidence >= 0.89);
     }
 }

@@ -130,12 +130,14 @@ impl ScraperManager {
 
         let results: Vec<Result<Vec<SearchResult>, String>> = join_all(futures).await;
 
-        // 合并结果
-        results
+        // 合并结果并按名称相似度统一重算置信度、排序
+        let merged: Vec<SearchResult> = results
             .into_iter()
             .filter_map(|r: Result<Vec<SearchResult>, String>| r.ok())
             .flatten()
-            .collect()
+            .collect();
+
+        rank_results(query, merged)
     }
 
     /// 通过 Hash 精确查找
@@ -186,17 +188,60 @@ impl ScraperManager {
         provider.get_media(source_id).await
     }
 
-    /// 聚合多个 provider 的元数据（按优先级合并）
-    async fn aggregate_metadata(&self, best_match: &SearchResult) -> (GameMetadata, Vec<String>) {
+    /// 为每个 provider 解析其自己的 source_id
+    ///
+    /// source_id 只在产生它的 provider 内有意义，不能跨源使用。
+    /// 最佳匹配所属的 provider 直接复用其 source_id；
+    /// 其他支持搜索的 provider 各自搜索一次，取置信度足够高的首位结果。
+    async fn resolve_provider_matches(
+        &self,
+        query: &ScrapeQuery,
+        best_match: &SearchResult,
+    ) -> Vec<(Arc<dyn ScraperProvider>, String)> {
+        const MIN_CROSS_PROVIDER_CONFIDENCE: f32 = 0.5;
+
         let providers = self.enabled_providers();
 
-        // 并行获取所有支持元数据的 provider 的数据
         let futures: Vec<_> = providers
-            .iter()
-            .filter(|p| p.capabilities().has(ProviderCapability::Metadata))
+            .into_iter()
             .map(|p| {
+                let q = query.clone();
+                let best_provider = best_match.provider.clone();
+                let best_source_id = best_match.source_id.clone();
+                async move {
+                    if p.id() == best_provider {
+                        return Some((p, best_source_id));
+                    }
+                    if !p.capabilities().has(ProviderCapability::Search) {
+                        return None;
+                    }
+                    let results = p.search(&q).await.ok()?;
+                    let ranked = rank_results(&q, results);
+                    let top = ranked.into_iter().next()?;
+                    if top.confidence >= MIN_CROSS_PROVIDER_CONFIDENCE {
+                        Some((p, top.source_id))
+                    } else {
+                        None
+                    }
+                }
+            })
+            .collect();
+
+        join_all(futures).await.into_iter().flatten().collect()
+    }
+
+    /// 聚合多个 provider 的元数据（按优先级合并，各自使用自己的 source_id）
+    async fn aggregate_metadata(
+        &self,
+        matches: &[(Arc<dyn ScraperProvider>, String)],
+    ) -> (GameMetadata, Vec<String>) {
+        // 并行获取所有支持元数据的 provider 的数据
+        let futures: Vec<_> = matches
+            .iter()
+            .filter(|(p, _)| p.capabilities().has(ProviderCapability::Metadata))
+            .map(|(p, source_id)| {
                 let provider = Arc::clone(p);
-                let source_id = best_match.source_id.clone();
+                let source_id = source_id.clone();
                 let provider_id = p.id().to_string();
                 async move {
                     let result = provider.get_metadata(&source_id).await;
@@ -207,7 +252,7 @@ impl ScraperManager {
 
         let results = join_all(futures).await;
 
-        // 合并元数据（按优先级，providers 已排序）
+        // 合并元数据（按优先级，matches 保持 providers 排序）
         self.merge_metadata(results)
     }
 
@@ -268,33 +313,34 @@ impl ScraperManager {
             None
         };
 
-        // 2. 如果没有 Hash 匹配，进行名称搜索
+        // 2. 如果没有 Hash 匹配，进行名称搜索（search 已按置信度排序）
         let best_match = match best_match {
             Some(m) => m,
-            None => {
-                let results = self.search(query).await;
-                if results.is_empty() {
-                    return Err("No results found".to_string());
-                }
-                // 选择置信度最高的结果
-                results
-                    .into_iter()
-                    .max_by(|a, b| a.confidence.partial_cmp(&b.confidence).unwrap())
-                    .ok_or_else(|| "No results found".to_string())?
-            }
+            None => self
+                .search(query)
+                .await
+                .into_iter()
+                .next()
+                .ok_or_else(|| "未找到匹配的游戏".to_string())?,
         };
 
-        // 3. 聚合多个 provider 的元数据
-        let (metadata, metadata_sources) = self.aggregate_metadata(&best_match).await;
+        // 3. 为每个 provider 解析其自己的 source_id
+        let matches = self.resolve_provider_matches(query, &best_match).await;
 
-        // 4. 并行获取所有 provider 的媒体
-        let providers = self.enabled_providers();
-        let media_futures: Vec<_> = providers
+        // 4. 聚合多个 provider 的元数据
+        let (mut metadata, metadata_sources) = self.aggregate_metadata(&matches).await;
+        // 没有任何元数据源时，至少保留搜索结果的游戏名
+        if metadata.name.is_empty() {
+            metadata.name = best_match.name.clone();
+        }
+
+        // 5. 并行获取所有 provider 的媒体（各自使用自己的 source_id）
+        let media_futures: Vec<_> = matches
             .iter()
-            .filter(|p| p.capabilities().has(ProviderCapability::Media))
-            .map(|p| {
+            .filter(|(p, _)| p.capabilities().has(ProviderCapability::Media))
+            .map(|(p, source_id)| {
                 let provider = Arc::clone(p);
-                let source_id = best_match.source_id.clone();
+                let source_id = source_id.clone();
                 async move { provider.get_media(&source_id).await }
             })
             .collect();

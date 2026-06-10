@@ -11,11 +11,13 @@ use tokio::sync::RwLock;
 use crate::config::{get_temp_dir, get_temp_dir_for_library};
 use crate::scraper::{
     manager::ScraperManager,
-    types::{ScrapeQuery, SearchResult, GameMetadata, MediaAsset, ScrapeResult},
+    types::{ScrapeQuery, SearchResult, GameMetadata, MediaAsset, MediaType, ScrapeResult},
     steamgriddb::SteamGridDBClient,
     screenscraper::ScreenScraperClient,
     pegasus::parse_pegasus_file, // Add parser import
     persistence::{download_media, save_metadata_pegasus, save_metadata_emulationstation},
+    hash::{compute_rom_hash, DEFAULT_HASH_SIZE_LIMIT},
+    matcher::normalize_game_name,
 };
 use crate::rom_service::RomInfo;
 
@@ -34,7 +36,29 @@ pub struct ScraperState {
 
 impl ScraperState {
     pub fn new() -> Self {
-        let manager = ScraperManager::new();
+        // 确保配置已从磁盘加载（ScraperState 在 setup 之前创建）
+        let _ = crate::settings::load_settings();
+
+        let mut manager = ScraperManager::new();
+
+        // 从持久化设置恢复已配置凭证的 provider，
+        // 否则重启后 manager 为空，抓取功能静默失效
+        let settings = crate::settings::get_settings();
+
+        if let Some(config) = settings.scrapers.get("steamgriddb") {
+            if let Some(api_key) = config.api_key.as_ref().filter(|k| !k.is_empty()) {
+                manager.register(SteamGridDBClient::new(api_key.clone()));
+            }
+        }
+
+        if let Some(config) = settings.scrapers.get("screenscraper") {
+            if let (Some(username), Some(password)) = (
+                config.username.as_ref().filter(|u| !u.is_empty()),
+                config.password.as_ref().filter(|p| !p.is_empty()),
+            ) {
+                manager.register(ScreenScraperClient::new(username.clone(), password.clone()));
+            }
+        }
 
         Self {
             manager: Arc::new(RwLock::new(manager)),
@@ -227,21 +251,37 @@ pub async fn scraper_get_media(
     manager.get_media(&provider_id, &source_id).await
 }
 
+/// 计算 ROM 文件 Hash（在阻塞线程中执行，避免阻塞异步运行时）
+async fn compute_hash_for_rom(directory: &str, file_name: &str) -> Option<crate::scraper::RomHash> {
+    let rom_path = Path::new(directory).join(file_name);
+    tokio::task::spawn_blocking(move || compute_rom_hash(&rom_path, DEFAULT_HASH_SIZE_LIMIT))
+        .await
+        .ok()
+        .flatten()
+}
+
 /// 智能 scrape - 自动匹配并聚合数据
+///
+/// 提供 directory 时会计算 ROM 文件 Hash，优先走精确匹配
 #[tauri::command]
 pub async fn scraper_auto_scrape(
     state: State<'_, ScraperState>,
     name: String,
     file_name: String,
     system: Option<String>,
+    directory: Option<String>,
 ) -> Result<ScrapeResult, String> {
-    let manager = state.manager.read().await;
-    
-    let mut query = ScrapeQuery::new(name, file_name);
+    let mut query = ScrapeQuery::new(name, file_name.clone());
     if let Some(sys) = system {
         query = query.with_system(sys);
     }
-    
+    if let Some(dir) = directory {
+        if let Some(hash) = compute_hash_for_rom(&dir, &file_name).await {
+            query = query.with_hash(hash);
+        }
+    }
+
+    let manager = state.manager.read().await;
     manager.scrape(&query).await
 }
 
@@ -359,7 +399,12 @@ pub async fn batch_scrape(
                 finished: false,
             });
 
-            let query = ScrapeQuery::new(file_name.clone(), file_name.clone()).with_system(system.clone());
+            // 计算 Hash 走精确匹配；名称搜索使用清洗后的游戏名
+            let mut query = ScrapeQuery::new(normalize_game_name(&file_name), file_name.clone())
+                .with_system(system.clone());
+            if let Some(hash) = compute_hash_for_rom(&directory, &file_name).await {
+                query = query.with_hash(hash);
+            }
 
             let scrape_res = {
                 let manager = manager_arc.read().await;
@@ -375,6 +420,26 @@ pub async fn batch_scrape(
                         directory: directory.clone(),
                         ..Default::default()
                     };
+
+                    // 先下载默认媒体（封面/截图/标题画面/Logo 各取优先级最高的一个），
+                    // 再写元数据，让媒体路径能关联进 assets 字段
+                    let assets = select_default_assets(&result.media);
+                    if !assets.is_empty() {
+                        let _ = app.emit("batch-scrape-progress", BatchProgress {
+                            current,
+                            total,
+                            message: format!("正在下载媒体: {} ({} 个)", file_name, assets.len()),
+                            finished: false,
+                        });
+
+                        let client = {
+                            let manager = manager_arc.read().await;
+                            manager.http_client.clone()
+                        };
+                        // 媒体下载失败不影响元数据抓取结果
+                        let _ = download_media(&client, &rom, &assets, true).await;
+                    }
+
                     match save_metadata_pegasus(&rom, &result.metadata, true) {
                         Ok(_) => success += 1,
                         Err(_) => failed += 1,
@@ -395,6 +460,24 @@ pub async fn batch_scrape(
     });
 
     Ok(())
+}
+
+/// 批量抓取默认下载的媒体类型（按优先级排列）
+const BATCH_MEDIA_TYPES: [MediaType; 5] = [
+    MediaType::BoxFront,
+    MediaType::Screenshot,
+    MediaType::TitleScreen,
+    MediaType::Logo,
+    MediaType::Banner,
+];
+
+/// 从抓取结果中为每种默认媒体类型挑选第一个资产
+/// （media 列表已按 provider 优先级排序）
+fn select_default_assets(media: &[MediaAsset]) -> Vec<MediaAsset> {
+    BATCH_MEDIA_TYPES
+        .iter()
+        .filter_map(|t| media.iter().find(|m| m.asset_type == *t).cloned())
+        .collect()
 }
 
 /// 取消正在运行的批量抓取任务
@@ -428,6 +511,7 @@ pub async fn save_temp_metadata(
 pub async fn delete_temp_media(
     system: String,
     rom_id: String,
+    rom_directory: String,
     asset_type: String,
 ) -> Result<(), String> {
     let file_stem = Path::new(&rom_id)
@@ -435,9 +519,11 @@ pub async fn delete_temp_media(
         .and_then(|s| s.to_str())
         .unwrap_or(&rom_id);
 
-    let media_dir = get_temp_dir()
+    // 与 download_media / get_temp_media_list 保持一致的库级临时目录
+    let rom_dir = Path::new(&rom_directory);
+    let library_path = rom_dir.parent().unwrap_or(rom_dir);
+    let media_dir = get_temp_dir_for_library(library_path, &system)
         .join("media")
-        .join(&system)
         .join(file_stem);
 
     if !media_dir.exists() {
