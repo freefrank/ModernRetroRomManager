@@ -413,8 +413,88 @@ function scanMediaDirectory(rom: RomInfo, dirPath: string): void {
 }
 
 function readEmulationStationRoms(dirPath: string, systemName: string): RomInfo[] {
-  // TODO: Implement EmulationStation XML parsing
-  return scanRomFiles(dirPath, systemName);
+  const gamelistPath = path.join(dirPath, "gamelist.xml");
+  if (!fs.existsSync(gamelistPath)) {
+    return scanRomFiles(dirPath, systemName);
+  }
+
+  let content: string;
+  try {
+    content = fs.readFileSync(gamelistPath, "utf-8");
+  } catch {
+    return scanRomFiles(dirPath, systemName);
+  }
+
+  const roms: RomInfo[] = [];
+  // 去掉 XML 注释，避免注释中的 <game> 干扰解析
+  const cleaned = content.replace(/<!--[\s\S]*?-->/g, "");
+  // 只取 <game> 的内层内容，避免外层标签干扰字段提取
+  const gameBlocks = [...cleaned.matchAll(/<game\b[^>]*>([\s\S]*?)<\/game>/g)].map((m) => m[1]);
+  const tagPattern = /<([\w-]+)>([\s\S]*?)<\/\1>/g;
+  const cdataPattern = /^<!\[CDATA\[([\s\S]*?)\]\]>$/;
+
+  for (const block of gameBlocks) {
+    // 单遍提取该 game 块内的所有简单标签
+    const fields = new Map<string, string>();
+    for (const m of block.matchAll(tagPattern)) {
+      let value = m[2].trim();
+      const cdata = value.match(cdataPattern);
+      value = cdata ? cdata[1] : decodeXmlEntities(value);
+      if (value) fields.set(m[1], value);
+    }
+    const tag = (name: string): string | undefined => fields.get(name);
+
+    const rawPath = tag("path");
+    if (!rawPath) continue;
+
+    const file = rawPath.replace(/^(\.\/)+/, "");
+
+    // 与 Tauri 端保持一致：ROM 文件不存在则跳过该条目
+    if (file && !fs.existsSync(path.join(dirPath, file))) continue;
+
+    const name = tag("name") || path.parse(file).name || "Unknown";
+
+    // ES 的 rating 为 0~1 的小数，与 Tauri 端一致转换为百分比字符串
+    const ratingRaw = tag("rating");
+    const ratingValue = ratingRaw ? Number.parseFloat(ratingRaw) : NaN;
+    const rating = Number.isFinite(ratingValue)
+      ? `${Math.trunc(ratingValue * 100)}%`
+      : undefined;
+
+    const image = tag("image");
+    const resolveMediaPath = (value?: string) => {
+      if (!value) return undefined;
+      return path.isAbsolute(value) ? value : path.join(dirPath, value);
+    };
+
+    roms.push({
+      file,
+      name,
+      description: tag("desc"),
+      developer: tag("developer"),
+      publisher: tag("publisher"),
+      genre: tag("genre"),
+      players: tag("players"),
+      release: tag("releasedate"),
+      rating,
+      directory: dirPath,
+      system: systemName,
+      box_front: resolveMediaPath(image),
+    });
+  }
+
+  return roms;
+}
+
+function decodeXmlEntities(value: string): string {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+    .replace(/&amp;/g, "&");
 }
 
 function scanRomFiles(dirPath: string, systemName: string): RomInfo[] {
