@@ -195,10 +195,10 @@ export const scraperApi = {
     return [];
   },
 
-  /** 智能 scrape - 自动匹配并聚合数据 */
-  async autoScrape(name: string, fileName: string, system?: string): Promise<ScrapeResult> {
+  /** 智能 scrape - 自动匹配并聚合数据（提供 directory 时启用 Hash 精确匹配） */
+  async autoScrape(name: string, fileName: string, system?: string, directory?: string): Promise<ScrapeResult> {
     if (isTauri()) {
-      return tauriInvoke<ScrapeResult>("scraper_auto_scrape", { name, fileName, system });
+      return tauriInvoke<ScrapeResult>("scraper_auto_scrape", { name, fileName, system, directory });
     }
     throw new Error("Not available in web mode");
   },
@@ -261,9 +261,9 @@ export const scraperApi = {
   },
 
   /** 删除临时媒体 */
-  async deleteTempMedia(system: string, romId: string, assetType: string): Promise<void> {
+  async deleteTempMedia(system: string, romId: string, romDirectory: string, assetType: string): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("delete_temp_media", { system, romId, assetType });
+      await tauriInvoke("delete_temp_media", { system, romId, romDirectory, assetType });
     }
   },
 };

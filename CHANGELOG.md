@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### 重大修复（Scraper 端到端流程）
+- **重启后 Scraper 失效**：启动时从已保存的设置恢复 provider 注册，
+  此前重启后必须重新输入凭证才能抓取
+- **临时数据路径不一致**：统一临时元数据为 `temp/{库}/{系统}/metadata.pegasus.txt`，
+  修复抓取结果 UI 不显示、导出读不到数据、删除媒体路径错误等一系列断点
+- **多源聚合串源**：每个 provider 现在解析并使用自己的 source_id，
+  此前把最佳匹配源的 ID 直接传给其他源导致数据错乱
+- **ScreenScraper 评分比例**：note 为 0~20 分制，已归一化到 0~1
+
+### Scraper 能力增强
+- **Hash 精确匹配接入**：抓取前自动计算 ROM 的 CRC32/MD5/SHA1
+  （≤256MB，流式单遍计算），优先走 ScreenScraper Hash 匹配
+- **ScreenScraper 模糊搜索**：精确文件名匹配失败时回退到 jeuRecherche
+- **批量抓取下载媒体**：自动下载封面/截图/标题画面/Logo/横幅
+  （每类型取优先级最高的一个），并写入临时元数据 assets 字段
+- **搜索结果统一重排序**：接入 Jaro-Winkler 置信度评分（rank_results）
+- **搜索名称清洗**：搜索前自动去除区域标签与扩展名
+- **导出写入封面路径**：导出 EmulationStation 时 gamelist.xml 写入 `<image>` 字段
+
 ### 新增功能
 - **批量抓取支持取消**
   - 新增 `cancel_batch_scrape` 命令，批量任务可随时中止

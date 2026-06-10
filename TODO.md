@@ -21,8 +21,19 @@
   - 非文件夹路径给出中文错误提示（自动消失的通知条）。
 
 - [ ] 批量 Scrape 任务队列与进度反馈
-  - 已有：后台任务 + 进度事件 + 取消（`cancel_batch_scrape`）+ 成功/失败统计。
+  - 已有：后台任务 + 进度事件 + 取消（`cancel_batch_scrape`）+ 成功/失败统计
+    + Hash 精确匹配 + 默认媒体下载。
   - 待做：失败任务重试、任务队列持久化（参见 `docs/plan.md` 路线图 Phase 2）。
+
+## 已修复的关键链路（2026-06-10 第二轮）
+
+- [x] 重启后 Scraper 失效（启动时恢复 provider 注册）
+- [x] 临时元数据写读路径不一致（统一为 `temp/{库}/{系统}/metadata.pegasus.txt`）
+- [x] 多源聚合 source_id 跨源串用
+- [x] ScreenScraper 评分 0~20 未归一化
+- [x] Hash 匹配从未接线（crc32fast/md5/sha1 依赖已声明但未使用）
+- [x] 批量抓取不下载媒体
+- [x] 导出 ES 时 gamelist.xml 缺 `<image>` 字段
 
 ## 低优先级
 

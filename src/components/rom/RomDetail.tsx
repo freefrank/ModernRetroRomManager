@@ -110,7 +110,7 @@ export default function RomDetail({ rom, onClose }: RomDetailProps) {
   const handleDeleteMedia = async (assetType: string) => {
     if (!rom) return;
     try {
-      await deleteTempMedia(rom.system, rom.file, assetType);
+      await deleteTempMedia(rom.system, rom.file, rom.directory, assetType);
       const newList = await scraperApi.getTempMediaList(rom.system, rom.file, rom.directory);
       setTempMedia(newList);
     } catch (error) {

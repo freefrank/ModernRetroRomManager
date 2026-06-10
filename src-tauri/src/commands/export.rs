@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::fs;
 use tauri::{AppHandle, Emitter};
-use crate::config::get_temp_dir;
+use crate::config::get_temp_dir_for_library;
 use crate::rom_service::RomInfo;
 use crate::scraper::{
     GameMetadata,
@@ -32,13 +32,21 @@ pub async fn export_scraped_data(
     system: String,
     directory: String,
 ) -> Result<(), String> {
-    let temp_metadata_path = get_temp_dir().join(&system).join("metadata.txt");
-    if !temp_metadata_path.exists() {
-        return Err("该系统暂无可导出的临时数据，请先抓取元数据。".to_string());
-    }
+    // 临时数据按"库目录 + 系统"隔离存放，与 save_metadata_pegasus / download_media 一致
+    let rom_dir = Path::new(&directory);
+    let library_path = rom_dir.parent().unwrap_or(rom_dir);
+    let temp_sys_dir = get_temp_dir_for_library(library_path, &system);
+
+    // 规范文件名为 metadata.pegasus.txt，兼容旧版写入的 metadata.txt
+    let temp_metadata_path = ["metadata.pegasus.txt", "metadata.txt"]
+        .iter()
+        .map(|name| temp_sys_dir.join(name))
+        .find(|p| p.exists())
+        .ok_or_else(|| "该系统暂无可导出的临时数据，请先抓取元数据。".to_string())?;
 
     let app_clone = app.clone();
-    
+    let temp_media_dir = temp_sys_dir.join("media");
+
     // 启动异步导出
     tokio::spawn(async move {
         let _ = app_clone.emit("export-progress", ExportProgress {
@@ -67,7 +75,7 @@ pub async fn export_scraped_data(
                     if let Some(file) = &game.file {
                         // Convert to GameMetadata
                         let metadata: GameMetadata = game.clone().into();
-                        
+
                         // Create dummy RomInfo for path resolution in save_metadata_emulationstation
                         let rom = RomInfo {
                             file: file.clone(),
@@ -76,12 +84,15 @@ pub async fn export_scraped_data(
                             name: metadata.name.clone(),
                             ..Default::default()
                         };
-                        
+
+                        // 临时目录里有封面时，把导出后的相对路径写入 <image>
+                        let image = find_temp_boxfront(&temp_media_dir, file);
+
                         // Save individually to gamelist.xml (append/update)
                         // 注意：这里频繁读写同一个文件效率较低，但对于增量更新是安全的
                         // 优化方案：批量读取 -> 批量更新 -> 一次写入 (后续迭代)
-                        let _ = save_metadata_emulationstation(&rom, &metadata, false);
-                        
+                        let _ = save_metadata_emulationstation(&rom, &metadata, image.as_deref(), false);
+
                         if idx % 10 == 0 {
                              let progress = 5 + ((idx as f32 / total_games as f32) * 15.0) as usize;
                              let _ = app_clone.emit("export-progress", ExportProgress {
@@ -118,7 +129,6 @@ pub async fn export_scraped_data(
         }
 
         // 2. 处理媒体文件导出
-        let temp_media_dir = get_temp_dir().join("media").join(&system);
         let target_media_dir = Path::new(&directory).join("media");
 
         if temp_media_dir.exists() {
@@ -166,6 +176,24 @@ pub async fn export_scraped_data(
     });
 
     Ok(())
+}
+
+/// 在临时媒体目录中查找指定 ROM 的封面文件，
+/// 返回导出后相对于目标目录的路径 (./media/{stem}/boxfront.xxx)
+fn find_temp_boxfront(temp_media_dir: &Path, rom_file: &str) -> Option<String> {
+    let stem = Path::new(rom_file).file_stem().and_then(|s| s.to_str())?;
+    let dir = temp_media_dir.join(stem);
+
+    let entry = fs::read_dir(dir).ok()?.filter_map(|e| e.ok()).find(|e| {
+        e.path()
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| s == "boxfront")
+            .unwrap_or(false)
+    })?;
+
+    let file_name = entry.file_name().to_str()?.to_string();
+    Some(format!("./media/{}/{}", stem, file_name))
 }
 
 fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {

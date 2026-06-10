@@ -67,7 +67,7 @@ interface RomState {
   };
   fetchStats: () => Promise<void>;
   updateTempMetadata: (system: string, directory: string, rom_id: string, metadata: ScraperGameMetadata) => Promise<void>;
-  deleteTempMedia: (system: string, rom_id: string, assetType: string) => Promise<void>;
+  deleteTempMedia: (system: string, rom_id: string, rom_directory: string, assetType: string) => Promise<void>;
   // 导出状态
   isExporting: boolean;
   exportProgress: { current: number; total: number; message: string; finished: boolean } | null;
@@ -233,9 +233,9 @@ export const useRomStore = create<RomState>((set, get) => ({
     }
   },
 
-  deleteTempMedia: async (system: string, rom_id: string, assetType: string) => {
+  deleteTempMedia: async (system: string, rom_id: string, rom_directory: string, assetType: string) => {
     try {
-      await scraperApi.deleteTempMedia(system, rom_id, assetType);
+      await scraperApi.deleteTempMedia(system, rom_id, rom_directory, assetType);
       await get().fetchRoms();
     } catch (error) {
       console.error("Failed to delete temp media:", error);
