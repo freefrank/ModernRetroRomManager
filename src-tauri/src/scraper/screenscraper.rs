@@ -4,6 +4,7 @@ use crate::scraper::{
     ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
     MediaType, Capabilities, ProviderCapability, RomHash,
 };
+use crate::system_mapping::find_screenscraper_system_id;
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
@@ -241,10 +242,14 @@ impl ScraperProvider for ScreenScraperClient {
     }
 
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
-        // ScreenScraper 使用 romnom 参数搜索
-        let jeu = self
-            .fetch_game_info(vec![("romnom", query.file_name.clone())])
-            .await?;
+        // ScreenScraper 使用 romnom 参数搜索，能映射时附带 systemeid 缩小范围
+        let mut params = vec![("romnom", query.file_name.clone())];
+        if let Some(sys) = &query.system {
+            if let Some(id) = find_screenscraper_system_id(sys) {
+                params.push(("systemeid", id.to_string()));
+            }
+        }
+        let jeu = self.fetch_game_info(params).await?;
 
         match jeu {
             Some(game) => {
@@ -312,10 +317,11 @@ impl ScraperProvider for ScreenScraperClient {
             return Ok(None);
         }
 
-        // 添加系统 ID (如果有)
+        // 添加系统 ID (仅当本地系统名能映射到 ScreenScraper systemid 时)
         if let Some(sys) = system {
-            // TODO: 映射系统名到 ScreenScraper systemid
-            params.push(("systemeid", sys.to_string()));
+            if let Some(id) = find_screenscraper_system_id(sys) {
+                params.push(("systemeid", id.to_string()));
+            }
         }
 
         let jeu = self.fetch_game_info(params).await?;

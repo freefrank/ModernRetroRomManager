@@ -429,6 +429,75 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
     ]
 }
 
+/// 将本地系统/文件夹名称映射到 ScreenScraper 的 systemid
+///
+/// 参考 ScreenScraper 官方系统列表 (https://www.screenscraper.fr/systemeslist.php)。
+/// 返回 None 表示没有可靠映射，此时查询时应省略 systemeid 参数，
+/// 由 ScreenScraper 仅按 hash/文件名匹配。
+pub fn find_screenscraper_system_id(system_name: &str) -> Option<u32> {
+    let name = system_name.trim().to_lowercase();
+
+    // 街机分类目录 (如 "FBNEO ACT" / "MAME STG") 统一归为 MAME/Arcade
+    if name.starts_with("fbneo") || name.starts_with("mame") {
+        return Some(75);
+    }
+
+    let id = match name.as_str() {
+        // Nintendo
+        "fc" | "fc hack" | "fc-hd" | "nes" | "famicom" => 3,
+        "sfc" | "sfc hack" | "sfc-msu1" | "snes" | "sufami" => 4,
+        "gb" | "gameboy" => 9,
+        "gbc" | "gameboycolor" => 10,
+        "virtual boy" | "virtualboy" | "vb" => 11,
+        "gba" | "gameboyadvance" => 12,
+        "ngc" | "gc" | "gamecube" => 13,
+        "n64" | "nintendo64" => 14,
+        "nds" | "ds" => 15,
+        "wii" | "wii ware" | "wiiware" => 16,
+        "3ds" | "n3ds" => 17,
+        "game watch" | "gameandwatch" | "game & watch" => 52,
+        "poke mini" | "pokemini" | "pokemon mini" => 211,
+        "switch" | "nsw" => 225,
+        // Sega
+        "md" | "md hack" | "md hack(picodrive)" | "genesis" | "megadrive" => 1,
+        "sms" | "mastersystem" => 2,
+        "md-32x" | "32x" | "sega32x" => 19,
+        "segacd" | "megacd" | "md-cd" => 20,
+        "gg" | "gamegear" => 21,
+        "ss" | "saturn" => 22,
+        "dc" | "dc hack" | "dreamcast" => 23,
+        "naomi" => 56,
+        // Sony
+        "ps1" | "ps1 hack" | "psx" | "playstation" => 57,
+        "ps2" | "playstation 2" => 58,
+        "ps3" | "playstation 3" => 59,
+        "psp" => 61,
+        // NEC
+        "pce" | "pcengine" | "turbografx16" => 31,
+        "pce-cd" | "pcecd" | "turbografxcd" => 114,
+        "pc-fx" | "pcfx" => 72,
+        // SNK
+        "ngp" | "neogeopocket" => 25,
+        "ngpc" | "neogeopocketcolor" => 82,
+        "neogeo-cd" | "neogeocd" => 70,
+        "neogeo" => 142,
+        // Bandai
+        "ws" | "wonderswan" => 45,
+        "wsc" | "wonderswancolor" => 46,
+        // Atari
+        "atari" | "atari2600" | "a2600" => 26,
+        "atari5200" | "a5200" => 40,
+        "atari7800" | "a7800" => 41,
+        "lynx" => 28,
+        // 其他
+        "3do" => 29,
+        "dos" | "msdos" => 135,
+        _ => return None,
+    };
+
+    Some(id)
+}
+
 /// 根据文件夹名查找系统映射（不区分大小写）
 pub fn find_mapping_by_folder(folder_name: &str) -> Option<SystemMapping> {
     let folder_lower = folder_name.to_lowercase();

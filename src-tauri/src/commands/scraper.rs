@@ -28,6 +28,8 @@ use crate::settings::ScraperConfig;
 
 pub struct ScraperState {
     pub manager: Arc<RwLock<ScraperManager>>,
+    /// 批量抓取取消标记，置 true 后正在运行的批量任务会在当前项完成后停止
+    pub batch_cancel: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl ScraperState {
@@ -36,6 +38,7 @@ impl ScraperState {
 
         Self {
             manager: Arc::new(RwLock::new(manager)),
+            batch_cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 }
@@ -323,13 +326,32 @@ pub async fn batch_scrape(
     directory: String,
     _provider_id: String,
 ) -> Result<(), String> {
+    use std::sync::atomic::Ordering;
+
     let manager_arc = Arc::clone(&state.manager);
+    let cancel_flag = Arc::clone(&state.batch_cancel);
+    cancel_flag.store(false, Ordering::SeqCst);
     let total = rom_ids.len();
 
     tokio::spawn(async move {
+        let mut success = 0usize;
+        let mut failed = 0usize;
+        let mut cancelled = false;
+
         for (i, file_name) in rom_ids.into_iter().enumerate() {
+            if cancel_flag.load(Ordering::SeqCst) {
+                cancelled = true;
+                let _ = app.emit("batch-scrape-progress", BatchProgress {
+                    current: i,
+                    total,
+                    message: format!("已取消批量抓取 (成功 {}, 失败 {})", success, failed),
+                    finished: true,
+                });
+                break;
+            }
+
             let current = i + 1;
-            
+
             let _ = app.emit("batch-scrape-progress", BatchProgress {
                 current,
                 total,
@@ -338,32 +360,49 @@ pub async fn batch_scrape(
             });
 
             let query = ScrapeQuery::new(file_name.clone(), file_name.clone()).with_system(system.clone());
-            
+
             let scrape_res = {
                 let manager = manager_arc.read().await;
                 manager.scrape(&query).await
             };
 
-            if let Ok(result) = scrape_res {
-                let rom = RomInfo {
-                    file: file_name.clone(),
-                    name: result.metadata.name.clone(),
-                    system: system.clone(),
-                    directory: directory.clone(),
-                    ..Default::default()
-                };
-                let _ = save_metadata_pegasus(&rom, &result.metadata, true);
+            match scrape_res {
+                Ok(result) => {
+                    let rom = RomInfo {
+                        file: file_name.clone(),
+                        name: result.metadata.name.clone(),
+                        system: system.clone(),
+                        directory: directory.clone(),
+                        ..Default::default()
+                    };
+                    match save_metadata_pegasus(&rom, &result.metadata, true) {
+                        Ok(_) => success += 1,
+                        Err(_) => failed += 1,
+                    }
+                }
+                Err(_) => failed += 1,
             }
         }
 
-        let _ = app.emit("batch-scrape-progress", BatchProgress {
-            current: total,
-            total,
-            message: "批量处理完成".to_string(),
-            finished: true,
-        });
+        if !cancelled {
+            let _ = app.emit("batch-scrape-progress", BatchProgress {
+                current: total,
+                total,
+                message: format!("批量处理完成 (成功 {}, 失败 {})", success, failed),
+                finished: true,
+            });
+        }
     });
 
+    Ok(())
+}
+
+/// 取消正在运行的批量抓取任务
+#[tauri::command]
+pub async fn cancel_batch_scrape(state: State<'_, ScraperState>) -> Result<(), String> {
+    state
+        .batch_cancel
+        .store(true, std::sync::atomic::Ordering::SeqCst);
     Ok(())
 }
 

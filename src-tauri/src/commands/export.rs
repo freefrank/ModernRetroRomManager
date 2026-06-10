@@ -34,7 +34,7 @@ pub async fn export_scraped_data(
 ) -> Result<(), String> {
     let temp_metadata_path = get_temp_dir().join(&system).join("metadata.txt");
     if !temp_metadata_path.exists() {
-        return Err("No temporary data to export".to_string());
+        return Err("该系统暂无可导出的临时数据，请先抓取元数据。".to_string());
     }
 
     let app_clone = app.clone();
@@ -184,10 +184,10 @@ fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
 // 占位符: 旧接口保留以防前端调用，实际逻辑已合并到 export_scraped_data
 #[tauri::command]
 pub async fn export_to_emulationstation(_app: AppHandle, _target_dir: String) -> Result<(), String> {
-    Err("Please use export_scraped_data instead.".to_string())
+    Err("该接口已废弃，请使用 export_scraped_data。".to_string())
 }
 
 #[tauri::command]
 pub async fn export_to_pegasus(_app: AppHandle, _target_dir: String) -> Result<(), String> {
-    Err("Please use export_scraped_data instead.".to_string())
+    Err("该接口已废弃，请使用 export_scraped_data。".to_string())
 }
