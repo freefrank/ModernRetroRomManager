@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { clsx } from "clsx";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { scraperApi } from "@/lib/api";
+import { useRomStore } from "@/stores/romStore";
 
 interface ExportProgress {
   current: number;
@@ -15,10 +16,18 @@ interface ExportProgress {
 
 export default function Import() {
   const { t } = useTranslation();
+  const { systemRoms, fetchRoms } = useRomStore();
   const importing = false;
   const [exporting, setExporting] = useState<string | null>(null);
+  const [selectedSystem, setSelectedSystem] = useState<string>("");
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
+
+  useEffect(() => {
+    if (systemRoms.length === 0) {
+      fetchRoms();
+    }
+  }, [systemRoms.length, fetchRoms]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -30,7 +39,7 @@ export default function Import() {
           setExporting(null);
           setResult({
             success: true,
-            message: "Export completed successfully!",
+            message: t("import.exportSection.success"),
           });
           setProgress(null);
         }
@@ -42,7 +51,7 @@ export default function Import() {
     return () => {
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [t]);
 
   const handleImport = async () => {
     setResult({
@@ -51,9 +60,17 @@ export default function Import() {
     });
   };
 
-
   const handleExport = async (format: string) => {
     setResult(null);
+
+    if (!selectedSystem) {
+      setResult({
+        success: false,
+        message: t("import.exportSection.needSystem"),
+      });
+      return;
+    }
+
     try {
       const selected = await open({
         directory: true,
@@ -62,8 +79,13 @@ export default function Import() {
 
       if (selected && typeof selected === "string") {
         setExporting(format);
-        setProgress({ current: 0, total: 0, message: "Starting export...", finished: false });
-        await invoke("export_to_emulationstation", { targetDir: selected });
+        setProgress({
+          current: 0,
+          total: 0,
+          message: t("import.exportSection.starting"),
+          finished: false,
+        });
+        await scraperApi.exportScrapedData(selectedSystem, selected);
       }
     } catch (error) {
       console.error("Export failed:", error);
@@ -105,7 +127,7 @@ export default function Import() {
               <div className="absolute inset-0 bg-accent-primary/5 animate-pulse"></div>
               <div className="relative z-10">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-text-primary font-medium">{t("common.loading")}</span>
+                  <span className="text-text-primary font-medium">{t("import.exportSection.exporting")}</span>
                   <span className="text-accent-primary">{progress.current} {progress.total > 0 ? `/ ${progress.total}` : ''}</span>
                 </div>
                 <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
@@ -138,26 +160,26 @@ export default function Import() {
                     <span className="text-orange-400 font-bold text-lg">ES</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation</h3>
-                    <p className="text-xs text-text-secondary mt-0.5">gamelist.xml</p>
+                    <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">{t("import.formats.emulationstation.name")}</h3>
+                    <p className="text-xs text-text-secondary mt-0.5">{t("import.formats.emulationstation.file")}</p>
                   </div>
                 </div>
               </button>
 
               {/* Other Placeholders */}
-              {["Pegasus/Recalbox", "LaunchBox", "RetroArch"].map((name) => (
+              {(["pegasus", "launchbox", "retroarch"] as const).map((key) => (
                 <button
-                  key={name}
+                  key={key}
                   disabled
                   className="p-4 bg-bg-secondary border border-border-default rounded-xl opacity-50 cursor-not-allowed text-left"
                 >
                   <div className="flex items-center gap-4 mb-2">
                     <div className="w-12 h-12 bg-bg-tertiary rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="text-text-muted font-bold text-lg">{name.substring(0, 2).toUpperCase()}</span>
+                      <span className="text-text-muted font-bold text-lg">{t(`import.formats.${key}.name`).substring(0, 2).toUpperCase()}</span>
                     </div>
                     <div>
-                      <h3 className="font-bold text-text-muted">{name}</h3>
-                      <p className="text-xs text-text-muted mt-0.5">Coming Soon</p>
+                      <h3 className="font-bold text-text-muted">{t(`import.formats.${key}.name`)}</h3>
+                      <p className="text-xs text-text-muted mt-0.5">{t("common.comingSoon")}</p>
                     </div>
                   </div>
                 </button>
@@ -172,10 +194,34 @@ export default function Import() {
               {t("import.exportSection.description")}
             </p>
 
+            {/* 系统选择 */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                {t("import.exportSection.selectSystem")}
+              </label>
+              {systemRoms.length === 0 ? (
+                <p className="text-sm text-text-muted">{t("import.exportSection.noSystems")}</p>
+              ) : (
+                <select
+                  value={selectedSystem}
+                  onChange={(e) => setSelectedSystem(e.target.value)}
+                  disabled={!!exporting}
+                  className="w-full max-w-sm px-4 py-2.5 bg-bg-secondary border border-border-default rounded-xl text-text-primary focus:border-accent-primary/50 focus:outline-none transition-colors disabled:opacity-50"
+                >
+                  <option value="">{t("import.exportSection.selectSystemPlaceholder")}</option>
+                  {systemRoms.map((s) => (
+                    <option key={s.system} value={s.system}>
+                      {s.system} ({s.roms.length})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => handleExport("emulationstation")}
-                disabled={!!importing || !!exporting}
+                disabled={!!importing || !!exporting || !selectedSystem}
                 className="group p-4 bg-bg-secondary border border-border-default rounded-xl hover:border-accent-primary/50 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-4 mb-2">
@@ -183,8 +229,8 @@ export default function Import() {
                     <span className="text-orange-400 font-bold text-lg">ES</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation</h3>
-                    <p className="text-xs text-text-secondary mt-0.5">gamelist.xml + ROMs</p>
+                    <h3 className="font-bold text-text-primary group-hover:text-accent-primary transition-colors">EmulationStation / Pegasus</h3>
+                    <p className="text-xs text-text-secondary mt-0.5">gamelist.xml / metadata.txt</p>
                   </div>
                 </div>
               </button>

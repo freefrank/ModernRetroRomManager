@@ -3,6 +3,14 @@
     "name": "ModernRetroRomManager",
     "version": "版本 {{version}}"
   },
+  "layout": {
+    "dropOverlay": {
+      "title": "松开以添加目录",
+      "subtitle": "将递归扫描其中的游戏"
+    },
+    "dropNotDirectory": "无法添加：{{path}} 不是文件夹",
+    "dropAddFailed": "添加目录失败：{{path}}"
+  },
   "nav": {
     "library": "ROM 库",
     "scraper": "Scraper",
@@ -110,7 +118,9 @@
       "selectSource": "选择抓取源",
       "recommended": "推荐使用 ScreenScraper",
       "noSourceEnabled": "请先在设置中启用至少一个抓取源",
-      "start": "开始抓取"
+      "start": "开始抓取",
+      "cancel": "取消任务",
+      "cancelling": "正在取消..."
     }
   },
   "romDetail": {
@@ -165,7 +175,14 @@
     },
     "exportSection": {
       "title": "导出",
-      "description": "将 ROM 库导出为其他格式以便在其他软件中使用"
+      "description": "将抓取的临时元数据和媒体导出到目标目录（自动识别 EmulationStation / Pegasus 格式）",
+      "selectSystem": "选择要导出的系统",
+      "selectSystemPlaceholder": "请选择系统",
+      "noSystems": "暂无系统，请先在 ROM 库中添加目录",
+      "starting": "正在准备导出...",
+      "exporting": "导出中",
+      "success": "导出完成！",
+      "needSystem": "请先选择要导出的系统"
     },
     "formats": {
       "emulationstation": {
@@ -242,7 +259,8 @@
     "size": "大小",
     "date": "日期",
     "notAvailable": "未知",
-    "finish": "完成"
+    "finish": "完成",
+    "comingSoon": "即将推出"
   },
   "splash": {
     "initializing": "初始化中...",

@@ -3,6 +3,28 @@
 ## Unreleased
 
 ### 新增功能
+- **批量抓取支持取消**
+  - 新增 `cancel_batch_scrape` 命令，批量任务可随时中止
+  - 批量抓取结束时反馈成功/失败数量
+  - 批量抓取对话框新增"取消任务"按钮
+- **Web 后端支持 EmulationStation**
+  - `server` 端实现 `gamelist.xml` 解析，字段与 Tauri 端保持一致
+- **ScreenScraper 系统 ID 映射**
+  - 新增本地系统名到 ScreenScraper `systemeid` 的映射表
+  - Hash 查询与文件名搜索自动附带系统 ID，提高匹配准确率
+
+### 优化与修复
+- **导入/导出页面**
+  - 修复导出调用已废弃接口 `export_to_emulationstation` 的问题，改用 `export_scraped_data`
+  - 新增导出系统选择下拉框
+  - 页面文案全部进入 i18n（简体中文/英文）
+- **拖拽添加目录**
+  - 拖入路径先经 `validate_path` 校验，非文件夹给出中文错误提示
+  - 拖拽遮罩文案进入 i18n
+- **其他清理**
+  - 旧导入/导出兼容接口的错误信息改为简体中文
+  - `docs/AUTID_FIX.md` 更名为 `docs/AUDIT_GUIDE.md` 修正拼写
+
 - **中文ROM工具双数据源匹配**
   - 集成 `jy6d-dz` 作为 `cn_repo` 的补充数据源
   - 自动选择置信度更高的匹配结果

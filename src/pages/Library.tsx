@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Search, LayoutGrid, List, Filter, Plus, Ghost, Database, X, Grid3X3, Wand2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
@@ -183,8 +183,7 @@ export default function Library() {
   };
 
   const handleRomClick = (rom: Rom) => {
-    // Single click logic: Select if multi-select mode (Ctrl/Shift held - TODO), else open Detail
-    // For now: Always open detail, Selection is handled by dedicated checkbox or specialized interactions
+    // 单击打开详情；多选通过专用的勾选框等交互处理
     setActiveRom(rom);
   };
 

@@ -14,7 +14,7 @@ interface BatchScrapeDialogProps {
 export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
-  const { startBatchScrape, selectedRomIds, isBatchScraping, batchProgress } = useRomStore();
+  const { startBatchScrape, cancelBatchScrape, selectedRomIds, isBatchScraping, isCancellingBatch, batchProgress } = useRomStore();
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
 
   useEffect(() => {
@@ -193,15 +193,21 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                     {t("scraper.batch.start")}
                   </button>
                 </>
+              ) : batchProgress?.finished ? (
+                <button
+                  onClick={onClose}
+                  className="px-10 py-2.5 bg-accent-primary text-bg-primary text-sm font-black rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-accent-primary/25"
+                >
+                  {t("common.finish")}
+                </button>
               ) : (
-                batchProgress?.finished && (
-                  <button
-                    onClick={onClose}
-                    className="px-10 py-2.5 bg-accent-primary text-bg-primary text-sm font-black rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-accent-primary/25"
-                  >
-                    {t("common.finish")}
-                  </button>
-                )
+                <button
+                  onClick={cancelBatchScrape}
+                  disabled={isCancellingBatch}
+                  className="px-8 py-2.5 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCancellingBatch ? t("scraper.batch.cancelling") : t("scraper.batch.cancel")}
+                </button>
               )}
             </div>
           </div>

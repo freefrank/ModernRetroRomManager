@@ -39,8 +39,10 @@ interface RomState {
 
   // 批量 Scrape
   isBatchScraping: boolean;
+  isCancellingBatch: boolean;
   batchProgress: BatchProgress | null;
   startBatchScrape: (provider: string) => Promise<void>;
+  cancelBatchScrape: () => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -151,7 +153,17 @@ export const useRomStore = create<RomState>((set, get) => ({
 
   // 批量 Scrape
   isBatchScraping: false,
+  isCancellingBatch: false,
   batchProgress: null,
+  cancelBatchScrape: async () => {
+    set({ isCancellingBatch: true });
+    try {
+      await scraperApi.cancelBatchScrape();
+    } catch (error) {
+      console.error("Failed to cancel batch scrape:", error);
+      set({ isCancellingBatch: false });
+    }
+  },
   startBatchScrape: async (providerId: string) => {
     const { selectedRomIds, selectedSystem, systemRoms } = get();
     if (selectedRomIds.size === 0) return;
@@ -166,15 +178,15 @@ export const useRomStore = create<RomState>((set, get) => ({
     const directory = systemInfo?.path || "";
     const system = selectedSystem || "";
 
-    set({ isBatchScraping: true, batchProgress: null });
+    set({ isBatchScraping: true, isCancellingBatch: false, batchProgress: null });
     try {
       const { listen } = await import("@tauri-apps/api/event");
-      
+
       const unlisten = await listen<BatchProgress>("batch-scrape-progress", (event) => {
         set({ batchProgress: event.payload });
         if (event.payload.finished) {
           setTimeout(() => {
-            set({ isBatchScraping: false });
+            set({ isBatchScraping: false, isCancellingBatch: false });
             get().fetchRoms();
           }, 1000);
           unlisten();
@@ -184,7 +196,7 @@ export const useRomStore = create<RomState>((set, get) => ({
       await scraperApi.batchScrape(Array.from(selectedRomIds), system, directory, providerId);
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
-      set({ isBatchScraping: false });
+      set({ isBatchScraping: false, isCancellingBatch: false });
     }
   },
 

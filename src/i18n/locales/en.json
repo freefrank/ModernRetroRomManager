@@ -3,6 +3,14 @@
     "name": "ModernRetroRomManager",
     "version": "Version {{version}}"
   },
+  "layout": {
+    "dropOverlay": {
+      "title": "Drop to Add Directory",
+      "subtitle": "Scan recursively for games"
+    },
+    "dropNotDirectory": "Cannot add: {{path}} is not a directory",
+    "dropAddFailed": "Failed to add directory: {{path}}"
+  },
   "nav": {
     "library": "Library",
     "scraper": "Scraper",
@@ -110,7 +118,9 @@
       "selectSource": "Select Source",
       "recommended": "ScreenScraper recommended",
       "noSourceEnabled": "Enable at least one source in settings first",
-      "start": "Start Scrape"
+      "start": "Start Scrape",
+      "cancel": "Cancel Task",
+      "cancelling": "Cancelling..."
     }
   },
   "romDetail": {
@@ -165,7 +175,14 @@
     },
     "exportSection": {
       "title": "Export",
-      "description": "Export your library to other formats"
+      "description": "Export scraped temp metadata and media to a target directory (auto-detects EmulationStation / Pegasus format)",
+      "selectSystem": "Select system to export",
+      "selectSystemPlaceholder": "Select a system",
+      "noSystems": "No systems found. Add a directory in Library first.",
+      "starting": "Preparing export...",
+      "exporting": "Exporting",
+      "success": "Export completed!",
+      "needSystem": "Please select a system first"
     },
     "formats": {
       "emulationstation": {
@@ -242,7 +259,8 @@
     "size": "Size",
     "date": "Date",
     "notAvailable": "Unknown",
-    "finish": "Finish"
+    "finish": "Finish",
+    "comingSoon": "Coming Soon"
   },
   "splash": {
     "initializing": "Initializing...",

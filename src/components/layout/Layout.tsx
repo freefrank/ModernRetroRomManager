@@ -1,34 +1,54 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
-import { FolderPlus } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
+import { FolderPlus, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRomStore } from "@/stores/romStore";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
 
+interface PathValidation {
+  path: string;
+  exists: boolean;
+  is_directory: boolean;
+  readable: boolean;
+  writable: boolean;
+}
+
 export default function Layout() {
+  const { t } = useTranslation();
   const { addScanDirectory } = useRomStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
+  const dropErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showDropError = (message: string) => {
+    setDropError(message);
+    if (dropErrorTimer.current) clearTimeout(dropErrorTimer.current);
+    dropErrorTimer.current = setTimeout(() => setDropError(null), 5000);
+  };
 
   useEffect(() => {
     // 监听拖拽事件
     const unlistenDrop = listen<string[]>("tauri://file-drop", async (event) => {
       setIsDragging(false);
       const paths = event.payload;
-      if (paths && paths.length > 0) {
-        // 目前只处理第一个路径
-        // TODO: 检查是否是文件夹，或循环处理
-        // 由于前端无法直接判断是否为文件夹（除非调用 Rust），我们假设用户拖拽的是文件夹
-        // 或者让后端 addScanDirectory 处理（如果不是文件夹则报错或忽略）
-        for (const path of paths) {
-          try {
-            await addScanDirectory(path);
-            // Optional: Trigger scan immediately? addScanDirectory currently just adds config.
-            // Consider auto-scanning.
-          } catch (e) {
-            console.error("Failed to add drop path:", path, e);
+      if (!paths || paths.length === 0) return;
+
+      for (const path of paths) {
+        try {
+          // 先校验路径是否为可读文件夹，避免把文件当目录添加
+          const validation = await invoke<PathValidation>("validate_path", { path });
+          if (!validation.exists || !validation.is_directory) {
+            showDropError(t("layout.dropNotDirectory", { path }));
+            continue;
           }
+          await addScanDirectory(path);
+        } catch (e) {
+          console.error("Failed to add drop path:", path, e);
+          showDropError(t("layout.dropAddFailed", { path }));
         }
       }
     });
@@ -45,8 +65,9 @@ export default function Layout() {
       unlistenDrop.then((f) => f());
       unlistenHover.then((f) => f());
       unlistenCancel.then((f) => f());
+      if (dropErrorTimer.current) clearTimeout(dropErrorTimer.current);
     };
-  }, [addScanDirectory]);
+  }, [addScanDirectory, t]);
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary text-text-primary relative overflow-hidden">
@@ -60,8 +81,23 @@ export default function Layout() {
             className="absolute inset-0 z-50 bg-accent-primary/80 backdrop-blur-md flex flex-col items-center justify-center text-white border-4 border-white/20 border-dashed m-4 rounded-3xl"
           >
             <FolderPlus className="w-24 h-24 mb-6 animate-bounce" />
-            <h2 className="text-3xl font-bold mb-2">Drop to Add Directory</h2>
-            <p className="text-white/80">Scan recursively for games</p>
+            <h2 className="text-3xl font-bold mb-2">{t("layout.dropOverlay.title")}</h2>
+            <p className="text-white/80">{t("layout.dropOverlay.subtitle")}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Drop Error Notification */}
+      <AnimatePresence>
+        {dropError && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute bottom-12 right-6 z-50 flex items-center gap-3 p-4 bg-bg-secondary border border-accent-error/40 rounded-xl shadow-xl text-accent-error max-w-md"
+          >
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span className="text-sm font-medium break-all">{dropError}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -81,7 +117,7 @@ export default function Layout() {
           </div>
         </main>
       </div>
-      
+
       <div className="relative z-20">
         <StatusBar />
       </div>
