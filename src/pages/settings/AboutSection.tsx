@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui";
 
-const REPO_URL = "https://github.com/dotslash/modern-retro-rom-manager";
+const REPO_URL = "https://github.com/freefrank/ModernRetroRomManager";
 
 export default function AboutSection() {
   const { t } = useTranslation();

@@ -30,7 +30,7 @@ export function isSafeAssetPath(path: string): boolean {
 // 纵深防御:后端清洗存在 EOF 处不带分号的极窄逃逸,这里把残留 @import 再剥一遍
 const RESIDUAL_IMPORT = /@import[^;]*(;|$)/gi;
 // __RR_ASSET__/<path> 占位符(后端将合法相对 url 重写为该形式)
-const ASSET_URL = /url\(\s*(['"]?)__RR_ASSET__\/([^)'"]*)\1\s*\)/g;
+const ASSET_URL = /url\(\s*(['"]?)__RR_ASSET__\/([^)'"]*)\1\s*\)/gi;
 
 /**
  * 清洗导入主题的自定义 CSS:剥残留 @import;
