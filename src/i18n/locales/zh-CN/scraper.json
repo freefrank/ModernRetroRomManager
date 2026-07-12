@@ -1,0 +1,89 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "开始 Scrape",
+    "apiConfig": {
+      "title": "API 配置",
+      "description": "配置 Scraper API 密钥以获取游戏元数据和媒体资源",
+      "activeSources": "{{count}} 个活跃源",
+      "credentialsNote": "请输入该源的 API 凭据。这些信息将加密存储在本地。"
+    },
+    "noCredentials": {
+      "title": "未配置 API 凭证",
+      "description": "Scraper 功能需要配置 API 凭证才能使用。请前往设置页面配置 ScreenScraper 或 SteamGridDB 的 API 凭证。",
+      "goToSettings": "前往设置页面"
+    },
+    "status": {
+      "enabledSources": "已启用源",
+      "avgConfidence": "平均置信度",
+      "configuredCredentials": "已配置凭据",
+      "authenticated": "已认证"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Twitch 旗下，数据全面"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "高质量封面/Logo/图标"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "社区驱动，免费"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "老游戏数据丰富"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "需注册，媒体资源多"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "用户名",
+      "password": "密码"
+    },
+    "dialog": {
+      "title": "抓取游戏元数据",
+      "searchPlaceholder": "输入游戏名称搜索...",
+      "searchButton": "搜索",
+      "searching": "搜索中...",
+      "resultsCount": "搜索结果 ({{count}})",
+      "noResults": "暂无搜索结果",
+      "loadingDetails": "正在加载详细信息...",
+      "confidence": "置信度",
+      "userRating": "用户评分",
+      "releaseDate": "发行日期",
+      "developer": "开发商",
+      "publisher": "发行商",
+      "sourceSystem": "来源系统",
+      "description": "游戏描述",
+      "noDescription": "暂无描述。",
+      "mediaAssets": "可选媒体资产 ({{count}})",
+      "selectedAssets": "已选择 {{count}} 个资产",
+      "readyToScrape": "准备抓取数据",
+      "readyToScrapeDesc": "在左侧搜索并选择一个游戏结果，即可预览并选择要抓取的详细信息。",
+      "applyNote": "选择资产后点击右侧按钮应用到该游戏。",
+      "confirmAndApply": "确认并应用"
+    },
+    "batch": {
+      "title": "批量抓取 (Batch Scrape)",
+      "scraping": "正在抓取数据...",
+      "processed": "{{current}} / {{total}} 个游戏已处理",
+      "preparing": "准备中...",
+      "completed": "抓取完成!",
+      "completedDesc": "所有选中的游戏信息已成功更新。",
+      "pendingTitle": "即将为 {{count}} 个选中的游戏抓取数据",
+      "pendingDesc": "系统将自动匹配文件名并尝试获取最佳元数据和封面。",
+      "selectSource": "选择抓取源",
+      "recommended": "推荐使用 ScreenScraper",
+      "noSourceEnabled": "请先在设置中启用至少一个抓取源",
+      "start": "开始抓取"
+    }
+  }
+}

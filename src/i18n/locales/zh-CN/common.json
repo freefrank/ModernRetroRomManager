@@ -1,0 +1,77 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "版本 {{version}}"
+  },
+  "nav": {
+    "library": "ROM 库",
+    "scraper": "Scraper",
+    "import": "导入/导出",
+    "settings": "设置",
+    "tools": "工具箱",
+    "cnTools": "中文 ROM 工具"
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "已 Scrape: {{count}}",
+    "storageUsed": "存储: {{size}}"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "确认",
+    "delete": "删除",
+    "edit": "编辑",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "name": "名称",
+    "system": "系统",
+    "size": "大小",
+    "date": "日期",
+    "notAvailable": "未知",
+    "finish": "完成"
+  },
+  "splash": {
+    "initializing": "初始化中...",
+    "loadingSettings": "加载设置...",
+    "loadingRoms": "读取 ROM 数据...",
+    "loadingCovers": "加载封面...",
+    "ready": "准备就绪"
+  },
+  "metadataDialog": {
+    "title": "检测到元数据文件",
+    "subtitle": "选择元数据格式",
+    "description": "点击下方选项选择格式：",
+    "skip": "跳过"
+  },
+  "ui": {
+    "dialog": {
+      "close": "关闭"
+    },
+    "toast": {
+      "dismiss": "关闭通知"
+    },
+    "empty": {
+      "title": "暂无内容"
+    },
+    "spinner": {
+      "loading": "加载中"
+    }
+  },
+  "directoryInput": {
+    "placeholder": "例如: C:\\ROMs\\SNES 或 /home/user/roms",
+    "browse": "浏览...",
+    "browseTitle": "选择目录",
+    "status": {
+      "validating": "验证中...",
+      "error": "错误: {{error}}",
+      "missing": "路径不存在",
+      "notDirectory": "不是目录",
+      "notReadable": "无读取权限",
+      "notWritable": "警告: 无写入权限",
+      "valid": "有效路径 ✓"
+    }
+  }
+}

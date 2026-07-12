@@ -1,0 +1,77 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "Version {{version}}"
+  },
+  "nav": {
+    "library": "Library",
+    "scraper": "Scraper",
+    "import": "Import/Export",
+    "settings": "Settings",
+    "tools": "Tools",
+    "cnTools": "Chinese ROM Tools"
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "Scraped: {{count}}",
+    "storageUsed": "Storage: {{size}}"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "name": "Name",
+    "system": "System",
+    "size": "Size",
+    "date": "Date",
+    "notAvailable": "Unknown",
+    "finish": "Finish"
+  },
+  "splash": {
+    "initializing": "Initializing...",
+    "loadingSettings": "Loading settings...",
+    "loadingRoms": "Loading ROM data...",
+    "loadingCovers": "Loading covers...",
+    "ready": "Ready"
+  },
+  "metadataDialog": {
+    "title": "Metadata files detected",
+    "subtitle": "Choose metadata format",
+    "description": "Select a format:",
+    "skip": "Skip"
+  },
+  "ui": {
+    "dialog": {
+      "close": "Close"
+    },
+    "toast": {
+      "dismiss": "Dismiss notification"
+    },
+    "empty": {
+      "title": "Nothing here yet"
+    },
+    "spinner": {
+      "loading": "Loading"
+    }
+  },
+  "directoryInput": {
+    "placeholder": "e.g. C:\\ROMs\\SNES or /home/user/roms",
+    "browse": "Browse...",
+    "browseTitle": "Select directory",
+    "status": {
+      "validating": "Validating...",
+      "error": "Error: {{error}}",
+      "missing": "Path missing",
+      "notDirectory": "Not a directory",
+      "notReadable": "No read access",
+      "notWritable": "Warning: No write access",
+      "valid": "Valid path ✓"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "library": {
+    "title": "ROM Library",
+    "gameCount": "{{count}} games",
+    "search": "Search...",
+    "empty": {
+      "title": "Library is empty",
+      "description": "Add a scan directory to start managing your ROM collection",
+      "addDirectory": "Add Directory"
+    },
+    "viewMode": {
+      "cover": "Cover View",
+      "grid": "Card View",
+      "list": "List View"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "Info",
+      "media": "Media",
+      "files": "Files"
+    },
+    "preview": {
+      "mode": "Preview Data",
+      "raw": "Raw Data",
+      "active": "Previewing Scraped Data",
+      "inactive": "View Original Data",
+      "note": "Preview Data",
+      "noteDesc": "These data are stored in a temporary directory. Check description and covers, then click 'Export to Library' to apply them permanently."
+    },
+    "fields": {
+      "releaseDate": "Release Date",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "genre": "Genre",
+      "description": "Description",
+      "noDescription": "No description available.",
+      "filename": "Filename",
+      "localPath": "Local Path"
+    },
+    "actions": {
+      "play": "Play",
+      "scrape": "Scrape",
+      "edit": "Edit",
+      "remove": "Remove",
+      "export": "Export to Library",
+      "exporting": "Exporting {{progress}}%",
+      "exportingSimple": "Exporting",
+      "savePreview": "Save Preview",
+      "saveEdit": "Save Changes",
+      "cancelEdit": "Cancel"
+    },
+    "media": {
+      "title": "Media Management (Temp)",
+      "empty": "No scraped media assets",
+      "deleteNote": "Note: Deletion only affects the temp directory. After exporting, existing assets will be overwritten."
+    }
+  }
+}

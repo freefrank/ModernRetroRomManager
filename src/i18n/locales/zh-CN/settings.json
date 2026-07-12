@@ -1,0 +1,38 @@
+{
+  "settings": {
+    "title": "设置",
+    "appearance": {
+      "title": "外观主题"
+    },
+    "scanDirectories": {
+      "title": "扫描目录",
+      "description": "配置 ROM 扫描目录，软件会自动检测其中的 ROM 文件",
+      "empty": "暂未添加扫描目录",
+      "addDirectory": "添加目录",
+      "dialogTitle": "添加扫描目录"
+    },
+    "storage": {
+      "title": "存储设置",
+      "configDirectory": "配置目录",
+      "mediaDirectory": "媒体资源目录",
+      "defaultLocation": "默认位置"
+    },
+    "apiConfig": {
+      "title": "API 配置",
+      "editConfig": "编辑配置",
+      "username": "用户名",
+      "password": "密码",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "输入用户名",
+      "passwordPlaceholder": "输入密码",
+      "credentialsHint": "请输入该源的 API 凭据。这些信息将加密存储在本地。"
+    },
+    "language": {
+      "title": "语言",
+      "description": "选择界面显示语言"
+    },
+    "about": {
+      "title": "关于"
+    }
+  }
+}

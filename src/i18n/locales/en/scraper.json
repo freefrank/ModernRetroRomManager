@@ -1,0 +1,89 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Start Scrape",
+    "apiConfig": {
+      "title": "API Configuration",
+      "description": "Configure Scraper API keys to fetch game metadata and media assets",
+      "activeSources": "{{count}} active sources",
+      "credentialsNote": "Please enter your API credentials. They are stored securely on your machine."
+    },
+    "noCredentials": {
+      "title": "No API Credentials Configured",
+      "description": "Scraper requires API credentials to function. Please go to Settings to configure ScreenScraper or SteamGridDB API credentials.",
+      "goToSettings": "Go to Settings"
+    },
+    "status": {
+      "enabledSources": "Enabled Sources",
+      "avgConfidence": "Avg Confidence",
+      "configuredCredentials": "Configured Credentials",
+      "authenticated": "Authenticated"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Powered by Twitch, comprehensive data"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "High-quality covers/logos/icons"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "Community-driven, free"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Rich data for retro games"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Registration required, rich media"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "Username",
+      "password": "Password"
+    },
+    "dialog": {
+      "title": "Scrape Game Metadata",
+      "searchPlaceholder": "Search for game name...",
+      "searchButton": "Search",
+      "searching": "Searching...",
+      "resultsCount": "Results ({{count}})",
+      "noResults": "No results found",
+      "loadingDetails": "Loading details...",
+      "confidence": "Confidence",
+      "userRating": "Rating",
+      "releaseDate": "Release Date",
+      "developer": "Developer",
+      "publisher": "Publisher",
+      "sourceSystem": "Source System",
+      "description": "Description",
+      "noDescription": "No description available.",
+      "mediaAssets": "Media Assets ({{count}})",
+      "selectedAssets": "{{count}} selected",
+      "readyToScrape": "Ready to Scrape",
+      "readyToScrapeDesc": "Select a result from the left to preview metadata and select assets.",
+      "applyNote": "Select assets and click Apply to update the game info.",
+      "confirmAndApply": "Confirm and Apply"
+    },
+    "batch": {
+      "title": "Batch Scrape",
+      "scraping": "Scraping Data...",
+      "processed": "{{current}} / {{total}} games processed",
+      "preparing": "Preparing...",
+      "completed": "Scrape Completed!",
+      "completedDesc": "All selected games have been updated successfully.",
+      "pendingTitle": "Scraping {{count}} selected games",
+      "pendingDesc": "System will auto-match filenames and fetch the best metadata and covers.",
+      "selectSource": "Select Source",
+      "recommended": "ScreenScraper recommended",
+      "noSourceEnabled": "Enable at least one source in settings first",
+      "start": "Start Scrape"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "import": {
+    "title": "Import/Export",
+    "importSection": {
+      "title": "Import",
+      "description": "Import metadata and media assets from existing software",
+      "deprecated": "This version uses directory scanning. Please add a directory in Library page.",
+      "success": "Switched to directory scan mode"
+    },
+    "exportSection": {
+      "title": "Export",
+      "description": "Export your library to other formats"
+    },
+    "formats": {
+      "emulationstation": {
+        "name": "EmulationStation",
+        "file": "gamelist.xml"
+      },
+      "pegasus": {
+        "name": "Pegasus/Recalbox",
+        "file": "metadata.txt"
+      },
+      "launchbox": {
+        "name": "LaunchBox",
+        "file": "XML"
+      },
+      "retroarch": {
+        "name": "RetroArch",
+        "file": ".lpl"
+      }
+    }
+  }
+}

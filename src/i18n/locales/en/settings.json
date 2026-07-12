@@ -1,0 +1,38 @@
+{
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance"
+    },
+    "scanDirectories": {
+      "title": "Scan Directories",
+      "description": "Configure ROM directories, software will detect games automatically",
+      "empty": "No scan directories added",
+      "addDirectory": "Add Directory",
+      "dialogTitle": "Add Scan Directory"
+    },
+    "storage": {
+      "title": "Storage Settings",
+      "configDirectory": "Config Directory",
+      "mediaDirectory": "Media Directory",
+      "defaultLocation": "Default Location"
+    },
+    "apiConfig": {
+      "title": "API Configuration",
+      "editConfig": "Edit Config",
+      "username": "Username",
+      "password": "Password",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Enter username",
+      "passwordPlaceholder": "Enter password",
+      "credentialsHint": "Please enter your API credentials. They are stored securely on your machine."
+    },
+    "language": {
+      "title": "Language",
+      "description": "Select interface language"
+    },
+    "about": {
+      "title": "About"
+    }
+  }
+}
