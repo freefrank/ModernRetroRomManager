@@ -66,7 +66,7 @@ export default function Layout() {
           isDragging ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
       >
-        <FolderPlus className="w-24 h-24 mb-6 animate-bounce" />
+        <FolderPlus className={clsx("w-24 h-24 mb-6", isDragging && "animate-bounce")} />
         <h2 className="text-3xl font-bold mb-2">{t("dropOverlay.title")}</h2>
         <p className="text-text-primary/80">{t("dropOverlay.subtitle")}</p>
       </div>

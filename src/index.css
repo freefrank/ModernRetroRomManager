@@ -113,11 +113,15 @@ body {
   background: transparent;
 }
 
+/* 性能关键:thumb 颜色必须带 alpha(<1)。Chromium/WebView2 在文档首帧
+   若判定自绘滚动条 thumb 为不透明色,会把滚动容器降级为主线程全窗口
+   重绘滚动(retro 主题曾因不透明 border-hover 掉到 ~80fps,加 1% 透明
+   即回满帧)。color-mix 强制混入 1% 透明,对任意主题包取值免疫。 */
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-hover);
+  background: color-mix(in srgb, var(--color-border-hover) 99%, transparent);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-text-muted) 99%, transparent);
 }
