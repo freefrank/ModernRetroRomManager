@@ -79,13 +79,13 @@ async function loadCustomThemes(): Promise<LoadedTheme[]> {
   }
 }
 
-// 侧边栏折叠态持久化:后端 update_app_setting 为显式 match 且无 sidebar_collapsed 分支
-// (未知 key 被静默丢弃),故按任务约定改用 localStorage 持久化
-const SIDEBAR_COLLAPSED_KEY = "sidebar_collapsed";
+// 侧边栏面板收起态持久化:后端 update_app_setting 为显式 match 且无对应分支
+// (未知 key 被静默丢弃),故沿用 localStorage 持久化(旧 key sidebar_collapsed 已废弃)
+const SIDEBAR_PANEL_COLLAPSED_KEY = "sidebar_panel_collapsed";
 
-const loadSidebarCollapsed = (): boolean => {
+const loadSidebarPanelCollapsed = (): boolean => {
   try {
-    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+    return localStorage.getItem(SIDEBAR_PANEL_COLLAPSED_KEY) === "true";
   } catch {
     return false;
   }
@@ -122,9 +122,9 @@ interface AppState {
   customThemes: LoadedTheme[];
   refreshCustomThemes: () => Promise<void>;
 
-  // 侧边栏折叠态(localStorage 持久化)
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: (collapsed: boolean) => void;
+  // 侧边栏面板收起态(localStorage 持久化;收起 = rail-only)
+  sidebarPanelCollapsed: boolean;
+  setSidebarPanelCollapsed: (collapsed: boolean) => void;
 
   // UI 状态
   viewMode: ViewMode;
@@ -224,12 +224,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ customThemes, themeId: theme.id });
   },
 
-  // 侧边栏折叠态
-  sidebarCollapsed: loadSidebarCollapsed(),
-  setSidebarCollapsed: (collapsed) => {
-    set({ sidebarCollapsed: collapsed });
+  // 侧边栏面板收起态
+  sidebarPanelCollapsed: loadSidebarPanelCollapsed(),
+  setSidebarPanelCollapsed: (collapsed) => {
+    set({ sidebarPanelCollapsed: collapsed });
     try {
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+      localStorage.setItem(SIDEBAR_PANEL_COLLAPSED_KEY, String(collapsed));
     } catch {
       // 存储不可用时静默降级为会话内状态
     }

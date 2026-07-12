@@ -10,10 +10,10 @@
     "settings": "Settings",
     "tools": "Tools",
     "cnTools": "Chinese ROM Tools",
-    "expand": "Expand",
-    "collapse": "Collapse",
-    "expandSidebar": "Expand sidebar",
-    "collapseSidebar": "Collapse sidebar"
+    "searchSystems": "Search systems",
+    "noMatchingSystems": "No matching systems",
+    "expandPanel": "Expand panel",
+    "collapsePanel": "Collapse panel"
   },
   "dropOverlay": {
     "title": "Drop to add directory",
