@@ -4,6 +4,7 @@
 
 use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
+use crate::scraper::cartridge_header::identify_cartridge_rom;
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
 use crate::scraper::gba_header::identify_gba_rom;
 use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
@@ -1212,6 +1213,13 @@ pub async fn auto_fix_naming(
     });
     let is_gba = find_mapping_by_folder(&system_name)
         .is_some_and(|mapping| mapping.folder_name.eq_ignore_ascii_case("GBA"));
+    let cartridge_system = find_mapping_by_folder(&system_name)
+        .map(|mapping| mapping.folder_name)
+        .filter(|name| {
+            ["MD", "N64", "SFC"]
+                .iter()
+                .any(|candidate| name.eq_ignore_ascii_case(candidate))
+        });
 
     // 一次性加载 cn_repo CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
@@ -1305,6 +1313,24 @@ pub async fn auto_fix_naming(
                         rom_path, error
                     );
                 }
+            }
+        }
+
+        // MD、N64、SFC 优先使用卡带 Header 产品码。仅在产品码唯一映射到发行标题时采用。
+        if let Some(system) = cartridge_system {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_cartridge_rom(&rom_path, system) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to inspect {} ROM {:?}: {}",
+                    system, rom_path, error
+                ),
             }
         }
 

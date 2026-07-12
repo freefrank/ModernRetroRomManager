@@ -1,3 +1,4 @@
+pub mod cartridge_header;
 pub mod cn_repo;
 pub mod gba_header;
 pub mod jy6d_dz;
