@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### 新增功能
+- **GBA Header 名称验证工具**
+  - 支持直接读取 ZIP 内 GBA ROM 的内部标题、Game Code、版本和 Header 校验信息
+  - 支持结合 Libretro/No-Intro DAT 输出当前区域标准名与英文区域候选
+  - 对同一 Serial 的不同游戏映射进行冲突标记，避免直接采用错误结果
 - **中文ROM工具双数据源匹配**
   - 集成 `jy6d-dz` 作为 `cn_repo` 的补充数据源
   - 自动选择置信度更高的匹配结果
