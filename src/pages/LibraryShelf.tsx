@@ -1,15 +1,48 @@
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ghost, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
 import { Button, Card, EmptyState } from "@/components/ui";
 import SystemCard from "@/components/rom/SystemCard";
+import type { GameSystem } from "@/types";
+
+const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
+
+/**
+ * 用 ROM 目录名匹配预置系统(get_systems),取其 logo 文件名。
+ * 后端 SystemInfo 以 snake_case 序列化,short_name 需绕过 TS 类型读取。
+ */
+function findSystemLogo(systems: GameSystem[], folderName: string): string | undefined {
+  const target = norm(folderName);
+  if (!target) return undefined;
+  const hit = systems.find((s) => {
+    const shortName = (s as unknown as { short_name?: string }).short_name ?? s.shortName;
+    return norm(s.id) === target || norm(shortName) === target || norm(s.name) === target;
+  });
+  return hit?.logo;
+}
 
 /** 系统货架:每个系统一张卡片,点击进入单系统库页 */
 export default function LibraryShelf() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { availableSystems, stats } = useRomStore();
+  const { availableSystems, stats, systems, fetchSystems } = useRomStore();
+
+  // 装载预置系统列表以解析各系统 logo
+  useEffect(() => {
+    if (systems.length === 0) {
+      fetchSystems();
+    }
+  }, [systems.length, fetchSystems]);
+
+  const logoByName = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const sys of availableSystems) {
+      map.set(sys.name, findSystemLogo(systems, sys.name));
+    }
+    return map;
+  }, [availableSystems, systems]);
 
   return (
     <div className="rr-page flex flex-col h-full max-w-[1600px] mx-auto w-full">
@@ -49,6 +82,7 @@ export default function LibraryShelf() {
                 key={sys.name}
                 name={sys.name}
                 romCount={sys.romCount}
+                logoFile={logoByName.get(sys.name)}
                 onClick={() => navigate(`/library/${encodeURIComponent(sys.name)}`)}
               />
             ))}

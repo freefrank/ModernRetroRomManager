@@ -139,6 +139,23 @@ function normalizePath(path: string): string {
   return path;
 }
 
+/**
+ * 解析系统 logo(打包资源目录 logo/<文件名>)为可显示 URL。
+ * 非 Tauri 环境或解析失败返回 null,由调用方回退占位图标。
+ */
+export async function resolveSystemLogoUrl(logoFileName: string | undefined): Promise<string | null> {
+  if (!logoFileName || !isTauri()) return null;
+  try {
+    const { resolveResource } = await import("@tauri-apps/api/path");
+    const { convertFileSrc } = await import("@tauri-apps/api/core");
+    const resourcePath = await resolveResource(`logo/${logoFileName}`);
+    return convertFileSrc(resourcePath);
+  } catch (error) {
+    console.error("Failed to resolve system logo:", logoFileName, error);
+    return null;
+  }
+}
+
 export async function resolveMediaUrlAsync(path: string | undefined): Promise<string | null> {
   if (!path) return null;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
