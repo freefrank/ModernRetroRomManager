@@ -27,6 +27,19 @@ MRRM 匹配 CIA 时只读取文件头前 64 KiB，从 Ticket 获取 Title ID；�
 python scripts/organize_3ds_archives.py "Y:\3ds" --inventory-dir --max-depth 3 --report "3ds-directory-report.csv"
 ```
 
+若目录是 `3DSCH###/中文游戏名/内容` 形式，可先生成扁平化计划，再执行同盘目录移动：
+
+```powershell
+python scripts/flatten_3ds_library.py "Y:\3DS" --report "3ds-flatten-plan.csv"
+python scripts/flatten_3ds_library.py "Y:\3DS" --report "3ds-flatten-plan.csv" --apply
+```
+
+工具只移除结构严格符合“一个子目录、零文件”的编号包装层；目标重名时追加原编号，绝不覆盖。需要恢复时使用原执行清单：
+
+```powershell
+python scripts/flatten_3ds_library.py "Y:\3DS" --report "3ds-flatten-plan.csv" --rollback
+```
+
 Azahar 可安装 CIA，并把更新/DLC安装到其用户 NAND；不要再把安装后的 NAND 复制回 ROM 库。Panda3DS 可直接载入 `.3ds/.cci/.cxi/.app/.ncch/.3dsx`，但当前不能直接载入 CIA。加密 dump 需要用户自行把 `aes_keys.txt` 放入 Panda3DS 应用数据目录下的 `sysdata` 文件夹；本项目不创建、下载或分发密钥。Panda3DS 当前没有与 Azahar 等价、文档化稳定的 CIA 更新/DLC 安装流程，因此清单会保留这些 CIA，但不会声称 Panda3DS 可直接使用。
 
 ## 先生成清单
