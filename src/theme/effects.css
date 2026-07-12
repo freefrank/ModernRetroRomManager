@@ -18,25 +18,18 @@
 }
 
 /* ------------------------------------------------------------
-   backdrop: scanlines(静态纹理 low 保留,闪烁动画仅 full)
+   backdrop: scanlines(纯静态纹理)
+   性能约束:禁止在此叠加层上加任何无限循环动画——全屏图层的
+   逐帧合成会让 GPU 永不空闲,实测拖低整个主题的帧率(0.3.0 前
+   的"呼吸"动画即因此移除)。contain 隔离渲染影响。
    ------------------------------------------------------------ */
 .rr-backdrop[data-fx="scanlines"] {
   position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  contain: strict;
   /* 线色跟随主题文本色(暗底亮线):45% × 插槽 opacity(retro 0.1 / cyber 0.06)
      ≈ 4.5% / 2.7% 亮线,1x 下肉眼可辨且不干扰阅读;纯黑线叠深底不可见 */
   background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--text-primary) 45%, transparent) 0 1px, transparent 1px 3px);
   opacity: var(--fx-backdrop-opacity, 0.05);
-}
-[data-motion="off"] .rr-backdrop[data-fx="scanlines"],
-[data-motion="low"] .rr-backdrop[data-fx="scanlines"] {
-  animation: none;
-}
-[data-motion="full"] .rr-backdrop[data-fx="scanlines"] {
-  animation: rr-scanline-breathe 6s ease-in-out infinite;
-}
-@keyframes rr-scanline-breathe {
-  0%, 100% { opacity: var(--fx-backdrop-opacity, 0.05); }
-  50% { opacity: calc(var(--fx-backdrop-opacity, 0.05) * 0.6); }
 }
 
 /* ------------------------------------------------------------
