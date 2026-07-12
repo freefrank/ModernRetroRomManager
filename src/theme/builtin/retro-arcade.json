@@ -16,7 +16,7 @@
     "motion-fast": "100ms", "motion-normal": "200ms", "motion-easing": "steps(3, end)"
   },
   "effects": {
-    "backdrop": { "name": "scanlines", "opacity": 0.05 },
+    "backdrop": { "name": "scanlines", "opacity": 0.1 },
     "cardHover": { "name": "hard-shift" },
     "buttonPress": { "name": "hard-shift" },
     "pageTransition": { "name": "crt-flicker" },

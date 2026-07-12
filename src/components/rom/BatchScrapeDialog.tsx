@@ -168,8 +168,10 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
                         </div>
                         <div className="flex-1">
                           <div className="font-bold text-text-primary group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]">{p.name}</div>
-                          <div className="text-[10px] text-text-muted uppercase font-bold tracking-tighter mt-0.5">
-                            {p.capabilities.join(" • ")}
+                          <div className="text-[10px] text-text-muted font-bold tracking-tighter mt-0.5">
+                            {p.capabilities
+                              .map((cap) => t(`scraper.capabilities.${cap}`, { defaultValue: cap }))
+                              .join(" · ")}
                           </div>
                         </div>
                         {isSelected && (

@@ -16,7 +16,7 @@
     "motion-fast": "100ms", "motion-normal": "220ms", "motion-easing": "cubic-bezier(0.3, 0, 0.2, 1)"
   },
   "effects": {
-    "backdrop": { "name": "scanlines", "opacity": 0.03 },
+    "backdrop": { "name": "scanlines", "opacity": 0.06 },
     "cardHover": { "name": "neon-pulse" },
     "buttonPress": { "name": "fade-scale" },
     "pageTransition": { "name": "fade-scale" },

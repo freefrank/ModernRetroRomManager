@@ -164,8 +164,11 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
           onError={() => setImgError(true)}
         />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-bg-tertiary to-bg-secondary flex items-center justify-center">
-          <Gamepad2 className="w-10 h-10 text-text-muted/20 group-hover:text-accent-primary/30 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
+        <div className="w-full h-full bg-gradient-to-br from-bg-tertiary to-bg-secondary flex flex-col items-center justify-center gap-2 px-2 py-3">
+          <Gamepad2 className="w-10 h-10 shrink-0 text-text-muted/20 group-hover:text-accent-primary/30 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
+          <span className="w-full text-center text-xs font-medium text-text-secondary line-clamp-3 break-all">
+            {rom.name}
+          </span>
         </div>
       )}
 
@@ -307,7 +310,6 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
 // List Row - Compact table-like row
 function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
-  const { t } = useTranslation();
   const coverUrl = useMediaUrl(getRomCover(rom));
   const [imgError, setImgError] = useState(false);
 
@@ -361,18 +363,9 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
       </div>
 
       {/* System */}
+      {/* 大小/日期列已移除:后端 ROM 数据暂无文件 size/mtime 字段,待后端补充后再恢复 */}
       <span className="px-2 py-1 rounded-[var(--radius-sm)] bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase flex-shrink-0">
         {rom.system}
-      </span>
-
-      {/* Size - hidden on small screens */}
-      <span className="text-sm text-text-secondary w-20 text-right hidden md:block">
-        {t("common.notAvailable")}
-      </span>
-
-      {/* Date - hidden on small screens */}
-      <span className="text-sm text-text-muted w-24 text-right hidden lg:block">
-        {t("common.notAvailable")}
       </span>
     </div>
   );
@@ -438,8 +431,6 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
       <div className="w-5"></div>
       <div className="flex-1">{t("common.name")}</div>
       <div className="w-20">{t("common.system")}</div>
-      <div className="w-20 text-right hidden md:block">{t("common.size")}</div>
-      <div className="w-24 text-right hidden lg:block">{t("common.date")}</div>
     </div>
   );
 

@@ -28,7 +28,9 @@ export const EmptyState = forwardRef<HTMLDivElement, Props>(function EmptyState(
       {...rest}
     >
       {icon && <div className="text-text-muted [&>svg]:w-12 [&>svg]:h-12">{icon}</div>}
-      <div className="font-medium text-text-primary">{title ?? t("ui.empty.title")}</div>
+      <div className="font-medium text-text-primary font-[family-name:var(--font-display)]">
+        {title ?? t("ui.empty.title")}
+      </div>
       {description && <div className="text-sm text-text-secondary">{description}</div>}
       {action && <div className="mt-2">{action}</div>}
       {children}

@@ -21,6 +21,23 @@ interface SystemInfo {
   romCount: number;
 }
 
+// 判定 ROM 是否已刮削:已有封面或描述(含待导出的 temp_data)即视为已刮削
+function isRomScraped(rom: Rom): boolean {
+  return Boolean(
+    rom.box_front || rom.description || rom.temp_data?.box_front || rom.temp_data?.description
+  );
+}
+
+// 从 systemRoms 聚合统计信息(totalSize 后端暂无文件大小数据,恒为 0,展示层按 0 隐藏)
+function computeStats(systemRoms: SystemRoms[]) {
+  const allRoms = systemRoms.flatMap((s) => s.roms);
+  return {
+    totalRoms: allRoms.length,
+    scrapedRoms: allRoms.filter(isRomScraped).length,
+    totalSize: 0,
+  };
+}
+
 interface RomState {
   // ROM 列表
   roms: Rom[];
@@ -110,17 +127,12 @@ export const useRomStore = create<RomState>((set, get) => ({
         roms = systemRoms.flatMap(s => s.roms);
       }
       // 直接从 systemRoms 计算 stats，避免额外的后端调用
-      const totalRoms = systemRoms.reduce((sum, s) => sum + s.roms.length, 0);
       set({
         systemRoms,
         availableSystems,
         roms,
         isLoadingRoms: false,
-        stats: {
-          totalRoms,
-          scrapedRoms: 0,
-          totalSize: 0,
-        },
+        stats: computeStats(systemRoms),
       });
     } catch (error) {
       console.error("Failed to fetch roms:", error);
@@ -302,17 +314,11 @@ addScanDirectory: async (path: string, metadataFormat="none") => {
         roms = updatedSystemRoms.flatMap(s => s.roms);
       }
       
-      const totalRoms = updatedSystemRoms.reduce((sum, s) => sum + s.roms.length, 0);
-      
       set({
         systemRoms: updatedSystemRoms,
         availableSystems,
         roms,
-        stats: {
-          totalRoms,
-          scrapedRoms: 0,
-          totalSize: 0,
-        },
+        stats: computeStats(updatedSystemRoms),
       });
     } catch (error) {
       console.error("Failed to add directory:", error);
@@ -344,11 +350,11 @@ addScanDirectory: async (path: string, metadataFormat="none") => {
   fetchStats: async () => {
     try {
       const stats = await api.getStats();
+      // 后端 stats 仅含总数;scrapedRoms 从已加载的 systemRoms 计算,避免被清零
       set({
         stats: {
+          ...computeStats(get().systemRoms),
           totalRoms: stats.total_roms,
-          scrapedRoms: 0,
-          totalSize: 0,
         },
       });
     } catch (error) {

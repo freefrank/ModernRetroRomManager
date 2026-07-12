@@ -49,6 +49,12 @@ export default function ScraperSection() {
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<ScraperCredentials>({});
 
+  // 能力枚举 → 中文标签(未知值回退原文)
+  const formatCapabilities = (capabilities: string[]) =>
+    capabilities
+      .map((cap) => t(`scraper.capabilities.${cap}`, { defaultValue: cap }))
+      .join(" · ");
+
   // 拖拽排序状态(改用 mouse 事件)
   const [draggedProvider, setDraggedProvider] = useState<string | null>(null);
   const [dragOverProvider, setDragOverProvider] = useState<string | null>(null);
@@ -231,7 +237,7 @@ export default function ScraperSection() {
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-xs text-text-muted flex items-center gap-1">
                       <Activity className="w-3 h-3" />
-                      {p.capabilities.join(", ").toUpperCase()}
+                      {formatCapabilities(p.capabilities)}
                     </span>
                   </div>
                 </div>
@@ -387,7 +393,7 @@ export default function ScraperSection() {
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-xs text-text-muted flex items-center gap-1">
                         <Activity className="w-3 h-3" />
-                        {provider.capabilities.join(", ").toUpperCase()}
+                        {formatCapabilities(provider.capabilities)}
                       </span>
                     </div>
                   </div>

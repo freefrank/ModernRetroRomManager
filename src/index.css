@@ -80,6 +80,12 @@
     padding: 0;
     box-sizing: border-box;
   }
+
+  /* 标题层统一走 font-display 令牌:retro 主题为像素字体(仅覆盖拉丁字符,中文自动回退),
+     其余主题 font-display 即系统字体,无副作用 */
+  h1, h2 {
+    font-family: var(--font-display);
+  }
 }
 
 html, body, #root {

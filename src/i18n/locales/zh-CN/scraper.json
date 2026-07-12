@@ -25,6 +25,12 @@
       "title": "数据源状态",
       "configure": "配置"
     },
+    "capabilities": {
+      "search": "搜索",
+      "hash_lookup": "哈希匹配",
+      "metadata": "元数据",
+      "media": "媒体"
+    },
     "providers": {
       "igdb": {
         "name": "IGDB",

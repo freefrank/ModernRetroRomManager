@@ -25,6 +25,12 @@
       "title": "Provider Status",
       "configure": "Configure"
     },
+    "capabilities": {
+      "search": "Search",
+      "hash_lookup": "Hash Lookup",
+      "metadata": "Metadata",
+      "media": "Media"
+    },
     "providers": {
       "igdb": {
         "name": "IGDB",

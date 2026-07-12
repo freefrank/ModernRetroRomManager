@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useScraperStore } from "@/stores/scraperStore";
 import { Settings2, AlertCircle, KeyRound } from "lucide-react";
 import { Badge, Button, Card, Spinner } from "@/components/ui";
+import { clsx } from "clsx";
 
 export default function Scraper() {
   const { t } = useTranslation();
@@ -15,6 +16,11 @@ export default function Scraper() {
   }, [fetchProviders]);
 
   const hasConfiguredCredentials = providers.some((p) => p.has_credentials);
+  const enabledCount = providers.filter((p) => p.enabled).length;
+  const credentialsCount = providers.filter((p) => p.has_credentials).length;
+  // 能力枚举 → 中文标签(未知值回退原文)
+  const formatCapability = (cap: string) =>
+    t(`scraper.capabilities.${cap}`, { defaultValue: cap });
 
   return (
     <div className="rr-page flex flex-col h-full bg-bg-primary">
@@ -38,16 +44,28 @@ export default function Scraper() {
                 <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">
                   {t("scraper.status.enabledSources")}
                 </div>
-                <div className="text-2xl font-bold text-accent-primary">
-                  {providers.filter((p) => p.enabled).length} / {providers.length}
+                {/* 语义配色:有启用源为 success,一个未启用为中性 */}
+                <div
+                  className={clsx(
+                    "text-2xl font-bold",
+                    enabledCount > 0 ? "text-accent-success" : "text-text-secondary"
+                  )}
+                >
+                  {enabledCount} / {providers.length}
                 </div>
               </Card>
               <Card className="p-4">
                 <div className="text-xs text-text-muted mb-1 uppercase tracking-widest font-bold">
                   {t("scraper.status.configuredCredentials")}
                 </div>
-                <div className="text-2xl font-bold text-accent-success">
-                  {providers.filter((p) => p.has_credentials).length}
+                {/* 语义配色:已配置凭据为 success,缺失为 warning */}
+                <div
+                  className={clsx(
+                    "text-2xl font-bold",
+                    credentialsCount > 0 ? "text-accent-success" : "text-accent-warning"
+                  )}
+                >
+                  {credentialsCount}
                 </div>
               </Card>
             </div>
@@ -83,8 +101,8 @@ export default function Scraper() {
                         )
                       )}
                     </div>
-                    <div className="text-xs text-text-muted mt-1 uppercase">
-                      {p.capabilities.join(", ")}
+                    <div className="text-xs text-text-muted mt-1">
+                      {p.capabilities.map(formatCapability).join(" · ")}
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
