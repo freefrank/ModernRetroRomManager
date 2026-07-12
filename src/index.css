@@ -73,11 +73,13 @@
   animation: none !important;
 }
 
-/* Global Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Global Styles(必须置于 @layer base:未分层规则会压过 Tailwind utilities 层,导致全部 margin/padding 工具类失效) */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 html, body, #root {
