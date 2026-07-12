@@ -5,6 +5,14 @@
     "selectDirectoryPlaceholder": "Select ROM directory to check...",
     "browse": "Browse...",
     "refresh": "Refresh",
+    "archive": {
+      "organize": "Extract & Organize",
+      "title": "Extract and Organize ROMs",
+      "description": "Extract RAR/RAR5 ROMs and move processed archives into _archives. Existing ROMs are never overwritten. Supports MD, N64 and SFC.",
+      "passwordPlaceholder": "Archive password (leave blank if none)",
+      "cancel": "Cancel",
+      "confirm": "Start"
+    },
     "about": {
       "title": "About This Project",
       "description": {
@@ -60,7 +68,9 @@
       "addFailed": "Add failed: {{error}}",
       "exportSuccess": "Export successful!\nFile saved to: {{path}}",
       "exportFailed": "Export failed: {{error}}",
-      "saveFailed": "Save failed: {{error}}"
+      "saveFailed": "Save failed: {{error}}",
+      "organizeComplete": "Complete: {{archives}} archives found, {{extracted}} extracted, {{skipped}} skipped, {{archived}} archived",
+      "organizeFailed": "Extract and organize failed: {{error}}"
     },
     "confirms": {
       "autoFixNaming": "Are you sure you want to match English names?\nThis will scan all ROMs in the directory and automatically match English names based on the local database.\nOnly matches with very high confidence (>95%) will be applied.\nResults will be saved to the temporary directory.",

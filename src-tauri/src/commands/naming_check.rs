@@ -496,6 +496,7 @@ where
         "marquee",
         "named_boxarts",
         "named_snaps",
+        "_archives",
     ]
     .iter()
     .cloned()
@@ -549,6 +550,7 @@ where
                     "marquee",
                     "named_boxarts",
                     "named_snaps",
+                    "_archives",
                 ];
                 if skip_dirs
                     .iter()
@@ -1821,5 +1823,30 @@ fn detect_format(dir_path: &Path) -> String {
         "emulationstation".to_string()
     } else {
         "none".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scan_ignores_archive_backup_directory() {
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-archive-scan-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let backup = root.join("_archives");
+        fs::create_dir_all(&backup).unwrap();
+        fs::write(root.join("game.z64"), b"rom").unwrap();
+        fs::write(backup.join("duplicate.z64"), b"rom").unwrap();
+
+        let entries = scan_directory_internal::<fn(usize, usize, &str)>(&root, None);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].file, "game.z64");
+        fs::remove_dir_all(root).unwrap();
     }
 }

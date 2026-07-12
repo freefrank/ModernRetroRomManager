@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Languages } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
-import { toast } from "@/components/ui";
+import { Button, Dialog, Input, toast } from "@/components/ui";
 import type { GameSystem } from "@/types";
 import {
   useCnRomToolsStore,
@@ -20,6 +20,9 @@ export default function CnRomTools() {
   const [isSettingName, setIsSettingName] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isOrganizing, setIsOrganizing] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [archivePassword, setArchivePassword] = useState("oldmanemu.net");
 
   // 从 store 获取状态
   const {
@@ -122,6 +125,31 @@ export default function CnRomTools() {
   const handleCheck = () => {
     if (!checkPath) return;
     scan();
+  };
+
+  const handleOrganizeArchives = async () => {
+    if (!checkPath || !selectedSystem || !isTauri()) return;
+    setIsOrganizing(true);
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const result = await invoke<{
+        archives: number;
+        extracted: number;
+        skipped: number;
+        archived: number;
+      }>("organize_rom_archives", {
+        directory: checkPath,
+        system: selectedSystem.id,
+        password: archivePassword,
+      });
+      toast.success(t("cnRomTools.alerts.organizeComplete", result));
+      setShowArchiveDialog(false);
+      await scan();
+    } catch (error) {
+      toast.error(t("cnRomTools.alerts.organizeFailed", { error: String(error) }));
+    } finally {
+      setIsOrganizing(false);
+    }
   };
 
   const handleAutoFix = async () => {
@@ -242,6 +270,7 @@ export default function CnRomTools() {
             checkPath={checkPath}
             isChecking={isChecking}
             isFixing={isFixing}
+            isOrganizing={isOrganizing}
             scanProgress={scanProgress}
             systems={systems}
             selectedSystem={selectedSystem}
@@ -250,7 +279,38 @@ export default function CnRomTools() {
             onSelectSystem={setSelectedSystem}
             onBrowse={handleBrowse}
             onRefresh={handleCheck}
+            onOrganize={() => setShowArchiveDialog(true)}
           />
+
+          <Dialog
+            open={showArchiveDialog}
+            onClose={() => !isOrganizing && setShowArchiveDialog(false)}
+            title={t("cnRomTools.archive.title")}
+            className="max-w-md"
+          >
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-text-secondary">{t("cnRomTools.archive.description")}</p>
+              <Input
+                type="password"
+                value={archivePassword}
+                onChange={(event) => setArchivePassword(event.target.value)}
+                placeholder={t("cnRomTools.archive.passwordPlaceholder")}
+                disabled={isOrganizing}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowArchiveDialog(false)}
+                  disabled={isOrganizing}
+                >
+                  {t("cnRomTools.archive.cancel")}
+                </Button>
+                <Button onClick={handleOrganizeArchives} loading={isOrganizing}>
+                  {t("cnRomTools.archive.confirm")}
+                </Button>
+              </div>
+            </div>
+          </Dialog>
 
           {/* Results */}
           {checkResults.length > 0 && (

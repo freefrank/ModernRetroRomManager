@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderSearch, ChevronDown, RefreshCw, Search } from "lucide-react";
+import { FolderSearch, ChevronDown, RefreshCw, Search, PackageOpen } from "lucide-react";
 import { clsx } from "clsx";
 import type { GameSystem } from "@/types";
 import type { ScanProgress } from "@/stores/cnRomToolsStore";
@@ -10,6 +10,7 @@ interface Props {
   checkPath: string;
   isChecking: boolean;
   isFixing: boolean;
+  isOrganizing: boolean;
   scanProgress: ScanProgress | null;
   systems: GameSystem[];
   selectedSystem: GameSystem | null;
@@ -18,6 +19,7 @@ interface Props {
   onSelectSystem: (system: GameSystem) => void;
   onBrowse: () => void;
   onRefresh: () => void;
+  onOrganize: () => void;
 }
 
 /** 目录选择区:平台选择按钮 + 路径输入 + 浏览/刷新按钮 + 平台选择弹窗 */
@@ -25,6 +27,7 @@ export default function DirectoryPicker({
   checkPath,
   isChecking,
   isFixing,
+  isOrganizing,
   scanProgress,
   systems,
   selectedSystem,
@@ -33,6 +36,7 @@ export default function DirectoryPicker({
   onSelectSystem,
   onBrowse,
   onRefresh,
+  onOrganize,
 }: Props) {
   const { t } = useTranslation();
   const [systemFilter, setSystemFilter] = useState("");
@@ -85,6 +89,16 @@ export default function DirectoryPicker({
           {isChecking && scanProgress
             ? `(${scanProgress.current}/${scanProgress.total})`
             : t("cnRomTools.refresh")}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={onOrganize}
+          disabled={!checkPath || !selectedSystem || isChecking || isFixing || isOrganizing}
+          loading={isOrganizing}
+          className="whitespace-nowrap"
+        >
+          {!isOrganizing && <PackageOpen className="w-4 h-4" />}
+          {t("cnRomTools.archive.organize")}
         </Button>
       </div>
 

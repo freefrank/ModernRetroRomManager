@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod ps3;
+pub mod rom_archive;
 mod rom_service;
 mod scraper;
 pub mod settings;
@@ -77,6 +78,7 @@ pub fn run() {
             commands::naming_check::update_extracted_cn_name,
             // Tools
             commands::tools::update_cn_repo,
+            commands::tools::organize_rom_archives,
             // PS3
             commands::ps3::generate_ps3_boxart,
             // Theme

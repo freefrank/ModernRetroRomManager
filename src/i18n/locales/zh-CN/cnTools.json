@@ -5,6 +5,14 @@
     "selectDirectoryPlaceholder": "选择要检查的 ROM 目录...",
     "browse": "浏览...",
     "refresh": "刷新",
+    "archive": {
+      "organize": "解压整理",
+      "title": "解压并整理 ROM",
+      "description": "解压目录中的 RAR/RAR5 ROM，并把已处理的压缩源移入 _archives。不会覆盖同名 ROM。当前支持 MD、N64、SFC。",
+      "passwordPlaceholder": "压缩包密码（无密码可留空）",
+      "cancel": "取消",
+      "confirm": "开始整理"
+    },
     "about": {
       "title": "关于本项目",
       "description": {
@@ -60,7 +68,9 @@
       "addFailed": "添加失败: {{error}}",
       "exportSuccess": "导出成功！\n文件已保存到: {{path}}",
       "exportFailed": "导出失败: {{error}}",
-      "saveFailed": "保存失败: {{error}}"
+      "saveFailed": "保存失败: {{error}}",
+      "organizeComplete": "整理完成：发现 {{archives}} 个压缩包，解压 {{extracted}}，跳过 {{skipped}}，归档 {{archived}}",
+      "organizeFailed": "解压整理失败: {{error}}"
     },
     "confirms": {
       "autoFixNaming": "确定要匹配英文名吗？\n这将扫描该目录下的所有 ROM，并根据本地数据库自动匹配英文名。\n仅置信度极高 (>95%) 的匹配会被应用。\n结果将保存到临时目录。",
