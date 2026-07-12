@@ -5,6 +5,7 @@ import { FolderPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRomStore } from "@/stores/romStore";
 import Backdrop from "@/theme/Backdrop";
+import { Toaster } from "@/components/ui";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
 
@@ -89,6 +90,9 @@ export default function Layout() {
       <div className="relative z-20">
         <StatusBar />
       </div>
+
+      {/* 全局 Toast 通知(右下角堆叠) */}
+      <Toaster />
     </div>
   );
 }
