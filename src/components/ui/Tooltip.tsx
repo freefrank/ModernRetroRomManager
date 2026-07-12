@@ -3,7 +3,7 @@ import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 interface Props extends Omit<HTMLAttributes<HTMLSpanElement>, "content"> {
   /** 提示内容 */
   content: ReactNode;
-  side?: "top" | "bottom";
+  side?: "top" | "bottom" | "right";
 }
 
 export const Tooltip = forwardRef<HTMLSpanElement, Props>(function Tooltip(
@@ -13,6 +13,7 @@ export const Tooltip = forwardRef<HTMLSpanElement, Props>(function Tooltip(
   const sides = {
     top: "bottom-full left-1/2 -translate-x-1/2 mb-1.5",
     bottom: "top-full left-1/2 -translate-x-1/2 mt-1.5",
+    right: "left-full top-1/2 -translate-y-1/2 ml-1.5",
   } as const;
   return (
     <span

@@ -11,7 +11,13 @@
     "tools": "工具箱",
     "cnTools": "中文 ROM 工具",
     "expand": "展开",
-    "collapse": "收起"
+    "collapse": "收起",
+    "expandSidebar": "展开侧边栏",
+    "collapseSidebar": "收起侧边栏"
+  },
+  "dropOverlay": {
+    "title": "松开以添加目录",
+    "subtitle": "将递归扫描目录中的游戏"
   },
   "statusBar": {
     "romCount": "ROM: {{count}}",

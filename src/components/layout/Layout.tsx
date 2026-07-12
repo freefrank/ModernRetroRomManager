@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { listen } from "@tauri-apps/api/event";
 import { FolderPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
 import Backdrop from "@/theme/Backdrop";
 import { Toaster } from "@/components/ui";
@@ -10,6 +11,7 @@ import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
 
 export default function Layout() {
+  const { t } = useTranslation();
   const { addScanDirectory } = useRomStore();
   const [isDragging, setIsDragging] = useState(false);
 
@@ -62,11 +64,11 @@ export default function Layout() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 bg-accent-primary/80 backdrop-blur-md flex flex-col items-center justify-center text-white border-4 border-white/20 border-dashed m-4 rounded-3xl"
+            className="absolute inset-0 z-50 bg-accent-primary/80 backdrop-blur-md flex flex-col items-center justify-center text-text-primary border-4 border-text-primary/20 border-dashed m-4 rounded-[var(--radius-lg)]"
           >
             <FolderPlus className="w-24 h-24 mb-6 animate-bounce" />
-            <h2 className="text-3xl font-bold mb-2">Drop to Add Directory</h2>
-            <p className="text-white/80">Scan recursively for games</p>
+            <h2 className="text-3xl font-bold mb-2">{t("dropOverlay.title")}</h2>
+            <p className="text-text-primary/80">{t("dropOverlay.subtitle")}</p>
           </motion.div>
         )}
       </AnimatePresence>

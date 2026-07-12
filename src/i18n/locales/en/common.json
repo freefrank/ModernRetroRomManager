@@ -11,7 +11,13 @@
     "tools": "Tools",
     "cnTools": "Chinese ROM Tools",
     "expand": "Expand",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
+  },
+  "dropOverlay": {
+    "title": "Drop to add directory",
+    "subtitle": "Scan recursively for games"
   },
   "statusBar": {
     "romCount": "ROM: {{count}}",

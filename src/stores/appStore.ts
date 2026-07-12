@@ -79,6 +79,18 @@ async function loadCustomThemes(): Promise<LoadedTheme[]> {
   }
 }
 
+// 侧边栏折叠态持久化:后端 update_app_setting 为显式 match 且无 sidebar_collapsed 分支
+// (未知 key 被静默丢弃),故按任务约定改用 localStorage 持久化
+const SIDEBAR_COLLAPSED_KEY = "sidebar_collapsed";
+
+const loadSidebarCollapsed = (): boolean => {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
 // 无存储值时的动效默认档:尊重系统"减弱动态效果"偏好
 const defaultMotionLevel = (): MotionLevel =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "low" : "full";
@@ -109,6 +121,10 @@ interface AppState {
   // 导入的主题(从后端 config/themes/ 装载)
   customThemes: LoadedTheme[];
   refreshCustomThemes: () => Promise<void>;
+
+  // 侧边栏折叠态(localStorage 持久化)
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 
   // UI 状态
   viewMode: ViewMode;
@@ -206,6 +222,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const theme = resolveTheme(themeId, customThemes);
     applyTheme(theme, motion);
     set({ customThemes, themeId: theme.id });
+  },
+
+  // 侧边栏折叠态
+  sidebarCollapsed: loadSidebarCollapsed(),
+  setSidebarCollapsed: (collapsed) => {
+    set({ sidebarCollapsed: collapsed });
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    } catch {
+      // 存储不可用时静默降级为会话内状态
+    }
   },
 
   // UI 状态
