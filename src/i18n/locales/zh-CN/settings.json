@@ -1,15 +1,50 @@
 {
   "settings": {
     "title": "设置",
+    "tabs": {
+      "appearance": "外观",
+      "general": "通用",
+      "scraper": "Scraper 配置",
+      "about": "关于"
+    },
     "appearance": {
-      "title": "外观主题"
+      "title": "外观主题",
+      "themeTitle": "主题",
+      "themeDescription": "选择内置主题,或导入 .rrtheme 主题包",
+      "customBadge": "已导入",
+      "importTheme": "导入主题包",
+      "themePackFilter": "主题包",
+      "importSuccess": "主题「{{name}}」导入成功",
+      "importFailed": "主题包导入失败:{{error}}",
+      "desktopOnly": "主题包导入仅桌面版可用",
+      "deleteTitle": "删除主题",
+      "deleteConfirm": "确定要删除主题「{{name}}」吗?该操作不可恢复。",
+      "deleteSuccess": "主题已删除",
+      "deleteFailed": "删除主题失败:{{error}}",
+      "motionTitle": "动效",
+      "motionDescription": "控制界面动画与过渡效果的强度",
+      "motion": {
+        "off": "关闭",
+        "low": "简化",
+        "full": "完整"
+      }
+    },
+    "general": {
+      "viewModeTitle": "默认视图",
+      "viewModeDescription": "ROM 库的默认显示方式",
+      "viewMode": {
+        "grid": "网格",
+        "list": "列表",
+        "cover": "封面"
+      }
     },
     "scanDirectories": {
       "title": "扫描目录",
-      "description": "配置 ROM 扫描目录，软件会自动检测其中的 ROM 文件",
+      "description": "配置 ROM 扫描目录,软件会自动检测其中的 ROM 文件",
       "empty": "暂未添加扫描目录",
       "addDirectory": "添加目录",
-      "dialogTitle": "添加扫描目录"
+      "dialogTitle": "添加扫描目录",
+      "metadataFormat": "元数据格式:{{format}}"
     },
     "storage": {
       "title": "存储设置",
@@ -25,14 +60,19 @@
       "apiKey": "API Key",
       "usernamePlaceholder": "输入用户名",
       "passwordPlaceholder": "输入密码",
-      "credentialsHint": "请输入该源的 API 凭据。这些信息将加密存储在本地。"
+      "apiKeyPlaceholder": "输入 SteamGridDB API Key",
+      "credentialsHint": "请输入该源的 API 凭据。这些信息将加密存储在本地。",
+      "authenticated": "已认证"
     },
     "language": {
       "title": "语言",
       "description": "选择界面显示语言"
     },
     "about": {
-      "title": "关于"
+      "title": "关于",
+      "version": "版本 {{version}}",
+      "repository": "GitHub 仓库",
+      "license": "MIT 许可证"
     }
   }
 }

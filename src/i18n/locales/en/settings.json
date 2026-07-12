@@ -1,15 +1,50 @@
 {
   "settings": {
     "title": "Settings",
+    "tabs": {
+      "appearance": "Appearance",
+      "general": "General",
+      "scraper": "Scraper",
+      "about": "About"
+    },
     "appearance": {
-      "title": "Appearance"
+      "title": "Appearance",
+      "themeTitle": "Theme",
+      "themeDescription": "Pick a built-in theme or import a .rrtheme pack",
+      "customBadge": "Imported",
+      "importTheme": "Import Theme Pack",
+      "themePackFilter": "Theme Pack",
+      "importSuccess": "Theme \"{{name}}\" imported",
+      "importFailed": "Failed to import theme pack: {{error}}",
+      "desktopOnly": "Theme pack import is only available in the desktop app",
+      "deleteTitle": "Delete Theme",
+      "deleteConfirm": "Delete theme \"{{name}}\"? This cannot be undone.",
+      "deleteSuccess": "Theme deleted",
+      "deleteFailed": "Failed to delete theme: {{error}}",
+      "motionTitle": "Motion",
+      "motionDescription": "Control the intensity of UI animations and transitions",
+      "motion": {
+        "off": "Off",
+        "low": "Reduced",
+        "full": "Full"
+      }
+    },
+    "general": {
+      "viewModeTitle": "Default View",
+      "viewModeDescription": "Default display mode of the ROM library",
+      "viewMode": {
+        "grid": "Grid",
+        "list": "List",
+        "cover": "Cover"
+      }
     },
     "scanDirectories": {
       "title": "Scan Directories",
       "description": "Configure ROM directories, software will detect games automatically",
       "empty": "No scan directories added",
       "addDirectory": "Add Directory",
-      "dialogTitle": "Add Scan Directory"
+      "dialogTitle": "Add Scan Directory",
+      "metadataFormat": "Metadata format: {{format}}"
     },
     "storage": {
       "title": "Storage Settings",
@@ -25,14 +60,19 @@
       "apiKey": "API Key",
       "usernamePlaceholder": "Enter username",
       "passwordPlaceholder": "Enter password",
-      "credentialsHint": "Please enter your API credentials. They are stored securely on your machine."
+      "apiKeyPlaceholder": "Enter SteamGridDB API Key",
+      "credentialsHint": "Please enter your API credentials. They are stored securely on your machine.",
+      "authenticated": "Authenticated"
     },
     "language": {
       "title": "Language",
       "description": "Select interface language"
     },
     "about": {
-      "title": "About"
+      "title": "About",
+      "version": "Version {{version}}",
+      "repository": "GitHub Repository",
+      "license": "MIT License"
     }
   }
 }
