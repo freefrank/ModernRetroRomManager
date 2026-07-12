@@ -1,8 +1,8 @@
 //! ScreenScraper Provider - 全能型 Scraper，支持 Hash 匹配
 
 use crate::scraper::{
-    ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
-    MediaType, Capabilities, ProviderCapability, RomHash,
+    Capabilities, GameMetadata, MediaAsset, MediaType, ProviderCapability, RomHash, ScrapeQuery,
+    ScraperProvider, SearchResult,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -121,7 +121,12 @@ impl ScreenScraperClient {
     /// 调用 jeuInfos API
     async fn fetch_game_info(&self, params: Vec<(&str, String)>) -> Result<Option<SSGame>, String> {
         let url = self.build_url("jeuInfos", params);
-        let resp = self.client.get(&url).send().await.map_err(|e| e.to_string())?;
+        let resp = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
 
         if resp.status() == 404 || resp.status() == 430 {
             return Ok(None);
@@ -217,6 +222,7 @@ struct SSNote {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
+#[allow(dead_code)]
 enum OptionValue {
     String(String),
     Object(serde_json::Value),

@@ -2,10 +2,10 @@
 //!
 //! PARAM.SFO 是 PS3 游戏的元数据文件，包含游戏标题、ID等信息
 
+use iso9660_simple::ISO9660;
 use std::fs::File;
 use std::io::{Read as StdRead, Seek, SeekFrom};
 use std::path::Path;
-use iso9660_simple::ISO9660;
 
 /// 文件包装器，实现 iso9660_simple 的 Read trait
 struct FileReader {
@@ -47,6 +47,7 @@ impl SfoDataType {
 
 /// SFO 文件头
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SfoHeader {
     magic: u32,
     version: u32,
@@ -57,6 +58,7 @@ struct SfoHeader {
 
 /// SFO 索引条目
 #[derive(Debug)]
+#[allow(dead_code)]
 struct SfoIndexEntry {
     key_offset: u16,
     data_type: SfoDataType,
@@ -196,8 +198,7 @@ fn read_null_terminated_string(buffer: &[u8], start: usize) -> Result<String, St
         return Err("String not null-terminated".to_string());
     }
 
-    String::from_utf8(buffer[start..end].to_vec())
-        .map_err(|e| format!("Invalid UTF-8: {}", e))
+    String::from_utf8(buffer[start..end].to_vec()).map_err(|e| format!("Invalid UTF-8: {}", e))
 }
 
 /// 读取固定长度的字符串（可能包含null填充）
@@ -212,8 +213,7 @@ fn read_string(buffer: &[u8], start: usize, length: usize) -> Result<String, Str
         end += 1;
     }
 
-    String::from_utf8(buffer[start..end].to_vec())
-        .map_err(|e| format!("Invalid UTF-8: {}", e))
+    String::from_utf8(buffer[start..end].to_vec()).map_err(|e| format!("Invalid UTF-8: {}", e))
 }
 
 /// 从字节数组解析 PARAM.SFO
@@ -239,8 +239,7 @@ fn parse_param_sfo_from_bytes(buffer: &[u8]) -> Result<Ps3GameInfo, String> {
 
 /// 从 ISO 文件中提取并解析 PARAM.SFO
 pub fn parse_param_sfo_from_iso(iso_path: &Path) -> Result<Ps3GameInfo, String> {
-    let file = File::open(iso_path)
-        .map_err(|e| format!("Failed to open ISO file: {}", e))?;
+    let file = File::open(iso_path).map_err(|e| format!("Failed to open ISO file: {}", e))?;
 
     let reader = FileReader::new(file);
     let mut iso = ISO9660::from_device(reader)
@@ -260,7 +259,8 @@ fn find_and_read_sfo(iso: &mut ISO9660) -> Result<Vec<u8>, String> {
     let root_entries: Vec<_> = iso.read_root().collect();
 
     // 查找 PS3_GAME 目录（不区分大小写，支持版本号）
-    let ps3_game_entry = root_entries.iter()
+    let ps3_game_entry = root_entries
+        .iter()
         .find(|entry| {
             let name = entry.name.to_uppercase();
             (name == "PS3_GAME" || name.starts_with("PS3_GAME;")) && entry.is_folder()
@@ -272,7 +272,8 @@ fn find_and_read_sfo(iso: &mut ISO9660) -> Result<Vec<u8>, String> {
     let ps3_game_entries: Vec<_> = iso.read_directory(ps3_game_lba).collect();
 
     // 查找 PARAM.SFO 文件（不区分大小写，支持版本号）
-    let param_sfo_entry = ps3_game_entries.iter()
+    let param_sfo_entry = ps3_game_entries
+        .iter()
         .find(|entry| {
             let name = entry.name.to_uppercase();
             (name == "PARAM.SFO" || name.starts_with("PARAM.SFO;")) && entry.is_file()

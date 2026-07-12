@@ -65,6 +65,7 @@ pub fn load_jy6d_csv(csv_path: &Path) -> Result<Vec<Jy6dDzEntry>, String> {
 }
 
 /// 构建中文名 -> 英文名的映射表（用于快速查找）
+#[allow(dead_code)]
 pub fn build_cn_to_en_map(entries: &[Jy6dDzEntry]) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for entry in entries {
@@ -80,6 +81,7 @@ pub fn build_cn_to_en_map(entries: &[Jy6dDzEntry]) -> HashMap<String, String> {
 }
 
 /// 构建英文名 -> 中文名的映射表
+#[allow(dead_code)]
 pub fn build_en_to_cn_map(entries: &[Jy6dDzEntry]) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for entry in entries {

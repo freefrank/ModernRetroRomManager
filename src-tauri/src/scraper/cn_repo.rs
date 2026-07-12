@@ -2,11 +2,11 @@
 //!
 //! 负责管理 yingw/rom-name-cn 仓库的本地副本，并提供 CSV 读取功能
 
-use std::path::PathBuf;
-use std::process::Command;
-use std::fs;
 use crate::config::get_data_dir;
 use crate::system_mapping::find_csv_name_by_folder;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 const REPO_URL: &str = "https://github.com/yingw/rom-name-cn.git";
 const REPO_DIR_NAME: &str = "rom-name-cn";
@@ -35,7 +35,7 @@ pub fn update_repo() -> Result<(), String> {
         // Git pull
         let output = Command::new("git")
             .current_dir(&path)
-            .args(&["pull"])
+            .args(["pull"])
             .output()
             .map_err(|e| format!("Git pull failed: {}", e))?;
 
@@ -51,7 +51,7 @@ pub fn update_repo() -> Result<(), String> {
 
         let output = Command::new("git")
             .current_dir(&data_dir)
-            .args(&["clone", REPO_URL])
+            .args(["clone", REPO_URL])
             .output()
             .map_err(|e| format!("Git clone failed: {}", e))?;
 
@@ -73,7 +73,7 @@ pub struct CnRomEntry {
 }
 
 /// 在指定目录查找系统对应的 CSV 文件
-pub fn find_csv_in_dir(root_path: &PathBuf, system: &str) -> Option<PathBuf> {
+pub fn find_csv_in_dir(root_path: &Path, system: &str) -> Option<PathBuf> {
     if !root_path.exists() {
         return None;
     }
@@ -91,6 +91,7 @@ pub fn find_csv_in_dir(root_path: &PathBuf, system: &str) -> Option<PathBuf> {
 }
 
 /// 查找系统对应的 CSV 文件 (旧接口，仅搜索用户目录)
+#[allow(dead_code)]
 pub fn find_csv_for_system(system: &str) -> Option<PathBuf> {
     find_csv_in_dir(&get_cn_repo_path(), system)
 }
@@ -103,19 +104,17 @@ pub fn read_csv(path: &PathBuf) -> Result<Vec<CnRomEntry>, String> {
         .from_path(path)
         .map_err(|e| e.to_string())?;
 
-    for result in rdr.records() {
-        if let Ok(record) = result {
-            if record.len() >= 2 {
-                let english_name = record[0].trim().to_string();
-                let chinese_name = record[1].trim().to_string();
+    for record in rdr.records().flatten() {
+        if record.len() >= 2 {
+            let english_name = record[0].trim().to_string();
+            let chinese_name = record[1].trim().to_string();
 
-                // 跳过空行或无效数据
-                if !english_name.is_empty() && !chinese_name.is_empty() {
-                    entries.push(CnRomEntry {
-                        english_name,
-                        chinese_name,
-                    });
-                }
+            // 跳过空行或无效数据
+            if !english_name.is_empty() && !chinese_name.is_empty() {
+                entries.push(CnRomEntry {
+                    english_name,
+                    chinese_name,
+                });
             }
         }
     }

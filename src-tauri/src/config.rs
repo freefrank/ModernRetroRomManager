@@ -45,8 +45,7 @@ fn normalize_path_to_dirname(path: &std::path::Path) -> String {
     // 移除驱动器冒号和路径分隔符，用下划线替换
     path_str
         .replace(':', "")
-        .replace('\\', "_")
-        .replace('/', "_")
+        .replace(['\\', '/'], "_")
         .trim_matches('_')
         .to_string()
 }
@@ -69,13 +68,13 @@ pub fn get_data_dir() -> PathBuf {
 }
 
 /// 确保配置目录结构存在
+#[allow(dead_code)]
 pub fn ensure_config_dirs() -> Result<(), std::io::Error> {
     std::fs::create_dir_all(get_media_dir())?;
     std::fs::create_dir_all(get_temp_dir())?;
     std::fs::create_dir_all(get_data_dir())?;
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -87,4 +86,3 @@ mod tests {
         assert!(config_dir.ends_with("config"));
     }
 }
-

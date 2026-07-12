@@ -42,6 +42,7 @@ impl ScrapeQuery {
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_hash(mut self, hash: RomHash) -> Self {
         self.hash = Some(hash);
         self
@@ -113,6 +114,7 @@ pub enum MediaType {
 
 impl MediaType {
     /// 从字符串解析媒体类型
+    #[allow(dead_code)]
     pub fn from_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "boxfront" | "box-2d" | "box-front" | "cover" => MediaType::BoxFront,
@@ -219,6 +221,7 @@ impl Capabilities {
         self.inner.contains(&cap)
     }
 
+    #[allow(dead_code)]
     pub fn all(&self) -> &HashSet<ProviderCapability> {
         &self.inner
     }

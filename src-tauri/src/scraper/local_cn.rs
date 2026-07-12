@@ -1,19 +1,22 @@
 //! 本地中文 ROM 数据库 Provider
 //!
 //! 基于 yingw/rom-name-cn 仓库的 CSV 文件提供中文名称查找
+//!
+//! 该 Provider 目前未接入 ScraperManager,整体保留待用
+#![allow(dead_code)]
 
-use crate::scraper::{
-    ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
-    Capabilities, ProviderCapability,
-};
+use crate::config::get_data_dir;
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
 use crate::scraper::matcher::jaro_winkler_similarity;
-use crate::config::get_data_dir;
+use crate::scraper::{
+    Capabilities, GameMetadata, MediaAsset, ProviderCapability, ScrapeQuery, ScraperProvider,
+    SearchResult,
+};
 use async_trait::async_trait;
-use std::sync::{Arc, Mutex};
+use pinyin::ToPinyin;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use pinyin::ToPinyin;
+use std::sync::{Arc, Mutex};
 
 const PROVIDER_ID: &str = "local_cn_repo";
 const PROVIDER_NAME: &str = "Chinese ROM DB (Local)";
@@ -159,8 +162,7 @@ fn normalize_homophones(s: &str) -> String {
         .replace('極', "极")
         .replace('戰', "战")
         .replace('傳', "传")
-        .replace('説', "说")
-        .replace('説', "说")
+        .replace(['説', '説'], "说")
         .replace('機', "机")
         .replace('車', "车")
         .replace('東', "东")
@@ -238,10 +240,12 @@ pub fn smart_cn_similarity(query: &str, target: &str) -> f32 {
     };
 
     // 3. 移除数字和英文后比较中文核心名称 (只保留非ASCII的字母数字字符，即主要是汉字)
-    let query_cn_core: String = query_normalized.chars()
+    let query_cn_core: String = query_normalized
+        .chars()
         .filter(|c| c.is_alphanumeric() && !c.is_ascii())
         .collect();
-    let target_cn_core: String = target_normalized.chars()
+    let target_cn_core: String = target_normalized
+        .chars()
         .filter(|c| c.is_alphanumeric() && !c.is_ascii())
         .collect();
 
@@ -263,7 +267,8 @@ pub fn smart_cn_similarity(query: &str, target: &str) -> f32 {
     let jw_score = jaro_winkler_similarity(&query_cn_core, &target_cn_core);
 
     // 4.4 检查是否为子串关系
-    let is_substring = query_cn_core.contains(&target_cn_core) || target_cn_core.contains(&query_cn_core);
+    let is_substring =
+        query_cn_core.contains(&target_cn_core) || target_cn_core.contains(&query_cn_core);
 
     // 5. 综合评分
     let mut final_score = jaccard_score.max(pinyin_score).max(jw_score);
@@ -297,13 +302,13 @@ pub struct LocalCnProvider {
 
 impl LocalCnProvider {
     /// 创建新的 LocalCnProvider
-    /// 
+    ///
     /// # Arguments
     /// * `extra_paths` - 额外的搜索路径 (例如 bundled resources)，优先级低于用户数据目录
     pub fn new(extra_paths: Vec<PathBuf>) -> Self {
         // 默认总是包含用户数据目录下的 rom-name-cn
         let user_repo_path = get_data_dir().join("rom-name-cn");
-        
+
         let mut search_paths = vec![user_repo_path];
         search_paths.extend(extra_paths);
 
@@ -318,25 +323,39 @@ impl LocalCnProvider {
         let mut cache = self.cache.lock().unwrap();
 
         if let Some(entries) = cache.get(system) {
-            return entries.iter().map(|e| CnRomEntry {
-                english_name: e.english_name.clone(),
-                chinese_name: e.chinese_name.clone(),
-            }).collect();
+            return entries
+                .iter()
+                .map(|e| CnRomEntry {
+                    english_name: e.english_name.clone(),
+                    chinese_name: e.chinese_name.clone(),
+                })
+                .collect();
         }
 
         // 遍历所有搜索路径
-        eprintln!("[LocalCnProvider] Searching in {} paths", self.search_paths.len());
+        eprintln!(
+            "[LocalCnProvider] Searching in {} paths",
+            self.search_paths.len()
+        );
         for root_path in &self.search_paths {
             eprintln!("[LocalCnProvider] Checking path: {:?}", root_path);
             if let Some(path) = find_csv_in_dir(root_path, system) {
                 eprintln!("[LocalCnProvider] Found CSV at: {:?}", path);
                 if let Ok(entries) = read_csv(&path) {
-                    eprintln!("[LocalCnProvider] Successfully loaded {} entries", entries.len());
+                    eprintln!(
+                        "[LocalCnProvider] Successfully loaded {} entries",
+                        entries.len()
+                    );
                     cache.insert(system.to_string(), entries);
-                    return cache.get(system).unwrap().iter().map(|e| CnRomEntry {
-                        english_name: e.english_name.clone(),
-                        chinese_name: e.chinese_name.clone(),
-                    }).collect();
+                    return cache
+                        .get(system)
+                        .unwrap()
+                        .iter()
+                        .map(|e| CnRomEntry {
+                            english_name: e.english_name.clone(),
+                            chinese_name: e.chinese_name.clone(),
+                        })
+                        .collect();
                 } else {
                     eprintln!("[LocalCnProvider] Failed to read CSV");
                 }
@@ -370,7 +389,10 @@ impl ScraperProvider for LocalCnProvider {
 
         let entries = self.get_entries(system);
 
-        eprintln!("[LocalCnProvider] Loaded {} entries from CSV", entries.len());
+        eprintln!(
+            "[LocalCnProvider] Loaded {} entries from CSV",
+            entries.len()
+        );
 
         if entries.is_empty() {
             eprintln!("[LocalCnProvider] No entries found for system: {}", system);
@@ -442,7 +464,8 @@ impl ScraperProvider for LocalCnProvider {
                 .max(score_file)
                 .max(score_en_clean);
 
-            if final_score > 0.75 { // 阈值 0.75
+            if final_score > 0.75 {
+                // 阈值 0.75
                 results.push(SearchResult {
                     provider: PROVIDER_ID.to_string(),
                     source_id: format!("{}|{}", system, entry.english_name),
@@ -457,7 +480,7 @@ impl ScraperProvider for LocalCnProvider {
 
         // 按置信度排序
         results.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
-        
+
         // 限制返回数量
         Ok(results.into_iter().take(5).collect())
     }
@@ -465,7 +488,7 @@ impl ScraperProvider for LocalCnProvider {
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
         // 尝试解析 source_id 中的 system|english_name
         let (target_system, target_name) = if let Some(idx) = source_id.find('|') {
-            (&source_id[..idx], &source_id[idx+1..])
+            (&source_id[..idx], &source_id[idx + 1..])
         } else {
             ("", source_id)
         };

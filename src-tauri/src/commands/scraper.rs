@@ -2,23 +2,21 @@
 //!
 //! 前端调用的 Scraper 相关命令
 
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use std::path::{Path, PathBuf};
-use std::fs;
-use tauri::{State, Emitter};
-use tokio::sync::RwLock;
 use crate::config::{get_temp_dir, get_temp_dir_for_library};
-use crate::scraper::{
-    manager::ScraperManager,
-    types::{ScrapeQuery, SearchResult, GameMetadata, MediaAsset, ScrapeResult},
-    steamgriddb::SteamGridDBClient,
-    screenscraper::ScreenScraperClient,
-    pegasus::parse_pegasus_file, // Add parser import
-    persistence::{download_media, save_metadata_pegasus, save_metadata_emulationstation},
-};
 use crate::rom_service::RomInfo;
-
+use crate::scraper::{
+    manager::ScraperManager, // Add parser import
+    persistence::{download_media, save_metadata_pegasus},
+    screenscraper::ScreenScraperClient,
+    steamgriddb::SteamGridDBClient,
+    types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
+};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use tauri::{Emitter, State};
+use tokio::sync::RwLock;
 
 use crate::settings::ScraperConfig;
 
@@ -77,11 +75,11 @@ pub async fn get_scraper_providers(
     state: State<'_, ScraperState>,
 ) -> Result<Vec<ProviderInfo>, String> {
     let manager = state.manager.read().await;
-    let provider_ids = manager.provider_ids();
-    
+    let _provider_ids = manager.provider_ids();
+
     // 动态生成 provider 信息
     let mut providers = Vec::new();
-    
+
     // SteamGridDB
     if let Some(config) = manager.get_credentials("steamgriddb") {
         providers.push(ProviderInfo {
@@ -110,8 +108,10 @@ pub async fn get_scraper_providers(
             name: "ScreenScraper".to_string(),
             enabled: config.enabled,
             priority: config.priority,
-            has_credentials: config.username.is_some() && !config.username.unwrap().is_empty()
-                && config.password.is_some() && !config.password.unwrap().is_empty(),
+            has_credentials: config.username.is_some()
+                && !config.username.unwrap().is_empty()
+                && config.password.is_some()
+                && !config.password.unwrap().is_empty(),
             capabilities: vec![
                 "search".to_string(),
                 "hash_lookup".to_string(),
@@ -146,10 +146,10 @@ pub async fn configure_scraper_provider(
     credentials: ProviderCredentials,
 ) -> Result<(), String> {
     let mut manager = state.manager.write().await;
-    
+
     // 获取当前配置以保留 enabled 状态
     let current_config = manager.get_credentials(&provider_id).unwrap_or_default();
-    
+
     let mut new_config = ScraperConfig {
         enabled: current_config.enabled,
         ..Default::default()
@@ -179,7 +179,7 @@ pub async fn configure_scraper_provider(
         }
         _ => return Err(format!("Unknown provider: {}", provider_id)),
     }
-    
+
     Ok(())
 }
 
@@ -192,12 +192,12 @@ pub async fn scraper_search(
     system: Option<String>,
 ) -> Result<Vec<SearchResult>, String> {
     let manager = state.manager.read().await;
-    
+
     let mut query = ScrapeQuery::new(name, file_name);
     if let Some(sys) = system {
         query = query.with_system(sys);
     }
-    
+
     let results = manager.search(&query).await;
     Ok(results)
 }
@@ -233,12 +233,12 @@ pub async fn scraper_auto_scrape(
     system: Option<String>,
 ) -> Result<ScrapeResult, String> {
     let manager = state.manager.read().await;
-    
+
     let mut query = ScrapeQuery::new(name, file_name);
     if let Some(sys) = system {
         query = query.with_system(sys);
     }
-    
+
     manager.scrape(&query).await
 }
 
@@ -272,9 +272,9 @@ pub async fn scraper_set_provider_priority(
 
 #[derive(Debug, Deserialize)]
 pub struct ApplyScrapedDataOptions {
-    pub rom_id: String, // 文件名
+    pub rom_id: String,    // 文件名
     pub directory: String, // 目录
-    pub system: String, // 系统
+    pub system: String,    // 系统
     pub metadata: GameMetadata,
     pub selected_media: Vec<MediaAsset>,
 }
@@ -341,16 +341,20 @@ pub async fn batch_scrape(
             } else {
                 rom_item.search_name
             };
-            
-            let _ = app.emit("batch-scrape-progress", BatchProgress {
-                current,
-                total,
-                message: format!("正在抓取: {}", search_name),
-                finished: false,
-            });
 
-            let query = ScrapeQuery::new(search_name, file_name.clone()).with_system(system.clone());
-            
+            let _ = app.emit(
+                "batch-scrape-progress",
+                BatchProgress {
+                    current,
+                    total,
+                    message: format!("正在抓取: {}", search_name),
+                    finished: false,
+                },
+            );
+
+            let query =
+                ScrapeQuery::new(search_name, file_name.clone()).with_system(system.clone());
+
             let scrape_res = {
                 let manager = manager_arc.read().await;
                 manager.scrape(&query).await
@@ -368,12 +372,15 @@ pub async fn batch_scrape(
             }
         }
 
-        let _ = app.emit("batch-scrape-progress", BatchProgress {
-            current: total,
-            total,
-            message: "批量处理完成".to_string(),
-            finished: true,
-        });
+        let _ = app.emit(
+            "batch-scrape-progress",
+            BatchProgress {
+                current: total,
+                total,
+                message: "批量处理完成".to_string(),
+                finished: true,
+            },
+        );
     });
 
     Ok(())
@@ -408,10 +415,7 @@ pub async fn delete_temp_media(
         .and_then(|s| s.to_str())
         .unwrap_or(&rom_id);
 
-    let media_dir = get_temp_dir()
-        .join("media")
-        .join(&system)
-        .join(file_stem);
+    let media_dir = get_temp_dir().join("media").join(&system).join(file_stem);
 
     if !media_dir.exists() {
         return Ok(());
@@ -454,7 +458,7 @@ pub async fn get_temp_media_list(
     // 计算 library_path (rom_directory 的父目录)
     let rom_dir = Path::new(&rom_directory);
     let library_path = rom_dir.parent().unwrap_or(rom_dir);
-    
+
     // 媒体存储在: {temp_dir}/{library}/{system}/media/{file_stem}/
     let media_dir = get_temp_dir_for_library(library_path, &system)
         .join("media")
@@ -481,6 +485,7 @@ pub async fn get_temp_media_list(
 
 /// 导出任务进度
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 pub struct ExportProgress {
     pub current: usize,
     pub total: usize,
@@ -488,6 +493,7 @@ pub struct ExportProgress {
     pub finished: bool,
 }
 
+#[allow(dead_code)]
 fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.filter_map(|e| e.ok()) {

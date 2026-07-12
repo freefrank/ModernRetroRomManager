@@ -146,7 +146,7 @@ fn create_or_update_metadata(
     // 如果没有现有metadata，生成新的Pegasus格式的metadata内容
     let mut content = String::new();
     content.push_str(&format!("collection: {}\n", system));
-    content.push_str(&format!("launch: {{file.path}}\n\n"));
+    content.push_str("launch: {file.path}\n\n");
 
     for rom in roms {
         content.push_str(&format!("game: {}\n", rom.name));
@@ -171,7 +171,7 @@ fn create_or_update_metadata(
             content.push_str(&format!("rating: {}\n", rating));
         }
 
-        content.push_str("\n");
+        content.push('\n');
     }
 
     // 写入文件
@@ -301,7 +301,7 @@ pub fn update_rom_media_in_metadata(
             content.push_str(&format!("assets.background: {}\n", background));
         }
 
-        content.push_str("\n");
+        content.push('\n');
     }
 
     // 写入文件
@@ -469,8 +469,6 @@ fn try_load_from_temp_metadata(
     None
 }
 
-/// 获取所有目录的 ROM 列表
-
 /// 获取单个目录的ROM列表
 pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> Vec<SystemRoms> {
     let mut systems = Vec::new();
@@ -568,10 +566,7 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
 
                 let param_sfo_path = ps3_game_path.join("PS3_GAME").join("PARAM.SFO");
                 let game_info = if param_sfo_path.exists() {
-                    match ps3::parse_param_sfo(&param_sfo_path) {
-                        Ok(info) => Some(info),
-                        Err(_) => None,
-                    }
+                    ps3::parse_param_sfo(&param_sfo_path).ok()
                 } else {
                     None
                 };
@@ -710,7 +705,7 @@ pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
     let all_systems: Vec<SystemRoms> = settings
         .directories
         .par_iter()
-        .flat_map(|dir_config| get_roms_for_directory(dir_config))
+        .flat_map(get_roms_for_directory)
         .collect();
 
     Ok(all_systems)
@@ -919,10 +914,8 @@ fn scan_media_directory(rom: &mut RomInfo, dir_path: &Path) {
                     rom.titlescreen = Some(full_path);
                 }
             }
-            "video" | "videos" => {
-                if rom.video.is_none() {
-                    rom.video = Some(full_path);
-                }
+            "video" | "videos" if rom.video.is_none() => {
+                rom.video = Some(full_path);
             }
             _ => {}
         }
@@ -1106,10 +1099,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                     // 尝试解析 PARAM.SFO 获取游戏信息
                     let param_sfo_path = ps3_game_dir.join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
-                        match ps3::parse_param_sfo(&param_sfo_path) {
-                            Ok(info) => Some(info),
-                            Err(_) => None,
-                        }
+                        ps3::parse_param_sfo(&param_sfo_path).ok()
                     } else {
                         None
                     };
@@ -1268,6 +1258,8 @@ mod tests {
 </gameList>
 "#;
         fs::write(dir.join("gamelist.xml"), xml).expect("write gamelist.xml");
+        // 解析器会跳过磁盘上不存在的 ROM 条目,需要真实创建文件
+        fs::write(dir.join("Super Mario World.sfc"), b"rom").expect("write rom file");
 
         let roms = read_emulationstation_roms(&dir, "snes").expect("parse gamelist");
         assert_eq!(roms.len(), 1);

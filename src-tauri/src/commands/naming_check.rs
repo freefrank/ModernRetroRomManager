@@ -1,20 +1,20 @@
 //! 目录检查工具命令
-//! 
+//!
 //! 用于检查目录下的 ROM 命名情况 (中英文对照)
 
+use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
-use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::gba_header::identify_gba_rom;
-use crate::scraper::pegasus::parse_pegasus_file;
+use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::local_cn::{smart_cn_similarity, to_pinyin_initials};
-use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
+use crate::scraper::pegasus::parse_pegasus_file;
 use crate::system_mapping::find_mapping_by_folder;
 use rayon::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -22,6 +22,7 @@ static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 static MULTI_SPACE_RE: OnceLock<Regex> = OnceLock::new();
 
+#[allow(dead_code)]
 fn find_preferred_pegasus_metadata_path(dir_path: &Path, system_name: &str) -> Option<PathBuf> {
     // App 逻辑可能会将系统目录下的 metadata 复制到 temp/{library}/{system}/metadata.pegasus.txt
     // 这里用于兜底读取（例如源目录没有 metadata，但 temp 里还保留着）
@@ -37,13 +38,20 @@ fn find_preferred_pegasus_metadata_path(dir_path: &Path, system_name: &str) -> O
     candidates.push(get_temp_dir_for_library(dir_path, system_name).join("metadata.pegasus.txt"));
 
     // 3) 兼容旧结构: temp/{system}/metadata.*
-    candidates.push(get_temp_dir().join(system_name).join("metadata.pegasus.txt"));
+    candidates.push(
+        get_temp_dir()
+            .join(system_name)
+            .join("metadata.pegasus.txt"),
+    );
     candidates.push(get_temp_dir().join(system_name).join("metadata.txt"));
 
     candidates.into_iter().find(|p| p.exists())
 }
 
-fn sync_source_metadata_to_temp(dir_path: &Path, system_name: &str) -> Result<Option<PathBuf>, String> {
+fn sync_source_metadata_to_temp(
+    dir_path: &Path,
+    system_name: &str,
+) -> Result<Option<PathBuf>, String> {
     // 用户期望：如果系统目录里存在 metadata，则直接复制到 temp（覆盖更新）。
     // 这样 CN ROM Tool 显示与后续处理都基于 temp 的 metadata。
 
@@ -79,7 +87,10 @@ fn temp_pegasus_metadata_path(dir_path: &Path, system_name: &str) -> PathBuf {
     get_temp_dir_for_library(library_path, system_name).join("metadata.pegasus.txt")
 }
 
-fn ensure_temp_pegasus_metadata_exists(dir_path: &Path, system_name: &str) -> Result<PathBuf, String> {
+fn ensure_temp_pegasus_metadata_exists(
+    dir_path: &Path,
+    system_name: &str,
+) -> Result<PathBuf, String> {
     let metadata_path = temp_pegasus_metadata_path(dir_path, system_name);
 
     if metadata_path.exists() {
@@ -106,7 +117,7 @@ fn write_updated_pegasus_games(
     system_name: &str,
     metadata: crate::scraper::pegasus::PegasusMetadata,
 ) -> Result<(), String> {
-    use crate::scraper::pegasus::{PegasusExportOptions, write_pegasus_file};
+    use crate::scraper::pegasus::{write_pegasus_file, PegasusExportOptions};
 
     let (collection_name, extensions_vec, launch_command, workdir) = metadata
         .collections
@@ -173,7 +184,9 @@ fn upsert_temp_pegasus_game_english_name(
         };
         if let Some(v) = english_name {
             if !v.is_empty() {
-                new_game.extra.insert("x-mrrm-eng".to_string(), v.to_string());
+                new_game
+                    .extra
+                    .insert("x-mrrm-eng".to_string(), v.to_string());
             }
         }
         metadata.games.push(new_game);
@@ -182,6 +195,7 @@ fn upsert_temp_pegasus_game_english_name(
     write_updated_pegasus_games(&metadata_path, system_name, metadata)
 }
 
+#[allow(dead_code)]
 fn upsert_temp_pegasus_game_name(
     dir_path: &Path,
     system_name: &str,
@@ -246,9 +260,15 @@ fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
     // 1. 优先检查打包的资源目录
-    if let Ok(resource_path) = app.path().resolve("rom-name-cn", tauri::path::BaseDirectory::Resource) {
+    if let Ok(resource_path) = app
+        .path()
+        .resolve("rom-name-cn", tauri::path::BaseDirectory::Resource)
+    {
         if resource_path.exists() {
-            eprintln!("[get_cn_repo_paths] Found bundled resource at: {:?}", resource_path);
+            eprintln!(
+                "[get_cn_repo_paths] Found bundled resource at: {:?}",
+                resource_path
+            );
             paths.push(resource_path);
         }
     }
@@ -256,7 +276,10 @@ fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
     // 2. 用户数据目录作为后备（支持用户自行更新）
     let user_data_path = get_data_dir().join("rom-name-cn");
     if user_data_path.exists() {
-        eprintln!("[get_cn_repo_paths] Found user data at: {:?}", user_data_path);
+        eprintln!(
+            "[get_cn_repo_paths] Found user data at: {:?}",
+            user_data_path
+        );
         paths.push(user_data_path);
     }
 
@@ -265,7 +288,10 @@ fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
 
 /// 获取 jy6d-dz CSV 文件路径（打包资源目录）
 fn get_jy6d_csv_path(app: &AppHandle, csv_name: &str) -> Option<PathBuf> {
-    if let Ok(resource_path) = app.path().resolve("cn-mapping", tauri::path::BaseDirectory::Resource) {
+    if let Ok(resource_path) = app
+        .path()
+        .resolve("cn-mapping", tauri::path::BaseDirectory::Resource)
+    {
         let csv_path = resource_path.join(csv_name);
         if csv_path.exists() {
             eprintln!("[get_jy6d_csv_path] Found jy6d CSV at: {:?}", csv_path);
@@ -291,7 +317,7 @@ fn extract_english_suffix(filename: &str) -> Option<String> {
         .and_then(|s| s.to_str())
         .unwrap_or(filename);
 
-    let clean_name = if let Some(idx) = stem.find(|c| c == '[' || c == '(') {
+    let clean_name = if let Some(idx) = stem.find(['[', '(']) {
         &stem[..idx]
     } else {
         stem
@@ -351,7 +377,7 @@ fn clean_english_name(name: &str) -> String {
 /// 统一的游戏名提取函数
 /// - 如果 ROM 在子文件夹中，从文件夹名提取
 /// - 如果 ROM 直接在平台文件夹中，从文件名提取
-/// 
+///
 /// # Arguments
 /// * `name` - 文件名或文件夹名
 /// * `is_filename` - true 表示输入是文件名（需要先去除扩展名）
@@ -366,38 +392,52 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     } else {
         name.to_string()
     };
-    
+
     // 去除括号内容：(xxx), [xxx]
     let bracket_re = BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap());
     result = bracket_re.replace_all(&result, "").to_string();
-    
+
     // 去除常见汉化组标识
     let groups = [
-        "汉化", "中文", "简体", "繁体", "简中", "繁中", "CN", "SC", "TC",
-        "老游戏", "怀旧游戏", "翻译", "民间", "完美", "正式",
+        "汉化",
+        "中文",
+        "简体",
+        "繁体",
+        "简中",
+        "繁中",
+        "CN",
+        "SC",
+        "TC",
+        "老游戏",
+        "怀旧游戏",
+        "翻译",
+        "民间",
+        "完美",
+        "正式",
     ];
     for g in groups {
         result = result.replace(g, "");
     }
-    
+
     // 去除版本号: v1.0, V2.1, ver1.0 等
-    let version_re = VERSION_RE.get_or_init(|| Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap());
+    let version_re =
+        VERSION_RE.get_or_init(|| Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap());
     result = version_re.replace_all(&result, "").to_string();
-    
+
     // 处理全角字符
-    result = result
-        .replace('－', "-")
-        .replace('　', " ");  // 全角空格转半角
-    
+    result = result.replace('－', "-").replace('　', " "); // 全角空格转半角
+
     // 去除尾部的分隔符和空格
-    result = result.trim_end_matches(|c: char| c == '_' || c == '-' || c == '.' || c.is_whitespace()).to_string();
-    
+    result = result
+        .trim_end_matches(|c: char| c == '_' || c == '-' || c == '.' || c.is_whitespace())
+        .to_string();
+
     // 去除多余空格
     let multi_space_re = MULTI_SPACE_RE.get_or_init(|| Regex::new(r"\s+").unwrap());
     result = multi_space_re.replace_all(&result, " ").to_string();
-    
+
     let result = result.trim().to_string();
-    
+
     if result.is_empty() {
         None
     } else {
@@ -433,17 +473,31 @@ where
     let mut entries = Vec::new();
 
     let rom_extensions: std::collections::HashSet<&str> = [
-        "zip", "7z", "rar", "iso", "bin", "cue", "chd", "pbp", "cso",
-        "nes", "sfc", "smc", "gba", "gbc", "gb", "nds", "3ds", "cia",
-        "n64", "z64", "v64", "gcm", "gcz", "rvz", "wbfs", "wad",
+        "zip", "7z", "rar", "iso", "bin", "cue", "chd", "pbp", "cso", "nes", "sfc", "smc", "gba",
+        "gbc", "gb", "nds", "3ds", "cia", "n64", "z64", "v64", "gcm", "gcz", "rvz", "wbfs", "wad",
         "psx", "ps2", "xci", "nsp", "vpk",
-    ].iter().cloned().collect();
+    ]
+    .iter()
+    .cloned()
+    .collect();
 
     // 预编译的正则表达式 for faster checking in loops
-    let skip_dirs_set: std::collections::HashSet<&str> = [
-        "media", "images", "artwork", "videos", "screenshots",
-        "boxart", "snap", "wheel", "marquee", "named_boxarts", "named_snaps",
-    ].iter().cloned().collect();
+    let _skip_dirs_set: std::collections::HashSet<&str> = [
+        "media",
+        "images",
+        "artwork",
+        "videos",
+        "screenshots",
+        "boxart",
+        "snap",
+        "wheel",
+        "marquee",
+        "named_boxarts",
+        "named_snaps",
+    ]
+    .iter()
+    .cloned()
+    .collect();
 
     if let Ok(dir_entries) = fs::read_dir(dir_path) {
         let dir_entries: Vec<_> = dir_entries.filter_map(|e| e.ok()).collect();
@@ -457,7 +511,8 @@ where
                 Err(_) => continue,
             };
 
-            let folder_name = path.file_name()
+            let folder_name = path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("")
                 .to_string();
@@ -481,10 +536,22 @@ where
             } else if file_type.is_dir() {
                 // 子文件夹
                 let skip_dirs = [
-                    "media", "images", "artwork", "videos", "screenshots",
-                    "boxart", "snap", "wheel", "marquee", "named_boxarts", "named_snaps",
+                    "media",
+                    "images",
+                    "artwork",
+                    "videos",
+                    "screenshots",
+                    "boxart",
+                    "snap",
+                    "wheel",
+                    "marquee",
+                    "named_boxarts",
+                    "named_snaps",
                 ];
-                if skip_dirs.iter().any(|&d| folder_name.eq_ignore_ascii_case(d)) {
+                if skip_dirs
+                    .iter()
+                    .any(|&d| folder_name.eq_ignore_ascii_case(d))
+                {
                     continue;
                 }
 
@@ -514,7 +581,8 @@ where
                 let cleaned_name = clean_folder_name(&folder_name);
 
                 if subfolder_rom_paths.len() == 1 {
-                    let filename = subfolder_rom_paths[0].file_name()
+                    let filename = subfolder_rom_paths[0]
+                        .file_name()
                         .and_then(|n| n.to_str())
                         .unwrap_or("")
                         .to_string();
@@ -528,18 +596,19 @@ where
                     let sizes: Vec<(String, u64)> = subfolder_rom_paths
                         .par_iter()
                         .map(|sub_path| {
-                            let filename = sub_path.file_name()
+                            let filename = sub_path
+                                .file_name()
                                 .and_then(|n| n.to_str())
                                 .unwrap_or("")
                                 .to_string();
-                            let file_size = sub_path.metadata()
-                                .map(|m| m.len())
-                                .unwrap_or(0);
+                            let file_size = sub_path.metadata().map(|m| m.len()).unwrap_or(0);
                             (filename, file_size)
                         })
                         .collect();
 
-                    if let Some((largest_filename, _)) = sizes.into_iter().max_by_key(|(_, size)| *size) {
+                    if let Some((largest_filename, _)) =
+                        sizes.into_iter().max_by_key(|(_, size)| *size)
+                    {
                         entries.push(RomScanEntry {
                             file: largest_filename,
                             subfolder: Some(folder_name),
@@ -551,23 +620,33 @@ where
         }
     }
 
-    eprintln!("[DEBUG] scan_directory_internal complete, found {} ROM entries", entries.len());
+    eprintln!(
+        "[DEBUG] scan_directory_internal complete, found {} ROM entries",
+        entries.len()
+    );
     entries
 }
 
+#[allow(dead_code)]
 fn scan_directory_with_folders(dir_path: &Path) -> Vec<RomScanEntry> {
     scan_directory_internal(dir_path, None::<fn(usize, usize, &str)>)
 }
 
 fn scan_directory_with_folders_progress(dir_path: &Path, app: &AppHandle) -> Vec<RomScanEntry> {
     let app_handle = app.clone();
-    scan_directory_internal(dir_path, Some(move |current, total, folder: &str| {
-        let _ = app_handle.emit("scan-progress", ScanProgress {
-            current,
-            total,
-            current_folder: folder.to_string(),
-        });
-    }))
+    scan_directory_internal(
+        dir_path,
+        Some(move |current, total, folder: &str| {
+            let _ = app_handle.emit(
+                "scan-progress",
+                ScanProgress {
+                    current,
+                    total,
+                    current_folder: folder.to_string(),
+                },
+            );
+        }),
+    )
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -596,25 +675,32 @@ pub async fn scan_directory_for_naming_check(
     path: String,
 ) -> Result<Vec<NamingCheckResult>, String> {
     let path_clone = path.clone();
-    
+
     // 先快速获取目录条目数量用于进度显示
     let dir_path = Path::new(&path);
     if !dir_path.exists() {
         return Err("Directory does not exist".to_string());
     }
-    
+
     // 在后台线程执行IO密集型操作
     tokio::task::spawn_blocking(move || {
         let dir_path = Path::new(&path_clone);
 
         // 1. 检测是否存在 metadata 文件
         let metadata_format = detect_metadata_format(dir_path);
-        
+
         // 2. 根据 metadata 存在与否决定扫描方式
         let (scan_entries, metadata_entries) = if metadata_format != "none" {
-            let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
-            eprintln!("[naming_check] Found metadata ({}), loading directly...", metadata_format);
-            
+            let system_name = dir_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            eprintln!(
+                "[naming_check] Found metadata ({}), loading directly...",
+                metadata_format
+            );
+
             let roms_result = if metadata_format == "pegasus" {
                 // CN ROM Tool 只需要 file/name/english_name；避免 get_roms_from_directory 的媒体扫描
                 read_pegasus_roms_light(dir_path, &system_name)
@@ -624,42 +710,54 @@ pub async fn scan_directory_for_naming_check(
 
             if let Ok(roms) = roms_result {
                 // 将 RomInfo 转换为 RomScanEntry
-                let entries: Vec<RomScanEntry> = roms.iter().map(|rom| {
-                    let path = Path::new(&rom.file);
-                    // 如果文件路径包含目录分隔符，则认为是在子文件夹中
-                    let subfolder = path.parent()
-                        .and_then(|p| p.to_str())
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string());
-                    
-                    let cleaned_folder_name = subfolder.as_ref().map(|s| clean_folder_name(s));
-                    
-                    // file 只存储纯文件名，subfolder 单独存储
-                    // 这样后续逻辑可以统一处理：file_path = subfolder/file
-                    let filename = path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or(&rom.file)
-                        .to_string();
-                    
-                    RomScanEntry {
-                        file: filename,
-                        subfolder,
-                        cleaned_folder_name,
-                    }
-                }).collect();
-                
+                let entries: Vec<RomScanEntry> = roms
+                    .iter()
+                    .map(|rom| {
+                        let path = Path::new(&rom.file);
+                        // 如果文件路径包含目录分隔符，则认为是在子文件夹中
+                        let subfolder = path
+                            .parent()
+                            .and_then(|p| p.to_str())
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string());
+
+                        let cleaned_folder_name = subfolder.as_ref().map(|s| clean_folder_name(s));
+
+                        // file 只存储纯文件名，subfolder 单独存储
+                        // 这样后续逻辑可以统一处理：file_path = subfolder/file
+                        let filename = path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or(&rom.file)
+                            .to_string();
+
+                        RomScanEntry {
+                            file: filename,
+                            subfolder,
+                            cleaned_folder_name,
+                        }
+                    })
+                    .collect();
+
                 // 将 RomInfo 转换为 TempMetadataEntry 以预填充数据
-                let meta_entries: Vec<TempMetadataEntry> = roms.iter().map(|rom| {
-                    TempMetadataEntry {
-                        file: rom.file.clone(),
-                        name: Some(rom.name.clone()),
-                        english_name: rom.english_name.clone(),
-                        // 如果 metadata 中有英文名，我们假设它是正确的（confidence=100）
-                        confidence: if rom.english_name.is_some() { Some(100.0) } else { None },
-                        extracted_cn_name: None, // 将在后续循环中重新计算
-                    }
-                }).collect();
-                
+                let meta_entries: Vec<TempMetadataEntry> = roms
+                    .iter()
+                    .map(|rom| {
+                        TempMetadataEntry {
+                            file: rom.file.clone(),
+                            name: Some(rom.name.clone()),
+                            english_name: rom.english_name.clone(),
+                            // 如果 metadata 中有英文名，我们假设它是正确的（confidence=100）
+                            confidence: if rom.english_name.is_some() {
+                                Some(100.0)
+                            } else {
+                                None
+                            },
+                            extracted_cn_name: None, // 将在后续循环中重新计算
+                        }
+                    })
+                    .collect();
+
                 (entries, Some(meta_entries))
             } else {
                 eprintln!("[naming_check] Failed to parse metadata, falling back to file scan.");
@@ -693,10 +791,11 @@ pub async fn scan_directory_for_naming_check(
 
         // 转换为检查结果，合并临时数据
         // 使用 HashMap 进行去重，以 file 字段为 key
-        let mut results_map: std::collections::HashMap<String, NamingCheckResult> = std::collections::HashMap::new();
+        let mut results_map: std::collections::HashMap<String, NamingCheckResult> =
+            std::collections::HashMap::new();
         // 同时构建需要保存的临时条目
         let mut new_temp_entries: Vec<TempMetadataEntry> = Vec::new();
-        
+
         for entry in scan_entries {
             // 优先使用清理后的文件夹名，否则从文件名提取
             let extracted = if let Some(ref folder_name) = entry.cleaned_folder_name {
@@ -713,17 +812,22 @@ pub async fn scan_directory_for_naming_check(
                 entry.file.clone()
             };
             // 优先按完整路径匹配，如果没找到再按纯文件名匹配（兼容旧数据）
-            let temp_data = temp_entries.iter().find(|e| e.file == file_path)
+            let temp_data = temp_entries
+                .iter()
+                .find(|e| e.file == file_path)
                 .or_else(|| temp_entries.iter().find(|e| e.file == entry.file));
 
             let result = NamingCheckResult {
                 file: file_path.clone(),
-                name: temp_data.and_then(|t| t.name.clone()).or_else(|| extracted.clone()).unwrap_or_else(|| entry.file.clone()),
+                name: temp_data
+                    .and_then(|t| t.name.clone())
+                    .or_else(|| extracted.clone())
+                    .unwrap_or_else(|| entry.file.clone()),
                 english_name: temp_data.and_then(|t| t.english_name.clone()),
                 extracted_cn_name: extracted.clone(),
                 confidence: temp_data.and_then(|t| t.confidence),
             };
-            
+
             // 构建临时条目（保留已有数据，更新 extracted_cn_name）
             let temp_entry = TempMetadataEntry {
                 file: file_path.clone(),
@@ -733,7 +837,7 @@ pub async fn scan_directory_for_naming_check(
                 extracted_cn_name: extracted,
             };
             new_temp_entries.push(temp_entry);
-            
+
             // 去重：如果已存在，保留有更多信息的条目
             if let Some(existing) = results_map.get(&file_path) {
                 // 保留有 english_name 或更高 confidence 的条目
@@ -752,10 +856,10 @@ pub async fn scan_directory_for_naming_check(
                 results_map.insert(file_path, result);
             }
         }
-        
+
         // 保存扫描结果到临时 metadata（包含 extracted_cn_name）
         let _ = save_temp_cn_metadata(&path_clone, &new_temp_entries);
-        
+
         let results: Vec<NamingCheckResult> = results_map.into_values().collect();
 
         Ok(results)
@@ -767,7 +871,7 @@ pub async fn scan_directory_for_naming_check(
 /// 规范化英文名称：去除括号内容、版本号、多余空格
 fn normalize_english_name(name: &str) -> String {
     let mut result = name.to_string();
-    
+
     // 去除括号内容 (...) 和 [...]
     // 简单实现：找到第一个 ( 或 [，截断
     if let Some(idx) = result.find('(') {
@@ -776,7 +880,7 @@ fn normalize_english_name(name: &str) -> String {
     if let Some(idx) = result.find('[') {
         result.truncate(idx);
     }
-    
+
     // 也可以考虑去除特定的 Scene 标签后缀，如 " - Venom", " - Xxx" 等
     // 但这很难穷举。通常去除括号就能解决大部分 No-Intro 命名的问题。
 
@@ -785,6 +889,7 @@ fn normalize_english_name(name: &str) -> String {
 
 /// 索引条目，预计算小写和拼音以加速匹配
 #[derive(Clone)]
+#[allow(dead_code)]
 struct IndexEntry {
     english_name: String,
     chinese_name: String,
@@ -828,21 +933,22 @@ impl NamingIndex {
     fn from_cn_entries(entries: Vec<CnRomEntry>) -> Self {
         let mut index = Self::new();
         index.all_entries.reserve(entries.len());
-        
+
         for entry in entries {
             let cn_lower = entry.chinese_name.to_lowercase();
             let en_lower = entry.english_name.to_lowercase();
-            
+
             // 计算中文核心（去除数字和英文）
-            let cn_core: String = cn_lower.chars()
+            let cn_core: String = cn_lower
+                .chars()
                 .filter(|c| c.is_alphanumeric() && !c.is_ascii())
                 .collect();
             let cn_len = cn_core.chars().count();
-            
+
             // 预计算拼音
             let pinyin = to_pinyin_initials(&cn_core);
             let pinyin_initial = pinyin.clone();
-            
+
             let idx_entry = IndexEntry {
                 english_name: entry.english_name,
                 chinese_name: entry.chinese_name,
@@ -852,18 +958,30 @@ impl NamingIndex {
                 pinyin_initial: pinyin_initial.clone(),
                 cn_len,
             };
-            
+
             let entry_idx = index.all_entries.len();
-            
-            index.exact_cn.entry(cn_lower).or_default().push(idx_entry.clone());
-            index.exact_en.entry(en_lower).or_default().push(idx_entry.clone());
-            
+
+            index
+                .exact_cn
+                .entry(cn_lower)
+                .or_default()
+                .push(idx_entry.clone());
+            index
+                .exact_en
+                .entry(en_lower)
+                .or_default()
+                .push(idx_entry.clone());
+
             // 分桶索引
             index.by_length.entry(cn_len).or_default().push(entry_idx);
             if !pinyin_initial.is_empty() {
-                index.by_pinyin_initial.entry(pinyin_initial).or_default().push(entry_idx);
+                index
+                    .by_pinyin_initial
+                    .entry(pinyin_initial)
+                    .or_default()
+                    .push(entry_idx);
             }
-            
+
             index.all_entries.push(idx_entry);
         }
         index
@@ -873,21 +991,22 @@ impl NamingIndex {
     fn from_jy6d_entries(entries: Vec<Jy6dDzEntry>) -> Self {
         let mut index = Self::new();
         index.all_entries.reserve(entries.len());
-        
+
         for entry in entries {
             let cn_lower = entry.chinese_name.to_lowercase();
             let en_lower = entry.english_name.to_lowercase();
-            
+
             // 计算中文核心（去除数字和英文）
-            let cn_core: String = cn_lower.chars()
+            let cn_core: String = cn_lower
+                .chars()
                 .filter(|c| c.is_alphanumeric() && !c.is_ascii())
                 .collect();
             let cn_len = cn_core.chars().count();
-            
+
             // 预计算拼音
             let pinyin = to_pinyin_initials(&cn_core);
             let pinyin_initial = pinyin.clone();
-            
+
             let idx_entry = IndexEntry {
                 english_name: entry.english_name,
                 chinese_name: entry.chinese_name,
@@ -897,18 +1016,30 @@ impl NamingIndex {
                 pinyin_initial: pinyin_initial.clone(),
                 cn_len,
             };
-            
+
             let entry_idx = index.all_entries.len();
-            
-            index.exact_cn.entry(cn_lower).or_default().push(idx_entry.clone());
-            index.exact_en.entry(en_lower).or_default().push(idx_entry.clone());
-            
+
+            index
+                .exact_cn
+                .entry(cn_lower)
+                .or_default()
+                .push(idx_entry.clone());
+            index
+                .exact_en
+                .entry(en_lower)
+                .or_default()
+                .push(idx_entry.clone());
+
             // 分桶索引
             index.by_length.entry(cn_len).or_default().push(entry_idx);
             if !pinyin_initial.is_empty() {
-                index.by_pinyin_initial.entry(pinyin_initial).or_default().push(entry_idx);
+                index
+                    .by_pinyin_initial
+                    .entry(pinyin_initial)
+                    .or_default()
+                    .push(entry_idx);
             }
-            
+
             index.all_entries.push(idx_entry);
         }
         index
@@ -916,7 +1047,11 @@ impl NamingIndex {
 
     /// 搜索最佳匹配
     /// O(1) 精确匹配 -> 分桶过滤 -> O(K) 模糊匹配 (K << N)
-    fn search(&self, query_cn: &str, english_suffix: Option<&str>) -> Option<(String, String, f32)> {
+    fn search(
+        &self,
+        query_cn: &str,
+        english_suffix: Option<&str>,
+    ) -> Option<(String, String, f32)> {
         let query_lower = query_cn.to_lowercase();
 
         // 1. 精确匹配 (Hash Lookup) - O(1)
@@ -925,22 +1060,26 @@ impl NamingIndex {
                 return Some((first.english_name.clone(), first.chinese_name.clone(), 1.0));
             }
         }
-        
+
         // 尝试英文精确匹配
         if let Some(entries) = self.exact_en.get(&query_lower) {
-             if let Some(first) = entries.first() {
+            if let Some(first) = entries.first() {
                 return Some((first.english_name.clone(), first.chinese_name.clone(), 1.0));
             }
         }
 
         // [New] 尝试规范化后的英文精确匹配 (针对 Scene Release 命名等)
         // 只有当查询看起来像英文时才尝试 (不含非ASCII字符)
-        if query_lower.chars().all(|c| c.is_ascii()) {
+        if query_lower.is_ascii() {
             let normalized_en = normalize_english_name(&query_lower);
             if normalized_en != query_lower {
                 if let Some(entries) = self.exact_en.get(&normalized_en) {
                     if let Some(first) = entries.first() {
-                        return Some((first.english_name.clone(), first.chinese_name.clone(), 0.95));
+                        return Some((
+                            first.english_name.clone(),
+                            first.chinese_name.clone(),
+                            0.95,
+                        ));
                     }
                 }
             }
@@ -948,7 +1087,8 @@ impl NamingIndex {
 
         // 2. 分桶过滤 + 模糊匹配
         // 计算查询的中文核心特征
-        let query_core: String = query_lower.chars()
+        let query_core: String = query_lower
+            .chars()
             .filter(|c| c.is_alphanumeric() && !c.is_ascii())
             .collect();
         let query_len = query_core.chars().count();
@@ -958,12 +1098,13 @@ impl NamingIndex {
         // 纯英文文件名只能通过精确匹配（上面已处理）或英文模糊匹配（未实现，暂不处理）找到结果
         // 否则会匹配到数据库中中文名也是纯英文的条目（如 FIFA），导致错误匹配
         if query_core.is_empty() {
-             return None;
+            return None;
         }
 
         // 2.1 收集候选索引（长度 ±3 的条目）
-        let mut candidate_indices: std::collections::HashSet<usize> = std::collections::HashSet::new();
-        
+        let mut candidate_indices: std::collections::HashSet<usize> =
+            std::collections::HashSet::new();
+
         // 长度分桶：查找长度在 [query_len - 3, query_len + 3] 范围内的条目
         for len in query_len.saturating_sub(3)..=query_len.saturating_add(3) {
             if let Some(indices) = self.by_length.get(&len) {
@@ -975,12 +1116,13 @@ impl NamingIndex {
         // 但如果拼音过滤后候选太少，则不使用拼音过滤
         if !query_pinyin_initial.is_empty() && candidate_indices.len() > 50 {
             if let Some(pinyin_indices) = self.by_pinyin_initial.get(&query_pinyin_initial) {
-                let pinyin_set: std::collections::HashSet<usize> = pinyin_indices.iter().cloned().collect();
+                let pinyin_set: std::collections::HashSet<usize> =
+                    pinyin_indices.iter().cloned().collect();
                 let intersection: std::collections::HashSet<usize> = candidate_indices
                     .intersection(&pinyin_set)
                     .cloned()
                     .collect();
-                
+
                 // 只有当交集不为空时才使用
                 if !intersection.is_empty() {
                     candidate_indices = intersection;
@@ -993,7 +1135,8 @@ impl NamingIndex {
             // Fallback: 取前 500 个条目
             self.all_entries.iter().take(500).collect()
         } else {
-            candidate_indices.iter()
+            candidate_indices
+                .iter()
                 .filter_map(|&idx| self.all_entries.get(idx))
                 .collect()
         };
@@ -1007,20 +1150,32 @@ impl NamingIndex {
                 if entry.chinese_name.contains(suffix) {
                     let score = smart_cn_similarity(&query_lower, &entry.cn_lower);
                     if score > 0.5 {
-                        return Some((entry.english_name.clone(), entry.chinese_name.clone(), 0.98));
+                        return Some((
+                            entry.english_name.clone(),
+                            entry.chinese_name.clone(),
+                            0.98,
+                        ));
                     }
                 }
             }
-            
+
             // 3.2 常规智能匹配
             let score = smart_cn_similarity(&query_lower, &entry.cn_lower);
             if score > 0.75 {
                 if let Some((_, _, best_score)) = &best_match {
                     if score > *best_score {
-                        best_match = Some((entry.english_name.clone(), entry.chinese_name.clone(), score));
+                        best_match = Some((
+                            entry.english_name.clone(),
+                            entry.chinese_name.clone(),
+                            score,
+                        ));
                     }
                 } else {
-                    best_match = Some((entry.english_name.clone(), entry.chinese_name.clone(), score));
+                    best_match = Some((
+                        entry.english_name.clone(),
+                        entry.chinese_name.clone(),
+                        score,
+                    ));
                 }
             }
         }
@@ -1049,7 +1204,11 @@ pub async fn auto_fix_naming(
 
     // 优先使用传入的系统名，否则从目录名获取
     let system_name = system.unwrap_or_else(|| {
-        dir_path.file_name().unwrap_or_default().to_string_lossy().to_string()
+        dir_path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string()
     });
     let is_gba = find_mapping_by_folder(&system_name)
         .is_some_and(|mapping| mapping.folder_name.eq_ignore_ascii_case("GBA"));
@@ -1088,7 +1247,10 @@ pub async fn auto_fix_naming(
 
     // 如果两个数据源都没有数据，返回错误
     if csv_entries.is_empty() && jy6d_entries.is_empty() {
-        eprintln!("[auto_fix_naming] No CSV found for system: {} in paths: {:?}", system_name, repo_paths);
+        eprintln!(
+            "[auto_fix_naming] No CSV found for system: {} in paths: {:?}",
+            system_name, repo_paths
+        );
         return Err(format!("No CSV database found for system: {}", system_name));
     }
 
@@ -1112,10 +1274,13 @@ pub async fn auto_fix_naming(
 
     for (idx, entry) in entries.iter_mut().enumerate() {
         // 发送进度事件
-        let _ = app.emit("naming-match-progress", MatchProgress {
-            current: idx + 1,
-            total,
-        });
+        let _ = app.emit(
+            "naming-match-progress",
+            MatchProgress {
+                current: idx + 1,
+                total,
+            },
+        );
 
         // 检查是否已有用户手动编辑的数据（confidence = 100）
         if entry.confidence == Some(100.0) && entry.english_name.is_some() {
@@ -1135,13 +1300,18 @@ pub async fn auto_fix_naming(
                 }
                 Ok(None) => {}
                 Err(error) => {
-                    eprintln!("[auto_fix_naming] Failed to inspect GBA ROM {:?}: {}", rom_path, error);
+                    eprintln!(
+                        "[auto_fix_naming] Failed to inspect GBA ROM {:?}: {}",
+                        rom_path, error
+                    );
                 }
             }
         }
 
         // 查询名优先级：name（用户编辑/已生成）> extracted_cn_name > 从文件名提取
-        let query_name = entry.name.clone()
+        let query_name = entry
+            .name
+            .clone()
             .or_else(|| entry.extracted_cn_name.clone())
             .or_else(|| parse_cn_name_from_filename(&entry.file))
             .unwrap_or_else(|| entry.file.clone());
@@ -1208,7 +1378,8 @@ pub async fn auto_fix_naming(
                 .iter_mut()
                 .find(|g| g.file.as_deref() == Some(entry.file.as_str()))
             {
-                game.extra.insert("x-mrrm-eng".to_string(), eng_name.clone());
+                game.extra
+                    .insert("x-mrrm-eng".to_string(), eng_name.clone());
             } else {
                 let mut new_game = crate::scraper::pegasus::PegasusGame {
                     name: entry.name.clone().unwrap_or_else(|| entry.file.clone()),
@@ -1228,7 +1399,10 @@ pub async fn auto_fix_naming(
     // 保存到 temp 目录
     save_temp_cn_metadata(&path, &entries)?;
 
-    eprintln!("[auto_fix_naming] Done: {} success, {} failed", success_count, failed_count);
+    eprintln!(
+        "[auto_fix_naming] Done: {} success, {} failed",
+        success_count, failed_count
+    );
 
     Ok(AutoFixResult {
         success: success_count,
@@ -1255,14 +1429,14 @@ fn save_temp_cn_metadata(source_dir: &str, entries: &[TempMetadataEntry]) -> Res
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    
+
     let target_dir = temp_dir.join("cn_metadata").join(&dir_name);
     fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-    
+
     let target_file = target_dir.join("metadata.json");
     let json = serde_json::to_string_pretty(entries).map_err(|e| e.to_string())?;
     fs::write(&target_file, json).map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
@@ -1274,26 +1448,31 @@ fn load_temp_cn_metadata(source_dir: &str) -> Result<Vec<TempMetadataEntry>, Str
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    
-    let target_file = temp_dir.join("cn_metadata").join(&dir_name).join("metadata.json");
-    
+
+    let target_file = temp_dir
+        .join("cn_metadata")
+        .join(&dir_name)
+        .join("metadata.json");
+
     if !target_file.exists() {
         return Ok(Vec::new());
     }
-    
+
     let content = fs::read_to_string(&target_file).map_err(|e| e.to_string())?;
-    let entries: Vec<TempMetadataEntry> = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-Ok(entries)
+    let entries: Vec<TempMetadataEntry> =
+        serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(entries)
 }
 
 /// 只读取临时元数据，不扫描文件系统（用于快速刷新）
 #[tauri::command]
 pub fn get_naming_check_results(path: String) -> Result<Vec<NamingCheckResult>, String> {
     let entries = load_temp_cn_metadata(&path).unwrap_or_default();
-    
+
     // 使用 HashMap 去重，以 file 字段为 key
-    let mut results_map: std::collections::HashMap<String, NamingCheckResult> = std::collections::HashMap::new();
-    
+    let mut results_map: std::collections::HashMap<String, NamingCheckResult> =
+        std::collections::HashMap::new();
+
     for entry in entries {
         let result = NamingCheckResult {
             file: entry.file.clone(),
@@ -1303,7 +1482,7 @@ pub fn get_naming_check_results(path: String) -> Result<Vec<NamingCheckResult>, 
             extracted_cn_name: entry.extracted_cn_name,
             confidence: entry.confidence,
         };
-        
+
         // 去重：保留有更多信息的条目
         if let Some(existing) = results_map.get(&entry.file) {
             let should_replace = match (&result.english_name, &existing.english_name) {
@@ -1320,9 +1499,9 @@ pub fn get_naming_check_results(path: String) -> Result<Vec<NamingCheckResult>, 
             results_map.insert(entry.file, result);
         }
     }
-    
+
     let results: Vec<NamingCheckResult> = results_map.into_values().collect();
-    
+
     Ok(results)
 }
 
@@ -1333,7 +1512,11 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
     if !dir_path.exists() {
         return Err("Directory does not exist".to_string());
     }
-    let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let system_name = dir_path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
 
     let mut entries = load_temp_cn_metadata(&directory).unwrap_or_default();
     let mut success_count = 0;
@@ -1379,11 +1562,13 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
                 }
             }
         } else {
-            pegasus_metadata.games.push(crate::scraper::pegasus::PegasusGame {
-                name: cn_name,
-                file: Some(entry.file.clone()),
-                ..Default::default()
-            });
+            pegasus_metadata
+                .games
+                .push(crate::scraper::pegasus::PegasusGame {
+                    name: cn_name,
+                    file: Some(entry.file.clone()),
+                    ..Default::default()
+                });
         }
     }
 
@@ -1450,7 +1635,11 @@ pub async fn update_english_name(
 
     // 同步写入 temp pegasus metadata
     let dir_path = Path::new(&directory);
-    let system_name = dir_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let system_name = dir_path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
     upsert_temp_pegasus_game_english_name(dir_path, &system_name, &file, english_opt.as_deref())?;
     Ok(())
 }
@@ -1496,7 +1685,7 @@ pub async fn export_cn_metadata(
     format: String,
 ) -> Result<(), String> {
     let entries = load_temp_cn_metadata(&directory)?;
-    
+
     if entries.is_empty() {
         return Err("No metadata to export. Please run 'Match English Names' first.".to_string());
     }
@@ -1509,31 +1698,35 @@ pub async fn export_cn_metadata(
 }
 
 fn export_pegasus_format(target_path: &str, entries: &[TempMetadataEntry]) -> Result<(), String> {
-    use crate::scraper::pegasus::{PegasusGame, PegasusExportOptions, write_pegasus_file};
+    use crate::scraper::pegasus::{write_pegasus_file, PegasusExportOptions, PegasusGame};
     use std::path::Path;
-    
+
     // 转换为 PegasusGame 列表
-    let games: Vec<PegasusGame> = entries.iter().map(|entry| {
-        let mut game = PegasusGame {
-            name: entry.name.clone().unwrap_or_else(|| entry.file.clone()),
-            file: Some(entry.file.clone()),
-            ..Default::default()
-        };
-        
-        // 添加英文名到 x-mrrm-eng 字段
-        if let Some(ref eng_name) = entry.english_name {
-            game.extra.insert("x-mrrm-eng".to_string(), eng_name.clone());
-        }
-        
-        game
-    }).collect();
-    
+    let games: Vec<PegasusGame> = entries
+        .iter()
+        .map(|entry| {
+            let mut game = PegasusGame {
+                name: entry.name.clone().unwrap_or_else(|| entry.file.clone()),
+                file: Some(entry.file.clone()),
+                ..Default::default()
+            };
+
+            // 添加英文名到 x-mrrm-eng 字段
+            if let Some(ref eng_name) = entry.english_name {
+                game.extra
+                    .insert("x-mrrm-eng".to_string(), eng_name.clone());
+            }
+
+            game
+        })
+        .collect();
+
     // 不包含 collection header（由用户自行添加或合并到现有文件）
     let options = PegasusExportOptions {
         include_collection: false,
         ..Default::default()
     };
-    
+
     // 写入文件（不合并，直接覆盖）
     write_pegasus_file(Path::new(target_path), &games, &options, false)
 }
@@ -1543,25 +1736,25 @@ fn export_gamelist_format(target_path: &str, entries: &[TempMetadataEntry]) -> R
     content.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     content.push_str("<gameList>\n");
     content.push_str("  <!-- Generated by ModernRetroRomManager - CN ROM Tool -->\n");
-    
+
     for entry in entries {
         let name = entry.name.as_ref().unwrap_or(&entry.file);
         let escaped_name = escape_xml(name);
         let escaped_file = escape_xml(&entry.file);
-        
+
         content.push_str("  <game>\n");
         content.push_str(&format!("    <path>./{}</path>\n", escaped_file));
         content.push_str(&format!("    <name>{}</name>\n", escaped_name));
-        
+
         if let Some(eng_name) = &entry.english_name {
             content.push_str(&format!("    <eng>{}</eng>\n", escape_xml(eng_name)));
         }
-        
+
         content.push_str("  </game>\n");
     }
-    
+
     content.push_str("</gameList>\n");
-    
+
     fs::write(target_path, content).map_err(|e| e.to_string())
 }
 
@@ -1573,6 +1766,7 @@ fn escape_xml(s: &str) -> String {
         .replace('\'', "&apos;")
 }
 
+#[allow(dead_code)]
 fn detect_format(dir_path: &Path) -> String {
     if dir_path.join("metadata.pegasus.txt").exists() || dir_path.join("metadata.txt").exists() {
         "pegasus".to_string()

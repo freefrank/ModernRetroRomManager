@@ -1,8 +1,8 @@
 //! SteamGridDB Provider - 高质量游戏封面/Logo/图标
 
 use crate::scraper::{
-    ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
-    MediaType, Capabilities, ProviderCapability, RomHash,
+    Capabilities, GameMetadata, MediaAsset, MediaType, ProviderCapability, RomHash, ScrapeQuery,
+    ScraperProvider, SearchResult,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -23,7 +23,11 @@ impl SteamGridDBClient {
         }
     }
 
-    async fn fetch_images(&self, endpoint: &str, source_id: &str) -> Result<Vec<SGDBImage>, String> {
+    async fn fetch_images(
+        &self,
+        endpoint: &str,
+        source_id: &str,
+    ) -> Result<Vec<SGDBImage>, String> {
         let url = format!(
             "https://www.steamgriddb.com/api/v2/{}/game/{}",
             endpoint, source_id
@@ -136,10 +140,7 @@ impl ScraperProvider for SteamGridDBClient {
 
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
         // SteamGridDB 主要用于媒体，元数据有限
-        let url = format!(
-            "https://www.steamgriddb.com/api/v2/games/id/{}",
-            source_id
-        );
+        let url = format!("https://www.steamgriddb.com/api/v2/games/id/{}", source_id);
         let resp = self
             .client
             .get(&url)
@@ -148,8 +149,7 @@ impl ScraperProvider for SteamGridDBClient {
             .await
             .map_err(|e| e.to_string())?;
 
-        let sgdb_resp: SGDBResponse<SGDBGame> =
-            resp.json().await.map_err(|e| e.to_string())?;
+        let sgdb_resp: SGDBResponse<SGDBGame> = resp.json().await.map_err(|e| e.to_string())?;
 
         Ok(GameMetadata {
             name: sgdb_resp.data.name,

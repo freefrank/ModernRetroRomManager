@@ -14,8 +14,8 @@ pub struct SystemInfo {
     pub manufacturer: Option<String>,
     pub release_year: Option<i32>,
     pub extensions: Vec<String>,
-    pub logo: Option<String>,  // Logo文件名（相对于resources/logo/）
-    pub rom_type: RomType,     // ROM处理方式
+    pub logo: Option<String>, // Logo文件名（相对于resources/logo/）
+    pub rom_type: RomType,    // ROM处理方式
 }
 
 pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
@@ -254,7 +254,12 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             short_name: "Genesis".to_string(),
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1988),
-            extensions: vec![".md".to_string(), ".bin".to_string(), ".gen".to_string(), ".zip".to_string()],
+            extensions: vec![
+                ".md".to_string(),
+                ".bin".to_string(),
+                ".gen".to_string(),
+                ".zip".to_string(),
+            ],
             logo: Some("MD.png".to_string()),
             rom_type: RomType::File,
         },
@@ -264,7 +269,12 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             short_name: "MD".to_string(),
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1988),
-            extensions: vec![".md".to_string(), ".bin".to_string(), ".gen".to_string(), ".zip".to_string()],
+            extensions: vec![
+                ".md".to_string(),
+                ".bin".to_string(),
+                ".gen".to_string(),
+                ".zip".to_string(),
+            ],
             logo: Some("MD.png".to_string()),
             rom_type: RomType::File,
         },
@@ -365,7 +375,12 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             short_name: "PSX".to_string(),
             manufacturer: Some("Sony".to_string()),
             release_year: Some(1994),
-            extensions: vec![".iso".to_string(), ".bin".to_string(), ".cue".to_string(), ".pbp".to_string()],
+            extensions: vec![
+                ".iso".to_string(),
+                ".bin".to_string(),
+                ".cue".to_string(),
+                ".pbp".to_string(),
+            ],
             logo: Some("PS1.png".to_string()),
             rom_type: RomType::File,
         },
@@ -375,7 +390,12 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             short_name: "PS1".to_string(),
             manufacturer: Some("Sony".to_string()),
             release_year: Some(1994),
-            extensions: vec![".iso".to_string(), ".bin".to_string(), ".cue".to_string(), ".pbp".to_string()],
+            extensions: vec![
+                ".iso".to_string(),
+                ".bin".to_string(),
+                ".cue".to_string(),
+                ".pbp".to_string(),
+            ],
             logo: Some("PS1.png".to_string()),
             rom_type: RomType::File,
         },

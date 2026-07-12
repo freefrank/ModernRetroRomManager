@@ -61,23 +61,23 @@ pub struct PegasusGame {
     pub extra: HashMap<String, String>,
 }
 
-impl Into<crate::scraper::GameMetadata> for PegasusGame {
-    fn into(self) -> crate::scraper::GameMetadata {
+impl From<PegasusGame> for crate::scraper::GameMetadata {
+    fn from(game: PegasusGame) -> crate::scraper::GameMetadata {
         crate::scraper::GameMetadata {
-            name: self.name,
+            name: game.name,
             // 优先读取 x-mrrm-eng (CN ROM Tool 写入的)，其次读取 x-english-name
-            english_name: self
+            english_name: game
                 .extra
                 .get("x-mrrm-eng")
-                .or_else(|| self.extra.get("x-english-name"))
+                .or_else(|| game.extra.get("x-english-name"))
                 .cloned(),
-            description: self.description,
-            release_date: self.release,
-            developer: self.developer,
-            publisher: self.publisher,
-            genres: self.genre.map(|g| vec![g]).unwrap_or_default(),
-            players: self.players,
-            rating: self.rating.and_then(|r| {
+            description: game.description,
+            release_date: game.release,
+            developer: game.developer,
+            publisher: game.publisher,
+            genres: game.genre.map(|g| vec![g]).unwrap_or_default(),
+            players: game.players,
+            rating: game.rating.and_then(|r| {
                 if let Ok(val) = r.trim_end_matches('%').parse::<f64>() {
                     // 如果是百分比，转换为 0-1
                     if r.contains('%') {
@@ -616,6 +616,7 @@ pub fn write_pegasus_file(
 }
 
 /// Legacy compatibility wrapper - export with collection header
+#[allow(dead_code)]
 #[deprecated(note = "Use export_to_pegasus with PegasusExportOptions instead")]
 pub fn export_to_pegasus_legacy(
     collection_name: &str,

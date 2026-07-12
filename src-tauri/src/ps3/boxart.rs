@@ -4,10 +4,10 @@
 //! 合成为 boxart 图片
 
 use image::{DynamicImage, GenericImageView, ImageBuffer, RgbaImage};
+use iso9660_simple::ISO9660;
 use std::fs::File;
 use std::io::{Read as StdRead, Seek, SeekFrom};
 use std::path::Path;
-use iso9660_simple::ISO9660;
 
 /// Boxart 标准尺寸
 const BOXART_WIDTH: u32 = 512;
@@ -33,16 +33,12 @@ pub fn generate_ps3_boxart(ps3_game_dir: &Path, output_path: &Path) -> Result<()
         return Err("PIC1.PNG not found".to_string());
     }
 
-    let pic1 = image::open(&pic1_path)
-        .map_err(|e| format!("Failed to load PIC1.PNG: {}", e))?;
+    let pic1 = image::open(&pic1_path).map_err(|e| format!("Failed to load PIC1.PNG: {}", e))?;
 
     // 加载 ICON0.PNG (图标)
     let icon0_path = ps3_game_dir.join("ICON0.PNG");
     let icon0 = if icon0_path.exists() {
-        Some(
-            image::open(&icon0_path)
-                .map_err(|e| format!("Failed to load ICON0.PNG: {}", e))?,
-        )
+        Some(image::open(&icon0_path).map_err(|e| format!("Failed to load ICON0.PNG: {}", e))?)
     } else {
         None
     };
@@ -72,7 +68,10 @@ pub fn generate_ps3_boxart(ps3_game_dir: &Path, output_path: &Path) -> Result<()
 ///
 /// # 返回
 /// - 合成后的 boxart 图片
-fn composite_boxart(pic1: &DynamicImage, icon0: Option<&DynamicImage>) -> Result<DynamicImage, String> {
+fn composite_boxart(
+    pic1: &DynamicImage,
+    icon0: Option<&DynamicImage>,
+) -> Result<DynamicImage, String> {
     // 创建 boxart 画布
     let mut canvas: RgbaImage = ImageBuffer::new(BOXART_WIDTH, BOXART_HEIGHT);
 
@@ -84,7 +83,8 @@ fn composite_boxart(pic1: &DynamicImage, icon0: Option<&DynamicImage>) -> Result
 
     // 2. 如果有 ICON0.PNG，绘制到下部居中
     if let Some(icon) = icon0 {
-        let icon_resized = icon.resize_exact(ICON_SIZE, ICON_SIZE, image::imageops::FilterType::Lanczos3);
+        let icon_resized =
+            icon.resize_exact(ICON_SIZE, ICON_SIZE, image::imageops::FilterType::Lanczos3);
         let icon_rgba = icon_resized.to_rgba8();
 
         // 计算下部居中位置
@@ -118,8 +118,7 @@ impl iso9660_simple::io::Read for FileReader {
 
 /// 从 ISO 文件中提取 PIC1.PNG 和 ICON0.PNG
 fn extract_images_from_iso(iso_path: &Path) -> Result<(Vec<u8>, Option<Vec<u8>>), String> {
-    let file = File::open(iso_path)
-        .map_err(|e| format!("Failed to open ISO file: {}", e))?;
+    let file = File::open(iso_path).map_err(|e| format!("Failed to open ISO file: {}", e))?;
 
     let reader = FileReader::new(file);
     let mut iso = ISO9660::from_device(reader)
@@ -129,7 +128,8 @@ fn extract_images_from_iso(iso_path: &Path) -> Result<(Vec<u8>, Option<Vec<u8>>)
     let root_entries: Vec<_> = iso.read_root().collect();
 
     // 查找 PS3_GAME 目录
-    let ps3_game_entry = root_entries.iter()
+    let ps3_game_entry = root_entries
+        .iter()
         .find(|entry| {
             let name = entry.name.to_uppercase();
             (name == "PS3_GAME" || name.starts_with("PS3_GAME;")) && entry.is_folder()
@@ -141,7 +141,8 @@ fn extract_images_from_iso(iso_path: &Path) -> Result<(Vec<u8>, Option<Vec<u8>>)
     let ps3_game_entries: Vec<_> = iso.read_directory(ps3_game_lba).collect();
 
     // 查找 PIC1.PNG
-    let pic1_entry = ps3_game_entries.iter()
+    let pic1_entry = ps3_game_entries
+        .iter()
         .find(|entry| {
             let name = entry.name.to_uppercase();
             (name == "PIC1.PNG" || name.starts_with("PIC1.PNG;")) && entry.is_file()
@@ -155,7 +156,8 @@ fn extract_images_from_iso(iso_path: &Path) -> Result<(Vec<u8>, Option<Vec<u8>>)
         .ok_or_else(|| "Failed to read PIC1.PNG from ISO".to_string())?;
 
     // 查找 ICON0.PNG (可选)
-    let icon0_data = ps3_game_entries.iter()
+    let icon0_data = ps3_game_entries
+        .iter()
         .find(|entry| {
             let name = entry.name.to_uppercase();
             (name == "ICON0.PNG" || name.starts_with("ICON0.PNG;")) && entry.is_file()
@@ -179,9 +181,7 @@ pub fn generate_ps3_boxart_from_iso(iso_path: &Path, output_path: &Path) -> Resu
     let pic1 = image::load_from_memory(&pic1_data)
         .map_err(|e| format!("Failed to load PIC1.PNG: {}", e))?;
 
-    let icon0 = icon0_data.and_then(|data| {
-        image::load_from_memory(&data).ok()
-    });
+    let icon0 = icon0_data.and_then(|data| image::load_from_memory(&data).ok());
 
     // 合成 boxart
     let boxart = composite_boxart(&pic1, icon0.as_ref())?;
@@ -199,7 +199,6 @@ pub fn generate_ps3_boxart_from_iso(iso_path: &Path, output_path: &Path) -> Resu
 
     Ok(())
 }
-
 
 /// 居中裁切图片
 ///
@@ -221,7 +220,11 @@ fn center_crop(img: &DynamicImage, target_width: u32, target_height: u32) -> Rgb
     // 缩放图片
     let scaled_width = (img_width as f32 * scale) as u32;
     let scaled_height = (img_height as f32 * scale) as u32;
-    let scaled = img.resize_exact(scaled_width, scaled_height, image::imageops::FilterType::Lanczos3);
+    let scaled = img.resize_exact(
+        scaled_width,
+        scaled_height,
+        image::imageops::FilterType::Lanczos3,
+    );
 
     // 计算裁切起始位置（居中）
     let crop_x = (scaled_width - target_width) / 2;
@@ -267,8 +270,7 @@ pub fn extract_ps3_logo_from_iso(iso_path: &Path, output_path: &Path) -> Result<
     }
 
     // 保存 ICON0.PNG 作为 logo
-    std::fs::write(output_path, &icon0_data)
-        .map_err(|e| format!("Failed to save logo: {}", e))?;
+    std::fs::write(output_path, &icon0_data).map_err(|e| format!("Failed to save logo: {}", e))?;
 
     Ok(())
 }

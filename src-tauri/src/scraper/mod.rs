@@ -1,14 +1,14 @@
-pub mod steamgriddb;
-pub mod screenscraper;
-pub mod local_cn;
 pub mod cn_repo;
-pub mod jy6d_dz;
 pub mod gba_header;
-pub mod pegasus;
-pub mod types;
+pub mod jy6d_dz;
+pub mod local_cn;
 pub mod manager;
 pub mod matcher;
+pub mod pegasus;
 pub mod persistence;
+pub mod screenscraper;
+pub mod steamgriddb;
+pub mod types;
 
 use async_trait::async_trait;
 
@@ -34,7 +34,11 @@ pub trait ScraperProvider: Send + Sync {
     async fn get_media(&self, source_id: &str) -> Result<Vec<MediaAsset>, String>;
 
     /// 通过 Hash 精确查找（可选实现）
-    async fn lookup_by_hash(&self, _hash: &RomHash, _system: Option<&str>) -> Result<Option<SearchResult>, String> {
+    async fn lookup_by_hash(
+        &self,
+        _hash: &RomHash,
+        _system: Option<&str>,
+    ) -> Result<Option<SearchResult>, String> {
         Ok(None) // 默认不支持
     }
 }

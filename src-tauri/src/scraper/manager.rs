@@ -2,15 +2,14 @@
 //!
 //! 管理多个 ScraperProvider，提供统一的搜索、元数据获取、媒体获取接口
 
+use futures::future::join_all;
 use std::collections::HashMap;
 use std::sync::Arc;
-use futures::future::join_all;
 
 use super::{
-    ScraperProvider, ScrapeQuery, SearchResult, GameMetadata, MediaAsset,
-    ScrapeResult, RomHash, ProviderCapability,
+    GameMetadata, MediaAsset, ProviderCapability, RomHash, ScrapeQuery, ScrapeResult,
+    ScraperProvider, SearchResult,
 };
-use super::matcher::rank_results;
 use crate::settings::{get_settings, update_setting, ScraperConfig};
 
 /// Provider 配置
@@ -55,7 +54,7 @@ impl ScraperManager {
     pub fn register<P: ScraperProvider + 'static>(&mut self, provider: P) {
         let id = provider.id().to_string();
         self.providers.insert(id.clone(), Arc::new(provider));
-        
+
         // 从持久化设置中加载配置，如果不存在则使用默认值
         let settings = get_settings();
         let config = if let Some(saved_config) = settings.scrapers.get(&id) {
@@ -66,11 +65,12 @@ impl ScraperManager {
         } else {
             ProviderConfig::default()
         };
-        
+
         self.configs.insert(id, config);
     }
 
     /// 注册 provider 并指定配置
+    #[allow(dead_code)]
     pub fn register_with_config<P: ScraperProvider + 'static>(
         &mut self,
         provider: P,
@@ -82,6 +82,7 @@ impl ScraperManager {
     }
 
     /// 注销 provider
+    #[allow(dead_code)]
     pub fn unregister(&mut self, id: &str) {
         self.providers.remove(id);
         self.configs.remove(id);
@@ -97,12 +98,7 @@ impl ScraperManager {
         let mut providers: Vec<_> = self
             .providers
             .iter()
-            .filter(|(id, _)| {
-                self.configs
-                    .get(*id)
-                    .map(|c| c.enabled)
-                    .unwrap_or(true)
-            })
+            .filter(|(id, _)| self.configs.get(*id).map(|c| c.enabled).unwrap_or(true))
             .map(|(id, p)| {
                 let priority = self.configs.get(id).map(|c| c.priority).unwrap_or(100);
                 (priority, Arc::clone(p))
@@ -212,7 +208,10 @@ impl ScraperManager {
     }
 
     /// 合并多个 provider 的元数据（优先级从高到低）
-    fn merge_metadata(&self, results: Vec<(String, Result<GameMetadata, String>)>) -> (GameMetadata, Vec<String>) {
+    fn merge_metadata(
+        &self,
+        results: Vec<(String, Result<GameMetadata, String>)>,
+    ) -> (GameMetadata, Vec<String>) {
         let mut merged = GameMetadata::default();
         let mut sources = Vec::new();
 
@@ -314,6 +313,7 @@ impl ScraperManager {
     }
 
     /// 更新 provider 配置
+    #[allow(dead_code)]
     pub fn set_config(&mut self, provider_id: &str, config: ProviderConfig) {
         if self.providers.contains_key(provider_id) {
             self.configs.insert(provider_id.to_string(), config);
@@ -360,11 +360,11 @@ impl ScraperManager {
     pub fn set_credentials(&mut self, provider_id: &str, config: ScraperConfig) {
         let provider_id_owned = provider_id.to_string();
         let config_clone = config.clone();
-        
+
         let _ = update_setting(move |settings| {
             settings.scrapers.insert(provider_id_owned, config_clone);
         });
-        
+
         // 同时也更新内存中的启用状态
         if let Some(mem_config) = self.configs.get_mut(provider_id) {
             mem_config.enabled = config.enabled;

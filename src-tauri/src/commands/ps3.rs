@@ -38,16 +38,18 @@ pub struct GenerateBoxartResponse {
 /// - boxart: PIC1.PNG 背景 + ICON0.PNG 叠加
 /// - logo: ICON0.PNG 直接使用
 #[tauri::command]
-pub async fn generate_ps3_boxart(request: GenerateBoxartRequest) -> Result<GenerateBoxartResponse, String> {
+pub async fn generate_ps3_boxart(
+    request: GenerateBoxartRequest,
+) -> Result<GenerateBoxartResponse, String> {
     // 在后台线程执行，避免阻塞 UI
-    tokio::task::spawn_blocking(move || {
-        generate_ps3_boxart_impl(request)
-    })
-    .await
-    .map_err(|e| format!("Failed to spawn blocking task: {}", e))?
+    tokio::task::spawn_blocking(move || generate_ps3_boxart_impl(request))
+        .await
+        .map_err(|e| format!("Failed to spawn blocking task: {}", e))?
 }
 
-fn generate_ps3_boxart_impl(request: GenerateBoxartRequest) -> Result<GenerateBoxartResponse, String> {
+fn generate_ps3_boxart_impl(
+    request: GenerateBoxartRequest,
+) -> Result<GenerateBoxartResponse, String> {
     // 构建 ROM 路径
     let rom_path = Path::new(&request.rom_directory).join(&request.rom_file);
 
@@ -99,16 +101,21 @@ fn generate_ps3_boxart_impl(request: GenerateBoxartRequest) -> Result<GenerateBo
 
         // 生成 boxart
         let boxart_result = ps3::generate_ps3_boxart(&ps3_game_dir, &boxart_output_path);
-        
+
         // 生成 logo (直接复制 ICON0.PNG)
         let logo_result = ps3::extract_ps3_logo(&ps3_game_dir, &logo_output_path);
-        
+
         (boxart_result, logo_result)
-    } else if rom_path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) == Some("iso".to_string()) {
+    } else if rom_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        == Some("iso".to_string())
+    {
         // ROM 是 ISO 文件，从 ISO 中提取图片
         let boxart_result = ps3::generate_ps3_boxart_from_iso(&rom_path, &boxart_output_path);
         let logo_result = ps3::extract_ps3_logo_from_iso(&rom_path, &logo_output_path);
-        
+
         (boxart_result, logo_result)
     } else {
         return Ok(GenerateBoxartResponse {
@@ -150,7 +157,10 @@ fn generate_ps3_boxart_impl(request: GenerateBoxartRequest) -> Result<GenerateBo
                 ) {
                     eprintln!("Warning: Failed to update logo metadata: {}", e);
                 }
-                (Some(logo_output_path.to_string_lossy().to_string()), Some(relative_logo))
+                (
+                    Some(logo_output_path.to_string_lossy().to_string()),
+                    Some(relative_logo),
+                )
             } else {
                 (None, None)
             };

@@ -19,15 +19,13 @@ pub struct RomStats {
 #[tauri::command]
 pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, String> {
     // 在后台线程中执行IO密集型操作，避免阻塞UI
-    let all_systems = tokio::task::spawn_blocking(|| {
-        get_all_roms()
-    })
-    .await
-    .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
-    
+    let all_systems = tokio::task::spawn_blocking(get_all_roms)
+        .await
+        .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
+
     if let Some(f) = filter {
         let mut filtered_systems = Vec::new();
-        
+
         for system_roms in all_systems {
             // 系统过滤
             if let Some(sys) = &f.system {
@@ -35,17 +33,19 @@ pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, Stri
                     continue;
                 }
             }
-            
+
             // 搜索过滤
             let roms = if let Some(query) = &f.search_query {
                 let lower_query = query.to_lowercase();
-                system_roms.roms.into_iter()
+                system_roms
+                    .roms
+                    .into_iter()
                     .filter(|r| r.name.to_lowercase().contains(&lower_query))
                     .collect()
             } else {
                 system_roms.roms
             };
-            
+
             if !roms.is_empty() {
                 filtered_systems.push(SystemRoms {
                     system: system_roms.system,
@@ -54,7 +54,7 @@ pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, Stri
                 });
             }
         }
-        
+
         Ok(filtered_systems)
     } else {
         Ok(all_systems)
@@ -65,15 +65,13 @@ pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, Stri
 #[tauri::command]
 pub async fn get_rom_stats() -> Result<RomStats, String> {
     // 在后台线程中执行IO密集型操作，避免阻塞UI
-    let all_systems = tokio::task::spawn_blocking(|| {
-        get_all_roms()
-    })
-    .await
-    .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
-    
+    let all_systems = tokio::task::spawn_blocking(get_all_roms)
+        .await
+        .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
+
     let total_systems = all_systems.len();
     let total_roms = all_systems.iter().map(|s| s.roms.len()).sum();
-    
+
     Ok(RomStats {
         total_roms,
         total_systems,
@@ -95,12 +93,10 @@ pub async fn get_roms_for_single_directory(
         is_root_directory: isRoot,
         system_id: systemId,
     };
-    
-    let systems = tokio::task::spawn_blocking(move || {
-        get_roms_for_directory(&dir_config)
-    })
-    .await
-    .map_err(|e| format!("Failed to spawn blocking task: {}", e))?;
-    
+
+    let systems = tokio::task::spawn_blocking(move || get_roms_for_directory(&dir_config))
+        .await
+        .map_err(|e| format!("Failed to spawn blocking task: {}", e))?;
+
     Ok(systems)
 }

@@ -1,11 +1,11 @@
 //! Scraper 数据持久化 - 处理元数据写入和媒体文件下载
 
-use std::path::{Path, PathBuf};
-use std::fs;
 use crate::config::{get_media_dir, get_temp_dir_for_library};
-use crate::scraper::{GameMetadata, MediaAsset, MediaType};
-use crate::scraper::pegasus::{PegasusGame, PegasusExportOptions, write_pegasus_file};
 use crate::rom_service::RomInfo;
+use crate::scraper::pegasus::{write_pegasus_file, PegasusExportOptions, PegasusGame};
+use crate::scraper::{GameMetadata, MediaAsset, MediaType};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 // ... existing code ...
 
@@ -31,7 +31,8 @@ pub fn save_metadata_emulationstation(
     } else {
         r#"<?xml version="1.0"?>
 <gameList>
-</gameList>"#.to_string()
+</gameList>"#
+            .to_string()
     };
 
     // 重构策略：使用 quick-xml 反序列化 -> 修改 -> 序列化
@@ -70,11 +71,21 @@ pub fn save_metadata_emulationstation(
         // 匹配逻辑：path 结尾匹配文件名
         if game.path.ends_with(&rom.file) || game.path == rom.file {
             game.name = Some(metadata.name.clone());
-            if let Some(desc) = &metadata.description { game.desc = Some(desc.clone()); }
-            if let Some(dev) = &metadata.developer { game.developer = Some(dev.clone()); }
-            if let Some(pub_) = &metadata.publisher { game.publisher = Some(pub_.clone()); }
-            if !metadata.genres.is_empty() { game.genre = Some(metadata.genres[0].clone()); }
-            if let Some(en) = &metadata.english_name { game.english_name = Some(en.clone()); }
+            if let Some(desc) = &metadata.description {
+                game.desc = Some(desc.clone());
+            }
+            if let Some(dev) = &metadata.developer {
+                game.developer = Some(dev.clone());
+            }
+            if let Some(pub_) = &metadata.publisher {
+                game.publisher = Some(pub_.clone());
+            }
+            if !metadata.genres.is_empty() {
+                game.genre = Some(metadata.genres[0].clone());
+            }
+            if let Some(en) = &metadata.english_name {
+                game.english_name = Some(en.clone());
+            }
             found = true;
             break;
         }
@@ -100,13 +111,11 @@ pub fn save_metadata_emulationstation(
     let new_xml = to_string(&list).map_err(|e| e.to_string())?;
     // quick-xml 默认没有 xml header
     let final_xml = format!("<?xml version=\"1.0\"?>\n{}", new_xml);
-    
+
     fs::write(gamelist_path, final_xml).map_err(|e| e.to_string())?;
 
     Ok(())
 }
-
-/// 将元数据写入 gamelist.xml (EmulationStation 格式)
 
 /// 将抓取到的媒体资产下载到本地
 /// 如果 is_temp 为 true，则保存到程序目录下的 temp/media
@@ -117,7 +126,6 @@ pub async fn download_media(
     selected_assets: &[MediaAsset],
     is_temp: bool,
 ) -> Result<Vec<(MediaType, PathBuf)>, String> {
-
     let mut downloaded = Vec::new();
 
     // 确定下载目录: {base_dir}/media/{file_stem}/
@@ -141,11 +149,15 @@ pub async fn download_media(
     fs::create_dir_all(&target_dir).map_err(|e| format!("无法创建媒体目录: {}", e))?;
 
     for asset in selected_assets {
-        let extension = asset.url.split('.').last().unwrap_or("png");
+        let extension = asset.url.split('.').next_back().unwrap_or("png");
         let filename = format!("{}.{}", asset.asset_type.as_str(), extension);
         let save_path = target_dir.join(filename);
 
-        let resp = client.get(&asset.url).send().await.map_err(|e| e.to_string())?;
+        let resp = client
+            .get(&asset.url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
         if resp.status().is_success() {
             let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
             fs::write(&save_path, bytes).map_err(|e| e.to_string())?;
@@ -158,7 +170,7 @@ pub async fn download_media(
 
 /// 将元数据写入 metadata.txt (Pegasus 格式)
 /// 如果 is_temp 为 true，则写入程序目录下的 temp/{system}/metadata.txt
-/// 
+///
 /// 使用统一的 pegasus 模块进行文件写入，支持合并模式
 pub fn save_metadata_pegasus(
     rom: &RomInfo,
@@ -189,7 +201,7 @@ pub fn save_metadata_pegasus(
         rating: metadata.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
         ..Default::default()
     };
-    
+
     // 添加英文名到 extra 字段
     if let Some(ref en) = metadata.english_name {
         game.extra.insert("x-english-name".to_string(), en.clone());
