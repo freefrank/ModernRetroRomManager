@@ -328,6 +328,8 @@ pub struct PegasusExportOptions {
     pub include_collection: bool,
     /// Collection name (required if include_collection is true)
     pub collection_name: Option<String>,
+    /// Collection short name used by themes
+    pub short_name: Option<String>,
     /// File extensions for collection
     pub extensions: Option<Vec<String>>,
     /// Launch command for collection
@@ -355,9 +357,16 @@ pub fn export_to_pegasus(games: &[PegasusGame], options: &PegasusExportOptions) 
             output.push_str(&format!("collection: {}\n", name));
         }
 
+        if let Some(ref short_name) = options.short_name {
+            output.push_str(&format!("shortname: {}\n", short_name));
+        }
+
         if let Some(ref exts) = options.extensions {
             if !exts.is_empty() {
-                output.push_str(&format!("extensions: {}\n", exts.join(" ")));
+                output.push_str("extensions:\n");
+                for extension in exts {
+                    output.push_str(&format!("  {}\n", extension));
+                }
             }
         }
 

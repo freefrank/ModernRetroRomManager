@@ -946,7 +946,7 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
         players: Option<String>,
         releasedate: Option<String>,
         rating: Option<f32>,
-        #[serde(rename = "english-name")]
+        #[serde(rename = "eng", alias = "english-name")]
         english_name: Option<String>,
     }
 
@@ -1200,6 +1200,7 @@ mod tests {
     <players>2</players>
     <releasedate>1990</releasedate>
     <rating>0.95</rating>
+    <eng>Super Mario World (English)</eng>
   </game>
 </gameList>
 "#;
@@ -1212,6 +1213,10 @@ mod tests {
         assert_eq!(roms[0].file, "Super Mario World.sfc");
         assert_eq!(roms[0].name, "Super Mario World");
         assert_eq!(roms[0].system, "snes");
+        assert_eq!(
+            roms[0].english_name.as_deref(),
+            Some("Super Mario World (English)")
+        );
         // gamelist 路径同样补齐文件元数据
         assert_eq!(roms[0].file_size, Some(3));
         assert!(roms[0].modified_at.is_some());

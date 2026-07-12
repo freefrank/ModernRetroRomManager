@@ -213,7 +213,12 @@ export default function CnRomTools() {
 
       setIsExporting(true);
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("export_cn_metadata", { directory: checkPath, targetPath: savePath, format });
+      await invoke("export_cn_metadata", {
+        directory: checkPath,
+        targetPath: savePath,
+        format,
+        system: selectedSystem?.id ?? null,
+      });
       toast.success(t("cnRomTools.alerts.exportSuccess", { path: savePath }));
     } catch (error) {
       console.error("Failed to export:", error);

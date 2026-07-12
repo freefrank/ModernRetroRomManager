@@ -143,6 +143,7 @@ fn write_updated_pegasus_games(
     let options = PegasusExportOptions {
         include_collection: true,
         collection_name,
+        short_name: None,
         extensions,
         launch_command,
         workdir,
@@ -1732,6 +1733,7 @@ pub async fn export_cn_metadata(
     directory: String,
     target_path: String,
     format: String,
+    system: Option<String>,
 ) -> Result<(), String> {
     let entries = load_temp_cn_metadata(&directory)?;
 
@@ -1740,13 +1742,18 @@ pub async fn export_cn_metadata(
     }
 
     match format.as_str() {
-        "pegasus" => export_pegasus_format(&target_path, &entries),
+        "pegasus" => export_pegasus_format(&directory, &target_path, &entries, system.as_deref()),
         "gamelist" => export_gamelist_format(&target_path, &entries),
         _ => Err(format!("Unsupported format: {}", format)),
     }
 }
 
-fn export_pegasus_format(target_path: &str, entries: &[TempMetadataEntry]) -> Result<(), String> {
+fn export_pegasus_format(
+    directory: &str,
+    target_path: &str,
+    entries: &[TempMetadataEntry],
+    system: Option<&str>,
+) -> Result<(), String> {
     use crate::scraper::pegasus::{write_pegasus_file, PegasusExportOptions, PegasusGame};
     use std::path::Path;
 
@@ -1770,9 +1777,29 @@ fn export_pegasus_format(target_path: &str, entries: &[TempMetadataEntry]) -> Re
         })
         .collect();
 
-    // 不包含 collection header（由用户自行添加或合并到现有文件）
+    let collection_name = system
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            Path::new(directory)
+                .file_name()
+                .map(|value| value.to_string_lossy().into_owned())
+        })
+        .unwrap_or_else(|| "ROMs".to_string());
+    let mut extensions: Vec<String> = entries
+        .iter()
+        .filter_map(|entry| Path::new(&entry.file).extension())
+        .filter_map(|extension| extension.to_str())
+        .map(str::to_ascii_lowercase)
+        .collect();
+    extensions.sort();
+    extensions.dedup();
+
     let options = PegasusExportOptions {
-        include_collection: false,
+        include_collection: true,
+        collection_name: Some(collection_name.clone()),
+        short_name: Some(collection_name.to_ascii_lowercase()),
+        extensions: (!extensions.is_empty()).then_some(extensions),
         ..Default::default()
     };
 
@@ -1847,6 +1874,43 @@ mod tests {
         let entries = scan_directory_internal::<fn(usize, usize, &str)>(&root, None);
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].file, "game.z64");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn pegasus_export_is_standalone_and_preserves_english_tag() {
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-pegasus-export-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let target = root.join("metadata.pegasus.txt");
+        let entries = vec![TempMetadataEntry {
+            file: "测试游戏.sfc".to_string(),
+            name: Some("测试游戏".to_string()),
+            english_name: Some("Test Game".to_string()),
+            confidence: Some(100.0),
+            extracted_cn_name: None,
+        }];
+
+        export_pegasus_format(
+            root.to_str().unwrap(),
+            target.to_str().unwrap(),
+            &entries,
+            Some("snes"),
+        )
+        .unwrap();
+        let parsed = crate::scraper::pegasus::parse_pegasus_file(&target).unwrap();
+        assert_eq!(parsed.collections[0].name, "snes");
+        assert_eq!(parsed.collections[0].short_name.as_deref(), Some("snes"));
+        assert_eq!(parsed.collections[0].extensions, ["sfc"]);
+        assert_eq!(
+            parsed.games[0].extra.get("x-mrrm-eng").map(String::as_str),
+            Some("Test Game")
+        );
         fs::remove_dir_all(root).unwrap();
     }
 }
