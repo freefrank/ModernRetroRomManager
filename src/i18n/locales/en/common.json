@@ -36,6 +36,8 @@
     "success": "Success",
     "name": "Name",
     "system": "System",
+    "size": "Size",
+    "date": "Date",
     "notAvailable": "Unknown",
     "finish": "Finish"
   },
