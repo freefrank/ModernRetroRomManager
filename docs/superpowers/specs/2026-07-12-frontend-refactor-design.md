@@ -19,7 +19,24 @@
 
 ### 主题包格式
 
-主题是一个 JSON 文件,内置主题与用户导入的主题走**同一格式**:
+主题包是一个 **zip 压缩包**(扩展名 `.rrtheme`),内置主题与用户导入的主题走**同一结构**:
+
+```
+mytheme.rrtheme
+├── theme.json        # 清单:元信息 + 令牌 + 效果配置(必需)
+├── style.css         # 自定义 CSS 层(可选,进阶表现力)
+└── assets/           # 主题私有资源(可选)
+    ├── background.png   # 背景图
+    ├── display.woff2    # 自定义标题字体
+    └── ...
+```
+
+- **theme.json** 是核心清单(结构见下),简单主题只需要这一个文件
+- **style.css** 供效果目录覆盖不到的进阶需求:导入时做安全清洗——剥离 `@import`、外部 `url()`(仅允许 `assets/` 相对路径)、任何脚本向量;UI 基件全部带稳定类名钩子(`rr-button`、`rr-card`、`rr-sidebar`…)供其定点覆盖
+- **assets/** 中的字体、图片由清单/CSS 以相对路径引用,运行时经 Tauri asset protocol 解析,不允许网络加载
+- 导入流程:选择 `.rrtheme` → 校验清单与 CSS 清洗 → 解压到 `config/themes/<id>/` → 出现在主题列表
+
+**theme.json** 结构:
 
 ```json
 {
@@ -58,8 +75,58 @@
 
 - **令牌四组**:颜色 / 字体 / 形状(圆角)/ 质感(阴影、发光、边框宽)。复古主题的硬阴影、赛博主题的霓虹光都通过令牌表达,组件代码不感知主题。
 - **校验与容错**:`schemaVersion` 必须支持;缺失令牌回退到默认主题对应值;非法 JSON 拒绝导入并给中文错误提示。
-- **字体安全**:主题包只能引用应用内置的字体栈别名(如 `var(--font-system)`、内置像素字体),不允许加载外部字体文件/URL(安全 + 离线)。
+- **字体**:可引用应用内置字体栈别名(如 `var(--font-system)`、内置像素字体),或主题包 `assets/` 内自带的字体文件;禁止外部 URL(安全 + 离线)。
 - **应用机制**:运行时将选中主题的 tokens 写入 `<html>` 上的 CSS 变量(`data-theme` 标记 id);Tailwind v4 `@theme` 继续映射这些变量(沿用现有架构)。
+
+### 动效与光效(效果系统)
+
+主题的个性不止配色,还包括动效与光效。为兼顾表现力、导入安全与性能,分三层:
+
+**1. 动效令牌(motion tokens)** — 与颜色令牌同级,进主题包 `tokens`:
+
+```json
+"motion-duration-fast": "120ms",
+"motion-duration-normal": "240ms",
+"motion-easing": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+```
+
+基件库全部过渡动画消费这些令牌(复古主题可用阶梯式 `steps()` 缓动做"像素感"运动)。
+
+**2. 效果目录(effect catalog)** — 应用内置一组**具名、可参数化**的光效/动效原语,主题包按名引用并调参,不能注入任意代码:
+
+```json
+"effects": {
+  "backdrop": { "name": "scanlines", "opacity": 0.06 },
+  "cardHover": { "name": "neon-pulse", "color": "var(--accent)" },
+  "pageTransition": { "name": "crt-flicker" },
+  "buttonPress": { "name": "hard-shift" }
+}
+```
+
+首批目录(按内置主题需求实现):
+
+| 效果名 | 类型 | 用途示例 |
+|--------|------|----------|
+| `scanlines` | 背景叠加层 | 复古:CRT 扫描线 |
+| `crt-flicker` | 页面切换 | 复古:开机闪烁一帧 |
+| `hard-shift` | 按压反馈 | 复古:硬阴影位移(3px 按下) |
+| `pixel-jitter` | hover | 复古:1px 抖动 |
+| `neon-pulse` | hover/focus 光效 | 赛博:霓虹呼吸发光 |
+| `glitch-text` | hover | 赛博:标题故障闪码 |
+| `gradient-border` | 选中态 | 赛博/紫罗兰:流动渐变描边 |
+| `soft-glow` | hover 光效 | 紫罗兰:柔和光晕 |
+| `fade-scale` | hover/过渡 | 现代极简:纯净缩放淡入 |
+| `none` | — | 任意插槽关闭效果 |
+
+插槽(slot)固定:`backdrop` / `cardHover` / `pageTransition` / `buttonPress` / `focusRing`。目录随版本扩充,`schemaVersion` 把关兼容性;主题包引用未知效果名时回退 `none` 并告警。
+
+**3. 性能与可访问性约束**:
+
+- 效果实现只允许 `transform` / `opacity` / `filter` 合成层属性,禁止触发 layout;`backdrop` 叠加层用单个 `position: fixed` 元素,不进虚拟列表
+- 虚拟滚动中的卡片 hover 效果必须 GPU 友好,滚动帧率不因主题降级
+- 尊重 `prefers-reduced-motion`,并在设置页提供动效开关(关 / 低 / 全):低 = 仅过渡无光效,关 = 全部禁用(含主题包自定义动效)
+- **CSS 扩展动效/光效**:效果目录覆盖不到的表现力,主题包在 `style.css` 里用 `@keyframes`、`animation`、`box-shadow`/`filter` 光效自由扩展,配合 `rr-*` 类名钩子定点作用;经导入清洗(无外部引用、无脚本向量),JS 永远不允许
+- 动效开关实现方式:`data-motion="off|low|full"` 属性 + 内置样式统一门控;主题包 CSS 需遵循同一约定(文档写入主题包开发规范,验收抽查)
 
 ### 内置主题(4 套)
 
@@ -72,9 +139,8 @@
 
 ### 导入主题包
 
-- 设置页「外观」区:主题卡片选择器(内置 4 套 + 已导入)+「导入主题包」按钮
-- 导入流程:文件选择器(.json)→ 前端校验 → Tauri 命令存入 `config/themes/` → 出现在主题列表
-- 需要的 Rust 命令:`list_custom_themes`、`import_theme_pack`、`delete_custom_theme`(读写 config 目录,复用现有 settings 模式)
+- 设置页「外观」区:主题卡片选择器(内置 4 套 + 已导入,含预览色板)+「导入主题包」按钮
+- 需要的 Rust 命令:`list_custom_themes`、`import_theme_pack`(解压 `.rrtheme`、校验清单、CSS 清洗)、`delete_custom_theme`(读写 config 目录,复用现有 settings 模式;zip 解压复用已有 `zip` 依赖)
 - settings 的 `theme` 字段存主题 id;旧值(`dark`/`light`)及一切未知 id 回退默认主题
 
 ### 字体本地化
