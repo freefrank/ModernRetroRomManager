@@ -73,12 +73,32 @@
       "exportingSimple": "Exporting",
       "savePreview": "Save Preview",
       "saveEdit": "Save Changes",
-      "cancelEdit": "Cancel"
+      "cancelEdit": "Cancel",
+      "generateBoxart": "Generate PS3 Boxart",
+      "boxartFailed": "Boxart generation failed: {{error}}"
+    },
+    "cover": {
+      "noImage": "No cover image"
     },
     "media": {
       "title": "Media Management (Temp)",
       "empty": "No scraped media assets",
       "deleteNote": "Note: Deletion only affects the temp directory. After exporting, existing assets will be overwritten."
     }
+  },
+  "scrapeDialog": {
+    "videoAsset": "Video",
+    "genericSystem": "Generic",
+    "coverAlt": "Cover"
+  },
+  "rootDirectoryDialog": {
+    "title": "Game platform directories detected",
+    "subtitle": "Found {{count}} platform directories",
+    "description": "Choose how to import: scan all platforms as a root directory, or pick a single platform",
+    "importAsRoot": "Import as root directory",
+    "importAsRootDesc": "Automatically scan metadata in all subdirectories",
+    "withMetadata": "Platforms with metadata",
+    "withoutMetadata": "Directories without metadata ({{count}})",
+    "andMore": "… and {{count}} more"
   }
 }

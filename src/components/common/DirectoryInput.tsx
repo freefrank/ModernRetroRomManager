@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { clsx } from "clsx";
-import { Folder, Check, X, Loader2, FolderOpen } from "lucide-react";
+import { Folder, Check, X, FolderOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconButton, Spinner } from "@/components/ui";
 
 interface PathValidation {
     path: string;
@@ -87,7 +88,7 @@ export default function DirectoryInput({
 
     const getStatusIcon = () => {
         if (isValidating) {
-            return <Loader2 className="w-5 h-5 text-text-muted animate-spin" />;
+            return <Spinner size={20} className="text-text-muted" />;
         }
         if (!value.trim()) {
             return <Folder className="w-5 h-5 text-text-muted" />;
@@ -124,9 +125,10 @@ export default function DirectoryInput({
         <div className={clsx("space-y-2", className)}>
             <div
                 className={clsx(
-                    "flex items-center bg-bg-secondary border rounded-xl transition-colors",
+                    "rr-input flex items-center bg-bg-secondary border-[length:var(--border-width)] rounded-[var(--radius-md)]",
+                    "transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
                     isValid ? "border-accent-success/50" : validation && !isValid ? "border-accent-error/50" : "border-border-default",
-                    "focus-within:border-accent-primary"
+                    "focus-within:border-border-highlight"
                 )}
             >
                 <div className="pl-4">
@@ -137,16 +139,17 @@ export default function DirectoryInput({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder || t("directoryInput.placeholder")}
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 py-3 text-text-primary placeholder:text-text-muted focus:outline-none"
+                    className="flex-1 bg-transparent border-none text-sm px-3 py-3 text-text-primary placeholder:text-text-muted focus:outline-none"
                 />
-                <button
-                    type="button"
+                <IconButton
+                    size="sm"
                     onClick={handleBrowse}
-                    className="px-3 py-2 mr-1 rounded-lg hover:bg-bg-tertiary transition-colors text-text-secondary hover:text-text-primary"
+                    className="mr-1"
                     title={t("directoryInput.browse")}
+                    aria-label={t("directoryInput.browse")}
                 >
                     <FolderOpen className="w-5 h-5" />
-                </button>
+                </IconButton>
             </div>
             {getStatusMessage() && (
                 <p

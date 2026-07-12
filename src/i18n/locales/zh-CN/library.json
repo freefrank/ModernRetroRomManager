@@ -73,12 +73,32 @@
       "exportingSimple": "导出中",
       "savePreview": "保存到预览",
       "saveEdit": "保存修改",
-      "cancelEdit": "取消修改"
+      "cancelEdit": "取消修改",
+      "generateBoxart": "生成 PS3 Boxart",
+      "boxartFailed": "Boxart 生成失败：{{error}}"
+    },
+    "cover": {
+      "noImage": "暂无封面图"
     },
     "media": {
       "title": "媒体管理 (临时目录)",
       "empty": "暂无抓取的媒体文件",
       "deleteNote": "提示: 删除操作仅影响临时目录。导出后，对应类型的旧资产将被新资产覆盖（如果存在）。"
     }
+  },
+  "scrapeDialog": {
+    "videoAsset": "视频",
+    "genericSystem": "通用",
+    "coverAlt": "封面"
+  },
+  "rootDirectoryDialog": {
+    "title": "检测到游戏平台目录",
+    "subtitle": "发现 {{count}} 个平台目录",
+    "description": "选择导入方式：作为根目录自动扫描所有平台，或单独选择某个平台",
+    "importAsRoot": "导入为根目录",
+    "importAsRootDesc": "自动扫描所有子目录的 metadata",
+    "withMetadata": "检测到 Metadata 的平台",
+    "withoutMetadata": "无 Metadata 的目录 ({{count}} 个)",
+    "andMore": "…… 等 {{count}} 个"
   }
 }
