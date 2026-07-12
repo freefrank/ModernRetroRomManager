@@ -710,15 +710,65 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
     ]
 }
 
+/// 用 system_mapping 中的 logo_name 补齐缺失的系统 logo(按 id / short_name 匹配,不覆盖已有值)
+fn fill_missing_logos(mut systems: Vec<SystemInfo>) -> Vec<SystemInfo> {
+    use crate::system_mapping::find_logo_name_by_folder;
+
+    for system in &mut systems {
+        if system.logo.is_none() {
+            system.logo = find_logo_name_by_folder(&system.id)
+                .or_else(|| find_logo_name_by_folder(&system.short_name))
+                .map(|name| name.to_string());
+        }
+    }
+    systems
+}
+
 /// 获取所有游戏系统
 #[tauri::command]
 pub fn get_systems() -> Result<Vec<SystemInfo>, String> {
-    Ok(get_preset_systems_data())
+    Ok(fill_missing_logos(get_preset_systems_data()))
 }
 
 /// 获取单个游戏系统
 #[tauri::command]
 pub fn get_system(id: String) -> Result<Option<SystemInfo>, String> {
-    let systems = get_preset_systems_data();
+    let systems = fill_missing_logos(get_preset_systems_data());
     Ok(systems.into_iter().find(|s| s.id == id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::system_mapping::find_logo_name_by_folder;
+
+    #[test]
+    fn get_systems_fills_logo_from_system_mapping() {
+        let systems = get_systems().unwrap();
+
+        // Virtual Boy 在预置数据中 logo 为 None,但 system_mapping 提供了 VB.png
+        let vb = systems.iter().find(|s| s.id == "virtual boy").unwrap();
+        assert_eq!(vb.logo.as_deref(), Some("VB.png"));
+
+        // 凡是能在 system_mapping 中(按 id 或 short_name)找到 logo_name 的系统,logo 均非空
+        for system in &systems {
+            let mapped = find_logo_name_by_folder(&system.id)
+                .or_else(|| find_logo_name_by_folder(&system.short_name));
+            if mapped.is_some() {
+                assert!(
+                    system.logo.is_some(),
+                    "系统 {} 在 system_mapping 中有 logo_name,但 get_systems 输出的 logo 为空",
+                    system.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fill_missing_logos_keeps_existing_logo() {
+        let systems = get_systems().unwrap();
+        // 预置数据里已有 logo 的系统不被 mapping 覆盖(合并语义:只补缺)
+        let nes = systems.iter().find(|s| s.id == "nes").unwrap();
+        assert_eq!(nes.logo.as_deref(), Some("FC.png"));
+    }
 }
