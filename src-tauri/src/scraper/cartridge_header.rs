@@ -106,12 +106,50 @@ fn read_zip_prefix(path: &Path, extensions: &[&str], limit: usize) -> Result<Vec
     Ok(data)
 }
 
+fn read_rar_prefix(path: &Path, extensions: &[&str], limit: usize) -> Result<Vec<u8>, String> {
+    let mut archive = unrar::Archive::new(path)
+        .open_for_processing()
+        .map_err(|error| error.to_string())?;
+    while let Some(header) = archive.read_header().map_err(|error| error.to_string())? {
+        let matches = header
+            .entry()
+            .filename
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| {
+                extensions
+                    .iter()
+                    .any(|candidate| extension.eq_ignore_ascii_case(candidate))
+            });
+        if matches {
+            let (mut data, _) = header.read().map_err(|error| error.to_string())?;
+            data.truncate(limit);
+            return Ok(data);
+        }
+        archive = header.skip().map_err(|error| error.to_string())?;
+    }
+    Err("RAR 内没有对应平台的 ROM".to_string())
+}
+
+fn archive_magic(path: &Path) -> Result<[u8; 8], String> {
+    let mut file = File::open(path).map_err(|error| error.to_string())?;
+    let mut magic = [0_u8; 8];
+    let length = file.read(&mut magic).map_err(|error| error.to_string())?;
+    if length < magic.len() {
+        magic[length..].fill(0);
+    }
+    Ok(magic)
+}
+
 fn load_prefix(path: &Path, extensions: &[&str], limit: usize) -> Result<Vec<u8>, String> {
-    if path
+    let extension = path
         .extension()
         .and_then(|value| value.to_str())
-        .is_some_and(|value| value.eq_ignore_ascii_case("zip"))
-    {
+        .unwrap_or_default();
+    let magic = archive_magic(path)?;
+    if magic.starts_with(b"Rar!\x1a\x07") || extension.eq_ignore_ascii_case("rar") {
+        read_rar_prefix(path, extensions, limit)
+    } else if magic.starts_with(b"PK\x03\x04") || extension.eq_ignore_ascii_case("zip") {
         read_zip_prefix(path, extensions, limit)
     } else {
         read_file_prefix(path, limit)
@@ -141,7 +179,7 @@ fn parse_md(data: &[u8]) -> Option<(String, String)> {
     }
     let title = header_text(&data[0x150..0x180]);
     let code = normalize_md_code(&header_text(&data[0x180..0x18e]));
-    (!code.is_empty()).then_some((title, code))
+    (!title.is_empty() || !code.is_empty()).then_some((title, code))
 }
 
 fn normalize_n64_byte_order(data: &mut [u8]) -> bool {
@@ -189,9 +227,11 @@ fn parse_sfc(data: &[u8]) -> Option<(String, String)> {
             continue;
         }
         let code = header_text(&data[base - 0x0e..base - 0x0a]).to_ascii_uppercase();
-        if code.len() == 4 && code.bytes().all(|byte| byte.is_ascii_alphanumeric()) {
-            return Some((header_text(&data[base..base + 21]), code));
-        }
+        let valid_code = code.len() == 4 && code.bytes().all(|byte| byte.is_ascii_alphanumeric());
+        return Some((
+            header_text(&data[base..base + 21]),
+            if valid_code { code } else { String::new() },
+        ));
     }
     None
 }
@@ -214,6 +254,11 @@ fn identify(
         .iter()
         .filter(|entry| serial_code(system, &entry.serial) == game_code)
         .collect();
+    if direct.is_empty() && system == "N64" {
+        if let Some(identification) = identify_n64_ique(internal_title.clone(), game_code.clone()) {
+            return Some(identification);
+        }
+    }
     let mut names = HashSet::new();
     let release_names: Vec<_> = direct
         .iter()
@@ -221,7 +266,7 @@ fn identify(
         .filter(|name| names.insert(name.clone()))
         .collect();
     if release_names.len() != 1 {
-        return None;
+        return identify_by_internal_title(system, internal_title, game_code);
     }
     let release_name = release_names[0].clone();
 
@@ -259,6 +304,79 @@ fn identify(
         scrape_name,
         confidence: 98.0,
     })
+}
+
+fn normalize_title(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
+fn identify_by_internal_title(
+    system: &str,
+    internal_title: String,
+    game_code: String,
+) -> Option<CartridgeIdentification> {
+    let normalized = normalize_title(&internal_title);
+    if normalized.len() < 5 {
+        return None;
+    }
+    let mut names = HashSet::new();
+    for entry in index(system) {
+        let name = clean_release_name(&entry.name);
+        let candidate = normalize_title(&name);
+        if candidate == normalized || (normalized.len() >= 10 && candidate.starts_with(&normalized))
+        {
+            names.insert(name);
+        }
+    }
+    if names.len() != 1 {
+        return None;
+    }
+    let release_name = names.into_iter().next()?;
+    Some(CartridgeIdentification {
+        internal_title,
+        game_code,
+        scrape_name: release_name.clone(),
+        release_name,
+        confidence: 94.0,
+    })
+}
+
+fn identify_n64_ique(internal_title: String, game_code: String) -> Option<CartridgeIdentification> {
+    let bytes = game_code.as_bytes();
+    if bytes.len() != 4 || bytes[3] != b'C' || !matches!(bytes[0], b'B' | b'N') {
+        return None;
+    }
+    let family = &game_code[1..3];
+    for preferred_region in ["USA", "Europe", "Japan"] {
+        let mut names = Vec::new();
+        for entry in index("N64") {
+            let code = serial_code("N64", &entry.serial);
+            if code.len() == 4 && &code[1..3] == family && entry.region == preferred_region {
+                let name = clean_release_name(&entry.name);
+                if !names.contains(&name) {
+                    names.push(name);
+                }
+            }
+        }
+        if names.len() == 1 {
+            let release_name = names.remove(0);
+            return Some(CartridgeIdentification {
+                internal_title,
+                game_code,
+                scrape_name: release_name.clone(),
+                release_name,
+                confidence: 97.0,
+            });
+        }
+        if names.len() > 1 {
+            return None;
+        }
+    }
+    None
 }
 
 pub fn identify_cartridge_rom(
@@ -303,5 +421,11 @@ mod tests {
         assert!(identify("MD", "SANGOKUSHI II".into(), "T-76023".into()).is_some());
         assert!(identify("N64", "GOLDENEYE".into(), "NGEJ".into()).is_some());
         assert!(identify("SFC", "SOCCER".into(), "AY2J".into()).is_some());
+        let ique = identify("N64", "SUPER MARIO 64".into(), "BSMC".into()).unwrap();
+        assert_eq!(ique.scrape_name, "Super Mario 64");
+        assert_eq!(ique.confidence, 97.0);
+        let internal = identify("SFC", "F-ZERO".into(), String::new()).unwrap();
+        assert_eq!(internal.scrape_name, "F-Zero");
+        assert_eq!(internal.confidence, 94.0);
     }
 }
