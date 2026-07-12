@@ -35,7 +35,9 @@ export default function DirectoryInput({
 
     // 使用 ref 存储 onValidPath，避免作为依赖导致重复验证
     const onValidPathRef = useRef(onValidPath);
-    onValidPathRef.current = onValidPath;
+    useEffect(() => {
+        onValidPathRef.current = onValidPath;
+    });
 
     useEffect(() => {
         if (!value.trim()) {

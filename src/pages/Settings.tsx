@@ -9,7 +9,7 @@ import { clsx } from "clsx";
 import DirectoryInput from "@/components/common/DirectoryInput";
 import MetadataImportDialog from "@/components/common/MetadataImportDialog";
 import RootDirectoryDialog from "@/components/common/RootDirectoryDialog";
-import type { ScraperCredentials } from "@/types";
+import type { ScraperCredentials, ScraperProviderInfo } from "@/types";
 
 interface MetadataFileInfo {
   format: string;
@@ -78,6 +78,56 @@ export default function Settings() {
     fetchProviders();
   }, [fetchProviders]);
 
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseUp = async () => {
+    if (!isDragging || !draggedProvider || !dragOverProvider) {
+      setDraggedProvider(null);
+      setDragOverProvider(null);
+      setIsDragging(false);
+      return;
+    }
+
+    console.log("🎯 Mouse up - Drop on:", dragOverProvider, "from:", draggedProvider);
+
+    // 获取排序后的 provider 列表
+    const sortedProviders = [...providers].sort((a, b) => a.priority - b.priority);
+    const draggedIndex = sortedProviders.findIndex(p => p.id === draggedProvider);
+    const targetIndex = sortedProviders.findIndex(p => p.id === dragOverProvider);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedProvider(null);
+      setDragOverProvider(null);
+      setIsDragging(false);
+      return;
+    }
+
+    // 重新排列
+    const newProviders = [...sortedProviders];
+    const [removed] = newProviders.splice(draggedIndex, 1);
+    newProviders.splice(targetIndex, 0, removed);
+
+    // 重新计算优先级（从10开始，每个间隔10）
+    try {
+      for (let i = 0; i < newProviders.length; i++) {
+        const newPriority = (i + 1) * 10;
+        if (newProviders[i].priority !== newPriority) {
+          await setProviderPriority(newProviders[i].id, newPriority);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update provider priorities:", error);
+    }
+
+    setDraggedProvider(null);
+    setDragOverProvider(null);
+    setIsDragging(false);
+  };
+
   // 全局 mouseUp 和 mouseMove 监听器
   useEffect(() => {
     if (isDragging) {
@@ -88,6 +138,9 @@ export default function Settings() {
         window.removeEventListener('mousemove', handleMouseMove);
       };
     }
+    // handleMouseMove/handleMouseUp 未做 useCallback 记忆化，若加入依赖数组会导致
+    // 拖拽过程中每次渲染都重新订阅/取消订阅监听器，属于行为改动，故保留原有依赖数组。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, draggedProvider, dragOverProvider]);
 
   useEffect(() => {
@@ -231,7 +284,7 @@ export default function Settings() {
     }
   };
 
-  const handleEditConfig = (provider: any) => {
+  const handleEditConfig = (provider: ScraperProviderInfo) => {
     setEditingProvider(provider.id);
     setCredentials({});
   };
@@ -273,56 +326,6 @@ export default function Settings() {
       console.log("📍 Mouse enter:", providerId);
       setDragOverProvider(providerId);
     }
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      setMousePos({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleMouseUp = async () => {
-    if (!isDragging || !draggedProvider || !dragOverProvider) {
-      setDraggedProvider(null);
-      setDragOverProvider(null);
-      setIsDragging(false);
-      return;
-    }
-
-    console.log("🎯 Mouse up - Drop on:", dragOverProvider, "from:", draggedProvider);
-
-    // 获取排序后的 provider 列表
-    const sortedProviders = [...providers].sort((a, b) => a.priority - b.priority);
-    const draggedIndex = sortedProviders.findIndex(p => p.id === draggedProvider);
-    const targetIndex = sortedProviders.findIndex(p => p.id === dragOverProvider);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedProvider(null);
-      setDragOverProvider(null);
-      setIsDragging(false);
-      return;
-    }
-
-    // 重新排列
-    const newProviders = [...sortedProviders];
-    const [removed] = newProviders.splice(draggedIndex, 1);
-    newProviders.splice(targetIndex, 0, removed);
-
-    // 重新计算优先级（从10开始，每个间隔10）
-    try {
-      for (let i = 0; i < newProviders.length; i++) {
-        const newPriority = (i + 1) * 10;
-        if (newProviders[i].priority !== newPriority) {
-          await setProviderPriority(newProviders[i].id, newPriority);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to update provider priorities:", error);
-    }
-
-    setDraggedProvider(null);
-    setDragOverProvider(null);
-    setIsDragging(false);
   };
 
   // 按优先级排序的 providers

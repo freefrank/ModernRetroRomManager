@@ -405,6 +405,8 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
   // Memoize estimateSize to prevent virtualizer recreation
   const estimateSize = useCallback(() => rowHeight, [rowHeight]);
 
+  // @tanstack/react-virtual 返回的函数无法被 React Compiler 安全记忆化，属于三方库限制，非本项目代码问题。
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,

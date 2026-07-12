@@ -71,7 +71,7 @@ export default function Library() {
   // 搜索过滤 - 使用 useMemo 派生状态，避免重复渲染和 store 更新
   // 这样搜索时 UI 响应更快，且不会污染全局 store
   const filteredRoms = useMemo(() => {
-    let currentRoms: Rom[] = [];
+    let currentRoms: Rom[];
 
     // 1. 根据 selectedSystem 筛选基础列表
     if (selectedSystem) {

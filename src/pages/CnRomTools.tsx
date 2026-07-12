@@ -172,7 +172,7 @@ export default function CnName() {
     return () => {
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [setMatchProgress]);
 
   // 监听扫描进度事件
   useEffect(() => {
@@ -192,7 +192,7 @@ export default function CnName() {
     return () => {
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [setScanProgress]);
 
   // 过滤后的系统列表
   const filteredSystems = useMemo(() => {

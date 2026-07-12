@@ -29,7 +29,7 @@ export interface Rom {
   english_name?: string;
   // 预览相关
   has_temp_metadata: boolean;
-  temp_data?: any;
+  temp_data?: Partial<Rom>;
 }
 
 // 系统 ROM 列表（后端 get_roms 返回结构）
