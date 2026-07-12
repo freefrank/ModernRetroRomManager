@@ -1,5 +1,6 @@
 {
   "cnRomTools": {
+    "title": "CN Naming Check",
     "selectPlatform": "Select Platform",
     "selectDirectoryPlaceholder": "Select ROM directory to check...",
     "browse": "Browse...",
@@ -35,6 +36,12 @@
       "missingEnglishNames": "{{count}} missing English names",
       "matchEnglishName": "Match English Name",
       "exportMetadata": "Export Metadata"
+    },
+    "export": {
+      "pegasus": "Pegasus (.txt)",
+      "gamelist": "EmulationStation (.xml)",
+      "pegasusFilter": "Pegasus Metadata",
+      "gamelistFilter": "EmulationStation Gamelist"
     },
     "systemPicker": {
       "title": "Select Game Platform",

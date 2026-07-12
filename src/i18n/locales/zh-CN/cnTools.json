@@ -1,5 +1,6 @@
 {
   "cnRomTools": {
+    "title": "中文命名检查",
     "selectPlatform": "选择平台",
     "selectDirectoryPlaceholder": "选择要检查的 ROM 目录...",
     "browse": "浏览...",
@@ -35,6 +36,12 @@
       "missingEnglishNames": "{{count}} 个未匹配英文名",
       "matchEnglishName": "匹配英文名",
       "exportMetadata": "导出 Metadata"
+    },
+    "export": {
+      "pegasus": "Pegasus (.txt)",
+      "gamelist": "EmulationStation (.xml)",
+      "pegasusFilter": "Pegasus 元数据",
+      "gamelistFilter": "EmulationStation 游戏列表"
     },
     "systemPicker": {
       "title": "选择游戏平台",

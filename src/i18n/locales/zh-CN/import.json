@@ -1,33 +1,10 @@
 {
   "import": {
     "title": "导入/导出",
-    "importSection": {
-      "title": "导入",
-      "description": "从现有的 ROM 管理软件导入元数据和媒体资源",
-      "deprecated": "当前版本已迁移为目录扫描模式，请在 ROM 库中添加目录。",
-      "success": "已切换为目录扫描模式"
-    },
-    "exportSection": {
-      "title": "导出",
-      "description": "将 ROM 库导出为其他格式以便在其他软件中使用"
-    },
-    "formats": {
-      "emulationstation": {
-        "name": "EmulationStation",
-        "file": "gamelist.xml"
-      },
-      "pegasus": {
-        "name": "Pegasus/Recalbox",
-        "file": "metadata.txt"
-      },
-      "launchbox": {
-        "name": "LaunchBox",
-        "file": "XML"
-      },
-      "retroarch": {
-        "name": "RetroArch",
-        "file": ".lpl"
-      }
+    "underDevelopment": {
+      "title": "该功能开发中",
+      "description": "当前版本请使用中文 ROM 工具箱的导出能力",
+      "goToCnTools": "前往中文 ROM 工具箱"
     }
   }
 }
