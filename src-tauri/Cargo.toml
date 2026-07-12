@@ -11,6 +11,10 @@ edition = "2021"
 name = "modern_retro_rom_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# 生产构建必需:启用后前端资源经 tauri 协议内嵌加载,否则产物会连接 devUrl。请勿删除!!
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
