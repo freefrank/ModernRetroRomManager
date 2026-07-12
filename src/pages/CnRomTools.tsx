@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Languages } from "lucide-react";
 import { isTauri, api } from "@/lib/api";
+import { toast } from "@/components/ui";
 import type { GameSystem } from "@/types";
 import {
   useCnRomToolsStore,
@@ -126,7 +127,7 @@ export default function CnRomTools() {
   const handleAutoFix = async () => {
     if (!checkPath) return;
     if (!selectedSystem) {
-      alert(t("cnRomTools.alerts.selectPlatformFirst"));
+      toast.info(t("cnRomTools.alerts.selectPlatformFirst"));
       return;
     }
     await autoFix(selectedSystem.id);
@@ -144,7 +145,7 @@ export default function CnRomTools() {
       handleCheck();
     } catch (error) {
       console.error("Failed to set ROM name:", error);
-      alert(t("cnRomTools.alerts.setFailed", { error: String(error) }));
+      toast.error(t("cnRomTools.alerts.setFailed", { error: String(error) }));
     } finally {
       setIsSettingName(false);
     }
@@ -160,7 +161,7 @@ export default function CnRomTools() {
       }
     } catch (error) {
       console.error("Failed to add tag:", error);
-      alert(t("cnRomTools.alerts.addFailed", { error: String(error) }));
+      toast.error(t("cnRomTools.alerts.addFailed", { error: String(error) }));
     } finally {
       setIsAddingTag(false);
     }
@@ -185,10 +186,10 @@ export default function CnRomTools() {
       setIsExporting(true);
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("export_cn_metadata", { directory: checkPath, targetPath: savePath, format });
-      alert(t("cnRomTools.alerts.exportSuccess", { path: savePath }));
+      toast.success(t("cnRomTools.alerts.exportSuccess", { path: savePath }));
     } catch (error) {
       console.error("Failed to export:", error);
-      alert(t("cnRomTools.alerts.exportFailed", { error: String(error) }));
+      toast.error(t("cnRomTools.alerts.exportFailed", { error: String(error) }));
     } finally {
       setIsExporting(false);
     }
@@ -203,7 +204,7 @@ export default function CnRomTools() {
       }
     } catch (error) {
       console.error("Failed to save name:", error);
-      alert(t("cnRomTools.alerts.saveFailed", { error: String(error) }));
+      toast.error(t("cnRomTools.alerts.saveFailed", { error: String(error) }));
     }
   };
 

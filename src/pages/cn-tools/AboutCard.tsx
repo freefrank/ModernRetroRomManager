@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Loader2, Info, ExternalLink } from "lucide-react";
 import { isTauri } from "@/lib/api";
+import { toast } from "@/components/ui";
 
 const REPO_URL = "https://github.com/yingw/rom-name-cn";
 
@@ -17,10 +18,10 @@ export default function AboutCard() {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("update_cn_repo");
       }
-      alert(t("cnRomTools.alerts.databaseUpdateSuccess"));
+      toast.success(t("cnRomTools.alerts.databaseUpdateSuccess"));
     } catch (error) {
       console.error("Failed to update CN repo:", error);
-      alert(t("cnRomTools.alerts.updateFailed", { error: String(error) }));
+      toast.error(t("cnRomTools.alerts.updateFailed", { error: String(error) }));
     } finally {
       setIsUpdating(false);
     }

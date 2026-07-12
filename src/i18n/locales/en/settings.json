@@ -44,7 +44,8 @@
       "empty": "No scan directories added",
       "addDirectory": "Add Directory",
       "dialogTitle": "Add Scan Directory",
-      "metadataFormat": "Metadata format: {{format}}"
+      "metadataFormat": "Metadata format: {{format}}",
+      "addFailed": "Failed to add directory: {{error}}"
     },
     "storage": {
       "title": "Storage Settings",

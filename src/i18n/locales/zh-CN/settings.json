@@ -44,7 +44,8 @@
       "empty": "暂未添加扫描目录",
       "addDirectory": "添加目录",
       "dialogTitle": "添加扫描目录",
-      "metadataFormat": "元数据格式:{{format}}"
+      "metadataFormat": "元数据格式:{{format}}",
+      "addFailed": "添加目录失败:{{error}}"
     },
     "storage": {
       "title": "存储设置",

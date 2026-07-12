@@ -129,7 +129,6 @@ async removeDirectory(path: string): Promise<void> {
   },
 };
 
-// 删除 resolveMediaUrl (未被调用且同步返回 Promise)
 // Normalize path separators for Windows compatibility
 function normalizePath(path: string): string {
   // Convert forward slashes to backslashes on Windows paths

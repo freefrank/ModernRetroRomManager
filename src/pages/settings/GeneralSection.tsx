@@ -17,6 +17,7 @@ import {
   IconButton,
   Input,
   Select,
+  toast,
 } from "@/components/ui";
 
 interface MetadataFileInfo {
@@ -120,6 +121,7 @@ export default function GeneralSection() {
           await addScanDirectory(newDirPath);
         } catch (err) {
           console.error("Failed to add scan directory:", err);
+          toast.error(t("settings.scanDirectories.addFailed", { error: String(err) }));
         }
       }
 
@@ -127,6 +129,7 @@ export default function GeneralSection() {
       setIsValidPath(false);
     } catch (error) {
       console.error("Error adding directory:", error);
+      toast.error(t("settings.scanDirectories.addFailed", { error: String(error) }));
     }
   };
 
@@ -139,6 +142,7 @@ export default function GeneralSection() {
       setDetectedMetadata([]);
     } catch (error) {
       console.error("Error importing metadata:", error);
+      toast.error(t("settings.scanDirectories.addFailed", { error: String(error) }));
     }
   };
 
@@ -151,6 +155,7 @@ export default function GeneralSection() {
       setDetectedMetadata([]);
     } catch (error) {
       console.error("Error adding directory:", error);
+      toast.error(t("settings.scanDirectories.addFailed", { error: String(error) }));
     }
   };
 
@@ -169,6 +174,7 @@ export default function GeneralSection() {
       setDetectedSubDirs([]);
     } catch (error) {
       console.error("Error adding root directory:", error);
+      toast.error(t("settings.scanDirectories.addFailed", { error: String(error) }));
     }
   };
 
@@ -190,6 +196,7 @@ export default function GeneralSection() {
       setDetectedSubDirs([]);
     } catch (error) {
       console.error("Error adding sub directory:", error);
+      toast.error(t("settings.scanDirectories.addFailed", { error: String(error) }));
     }
   };
 
