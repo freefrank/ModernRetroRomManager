@@ -10,6 +10,7 @@ use crate::scraper::gba_header::identify_gba_rom;
 use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::local_cn::{smart_cn_similarity, to_pinyin_initials};
 use crate::scraper::pegasus::parse_pegasus_file;
+use crate::scraper::three_ds_header::identify_3ds_rom;
 use crate::system_mapping::find_mapping_by_folder;
 use rayon::prelude::*;
 use regex::Regex;
@@ -1220,6 +1221,8 @@ pub async fn auto_fix_naming(
                 .iter()
                 .any(|candidate| name.eq_ignore_ascii_case(candidate))
         });
+    let is_3ds = find_mapping_by_folder(&system_name)
+        .is_some_and(|mapping| mapping.folder_name.eq_ignore_ascii_case("3DS"));
 
     // 一次性加载 cn_repo CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
@@ -1330,6 +1333,24 @@ pub async fn auto_fix_naming(
                 Err(error) => eprintln!(
                     "[auto_fix_naming] Failed to inspect {} ROM {:?}: {}",
                     system, rom_path, error
+                ),
+            }
+        }
+
+        // 3DS CIA/CCI 优先使用 Title ID；更新和 DLC 会归一到对应本体 ID。
+        if is_3ds {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_3ds_rom(&rom_path) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to inspect 3DS ROM {:?}: {}",
+                    rom_path, error
                 ),
             }
         }

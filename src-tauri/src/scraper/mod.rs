@@ -9,6 +9,7 @@ pub mod pegasus;
 pub mod persistence;
 pub mod screenscraper;
 pub mod steamgriddb;
+pub mod three_ds_header;
 pub mod types;
 
 use async_trait::async_trait;
