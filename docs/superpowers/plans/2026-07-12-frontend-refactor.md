@@ -41,7 +41,7 @@
 
 ### UI 基件稳定类名钩子(供主题包 style.css 定点覆盖)
 
-`rr-button` `rr-icon-button` `rr-card` `rr-input` `rr-select` `rr-dialog` `rr-toast` `rr-empty` `rr-spinner` `rr-badge` `rr-tabs` `rr-tooltip` `rr-sidebar` `rr-statusbar` `rr-topbar`
+`rr-button` `rr-icon-button` `rr-card` `rr-input` `rr-select` `rr-dialog` `rr-toast` `rr-empty` `rr-spinner` `rr-badge` `rr-tabs` `rr-tooltip` `rr-sidebar`(48px icon rail)`rr-sidebar-panel`(200px 上下文面板)`rr-statusbar` `rr-topbar`
 
 ---
 
