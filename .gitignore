@@ -133,6 +133,9 @@ CLAUDE.md
 
 # Local CodeGraph index
 .codegraph/
+
+# Local build artifacts
+/artifacts/
 AGENTS.md
 .claude/
 test_matching.txt
