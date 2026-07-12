@@ -27,6 +27,10 @@ export interface Rom {
   titlescreen?: string;
   video?: string;
   english_name?: string;
+  /** ROM 文件大小(bytes,文件夹型 ROM 或读取失败为空) */
+  file_size?: number;
+  /** ROM 文件修改时间(unix 秒,读取失败为空) */
+  modified_at?: number;
   // 预览相关
   has_temp_metadata: boolean;
   temp_data?: Partial<Rom>;

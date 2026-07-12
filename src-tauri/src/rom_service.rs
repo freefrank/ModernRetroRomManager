@@ -41,10 +41,29 @@ pub struct RomInfo {
     pub titlescreen: Option<String>,
     pub video: Option<String>,
     pub english_name: Option<String>,
+    /// ROM 文件大小(bytes,文件夹型 ROM 为 None,读取失败为 None)
+    pub file_size: Option<u64>,
+    /// ROM 文件修改时间(unix 秒,读取失败为 None)
+    pub modified_at: Option<i64>,
     // 预览数据 (PegasusGame 结构比较接近原始解析结果)
     pub temp_data: Option<PegasusGame>,
 
     pub has_temp_metadata: bool,
+}
+
+/// 从文件系统补齐 ROM 的大小与修改时间(失败给 None,不中断扫描)
+fn fill_file_metadata(rom: &mut RomInfo, rom_path: &Path) {
+    if let Ok(meta) = fs::metadata(rom_path) {
+        // 文件夹型 ROM(如 PS3)目录本身的 len 无意义,只对文件记录大小
+        if meta.is_file() {
+            rom.file_size = Some(meta.len());
+        }
+        rom.modified_at = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64);
+    }
 }
 
 /// 系统 ROM 列表
@@ -93,6 +112,8 @@ impl From<PegasusGame> for RomInfo {
                 .get("x-mrrm-eng")
                 .or_else(|| game.extra.get("x-english-name"))
                 .cloned(),
+            file_size: None,
+            modified_at: None,
             temp_data: None,
 
             has_temp_metadata: false,
@@ -410,6 +431,7 @@ fn try_load_from_temp_metadata(
                 rom.system = system_name.to_string();
                 // 标记为已拥有临时数据
                 rom.has_temp_metadata = true;
+                fill_file_metadata(&mut rom, &rom_path);
 
                 // 构造 temp_data (用于前端编辑显示)
                 let temp_game = PegasusGame {
@@ -578,38 +600,16 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
 
                 let game_id = game_info.as_ref().and_then(|info| info.title_id.clone());
 
-                roms.push(RomInfo {
+                let mut rom = RomInfo {
                     file: folder_name,
                     name: game_name,
                     description: game_id.map(|id| format!("Game ID: {}", id)),
-                    summary: None,
-                    developer: None,
-                    publisher: None,
-                    genre: None,
-                    players: None,
-                    release: None,
-                    rating: None,
                     directory: dir_path.to_string_lossy().to_string(),
                     system: root_system_name.clone(),
-                    box_front: None,
-                    box_back: None,
-                    box_spine: None,
-                    box_full: None,
-                    cartridge: None,
-                    logo: None,
-                    marquee: None,
-                    bezel: None,
-                    gridicon: None,
-                    flyer: None,
-                    background: None,
-                    music: None,
-                    screenshot: None,
-                    titlescreen: None,
-                    video: None,
-                    english_name: None,
-                    has_temp_metadata: false,
-                    temp_data: None,
-                });
+                    ..Default::default()
+                };
+                fill_file_metadata(&mut rom, &ps3_game_path);
+                roms.push(rom);
             }
 
             if !roms.is_empty() {
@@ -758,6 +758,7 @@ fn read_pegasus_roms(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>,
                             // ROM 文件不存在，跳过此条目
                             return None;
                         }
+                        fill_file_metadata(&mut rom, &rom_path);
                     }
 
                     resolve_all_media_paths(&mut rom, dir_path);
@@ -984,11 +985,10 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                     .to_string()
             });
 
-            Some(RomInfo {
+            let mut rom = RomInfo {
                 file,
                 name,
                 description: g.desc,
-                summary: None,
                 developer: g.developer,
                 publisher: g.publisher,
                 genre: g.genre,
@@ -997,25 +997,15 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 rating: g.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
                 directory: dir_path.to_string_lossy().to_string(),
                 system: system_name.to_string(),
-                has_temp_metadata: false,
-                temp_data: None,
                 box_front: g.image.map(|image| resolve_media_path(dir_path, &image)),
-                box_back: None,
-                box_spine: None,
-                box_full: None,
-                cartridge: None,
-                logo: None,
-                marquee: None,
-                bezel: None,
-                gridicon: None,
-                flyer: None,
-                background: None,
-                music: None,
-                screenshot: None,
-                titlescreen: None,
-                video: None,
                 english_name: g.english_name,
-            })
+                ..Default::default()
+            };
+            if !rom.file.is_empty() {
+                let rom_path = dir_path.join(&rom.file);
+                fill_file_metadata(&mut rom, &rom_path);
+            }
+            Some(rom)
         })
         .collect())
 }
@@ -1112,38 +1102,16 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
 
                     let game_id = game_info.as_ref().and_then(|info| info.title_id.clone());
 
-                    roms.push(RomInfo {
+                    let mut rom = RomInfo {
                         file: folder_name,
                         name: game_name,
                         description: game_id.map(|id| format!("Game ID: {}", id)),
-                        summary: None,
-                        developer: None,
-                        publisher: None,
-                        genre: None,
-                        players: None,
-                        release: None,
-                        rating: None,
                         directory: dir_path.to_string_lossy().to_string(),
                         system: system_name.to_string(),
-                        box_front: None,
-                        box_back: None,
-                        box_spine: None,
-                        box_full: None,
-                        cartridge: None,
-                        logo: None,
-                        marquee: None,
-                        bezel: None,
-                        gridicon: None,
-                        flyer: None,
-                        background: None,
-                        music: None,
-                        screenshot: None,
-                        titlescreen: None,
-                        video: None,
-                        english_name: None,
-                        has_temp_metadata: false,
-                        temp_data: None,
-                    });
+                        ..Default::default()
+                    };
+                    fill_file_metadata(&mut rom, &path);
+                    roms.push(rom);
                 }
             }
             // 常规文件处理
@@ -1184,38 +1152,16 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
                                 (default_name, None)
                             };
 
-                        roms.push(RomInfo {
+                        let mut rom = RomInfo {
                             file: filename,
                             name: game_name,
                             description: game_description,
-                            summary: None,
-                            developer: None,
-                            publisher: None,
-                            genre: None,
-                            players: None,
-                            release: None,
-                            rating: None,
                             directory: dir_path.to_string_lossy().to_string(),
                             system: system_name.to_string(),
-                            box_front: None,
-                            box_back: None,
-                            box_spine: None,
-                            box_full: None,
-                            cartridge: None,
-                            logo: None,
-                            marquee: None,
-                            bezel: None,
-                            gridicon: None,
-                            flyer: None,
-                            background: None,
-                            music: None,
-                            screenshot: None,
-                            titlescreen: None,
-                            video: None,
-                            english_name: None,
-                            has_temp_metadata: false,
-                            temp_data: None,
-                        });
+                            ..Default::default()
+                        };
+                        fill_file_metadata(&mut rom, &path);
+                        roms.push(rom);
                     }
                 }
             }
@@ -1266,6 +1212,25 @@ mod tests {
         assert_eq!(roms[0].file, "Super Mario World.sfc");
         assert_eq!(roms[0].name, "Super Mario World");
         assert_eq!(roms[0].system, "snes");
+        // gamelist 路径同样补齐文件元数据
+        assert_eq!(roms[0].file_size, Some(3));
+        assert!(roms[0].modified_at.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn scan_rom_files_fills_file_size_and_modified_at() {
+        let dir = create_temp_dir();
+        let rom_bytes = b"fake rom content";
+        fs::write(dir.join("Test Game.sfc"), rom_bytes).expect("write rom file");
+
+        let roms = scan_rom_files(&dir, "sfc").expect("scan roms");
+        assert_eq!(roms.len(), 1);
+        assert_eq!(roms[0].file_size, Some(rom_bytes.len() as u64));
+
+        let modified_at = roms[0].modified_at.expect("modified_at 应存在");
+        assert!(modified_at > 0, "modified_at 应为正的 unix 秒");
 
         let _ = fs::remove_dir_all(&dir);
     }

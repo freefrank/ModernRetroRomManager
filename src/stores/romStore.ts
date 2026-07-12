@@ -28,13 +28,13 @@ function isRomScraped(rom: Rom): boolean {
   );
 }
 
-// 从 systemRoms 聚合统计信息(totalSize 后端暂无文件大小数据,恒为 0,展示层按 0 隐藏)
+// 从 systemRoms 聚合统计信息(totalSize 由后端扫描的 file_size 聚合,缺失按 0 计)
 function computeStats(systemRoms: SystemRoms[]) {
   const allRoms = systemRoms.flatMap((s) => s.roms);
   return {
     totalRoms: allRoms.length,
     scrapedRoms: allRoms.filter(isRomScraped).length,
-    totalSize: 0,
+    totalSize: allRoms.reduce((sum, rom) => sum + (rom.file_size ?? 0), 0),
   };
 }
 

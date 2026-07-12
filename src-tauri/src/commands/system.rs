@@ -7,6 +7,7 @@ pub enum RomType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SystemInfo {
     pub id: String,
     pub name: String,
@@ -762,6 +763,24 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn system_info_serializes_as_camel_case() {
+        let systems = get_systems().unwrap();
+        let nes = systems.iter().find(|s| s.id == "nes").unwrap();
+        let value = serde_json::to_value(nes).unwrap();
+        let obj = value.as_object().unwrap();
+
+        // camelCase 字段存在
+        assert_eq!(obj.get("shortName").and_then(|v| v.as_str()), Some("NES"));
+        assert_eq!(obj.get("releaseYear").and_then(|v| v.as_i64()), Some(1983));
+        assert_eq!(obj.get("romType").and_then(|v| v.as_str()), Some("File"));
+
+        // snake_case 字段不再输出
+        assert!(!obj.contains_key("short_name"));
+        assert!(!obj.contains_key("release_year"));
+        assert!(!obj.contains_key("rom_type"));
     }
 
     #[test]

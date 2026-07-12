@@ -21,6 +21,28 @@ function getRomCover(rom: Rom): string | undefined {
   return rom.temp_data?.box_front || rom.box_front || rom.gridicon;
 }
 
+// 文件大小自适应格式化(KB/MB/GB)
+function formatFileSize(bytes: number | undefined): string {
+  if (bytes === undefined || bytes < 0) return "—";
+  const KB = 1024;
+  const MB = KB * 1024;
+  const GB = MB * 1024;
+  if (bytes >= GB) return `${(bytes / GB).toFixed(2)} GB`;
+  if (bytes >= MB) return `${(bytes / MB).toFixed(1)} MB`;
+  if (bytes >= KB) return `${Math.round(bytes / KB)} KB`;
+  return `${bytes} B`;
+}
+
+// unix 秒 -> YYYY-MM-DD
+function formatModifiedDate(unixSeconds: number | undefined): string {
+  if (unixSeconds === undefined || unixSeconds <= 0) return "—";
+  const d = new Date(unixSeconds * 1000);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // Shared hook for async media URL resolution with cache support
 function useMediaUrl(path: string | undefined): string | null {
   // Check cache first for instant display
@@ -362,10 +384,21 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
         </div>
       </div>
 
+      {/* Size */}
+      <span className="w-20 text-right text-xs text-text-secondary flex-shrink-0 tabular-nums">
+        {formatFileSize(rom.file_size)}
+      </span>
+
+      {/* Date */}
+      <span className="w-24 text-xs text-text-secondary flex-shrink-0 tabular-nums">
+        {formatModifiedDate(rom.modified_at)}
+      </span>
+
       {/* System */}
-      {/* 大小/日期列已移除:后端 ROM 数据暂无文件 size/mtime 字段,待后端补充后再恢复 */}
-      <span className="px-2 py-1 rounded-[var(--radius-sm)] bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase flex-shrink-0">
-        {rom.system}
+      <span className="w-20 flex-shrink-0">
+        <span className="px-2 py-1 rounded-[var(--radius-sm)] bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase inline-block max-w-full truncate">
+          {rom.system}
+        </span>
       </span>
     </div>
   );
@@ -430,6 +463,8 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
     <div className="flex items-center gap-4 px-4 py-3 bg-bg-tertiary text-text-secondary text-xs uppercase font-medium border-b border-border-default sticky top-0 z-10">
       <div className="w-5"></div>
       <div className="flex-1">{t("common.name")}</div>
+      <div className="w-20 text-right">{t("common.size")}</div>
+      <div className="w-24">{t("common.date")}</div>
       <div className="w-20">{t("common.system")}</div>
     </div>
   );

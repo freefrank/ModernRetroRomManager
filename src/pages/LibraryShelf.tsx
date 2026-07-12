@@ -9,17 +9,13 @@ import type { GameSystem } from "@/types";
 
 const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
 
-/**
- * 用 ROM 目录名匹配预置系统(get_systems),取其 logo 文件名。
- * 后端 SystemInfo 以 snake_case 序列化,short_name 需绕过 TS 类型读取。
- */
+/** 用 ROM 目录名匹配预置系统(get_systems),取其 logo 文件名 */
 function findSystemLogo(systems: GameSystem[], folderName: string): string | undefined {
   const target = norm(folderName);
   if (!target) return undefined;
-  const hit = systems.find((s) => {
-    const shortName = (s as unknown as { short_name?: string }).short_name ?? s.shortName;
-    return norm(s.id) === target || norm(shortName) === target || norm(s.name) === target;
-  });
+  const hit = systems.find(
+    (s) => norm(s.id) === target || norm(s.shortName) === target || norm(s.name) === target
+  );
   return hit?.logo;
 }
 
