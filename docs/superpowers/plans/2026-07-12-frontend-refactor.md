@@ -32,7 +32,7 @@
 | 插槽(theme.json `effects` 键) | html 属性 | 可选效果名 |
 |---|---|---|
 | `backdrop` | `data-fx-backdrop` | `scanlines` `none` |
-| `cardHover` | `data-fx-cardhover` | `hard-shift` `pixel-jitter` `neon-pulse` `soft-glow` `fade-scale` `gradient-border` `none` |
+| `cardHover` | `data-fx-cardhover` | `hard-shift` `pixel-jitter` `neon-pulse` `soft-glow` `fade-scale` `gradient-border` `glitch-text` `none` |
 | `buttonPress` | `data-fx-buttonpress` | `hard-shift` `fade-scale` `none` |
 | `pageTransition` | `data-fx-pagetransition` | `crt-flicker` `fade-scale` `none` |
 | `focusRing` | `data-fx-focusring` | `neon-pulse` `gradient-border` `none` |
@@ -871,3 +871,17 @@ Task2 ┴→ Task3 →┬ Task4 ┬──────→│ Task8 ├→┬ Task
                 ├ Task5 ┘       └ Task9 ┘ └ Task11 ┘
                 └ Task6 ────────↗(Task8 依赖 Task6)
 ```
+
+---
+
+## Task 13(追加,Wave 4 并行):Sidebar 可用性重构
+
+**背景**:用户反馈侧边栏交互体验与布局结构差(2026-07-12)。
+
+**Files:** Modify: `src/components/layout/Sidebar.tsx`、`src/components/layout/Layout.tsx`(折叠态布局)、`src/stores/appStore.ts`(sidebarCollapsed 持久化,后端 settings key `sidebar_collapsed`,复用 update_app_setting 通配)、`src/i18n/locales/{zh-CN,en}/common.json`(nav.* 键)
+
+- [ ] 折叠模式:56px 图标窄栏(图标 + ui/Tooltip 标签),顶部/底部放折叠切换按钮;展开 240px;状态经 settings 持久化;过渡走 motion 令牌
+- [ ] 导航项:高度 ≥40px、全行可点、hover/选中反馈强化(bg-bg-tertiary + border-l 高亮 + text-primary)
+- [ ] 系统树:chevron 独立命中区(≥32px,点行导航、点 chevron 展开),子项缩进引导线(border-l border-border-default),折叠窄栏下点击 ROM 库图标直接进 /library
+- [ ] 键盘:focus-visible 可见焦点、aria-expanded(树)、aria-current(NavLink 自带)、Tooltip 不挡键盘
+- [ ] 门禁 + 硬编码扫描零命中 + commit:`重构侧边栏:折叠窄栏与交互可用性提升`
