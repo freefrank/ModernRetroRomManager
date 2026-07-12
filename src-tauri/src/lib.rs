@@ -6,6 +6,10 @@ mod scraper;
 pub mod settings;
 pub mod system_mapping;
 
+#[cfg(windows)]
+#[link(name = "advapi32")]
+unsafe extern "system" {}
+
 use commands::scraper::ScraperState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
