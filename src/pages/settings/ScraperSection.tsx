@@ -216,10 +216,16 @@ export default function ScraperSection() {
                     <h3 className="font-bold text-text-primary text-lg">
                       {p.name}
                     </h3>
-                    {p.has_credentials && (
+                    {p.has_credentials ? (
                       <Badge variant="success" className="uppercase">
                         {t("settings.apiConfig.authenticated")}
                       </Badge>
+                    ) : (
+                      p.requires_credentials && (
+                        <Badge variant="warning">
+                          {t("scraper.status.missingCredentials")}
+                        </Badge>
+                      )
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1">

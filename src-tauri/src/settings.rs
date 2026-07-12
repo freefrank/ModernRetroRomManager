@@ -23,7 +23,7 @@ pub struct DirectoryConfig {
 }
 
 /// Scraper API 配置
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScraperConfig {
     pub enabled: bool,
     #[serde(default = "default_priority")]
@@ -42,6 +42,21 @@ pub struct ScraperConfig {
 
 fn default_priority() -> u32 {
     100
+}
+
+impl Default for ScraperConfig {
+    fn default() -> Self {
+        Self {
+            // Provider 默认启用,与未配置任何 ScraperConfig 时的展示语义保持一致
+            enabled: true,
+            priority: default_priority(),
+            api_key: None,
+            client_id: None,
+            client_secret: None,
+            username: None,
+            password: None,
+        }
+    }
 }
 
 /// 应用配置

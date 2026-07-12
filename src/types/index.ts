@@ -97,6 +97,7 @@ export interface ScraperProviderInfo {
   name: string;
   enabled: boolean;
   priority: number;
+  requires_credentials: boolean;
   has_credentials: boolean;
   capabilities: string[];
 }

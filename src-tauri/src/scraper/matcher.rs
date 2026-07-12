@@ -84,7 +84,6 @@ fn jaro_similarity(s1: &str, s2: &str) -> f32 {
 }
 
 /// 清理游戏名称（移除常见后缀和标记）
-#[allow(dead_code)]
 pub fn normalize_game_name(name: &str) -> String {
     let mut result = name.to_string();
 
@@ -129,7 +128,6 @@ pub fn parse_game_name_from_filename(filename: &str) -> String {
 }
 
 /// 计算搜索结果的置信度分数
-#[allow(dead_code)]
 pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     let query_name = normalize_game_name(&query.name);
     let result_name = normalize_game_name(&result.name);
@@ -156,7 +154,6 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
 }
 
 /// 对搜索结果重新计算置信度并排序
-#[allow(dead_code)]
 pub fn rank_results(query: &ScrapeQuery, mut results: Vec<SearchResult>) -> Vec<SearchResult> {
     // 重新计算置信度
     for result in &mut results {
@@ -199,6 +196,39 @@ mod tests {
             normalize_game_name("Pokemon Red (USA, Europe) (Rev 1).gbc"),
             "Pokemon Red"
         );
+    }
+
+    #[test]
+    fn test_rank_results_orders_by_recomputed_confidence() {
+        let query = ScrapeQuery::new(
+            "Super Mario World".to_string(),
+            "Super Mario World (USA).sfc".to_string(),
+        );
+
+        let make_result = |name: &str, confidence: f32| SearchResult {
+            provider: "test".to_string(),
+            source_id: name.to_string(),
+            name: name.to_string(),
+            year: None,
+            system: None,
+            thumbnail: None,
+            confidence,
+        };
+
+        // 故意给低匹配度结果一个虚高的初始 confidence,验证 rank_results 会重算并排序
+        let results = vec![
+            make_result("Zelda", 0.99),
+            make_result("Super Mario World", 0.0),
+            make_result("Super Mario Bros", 0.5),
+        ];
+
+        let ranked = rank_results(&query, results);
+        assert_eq!(ranked[0].name, "Super Mario World");
+        assert_eq!(ranked[2].name, "Zelda");
+        // 置信度已重算且降序排列
+        assert!(ranked[0].confidence >= 0.9);
+        assert!(ranked[0].confidence >= ranked[1].confidence);
+        assert!(ranked[1].confidence >= ranked[2].confidence);
     }
 
     #[test]

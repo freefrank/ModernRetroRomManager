@@ -5,10 +5,8 @@
 use crate::config::{get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::RomInfo;
 use crate::scraper::{
-    manager::ScraperManager, // Add parser import
+    manager::{ProviderInfo, ScraperManager},
     persistence::{download_media, save_metadata_pegasus},
-    screenscraper::ScreenScraperClient,
-    steamgriddb::SteamGridDBClient,
     types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
 };
 use serde::{Deserialize, Serialize};
@@ -30,7 +28,8 @@ pub struct ScraperState {
 
 impl ScraperState {
     pub fn new() -> Self {
-        let manager = ScraperManager::new();
+        // 从持久化设置恢复已配置凭证的 provider
+        let manager = ScraperManager::from_settings();
 
         Self {
             manager: Arc::new(RwLock::new(manager)),
@@ -49,16 +48,6 @@ impl Default for ScraperState {
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderInfo {
-    pub id: String,
-    pub name: String,
-    pub enabled: bool,
-    pub priority: u32,
-    pub has_credentials: bool,
-    pub capabilities: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderCredentials {
     pub api_key: Option<String>,
     pub username: Option<String>,
@@ -69,76 +58,16 @@ pub struct ProviderCredentials {
 // Tauri Commands
 // ============================================================================
 
-/// 获取所有可用的 provider 列表
+/// 获取所有可用的 provider 列表(由 ScraperManager 依据 settings 动态生成)
 #[tauri::command]
 pub async fn get_scraper_providers(
     state: State<'_, ScraperState>,
 ) -> Result<Vec<ProviderInfo>, String> {
     let manager = state.manager.read().await;
-    let _provider_ids = manager.provider_ids();
-
-    // 动态生成 provider 信息
-    let mut providers = Vec::new();
-
-    // SteamGridDB
-    if let Some(config) = manager.get_credentials("steamgriddb") {
-        providers.push(ProviderInfo {
-            id: "steamgriddb".to_string(),
-            name: "SteamGridDB".to_string(),
-            enabled: config.enabled,
-            priority: config.priority,
-            has_credentials: config.api_key.is_some() && !config.api_key.unwrap().is_empty(),
-            capabilities: vec!["search".to_string(), "media".to_string()],
-        });
-    } else {
-        providers.push(ProviderInfo {
-            id: "steamgriddb".to_string(),
-            name: "SteamGridDB".to_string(),
-            enabled: true, // 默认启用
-            priority: 100, // 默认优先级
-            has_credentials: false,
-            capabilities: vec!["search".to_string(), "media".to_string()],
-        });
-    }
-
-    // ScreenScraper
-    if let Some(config) = manager.get_credentials("screenscraper") {
-        providers.push(ProviderInfo {
-            id: "screenscraper".to_string(),
-            name: "ScreenScraper".to_string(),
-            enabled: config.enabled,
-            priority: config.priority,
-            has_credentials: config.username.is_some()
-                && !config.username.unwrap().is_empty()
-                && config.password.is_some()
-                && !config.password.unwrap().is_empty(),
-            capabilities: vec![
-                "search".to_string(),
-                "hash_lookup".to_string(),
-                "metadata".to_string(),
-                "media".to_string(),
-            ],
-        });
-    } else {
-        providers.push(ProviderInfo {
-            id: "screenscraper".to_string(),
-            name: "ScreenScraper".to_string(),
-            enabled: true, // 默认启用
-            priority: 100, // 默认优先级
-            has_credentials: false,
-            capabilities: vec![
-                "search".to_string(),
-                "hash_lookup".to_string(),
-                "metadata".to_string(),
-                "media".to_string(),
-            ],
-        });
-    }
-
-    Ok(providers)
+    Ok(manager.provider_infos())
 }
 
-/// 配置 provider 凭证
+/// 配置 provider 凭证(保存后立即重建 provider 注册表,即时生效)
 #[tauri::command]
 pub async fn configure_scraper_provider(
     state: State<'_, ScraperState>,
@@ -147,38 +76,37 @@ pub async fn configure_scraper_provider(
 ) -> Result<(), String> {
     let mut manager = state.manager.write().await;
 
-    // 获取当前配置以保留 enabled 状态
+    // 保留已有的 enabled / priority 状态
     let current_config = manager.get_credentials(&provider_id).unwrap_or_default();
-
     let mut new_config = ScraperConfig {
         enabled: current_config.enabled,
+        priority: current_config.priority,
         ..Default::default()
     };
 
     match provider_id.as_str() {
         "steamgriddb" => {
-            if let Some(api_key) = credentials.api_key {
-                if !api_key.is_empty() {
-                    let client = SteamGridDBClient::new(api_key.clone());
-                    manager.register(client);
-                    new_config.api_key = Some(api_key);
-                    manager.set_credentials(&provider_id, new_config);
-                }
+            let api_key = credentials.api_key.unwrap_or_default();
+            if api_key.trim().is_empty() {
+                return Err("请输入有效的 SteamGridDB API Key".to_string());
             }
+            new_config.api_key = Some(api_key);
         }
         "screenscraper" => {
-            if let (Some(username), Some(password)) = (credentials.username, credentials.password) {
-                if !username.is_empty() && !password.is_empty() {
-                    let client = ScreenScraperClient::new(username.clone(), password.clone());
-                    manager.register(client);
-                    new_config.username = Some(username);
-                    new_config.password = Some(password);
-                    manager.set_credentials(&provider_id, new_config);
-                }
+            let username = credentials.username.unwrap_or_default();
+            let password = credentials.password.unwrap_or_default();
+            if username.trim().is_empty() || password.trim().is_empty() {
+                return Err("请输入有效的 ScreenScraper 用户名和密码".to_string());
             }
+            new_config.username = Some(username);
+            new_config.password = Some(password);
         }
-        _ => return Err(format!("Unknown provider: {}", provider_id)),
+        _ => return Err(format!("未知的数据源: {}", provider_id)),
     }
+
+    manager.set_credentials(&provider_id, new_config);
+    // 凭证保存后重建注册表,新的凭证即时生效
+    manager.rebuild_from_settings();
 
     Ok(())
 }

@@ -15,9 +15,15 @@
     },
     "status": {
       "enabledSources": "已启用源",
-      "avgConfidence": "平均置信度",
       "configuredCredentials": "已配置凭据",
-      "authenticated": "已认证"
+      "authenticated": "已认证",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "missingCredentials": "未配置凭证"
+    },
+    "providerList": {
+      "title": "数据源状态",
+      "configure": "配置"
     },
     "providers": {
       "igdb": {

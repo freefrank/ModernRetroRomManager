@@ -34,14 +34,15 @@ export const useScraperStore = create<ScraperState>((set, get) => ({
     }
   },
   setProviderEnabled: async (providerId, enabled) => {
+    // 乐观更新,保存成功后重新拉取列表与后端状态对齐
+    set({
+      providers: get().providers.map((p) =>
+        p.id === providerId ? { ...p, enabled } : p
+      ),
+    });
     try {
       await scraperApi.setProviderEnabled(providerId, enabled);
-      // 乐观更新
-      set({
-        providers: get().providers.map((p) =>
-          p.id === providerId ? { ...p, enabled } : p
-        ),
-      });
+      await get().fetchProviders();
     } catch (error) {
       console.error(`Failed to set provider ${providerId} enabled:`, error);
       await get().fetchProviders(); // 失败时回滚
@@ -49,14 +50,15 @@ export const useScraperStore = create<ScraperState>((set, get) => ({
     }
   },
   setProviderPriority: async (providerId, priority) => {
+    // 乐观更新,保存成功后重新拉取列表与后端状态对齐
+    set({
+      providers: get().providers.map((p) =>
+        p.id === providerId ? { ...p, priority } : p
+      ),
+    });
     try {
       await scraperApi.setProviderPriority(providerId, priority);
-      // 乐观更新
-      set({
-        providers: get().providers.map((p) =>
-          p.id === providerId ? { ...p, priority } : p
-        ),
-      });
+      await get().fetchProviders();
     } catch (error) {
       console.error(`Failed to set provider ${providerId} priority:`, error);
       await get().fetchProviders(); // 失败时回滚

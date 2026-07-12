@@ -10,21 +10,19 @@ use commands::scraper::ScraperState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Debug: 输出配置目录位置
+    println!("[DEBUG] Config directory: {:?}", config::get_config_dir());
+    println!("[DEBUG] Settings file: {:?}", config::get_settings_path());
+
+    // 加载应用配置(如果不存在则创建默认配置)。
+    // 必须先于 ScraperState 初始化,否则已保存的 Scraper 凭证无法在启动时恢复。
+    settings::load_settings().expect("Failed to load settings");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(ScraperState::new())
-        .setup(|_app| {
-            // Debug: 输出配置目录位置
-            println!("[DEBUG] Config directory: {:?}", config::get_config_dir());
-            println!("[DEBUG] Settings file: {:?}", config::get_settings_path());
-
-            // 加载应用配置（如果不存在则创建默认配置）
-            settings::load_settings().expect("Failed to load settings");
-
-            Ok(())
-        })
         .invoke_handler(tauri::generate_handler![
             commands::system::get_systems,
             commands::system::get_system,

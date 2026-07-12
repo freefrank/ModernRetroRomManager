@@ -154,15 +154,19 @@ pub fn get_scraper_configs(
     Ok(crate::settings::get_settings().scrapers)
 }
 
-/// 保存单个 Scraper 配置
+/// 保存单个 Scraper 配置(保存后重建 ScraperManager,启用态/凭证即时生效)
 #[tauri::command]
-pub fn save_scraper_config(
+pub async fn save_scraper_config(
+    state: tauri::State<'_, crate::commands::scraper::ScraperState>,
     provider: String,
     config: crate::settings::ScraperConfig,
 ) -> Result<(), String> {
     crate::settings::update_setting(|s| {
         s.scrapers.insert(provider, config);
     })
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| format!("保存 Scraper 配置失败: {}", e))?;
+
+    let mut manager = state.manager.write().await;
+    manager.rebuild_from_settings();
     Ok(())
 }

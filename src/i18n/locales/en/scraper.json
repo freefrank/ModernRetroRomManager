@@ -15,9 +15,15 @@
     },
     "status": {
       "enabledSources": "Enabled Sources",
-      "avgConfidence": "Avg Confidence",
       "configuredCredentials": "Configured Credentials",
-      "authenticated": "Authenticated"
+      "authenticated": "Authenticated",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "missingCredentials": "No Credentials"
+    },
+    "providerList": {
+      "title": "Provider Status",
+      "configure": "Configure"
     },
     "providers": {
       "igdb": {
