@@ -314,30 +314,42 @@ pub struct BatchProgress {
     pub finished: bool,
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct BatchScrapeRom {
+    pub file_name: String,
+    pub search_name: String,
+}
+
 #[tauri::command]
 pub async fn batch_scrape(
     app: tauri::AppHandle,
     state: State<'_, ScraperState>,
-    rom_ids: Vec<String>,
+    roms: Vec<BatchScrapeRom>,
     system: String,
     directory: String,
     _provider_id: String,
 ) -> Result<(), String> {
     let manager_arc = Arc::clone(&state.manager);
-    let total = rom_ids.len();
+    let total = roms.len();
 
     tokio::spawn(async move {
-        for (i, file_name) in rom_ids.into_iter().enumerate() {
+        for (i, rom_item) in roms.into_iter().enumerate() {
             let current = i + 1;
+            let file_name = rom_item.file_name;
+            let search_name = if rom_item.search_name.trim().is_empty() {
+                file_name.clone()
+            } else {
+                rom_item.search_name
+            };
             
             let _ = app.emit("batch-scrape-progress", BatchProgress {
                 current,
                 total,
-                message: format!("正在抓取: {}", file_name),
+                message: format!("正在抓取: {}", search_name),
                 finished: false,
             });
 
-            let query = ScrapeQuery::new(file_name.clone(), file_name.clone()).with_system(system.clone());
+            let query = ScrapeQuery::new(search_name, file_name.clone()).with_system(system.clone());
             
             let scrape_res = {
                 let manager = manager_arc.read().await;

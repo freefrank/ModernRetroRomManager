@@ -181,7 +181,18 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      await scraperApi.batchScrape(Array.from(selectedRomIds), system, directory, providerId);
+      const selectedRoms = systemInfo?.roms
+        .filter(rom => selectedRomIds.has(rom.file))
+        .map(rom => ({
+          file_name: rom.file,
+          search_name: rom.english_name?.trim() || rom.name || rom.file,
+        })) || [];
+
+      if (selectedRoms.length === 0) {
+        throw new Error("未找到选中的 ROM");
+      }
+
+      await scraperApi.batchScrape(selectedRoms, system, directory, providerId);
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });

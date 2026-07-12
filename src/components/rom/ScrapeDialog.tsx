@@ -16,7 +16,7 @@ interface ScrapeDialogProps {
 export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
-  const [query, setQuery] = useState(rom.name);
+  const [query, setQuery] = useState(rom.english_name?.trim() || rom.name);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [results, setResults] = useState<ScraperSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -30,6 +30,12 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
   useEffect(() => {
     fetchProviders();
   }, [fetchProviders]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuery(rom.english_name?.trim() || rom.name);
+    }
+  }, [isOpen, rom.english_name, rom.name]);
 
   useEffect(() => {
     if (providers.length > 0 && !selectedProviderId) {
