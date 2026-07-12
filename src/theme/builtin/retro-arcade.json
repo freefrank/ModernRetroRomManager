@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1, "id": "retro-arcade", "name": "复古游戏厅", "author": "built-in",
+  "tokens": {
+    "bg-primary": "#1b1b2f", "bg-secondary": "#24243e", "bg-tertiary": "#2e2e4e",
+    "accent-primary": "#e94560", "accent-secondary": "#f0a500",
+    "accent-success": "#4ade80", "accent-warning": "#f0a500", "accent-error": "#e94560",
+    "text-primary": "#ffffff", "text-secondary": "#9090a8", "text-muted": "#5a5a70",
+    "border-default": "#3a3a5c", "border-hover": "#533483", "border-highlight": "#e94560",
+    "font-display": "'Press Start 2P', 'Segoe UI', 'Microsoft YaHei', sans-serif",
+    "font-body": "-apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif",
+    "font-mono": "Consolas, 'Courier New', monospace",
+    "radius-sm": "0px", "radius-md": "0px", "radius-lg": "2px",
+    "border-width": "2px",
+    "shadow-card": "3px 3px 0 #533483", "shadow-dialog": "6px 6px 0 #16162a",
+    "glow-accent": "none",
+    "motion-fast": "100ms", "motion-normal": "200ms", "motion-easing": "steps(3, end)"
+  },
+  "effects": {
+    "backdrop": { "name": "scanlines", "opacity": 0.05 },
+    "cardHover": { "name": "hard-shift" },
+    "buttonPress": { "name": "hard-shift" },
+    "pageTransition": { "name": "crt-flicker" },
+    "focusRing": { "name": "none" }
+  }
+}

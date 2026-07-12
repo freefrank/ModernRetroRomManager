@@ -1,0 +1,180 @@
+/* ============================================================
+   效果目录(effect catalog)
+   - 仅使用 transform / opacity / filter / box-shadow(合成层友好)
+   - 全部受 <html data-motion="off|low|full"> 门控:
+     off = 全禁(index.css 全局门控兜底),low = 仅过渡,full = 全开
+   - 作用方式:[data-fx-<slot>="<name>"] + .rr-* 稳定类名钩子
+   - "none" 无规则
+   ============================================================ */
+
+/* 效果基础过渡(off 档由全局门控禁用) */
+[data-motion]:not([data-motion="off"]) .rr-card,
+[data-motion]:not([data-motion="off"]) .rr-button {
+  transition:
+    transform var(--motion-fast) var(--motion-easing),
+    box-shadow var(--motion-fast) var(--motion-easing),
+    border-color var(--motion-fast) var(--motion-easing),
+    opacity var(--motion-fast) var(--motion-easing);
+}
+
+/* ------------------------------------------------------------
+   backdrop: scanlines(静态纹理 low 保留,闪烁动画仅 full)
+   ------------------------------------------------------------ */
+.rr-backdrop[data-fx="scanlines"] {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.35) 0 1px, transparent 1px 3px);
+  opacity: var(--fx-backdrop-opacity, 0.05);
+}
+[data-motion="off"] .rr-backdrop[data-fx="scanlines"],
+[data-motion="low"] .rr-backdrop[data-fx="scanlines"] {
+  animation: none;
+}
+[data-motion="full"] .rr-backdrop[data-fx="scanlines"] {
+  animation: rr-scanline-breathe 6s ease-in-out infinite;
+}
+@keyframes rr-scanline-breathe {
+  0%, 100% { opacity: var(--fx-backdrop-opacity, 0.05); }
+  50% { opacity: calc(var(--fx-backdrop-opacity, 0.05) * 0.6); }
+}
+
+/* ------------------------------------------------------------
+   hard-shift(复古硬阴影位移)
+   ------------------------------------------------------------ */
+[data-motion]:not([data-motion="off"])[data-fx-cardhover="hard-shift"] .rr-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--border-hover);
+}
+[data-fx-buttonpress="hard-shift"] .rr-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------
+   pixel-jitter(像素抖动,静态 1px 位移 low 保留,抖动动画仅 full)
+   ------------------------------------------------------------ */
+[data-motion]:not([data-motion="off"])[data-fx-cardhover="pixel-jitter"] .rr-card:hover {
+  transform: translate(1px, 0);
+}
+[data-motion="full"][data-fx-cardhover="pixel-jitter"] .rr-card:hover {
+  animation: rr-pixel-jitter 320ms steps(2, end) infinite;
+}
+@keyframes rr-pixel-jitter {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(1px, 0); }
+  50% { transform: translate(0, 1px); }
+  75% { transform: translate(-1px, 0); }
+}
+
+/* ------------------------------------------------------------
+   neon-pulse(霓虹呼吸发光,动画仅 full)
+   ------------------------------------------------------------ */
+[data-fx-cardhover="neon-pulse"] .rr-card:hover {
+  box-shadow: var(--glow-accent);
+  border-color: var(--accent-primary);
+}
+[data-motion="full"][data-fx-cardhover="neon-pulse"] .rr-card:hover {
+  animation: rr-neon-pulse 1.6s ease-in-out infinite;
+}
+[data-fx-focusring="neon-pulse"] .rr-button:focus-visible,
+[data-fx-focusring="neon-pulse"] .rr-input:focus-visible,
+[data-fx-focusring="neon-pulse"] .rr-select:focus-visible,
+[data-fx-focusring="neon-pulse"] .rr-card:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-accent);
+  border-color: var(--accent-primary);
+}
+[data-motion="full"][data-fx-focusring="neon-pulse"] .rr-button:focus-visible,
+[data-motion="full"][data-fx-focusring="neon-pulse"] .rr-input:focus-visible,
+[data-motion="full"][data-fx-focusring="neon-pulse"] .rr-select:focus-visible,
+[data-motion="full"][data-fx-focusring="neon-pulse"] .rr-card:focus-visible {
+  animation: rr-neon-pulse 1.6s ease-in-out infinite;
+}
+@keyframes rr-neon-pulse {
+  0%, 100% { box-shadow: var(--glow-accent); }
+  50% { box-shadow: 0 0 4px var(--accent-primary); }
+}
+
+/* ------------------------------------------------------------
+   glitch-text(故障闪码,仅 full)
+   ------------------------------------------------------------ */
+[data-motion="full"][data-fx-cardhover="glitch-text"] .rr-card:hover {
+  animation: rr-glitch-text 400ms steps(2, end) 2;
+}
+@keyframes rr-glitch-text {
+  0% { transform: translate(0, 0); filter: none; }
+  20% { transform: translate(-1px, 1px); filter: hue-rotate(90deg); }
+  40% { transform: translate(1px, -1px); filter: hue-rotate(-60deg) saturate(3); }
+  60% { transform: translate(-1px, -1px); filter: none; }
+  100% { transform: translate(0, 0); filter: none; }
+}
+
+/* ------------------------------------------------------------
+   gradient-border(流动渐变描边,以双色 box-shadow 实现;流动仅 full)
+   ------------------------------------------------------------ */
+[data-fx-cardhover="gradient-border"] .rr-card:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), 0 0 8px var(--accent-secondary);
+}
+[data-motion="full"][data-fx-cardhover="gradient-border"] .rr-card:hover {
+  animation: rr-gradient-border 2.4s ease-in-out infinite;
+}
+[data-fx-focusring="gradient-border"] .rr-button:focus-visible,
+[data-fx-focusring="gradient-border"] .rr-input:focus-visible,
+[data-fx-focusring="gradient-border"] .rr-select:focus-visible,
+[data-fx-focusring="gradient-border"] .rr-card:focus-visible {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), 0 0 8px var(--accent-secondary);
+}
+[data-motion="full"][data-fx-focusring="gradient-border"] .rr-button:focus-visible,
+[data-motion="full"][data-fx-focusring="gradient-border"] .rr-input:focus-visible,
+[data-motion="full"][data-fx-focusring="gradient-border"] .rr-select:focus-visible,
+[data-motion="full"][data-fx-focusring="gradient-border"] .rr-card:focus-visible {
+  animation: rr-gradient-border 2.4s ease-in-out infinite;
+}
+@keyframes rr-gradient-border {
+  0%, 100% { box-shadow: 0 0 0 1px var(--accent-primary), 0 0 10px var(--accent-primary); }
+  50% { box-shadow: 0 0 0 1px var(--accent-secondary), 0 0 10px var(--accent-secondary); }
+}
+
+/* ------------------------------------------------------------
+   soft-glow(柔和光晕)
+   ------------------------------------------------------------ */
+[data-fx-cardhover="soft-glow"] .rr-card:hover {
+  box-shadow: var(--glow-accent), var(--shadow-card);
+  border-color: var(--border-hover);
+}
+[data-motion]:not([data-motion="off"])[data-fx-cardhover="soft-glow"] .rr-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ------------------------------------------------------------
+   fade-scale(纯净缩放淡入)
+   ------------------------------------------------------------ */
+[data-motion]:not([data-motion="off"])[data-fx-cardhover="fade-scale"] .rr-card:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-card);
+  border-color: var(--border-hover);
+}
+[data-motion]:not([data-motion="off"])[data-fx-buttonpress="fade-scale"] .rr-button:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+[data-motion="full"][data-fx-pagetransition="fade-scale"] .rr-page {
+  animation: rr-fade-scale-in var(--motion-normal) var(--motion-easing);
+}
+@keyframes rr-fade-scale-in {
+  0% { opacity: 0; transform: scale(0.985); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------------
+   crt-flicker(CRT 开机闪烁,仅 full;由页面容器 .rr-page 进场触发)
+   ------------------------------------------------------------ */
+[data-motion="full"][data-fx-pagetransition="crt-flicker"] .rr-page {
+  animation: rr-crt 240ms steps(2, end);
+}
+@keyframes rr-crt {
+  0% { opacity: 0.4; transform: scaleY(0.96); filter: brightness(1.6); }
+  100% { opacity: 1; transform: none; filter: none; }
+}

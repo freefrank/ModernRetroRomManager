@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { FolderPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRomStore } from "@/stores/romStore";
+import Backdrop from "@/theme/Backdrop";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
 
@@ -50,6 +51,9 @@ export default function Layout() {
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary text-text-primary relative overflow-hidden">
+      {/* 主题背景叠加层 */}
+      <Backdrop />
+
       {/* Drag Overlay */}
       <AnimatePresence>
         {isDragging && (

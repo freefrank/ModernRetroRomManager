@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1, "id": "modern-dark", "name": "现代极简", "author": "built-in",
+  "tokens": {
+    "bg-primary": "#101014", "bg-secondary": "#17171c", "bg-tertiary": "#1f1f26",
+    "accent-primary": "#4f8cff", "accent-secondary": "#8a8a94",
+    "accent-success": "#34d399", "accent-warning": "#fbbf24", "accent-error": "#f87171",
+    "text-primary": "#f2f2f5", "text-secondary": "#a0a0aa", "text-muted": "#5c5c66",
+    "border-default": "rgba(255,255,255,0.07)", "border-hover": "rgba(255,255,255,0.14)", "border-highlight": "rgba(79,140,255,0.55)",
+    "font-display": "-apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif",
+    "font-body": "-apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif",
+    "font-mono": "Consolas, 'Courier New', monospace",
+    "radius-sm": "6px", "radius-md": "10px", "radius-lg": "16px",
+    "border-width": "1px",
+    "shadow-card": "0 2px 12px rgba(0,0,0,0.4)", "shadow-dialog": "0 12px 48px rgba(0,0,0,0.6)",
+    "glow-accent": "none",
+    "motion-fast": "120ms", "motion-normal": "240ms", "motion-easing": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+  },
+  "effects": {
+    "backdrop": { "name": "none" },
+    "cardHover": { "name": "fade-scale" },
+    "buttonPress": { "name": "fade-scale" },
+    "pageTransition": { "name": "fade-scale" },
+    "focusRing": { "name": "none" }
+  }
+}

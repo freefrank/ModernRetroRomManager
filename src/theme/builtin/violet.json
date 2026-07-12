@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1, "id": "violet", "name": "紫罗兰", "author": "built-in",
+  "tokens": {
+    "bg-primary": "#13111c", "bg-secondary": "#1a1726", "bg-tertiary": "#241f33",
+    "accent-primary": "#8b5cf6", "accent-secondary": "#6366f1",
+    "accent-success": "#10b981", "accent-warning": "#f59e0b", "accent-error": "#ef4444",
+    "text-primary": "#f8fafc", "text-secondary": "#a29fb8", "text-muted": "#6b6780",
+    "border-default": "rgba(139,92,246,0.14)", "border-hover": "rgba(139,92,246,0.3)", "border-highlight": "rgba(139,92,246,0.55)",
+    "font-display": "-apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif",
+    "font-body": "-apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif",
+    "font-mono": "Consolas, 'Courier New', monospace",
+    "radius-sm": "6px", "radius-md": "10px", "radius-lg": "14px",
+    "border-width": "1px",
+    "shadow-card": "0 4px 16px rgba(0,0,0,0.35)", "shadow-dialog": "0 12px 48px rgba(0,0,0,0.55)",
+    "glow-accent": "0 0 14px rgba(139,92,246,0.45)",
+    "motion-fast": "120ms", "motion-normal": "240ms", "motion-easing": "cubic-bezier(0.2, 0.8, 0.2, 1)"
+  },
+  "effects": {
+    "backdrop": { "name": "none" },
+    "cardHover": { "name": "soft-glow" },
+    "buttonPress": { "name": "fade-scale" },
+    "pageTransition": { "name": "fade-scale" },
+    "focusRing": { "name": "gradient-border" }
+  }
+}

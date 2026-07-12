@@ -1,31 +1,9 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import type { ViewMode, SortOption, FilterOption } from "@/types";
-
-export type ThemeMode = "light" | "dark" | "cyberpunk" | "ocean" | "forest" | "sunset" | "rose" | "nord";
-
-// 所有可用主题
-export const THEMES: { id: ThemeMode; name: string; icon: string }[] = [
-  { id: "light", name: "Light", icon: "☀️" },
-  { id: "dark", name: "Dark", icon: "🌙" },
-  { id: "cyberpunk", name: "Cyberpunk", icon: "🌆" },
-  { id: "ocean", name: "Ocean", icon: "🌊" },
-  { id: "forest", name: "Forest", icon: "🌲" },
-  { id: "sunset", name: "Sunset", icon: "🌅" },
-  { id: "rose", name: "Rose", icon: "🌹" },
-  { id: "nord", name: "Nord", icon: "❄️" },
-];
-
-// 同步主题到 DOM
-export const applyThemeToDOM = (theme: ThemeMode) => {
-  const root = document.documentElement;
-  // 移除所有主题类
-  THEMES.forEach(t => root.classList.remove(t.id));
-  // 添加当前主题类（light 是默认的 :root，不需要类）
-  if (theme !== "light") {
-    root.classList.add(theme);
-  }
-};
+import type { LoadedTheme, MotionLevel } from "@/theme/types";
+import { DEFAULT_THEME_ID, resolveTheme } from "@/theme/registry";
+import { applyTheme } from "@/theme/apply";
 
 // 保存设置到后端
 const saveSettingToBackend = async (key: string, value: string) => {
@@ -36,20 +14,35 @@ const saveSettingToBackend = async (key: string, value: string) => {
   }
 };
 
+// 无存储值时的动效默认档:尊重系统"减弱动态效果"偏好
+const defaultMotionLevel = (): MotionLevel =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "low" : "full";
+
+const isMotionLevel = (v: unknown): v is MotionLevel =>
+  v === "off" || v === "low" || v === "full";
+
 interface AppSettings {
   theme: string;
   language: string;
   view_mode: string;
+  motion_level?: string;
 }
 
 interface AppState {
   // 初始化状态
   initialized: boolean;
   initFromBackend: () => Promise<void>;
-  
-  // Theme
-  theme: ThemeMode;
-  setTheme: (theme: ThemeMode) => void;
+
+  // 主题
+  themeId: string;
+  setTheme: (id: string) => void;
+
+  // 动效档位
+  motion: MotionLevel;
+  setMotion: (level: MotionLevel) => void;
+
+  // 导入的主题(Wave 2 接后端,本阶段恒为空)
+  customThemes: LoadedTheme[];
 
   // UI 状态
   viewMode: ViewMode;
@@ -84,38 +77,59 @@ interface AppState {
   setTaskProgress: (progress: { current: number; total: number; message: string } | null) => void;
 }
 
-export const useAppStore = create<AppState>()((set) => ({
+export const useAppStore = create<AppState>()((set, get) => ({
   // 初始化状态
   initialized: false,
   initFromBackend: async () => {
     try {
       const settings = await invoke<AppSettings>("get_app_settings");
-      const theme = (settings.theme || "dark") as ThemeMode;
+      const { customThemes } = get();
+      // 旧值(dark/ocean 等)与未知 id 经 resolveTheme 自然回退默认主题
+      const theme = resolveTheme(settings.theme, customThemes);
+      const motion = isMotionLevel(settings.motion_level)
+        ? settings.motion_level
+        : defaultMotionLevel();
       const viewMode = (settings.view_mode || "grid") as ViewMode;
       const language = settings.language || "zh";
-      
-      applyThemeToDOM(theme);
-      set({ 
-        theme,
+
+      applyTheme(theme, motion);
+      set({
+        themeId: theme.id,
+        motion,
         viewMode,
         language,
-        initialized: true 
+        initialized: true,
       });
     } catch (error) {
       console.error("Failed to load settings from backend:", error);
       // 使用默认值
-      applyThemeToDOM("dark");
-      set({ initialized: true });
+      const motion = defaultMotionLevel();
+      applyTheme(resolveTheme(DEFAULT_THEME_ID), motion);
+      set({ motion, initialized: true });
     }
   },
 
-  // Theme - 默认暗色
-  theme: "dark",
-  setTheme: (theme) => {
-    applyThemeToDOM(theme);
-    set({ theme });
-    saveSettingToBackend("theme", theme);
+  // 主题 - 默认复古游戏厅
+  themeId: DEFAULT_THEME_ID,
+  setTheme: (id) => {
+    const { customThemes, motion } = get();
+    const theme = resolveTheme(id, customThemes);
+    applyTheme(theme, motion);
+    set({ themeId: theme.id });
+    saveSettingToBackend("theme", theme.id);
   },
+
+  // 动效档位
+  motion: "full",
+  setMotion: (level) => {
+    const { themeId, customThemes } = get();
+    applyTheme(resolveTheme(themeId, customThemes), level);
+    set({ motion: level });
+    saveSettingToBackend("motion_level", level);
+  },
+
+  // 导入的主题
+  customThemes: [],
 
   // UI 状态
   viewMode: "grid",

@@ -1,195 +1,76 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+@import "./theme/effects.css";
+
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("./assets/fonts/press-start-2p-latin.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+0000-00FF;
+}
 
 @theme {
-  /* Use CSS Variables for runtime switching */
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
   --color-bg-tertiary: var(--bg-tertiary);
-
   --color-accent-primary: var(--accent-primary);
   --color-accent-secondary: var(--accent-secondary);
   --color-accent-success: var(--accent-success);
   --color-accent-warning: var(--accent-warning);
   --color-accent-error: var(--accent-error);
-
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
-
   --color-border-default: var(--border-default);
   --color-border-hover: var(--border-hover);
   --color-border-highlight: var(--border-highlight);
-  
-  --font-family-sans: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-display: var(--font-display);
+  --font-family-sans: var(--font-body);
+  --font-family-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
 }
 
-/* Light Theme (Default) */
+/* ============================================================
+   令牌声明区(硬编码白名单)
+   兜底:apply.ts 未运行时的最小可读值(取 retro-arcade 同值)
+   ============================================================ */
 :root {
-  --bg-primary: #F8FAFC;
-  --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F1F5F9;
-
-  --accent-primary: #6366F1;   /* Indigo-500 */
-  --accent-secondary: #0EA5E9; /* Sky-500 */
-  --accent-success: #10B981;
-  --accent-warning: #F59E0B;
-  --accent-error: #EF4444;
-
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
-
-  --border-default: rgba(0, 0, 0, 0.08);
-  --border-hover: rgba(0, 0, 0, 0.15);
-  --border-highlight: rgba(99, 102, 241, 0.5);
+  --bg-primary: #1b1b2f;
+  --bg-secondary: #24243e;
+  --bg-tertiary: #2e2e4e;
+  --accent-primary: #e94560;
+  --accent-secondary: #f0a500;
+  --accent-success: #4ade80;
+  --accent-warning: #f0a500;
+  --accent-error: #e94560;
+  --text-primary: #ffffff;
+  --text-secondary: #9090a8;
+  --text-muted: #5a5a70;
+  --border-default: #3a3a5c;
+  --border-hover: #533483;
+  --border-highlight: #e94560;
+  --font-display: 'Press Start 2P', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-body: -apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif;
+  --font-mono: Consolas, 'Courier New', monospace;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 2px;
+  --border-width: 2px;
+  --shadow-card: 3px 3px 0 #533483;
+  --shadow-dialog: 6px 6px 0 #16162a;
+  --glow-accent: none;
+  --motion-fast: 100ms;
+  --motion-normal: 200ms;
+  --motion-easing: steps(3, end);
 }
 
-/* Dark Theme (默认暗色) */
-.dark {
-  --bg-primary: #0B0C15;
-  --bg-secondary: #151621;
-  --bg-tertiary: #1E1F2E;
-
-  --accent-primary: #7C3AED;   /* Violet-600 */
-  --accent-secondary: #22D3EE; /* Cyan-400 */
-  --accent-success: #10B981;
-  --accent-warning: #F59E0B;
-  --accent-error: #EF4444;
-
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-
-  --border-default: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
-  --border-highlight: rgba(124, 58, 237, 0.5);
+/* 动效三档全局门控 */
+[data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after {
+  animation: none !important; transition: none !important;
 }
-
-/* Cyberpunk Theme (赛博朋克) */
-.cyberpunk {
-  --bg-primary: #0D0221;
-  --bg-secondary: #1A0533;
-  --bg-tertiary: #2D0A4E;
-
-  --accent-primary: #FF00FF;   /* Magenta */
-  --accent-secondary: #00FFFF; /* Cyan */
-  --accent-success: #39FF14;
-  --accent-warning: #FFD700;
-  --accent-error: #FF0040;
-
-  --text-primary: #FFFFFF;
-  --text-secondary: #E0B0FF;
-  --text-muted: #9D4EDD;
-
-  --border-default: rgba(255, 0, 255, 0.15);
-  --border-hover: rgba(255, 0, 255, 0.3);
-  --border-highlight: rgba(0, 255, 255, 0.5);
-}
-
-/* Ocean Theme (海洋蓝) */
-.ocean {
-  --bg-primary: #0A192F;
-  --bg-secondary: #112240;
-  --bg-tertiary: #1D3557;
-
-  --accent-primary: #64FFDA;   /* Teal */
-  --accent-secondary: #58A6FF; /* Blue */
-  --accent-success: #4ADE80;
-  --accent-warning: #FCD34D;
-  --accent-error: #F87171;
-
-  --text-primary: #CCD6F6;
-  --text-secondary: #8892B0;
-  --text-muted: #5C6A86;
-
-  --border-default: rgba(100, 255, 218, 0.1);
-  --border-hover: rgba(100, 255, 218, 0.2);
-  --border-highlight: rgba(100, 255, 218, 0.5);
-}
-
-/* Forest Theme (森林绿) */
-.forest {
-  --bg-primary: #0F1A0F;
-  --bg-secondary: #1A2E1A;
-  --bg-tertiary: #264226;
-
-  --accent-primary: #4ADE80;   /* Emerald */
-  --accent-secondary: #A3E635; /* Lime */
-  --accent-success: #22C55E;
-  --accent-warning: #FBBF24;
-  --accent-error: #F87171;
-
-  --text-primary: #ECFDF5;
-  --text-secondary: #A7F3D0;
-  --text-muted: #6EE7B7;
-
-  --border-default: rgba(74, 222, 128, 0.1);
-  --border-hover: rgba(74, 222, 128, 0.2);
-  --border-highlight: rgba(74, 222, 128, 0.5);
-}
-
-/* Sunset Theme (日落橙) */
-.sunset {
-  --bg-primary: #1A0A0A;
-  --bg-secondary: #2D1515;
-  --bg-tertiary: #421F1F;
-
-  --accent-primary: #F97316;   /* Orange */
-  --accent-secondary: #FBBF24; /* Amber */
-  --accent-success: #4ADE80;
-  --accent-warning: #F59E0B;
-  --accent-error: #EF4444;
-
-  --text-primary: #FFF7ED;
-  --text-secondary: #FDBA74;
-  --text-muted: #C2410C;
-
-  --border-default: rgba(249, 115, 22, 0.15);
-  --border-hover: rgba(249, 115, 22, 0.25);
-  --border-highlight: rgba(249, 115, 22, 0.5);
-}
-
-/* Rose Theme (玫瑰红) */
-.rose {
-  --bg-primary: #1A0A14;
-  --bg-secondary: #2D1525;
-  --bg-tertiary: #421F36;
-
-  --accent-primary: #F43F5E;   /* Rose */
-  --accent-secondary: #FB7185; /* Pink */
-  --accent-success: #4ADE80;
-  --accent-warning: #FBBF24;
-  --accent-error: #EF4444;
-
-  --text-primary: #FFF1F2;
-  --text-secondary: #FDA4AF;
-  --text-muted: #9F1239;
-
-  --border-default: rgba(244, 63, 94, 0.15);
-  --border-hover: rgba(244, 63, 94, 0.25);
-  --border-highlight: rgba(244, 63, 94, 0.5);
-}
-
-/* Nord Theme (北欧风) */
-.nord {
-  --bg-primary: #2E3440;
-  --bg-secondary: #3B4252;
-  --bg-tertiary: #434C5E;
-
-  --accent-primary: #88C0D0;   /* Nord Frost */
-  --accent-secondary: #81A1C1; /* Nord Blue */
-  --accent-success: #A3BE8C;
-  --accent-warning: #EBCB8B;
-  --accent-error: #BF616A;
-
-  --text-primary: #ECEFF4;
-  --text-secondary: #D8DEE9;
-  --text-muted: #4C566A;
-
-  --border-default: rgba(136, 192, 208, 0.1);
-  --border-hover: rgba(136, 192, 208, 0.2);
-  --border-highlight: rgba(136, 192, 208, 0.5);
+[data-motion="low"] *, [data-motion="low"] *::before, [data-motion="low"] *::after {
+  animation: none !important;
 }
 
 /* Global Styles */
@@ -205,13 +86,13 @@ html, body, #root {
 }
 
 body {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-body);
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color var(--motion-normal) var(--motion-easing), color var(--motion-normal) var(--motion-easing);
 }
 
 /* Scrollbar */

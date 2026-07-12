@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { useRomStore } from "@/stores/romStore";
-import { useAppStore, THEMES } from "@/stores/appStore";
+import { useAppStore } from "@/stores/appStore";
+import { BUILTIN_THEMES } from "@/theme/registry";
 import { useScraperStore } from "@/stores/scraperStore";
 import { Folder, Trash2, RefreshCw, Plus, HardDrive, X, Settings2, Key, Globe, Shield, Activity, Save, Info, GripVertical } from "lucide-react";
 import { clsx } from "clsx";
@@ -32,7 +33,7 @@ interface DirectoryScanResult {
 
 export default function Settings() {
   const { t } = useTranslation();
-  const { theme, setTheme } = useAppStore();
+  const { themeId, setTheme } = useAppStore();
   const {
     scanDirectories,
     fetchScanDirectories,
@@ -363,19 +364,18 @@ export default function Settings() {
               <h2 className="text-lg font-medium text-text-primary mb-4">{t("settings.appearance.title")}</h2>
 
             <div className="grid grid-cols-4 gap-3">
-              {THEMES.map((t) => (
+              {BUILTIN_THEMES.map((tm) => (
                 <button
-                  key={t.id}
-                  onClick={() => setTheme(t.id)}
+                  key={tm.id}
+                  onClick={() => setTheme(tm.id)}
                   className={clsx(
                     "p-4 rounded-xl border transition-all flex flex-col items-center gap-2",
-                    theme === t.id
+                    themeId === tm.id
                       ? "bg-bg-secondary border-accent-primary text-text-primary ring-1 ring-accent-primary"
                       : "bg-bg-secondary border-border-default text-text-secondary hover:border-border-hover"
                   )}
                 >
-                  <span className="text-2xl">{t.icon}</span>
-                  <span className="text-sm font-medium">{t.name}</span>
+                  <span className="text-sm font-medium">{tm.name}</span>
                 </button>
               ))}
             </div>

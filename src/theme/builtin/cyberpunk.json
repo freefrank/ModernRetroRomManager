@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1, "id": "cyberpunk", "name": "赛博霓虹", "author": "built-in",
+  "tokens": {
+    "bg-primary": "#0a0e17", "bg-secondary": "#0d1220", "bg-tertiary": "#141b30",
+    "accent-primary": "#00e5ff", "accent-secondary": "#ff2a6d",
+    "accent-success": "#05ffa1", "accent-warning": "#ffd700", "accent-error": "#ff2a6d",
+    "text-primary": "#eaf6ff", "text-secondary": "#7a8db0", "text-muted": "#4a5a7a",
+    "border-default": "rgba(0,229,255,0.18)", "border-hover": "rgba(0,229,255,0.4)", "border-highlight": "rgba(255,42,109,0.6)",
+    "font-display": "'Segoe UI', 'Microsoft YaHei', sans-serif",
+    "font-body": "-apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif",
+    "font-mono": "Consolas, 'Courier New', monospace",
+    "radius-sm": "2px", "radius-md": "4px", "radius-lg": "8px",
+    "border-width": "1px",
+    "shadow-card": "0 0 12px rgba(0,229,255,0.12)", "shadow-dialog": "0 0 40px rgba(0,229,255,0.25)",
+    "glow-accent": "0 0 10px rgba(0,229,255,0.6)",
+    "motion-fast": "100ms", "motion-normal": "220ms", "motion-easing": "cubic-bezier(0.3, 0, 0.2, 1)"
+  },
+  "effects": {
+    "backdrop": { "name": "scanlines", "opacity": 0.03 },
+    "cardHover": { "name": "neon-pulse" },
+    "buttonPress": { "name": "fade-scale" },
+    "pageTransition": { "name": "fade-scale" },
+    "focusRing": { "name": "neon-pulse" }
+  }
+}
