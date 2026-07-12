@@ -22,7 +22,9 @@
    ------------------------------------------------------------ */
 .rr-backdrop[data-fx="scanlines"] {
   position: fixed; inset: 0; pointer-events: none; z-index: 9999;
-  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.35) 0 1px, transparent 1px 3px);
+  /* 线色跟随主题文本色(暗底亮线):45% × 插槽 opacity(retro 0.1 / cyber 0.06)
+     ≈ 4.5% / 2.7% 亮线,1x 下肉眼可辨且不干扰阅读;纯黑线叠深底不可见 */
+  background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--text-primary) 45%, transparent) 0 1px, transparent 1px 3px);
   opacity: var(--fx-backdrop-opacity, 0.05);
 }
 [data-motion="off"] .rr-backdrop[data-fx="scanlines"],

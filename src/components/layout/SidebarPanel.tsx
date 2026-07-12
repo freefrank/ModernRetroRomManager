@@ -28,7 +28,9 @@ const panelRowClass = (active: boolean) =>
       : "border-transparent text-text-secondary hover:text-text-primary hover:bg-bg-tertiary",
   );
 
-const panelTitleClass = "text-xs font-semibold text-text-muted tracking-wide";
+/* 面板小标题:12px 下像素字与中文混排基线不协调,强制走正文字体(令牌) */
+const panelTitleClass =
+  "text-xs font-semibold text-text-muted tracking-wide font-[family-name:var(--font-body)]";
 
 /** 库 section 面板:系统树(标题 + 实时搜索过滤 + 系统行) */
 function LibraryPanel() {

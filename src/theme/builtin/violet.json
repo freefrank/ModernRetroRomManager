@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1, "id": "violet", "name": "紫罗兰", "author": "built-in",
   "tokens": {
-    "bg-primary": "#13111c", "bg-secondary": "#1a1726", "bg-tertiary": "#241f33",
+    "bg-primary": "#161221", "bg-secondary": "#1e1830", "bg-tertiary": "#282040",
     "accent-primary": "#8b5cf6", "accent-secondary": "#6366f1",
     "accent-success": "#10b981", "accent-warning": "#f59e0b", "accent-error": "#ef4444",
     "text-primary": "#f8fafc", "text-secondary": "#a29fb8", "text-muted": "#6b6780",
