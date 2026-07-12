@@ -121,12 +121,6 @@ pub fn normalize_game_name(name: &str) -> String {
     result.trim().to_string()
 }
 
-/// 从文件名解析游戏名
-#[allow(dead_code)]
-pub fn parse_game_name_from_filename(filename: &str) -> String {
-    normalize_game_name(filename)
-}
-
 /// 计算搜索结果的置信度分数
 pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     let query_name = normalize_game_name(&query.name);

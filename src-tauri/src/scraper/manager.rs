@@ -434,14 +434,6 @@ impl ScraperManager {
         })
     }
 
-    /// 更新 provider 配置
-    #[allow(dead_code)]
-    pub fn set_config(&mut self, provider_id: &str, config: ProviderConfig) {
-        if self.providers.contains_key(provider_id) {
-            self.configs.insert(provider_id.to_string(), config);
-        }
-    }
-
     /// 启用/禁用 provider
     pub fn set_enabled(&mut self, provider_id: &str, enabled: bool) {
         // 更新内存中的配置（如果存在）
@@ -450,11 +442,14 @@ impl ScraperManager {
         }
 
         // 始终持久化保存到 settings.json（即使 provider 未注册）
+        // 内存状态先行:持久化失败仅记录日志,不影响本次会话的内存配置
         let provider_id_owned = provider_id.to_string();
-        let _ = update_setting(move |settings| {
+        if let Err(e) = update_setting(move |settings| {
             let entry = settings.scrapers.entry(provider_id_owned).or_default();
             entry.enabled = enabled;
-        });
+        }) {
+            eprintln!("[ScraperManager] 持久化 provider '{provider_id}' 启用状态失败: {e}");
+        }
     }
 
     /// 设置 provider 优先级
@@ -465,11 +460,14 @@ impl ScraperManager {
         }
 
         // 始终持久化保存到 settings.json
+        // 内存状态先行:持久化失败仅记录日志,不影响本次会话的内存配置
         let provider_id_owned = provider_id.to_string();
-        let _ = update_setting(move |settings| {
+        if let Err(e) = update_setting(move |settings| {
             let entry = settings.scrapers.entry(provider_id_owned).or_default();
             entry.priority = priority;
-        });
+        }) {
+            eprintln!("[ScraperManager] 持久化 provider '{provider_id}' 优先级失败: {e}");
+        }
     }
 
     /// 获取 Provider 的持久化配置 (API Key 等)
@@ -483,9 +481,12 @@ impl ScraperManager {
         let provider_id_owned = provider_id.to_string();
         let config_clone = config.clone();
 
-        let _ = update_setting(move |settings| {
+        // 内存状态先行:持久化失败仅记录日志,不影响本次会话的内存配置
+        if let Err(e) = update_setting(move |settings| {
             settings.scrapers.insert(provider_id_owned, config_clone);
-        });
+        }) {
+            eprintln!("[ScraperManager] 持久化 provider '{provider_id}' 凭证配置失败: {e}");
+        }
 
         // 同时也更新内存中的启用状态
         if let Some(mem_config) = self.configs.get_mut(provider_id) {
