@@ -3,6 +3,7 @@ pub mod screenscraper;
 pub mod local_cn;
 pub mod cn_repo;
 pub mod jy6d_dz;
+pub mod gba_header;
 pub mod pegasus;
 pub mod types;
 pub mod manager;

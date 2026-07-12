@@ -5,6 +5,7 @@
 use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
 use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
+use crate::scraper::gba_header::identify_gba_rom;
 use crate::scraper::pegasus::parse_pegasus_file;
 use crate::scraper::local_cn::{smart_cn_similarity, to_pinyin_initials};
 use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
@@ -1050,6 +1051,8 @@ pub async fn auto_fix_naming(
     let system_name = system.unwrap_or_else(|| {
         dir_path.file_name().unwrap_or_default().to_string_lossy().to_string()
     });
+    let is_gba = find_mapping_by_folder(&system_name)
+        .is_some_and(|mapping| mapping.folder_name.eq_ignore_ascii_case("GBA"));
 
     // 一次性加载 cn_repo CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
@@ -1117,6 +1120,24 @@ pub async fn auto_fix_naming(
         // 检查是否已有用户手动编辑的数据（confidence = 100）
         if entry.confidence == Some(100.0) && entry.english_name.is_some() {
             continue;
+        }
+
+        // GBA 优先使用 ZIP/ROM Header + 内置全球发行数据。
+        // 只有 Serial 收敛为唯一标准标题时才采用，冲突时继续走中文名称匹配。
+        if is_gba {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_gba_rom(&rom_path) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    eprintln!("[auto_fix_naming] Failed to inspect GBA ROM {:?}: {}", rom_path, error);
+                }
+            }
         }
 
         // 查询名优先级：name（用户编辑/已生成）> extracted_cn_name > 从文件名提取
