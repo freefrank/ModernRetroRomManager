@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import i18next from "i18next";
 import { Layout } from "./components/layout";
 import Library from "./pages/Library";
+import LibraryShelf from "./pages/LibraryShelf";
 import Scraper from "./pages/Scraper";
 import Import from "./pages/Import";
 import Settings from "./pages/Settings";
@@ -88,7 +89,9 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
-        <Route index element={<Library />} />
+        <Route index element={<Navigate to="/library" replace />} />
+        <Route path="library" element={<LibraryShelf />} />
+        <Route path="library/:systemId" element={<Library />} />
         <Route path="scraper" element={<Scraper />} />
         <Route path="cn-tools" element={<CnRomTools />} />
         <Route path="import" element={<Import />} />

@@ -9,6 +9,8 @@ import { clsx } from "clsx";
 interface RomViewProps {
   roms: Rom[];
   viewMode: ViewMode;
+  /** 卡片尺寸缩放系数(>1 卡片更大、列数更少),仅 cover/grid 生效 */
+  cardScale?: number;
   selectedIds: Set<string>;
   onRomClick: (rom: Rom) => void;
   onToggleSelect: (id: string) => void;
@@ -99,20 +101,30 @@ const VIEW_CONFIG = {
   },
 } as const;
 
+// 按缩放系数调整列数:系数越大卡片越大、列数越少(列表模式不缩放)
+function applyCardScale(base: number, viewMode: ViewMode, cardScale: number) {
+  if (viewMode === "list") return base;
+  return Math.max(1, Math.round(base / cardScale));
+}
+
 // Hook for responsive column count based on view mode
-function useColumnCount(viewMode: ViewMode) {
+function useColumnCount(viewMode: ViewMode, cardScale: number) {
   const [columns, setColumns] = useState(() =>
-    VIEW_CONFIG[viewMode].getColumns(typeof window !== "undefined" ? window.innerWidth : 1280)
+    applyCardScale(
+      VIEW_CONFIG[viewMode].getColumns(typeof window !== "undefined" ? window.innerWidth : 1280),
+      viewMode,
+      cardScale
+    )
   );
 
   useEffect(() => {
     const updateColumns = () => {
-      setColumns(VIEW_CONFIG[viewMode].getColumns(window.innerWidth));
+      setColumns(applyCardScale(VIEW_CONFIG[viewMode].getColumns(window.innerWidth), viewMode, cardScale));
     };
     updateColumns();
     window.addEventListener("resize", updateColumns);
     return () => window.removeEventListener("resize", updateColumns);
-  }, [viewMode]);
+  }, [viewMode, cardScale]);
 
   return columns;
 }
@@ -135,10 +147,12 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
     <div
       onClick={() => onRomClick(rom)}
       className={clsx(
-        "group relative aspect-[3/4] rounded-lg overflow-hidden transition-all duration-300 cursor-pointer",
+        "rr-card group relative aspect-[3/4] rounded-[var(--radius-md)] overflow-hidden cursor-pointer",
+        "border-[length:var(--border-width)]",
+        "transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)]",
         isSelected
-          ? "ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-          : "hover:ring-1 hover:ring-accent-primary/50 hover:shadow-lg"
+          ? "border-accent-primary ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary"
+          : "border-transparent"
       )}
     >
       {coverUrl && !imgError ? (
@@ -146,29 +160,29 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
           src={coverUrl}
           alt=""
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-105"
           onError={() => setImgError(true)}
         />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-bg-tertiary to-bg-secondary flex items-center justify-center">
-          <Gamepad2 className="w-10 h-10 text-text-muted/20 group-hover:text-accent-primary/30 transition-colors duration-300" />
+          <Gamepad2 className="w-10 h-10 text-text-muted/20 group-hover:text-accent-primary/30 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
         </div>
       )}
 
       {/* Hover overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+      <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/90 via-bg-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-normal)] ease-[var(--motion-easing)] flex flex-col justify-end p-3">
         <div className="absolute inset-0 flex items-center justify-center">
           <button
-            className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 hover:bg-accent-primary/90 shadow-lg"
+            className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)] hover:bg-accent-primary/90"
             onClick={(e) => e.stopPropagation()}
           >
             <Play className="w-5 h-5 ml-0.5" />
           </button>
         </div>
-        <h3 className="text-sm font-semibold text-white truncate transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+        <h3 className="text-sm font-semibold text-text-primary truncate transform translate-y-2 group-hover:translate-y-0 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)]">
           {rom.name}
         </h3>
-        <span className="text-[10px] text-white/60 uppercase tracking-wider">
+        <span className="text-[10px] text-text-secondary uppercase tracking-wider">
           {rom.system}
         </span>
       </div>
@@ -176,7 +190,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
       {/* Selection checkbox */}
       <div
         className={clsx(
-          "absolute top-2 right-2 z-10 transition-all duration-200",
+          "absolute top-2 right-2 z-10 transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
           isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}
       >
@@ -186,10 +200,10 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
             onToggleSelect(rom.file);
           }}
           className={clsx(
-            "w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg",
+            "w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
             isSelected
-              ? "bg-accent-primary border-accent-primary text-white"
-              : "bg-black/50 border-white/50 text-transparent hover:border-white hover:bg-black/70"
+              ? "bg-accent-primary border-accent-primary text-text-primary"
+              : "bg-bg-primary/60 border-text-primary/50 text-transparent hover:border-text-primary hover:bg-bg-primary/80"
           )}
         >
           <CheckCircle2 className="w-3 h-3" />
@@ -208,32 +222,33 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
     <div
       onClick={() => onRomClick(rom)}
       className={clsx(
-        "group relative bg-bg-secondary rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1 cursor-pointer",
+        "rr-card group relative bg-bg-secondary rounded-[var(--radius-lg)] border-[length:var(--border-width)] overflow-hidden cursor-pointer",
+        "transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)]",
         isSelected
-          ? "border-accent-primary ring-1 ring-accent-primary shadow-[0_0_30px_rgba(124,58,237,0.2)]"
-          : "border-border-default hover:border-accent-primary/50 hover:shadow-[0_0_30px_rgba(124,58,237,0.1)]"
+          ? "border-accent-primary ring-1 ring-accent-primary"
+          : "border-border-default"
       )}
     >
       <div className="aspect-[3/4] bg-gradient-to-br from-bg-tertiary to-bg-primary relative overflow-hidden">
-        <div className="absolute inset-0 bg-accent-primary/5 group-hover:bg-accent-primary/10 transition-colors"></div>
+        <div className="absolute inset-0 bg-accent-primary/5 group-hover:bg-accent-primary/10 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"></div>
 
         {coverUrl && !imgError ? (
           <img
             src={coverUrl}
             alt=""
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-110"
             onError={() => setImgError(true)}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Gamepad2 className="w-12 h-12 text-text-muted/10 group-hover:text-accent-primary/20 transition-colors duration-500" />
+            <Gamepad2 className="w-12 h-12 text-text-muted/10 group-hover:text-accent-primary/20 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
+        <div className="absolute inset-0 bg-bg-primary/60 opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-normal)] ease-[var(--motion-easing)] flex items-center justify-center backdrop-blur-sm">
           <button
-            className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 group-hover:scale-100 transition-all duration-300 hover:bg-accent-primary/90 shadow-lg"
+            className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 group-hover:scale-100 transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)] hover:bg-accent-primary/90"
             onClick={(e) => e.stopPropagation()}
           >
             <Play className="w-6 h-6 ml-1" />
@@ -242,7 +257,7 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
         <div
           className={clsx(
-            "absolute top-3 right-3 z-10 transition-all duration-200",
+            "absolute top-3 right-3 z-10 transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
             isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
         >
@@ -252,10 +267,10 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
               onToggleSelect(rom.file);
             }}
             className={clsx(
-              "w-6 h-6 rounded-full flex items-center justify-center border transition-colors",
+              "w-6 h-6 rounded-full flex items-center justify-center border transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
               isSelected
                 ? "bg-accent-primary border-accent-primary text-text-primary"
-                : "bg-black/50 border-white/30 text-transparent hover:border-white hover:bg-black/70"
+                : "bg-bg-primary/60 border-text-primary/40 text-transparent hover:border-text-primary hover:bg-bg-primary/80"
             )}
           >
             <CheckCircle2 className="w-4 h-4" />
@@ -263,7 +278,7 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
         </div>
 
         <div className="absolute top-3 left-3">
-          <span className="px-2 py-1 rounded-md bg-bg-primary/60 backdrop-blur-md text-[10px] font-bold text-text-primary border border-border-default uppercase">
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] bg-bg-primary/60 backdrop-blur-md text-[10px] font-bold text-text-primary border border-border-default uppercase">
             {rom.system}
           </span>
         </div>
@@ -271,7 +286,7 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
       <div className="p-4">
         <h3
-          className="font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors"
+          className="font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
           title={rom.name}
         >
           {rom.name}
@@ -300,7 +315,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
     <div
       onClick={() => onRomClick(rom)}
       className={clsx(
-        "group flex items-center gap-4 px-4 py-3 transition-colors cursor-pointer border-b border-border-default",
+        "group flex items-center gap-4 px-4 py-3 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] cursor-pointer border-b border-border-default",
         isSelected ? "bg-accent-primary/10 hover:bg-accent-primary/20" : "hover:bg-bg-tertiary"
       )}
     >
@@ -311,7 +326,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
           onToggleSelect(rom.file);
         }}
         className={clsx(
-          "w-5 h-5 rounded flex items-center justify-center border transition-colors flex-shrink-0",
+          "w-5 h-5 rounded-[var(--radius-sm)] flex items-center justify-center border transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] flex-shrink-0",
           isSelected
             ? "bg-accent-primary border-accent-primary text-text-primary"
             : "bg-transparent border-border-default text-transparent hover:border-border-hover"
@@ -322,7 +337,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
       {/* Cover + Name */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-10 h-10 rounded bg-bg-primary flex items-center justify-center text-text-muted flex-shrink-0 overflow-hidden">
+        <div className="w-10 h-10 rounded-[var(--radius-sm)] bg-bg-primary flex items-center justify-center text-text-muted flex-shrink-0 overflow-hidden">
           {coverUrl && !imgError ? (
             <img
               src={coverUrl}
@@ -336,7 +351,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors truncate">
+          <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] truncate">
             {rom.name}
           </div>
           <div className="text-xs text-text-muted truncate">
@@ -346,7 +361,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
       </div>
 
       {/* System */}
-      <span className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase flex-shrink-0">
+      <span className="px-2 py-1 rounded-[var(--radius-sm)] bg-bg-primary border border-border-default text-xs font-medium text-text-secondary uppercase flex-shrink-0">
         {rom.system}
       </span>
 
@@ -365,10 +380,10 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
 // ============ Main Component ============
 
-export default function RomView({ roms, viewMode, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
+export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
   const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
-  const columns = useColumnCount(viewMode);
+  const columns = useColumnCount(viewMode, cardScale);
   const config = VIEW_CONFIG[viewMode];
   const [containerWidth, setContainerWidth] = useState(1200);
 
@@ -433,13 +448,13 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
       ref={parentRef}
       className={clsx(
         "h-full overflow-auto",
-        viewMode === "list" && "bg-bg-secondary rounded-xl border border-border-default"
+        viewMode === "list" && "bg-bg-secondary rounded-[var(--radius-lg)] border-[length:var(--border-width)] border-border-default"
       )}
       style={{ contain: "strict" }}
     >
       {listHeader}
       <div
-        className="transition-opacity duration-200 ease-out"
+        className="transition-opacity duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
         style={{
           height: `${virtualizer.getTotalSize()}px`,
           width: "100%",
@@ -452,7 +467,7 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
           return (
             <div
               key={virtualRow.key}
-              className="transition-all duration-200 ease-out"
+              className="transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
               style={{
                 position: "absolute",
                 top: 0,
@@ -473,7 +488,7 @@ export default function RomView({ roms, viewMode, selectedIds, onRomClick, onTog
               ) : (
                 // Grid/Cover view - multiple items per row
                 <div
-                  className="grid transition-all duration-200 ease-out"
+                  className="grid transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
                   style={{
                     gridTemplateColumns: `repeat(${columns}, 1fr)`,
                     gap: `${config.gap}px`,

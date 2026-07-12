@@ -12,6 +12,31 @@
       "cover": "Cover View",
       "grid": "Card View",
       "list": "List View"
+    },
+    "shelf": {
+      "systemCount": "{{count}} systems",
+      "addCard": "Add Directory",
+      "addCardHint": "Add scan directories in Settings"
+    },
+    "breadcrumb": "Breadcrumb",
+    "systemNotFound": {
+      "title": "System not found",
+      "description": "System \"{{name}}\" does not exist or has been removed",
+      "back": "Back to shelf"
+    },
+    "cardSize": "Card size",
+    "noResults": "No matching games",
+    "noResultsHint": "Try a different keyword",
+    "batch": {
+      "selectedCount": "{{count}} selected",
+      "scrape": "Batch Scrape",
+      "scraping": "Batch scraping..."
+    },
+    "boxart": {
+      "generate": "Generate Boxart",
+      "generating": "Generating {{current}}/{{total}}",
+      "tooltip": "Generate boxart for all PS3 ROMs",
+      "done": "Boxart done: {{success}} succeeded, {{failed}} failed"
     }
   },
   "romDetail": {

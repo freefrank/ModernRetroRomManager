@@ -1,0 +1,78 @@
+import { useNavigate } from "react-router-dom";
+import { Ghost, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useRomStore } from "@/stores/romStore";
+import { Button, Card, EmptyState } from "@/components/ui";
+import SystemCard from "@/components/rom/SystemCard";
+
+/** 系统货架:每个系统一张卡片,点击进入单系统库页 */
+export default function LibraryShelf() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { availableSystems, stats } = useRomStore();
+
+  return (
+    <div className="rr-page flex flex-col h-full max-w-[1600px] mx-auto w-full">
+      {/* Header */}
+      <header className="py-4">
+        <h1 className="text-4xl font-bold tracking-tight text-text-primary mb-2">
+          {t("library.title")}
+        </h1>
+        <p className="text-text-secondary font-medium">
+          {t("library.shelf.systemCount", { count: availableSystems.length })}
+          {" · "}
+          {t("library.gameCount", { count: stats.totalRoms })}
+        </p>
+      </header>
+
+      {availableSystems.length === 0 ? (
+        /* 空态:库为空,引导去设置添加扫描目录 */
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            className="w-full max-w-md"
+            icon={<Ghost />}
+            title={t("library.empty.title")}
+            description={t("library.empty.description")}
+            action={
+              <Button onClick={() => navigate("/settings")}>
+                <Plus className="w-4 h-4" />
+                {t("library.empty.addDirectory")}
+              </Button>
+            }
+          />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {availableSystems.map((sys) => (
+              <SystemCard
+                key={sys.name}
+                name={sys.name}
+                romCount={sys.romCount}
+                onClick={() => navigate(`/library/${encodeURIComponent(sys.name)}`)}
+              />
+            ))}
+
+            {/* 「+ 添加目录」卡:跳设置页 */}
+            <Card
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/settings")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/settings");
+                }
+              }}
+              className="cursor-pointer select-none border-dashed bg-transparent p-6 flex flex-col items-center justify-center gap-2 text-text-muted hover:text-text-primary hover:border-border-hover"
+            >
+              <Plus className="w-8 h-8" />
+              <span className="text-sm font-medium">{t("library.shelf.addCard")}</span>
+              <span className="text-xs">{t("library.shelf.addCardHint")}</span>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

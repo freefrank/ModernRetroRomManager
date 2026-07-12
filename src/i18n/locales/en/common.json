@@ -9,7 +9,9 @@
     "import": "Import/Export",
     "settings": "Settings",
     "tools": "Tools",
-    "cnTools": "Chinese ROM Tools"
+    "cnTools": "Chinese ROM Tools",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "statusBar": {
     "romCount": "ROM: {{count}}",

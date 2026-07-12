@@ -12,6 +12,31 @@
       "cover": "封面视图",
       "grid": "卡片视图",
       "list": "列表视图"
+    },
+    "shelf": {
+      "systemCount": "{{count}} 个系统",
+      "addCard": "添加目录",
+      "addCardHint": "前往设置添加扫描目录"
+    },
+    "breadcrumb": "面包屑导航",
+    "systemNotFound": {
+      "title": "未找到该系统",
+      "description": "系统「{{name}}」不存在或已被移除",
+      "back": "返回系统货架"
+    },
+    "cardSize": "卡片尺寸",
+    "noResults": "没有匹配的游戏",
+    "noResultsHint": "换个关键词试试",
+    "batch": {
+      "selectedCount": "已选择 {{count}} 项",
+      "scrape": "批量抓取",
+      "scraping": "批量抓取中..."
+    },
+    "boxart": {
+      "generate": "生成 Boxart",
+      "generating": "生成中 {{current}}/{{total}}",
+      "tooltip": "为所有 PS3 ROM 生成 Boxart",
+      "done": "Boxart 生成完成:成功 {{success}},失败 {{failed}}"
     }
   },
   "romDetail": {
