@@ -139,3 +139,6 @@ CLAUDE.md
 AGENTS.md
 .claude/
 test_matching.txt
+
+# 可视化头脑风暴临时文件
+.superpowers/
