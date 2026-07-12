@@ -8,8 +8,8 @@
     "archive": {
       "organize": "解压整理",
       "title": "解压并整理 ROM",
-      "description": "解压目录中的 RAR/RAR5 ROM，并把已处理的压缩源移入 _archives。不会覆盖同名 ROM。当前支持 MD、N64、SFC。",
-      "passwordPlaceholder": "压缩包密码（无密码可留空）",
+      "description": "解压目录中的 RAR/RAR5 ROM，并把已处理的压缩源移入 _archives。填写的密码将用于本次批量解压的所有压缩包；无密码请留空。不会覆盖同名 ROM。当前支持 MD、N64、SFC。",
+      "passwordPlaceholder": "本次批量解压共用密码（可留空）",
       "cancel": "取消",
       "confirm": "开始整理"
     },

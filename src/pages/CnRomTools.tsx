@@ -22,7 +22,7 @@ export default function CnRomTools() {
   const [isExporting, setIsExporting] = useState(false);
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-  const [archivePassword, setArchivePassword] = useState("oldmanemu.net");
+  const [archivePassword, setArchivePassword] = useState("");
 
   // 从 store 获取状态
   const {

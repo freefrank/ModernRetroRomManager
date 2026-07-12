@@ -8,8 +8,8 @@
     "archive": {
       "organize": "Extract & Organize",
       "title": "Extract and Organize ROMs",
-      "description": "Extract RAR/RAR5 ROMs and move processed archives into _archives. Existing ROMs are never overwritten. Supports MD, N64 and SFC.",
-      "passwordPlaceholder": "Archive password (leave blank if none)",
+      "description": "Extract RAR/RAR5 ROMs and move processed archives into _archives. The entered password is shared by every archive in this batch; leave it blank for unencrypted archives. Existing ROMs are never overwritten. Supports MD, N64 and SFC.",
+      "passwordPlaceholder": "Shared password for this batch (optional)",
       "cancel": "Cancel",
       "confirm": "Start"
     },
