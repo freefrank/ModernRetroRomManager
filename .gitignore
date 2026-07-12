@@ -130,6 +130,9 @@ Thumbs.db
 
 # Claude Code
 CLAUDE.md
+
+# Local CodeGraph index
+.codegraph/
 AGENTS.md
 .claude/
 test_matching.txt

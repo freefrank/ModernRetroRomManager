@@ -1,0 +1,20 @@
+# 统一文本文件使用 LF，避免 Windows/WSL 产生整文件换行噪声
+* text=auto eol=lf
+
+# Windows 专用脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制资源不参与换行转换
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.zip binary
+*.7z binary
+*.dat text eol=lf
+*.db binary
+*.sqlite binary
