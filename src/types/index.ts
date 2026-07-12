@@ -169,6 +169,16 @@ export type ExportFormat =
   | "launchbox"
   | "retroarch";
 
+// 已导入自定义主题信息(字段名与后端 snake_case 保持一致)
+export interface CustomThemeInfo {
+  /** theme.json 原文(前端解析后再走 validateManifest) */
+  manifest_json: string;
+  /** 解压目录绝对路径(assets 解析用) */
+  dir: string;
+  /** 清洗后的自定义 CSS(无则为 null) */
+  custom_css?: string | null;
+}
+
 // UI 状态
 export type ViewMode = "grid" | "list" | "cover";
 

@@ -23,17 +23,17 @@ pub struct DirectoryEntry {
 #[tauri::command]
 pub fn validate_path(path: String) -> Result<PathValidation, String> {
     let path_buf = PathBuf::from(&path);
-    
+
     let exists = path_buf.exists();
     let is_directory = path_buf.is_dir();
-    
+
     // 检查可读性
     let readable = if exists {
         std::fs::read_dir(&path_buf).is_ok()
     } else {
         false
     };
-    
+
     // 检查可写性（尝试在目标目录创建临时文件）
     let writable = if exists && is_directory {
         let temp_file = path_buf.join(".write_test");
@@ -47,7 +47,7 @@ pub fn validate_path(path: String) -> Result<PathValidation, String> {
     } else {
         false
     };
-    
+
     Ok(PathValidation {
         path,
         exists,
@@ -61,47 +61,49 @@ pub fn validate_path(path: String) -> Result<PathValidation, String> {
 #[tauri::command]
 pub fn list_directory(path: String) -> Result<Vec<DirectoryEntry>, String> {
     let path_buf = PathBuf::from(&path);
-    
+
     if !path_buf.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
-    
+
     if !path_buf.is_dir() {
         return Err(format!("Path is not a directory: {}", path));
     }
-    
-    let entries = std::fs::read_dir(&path_buf)
-        .map_err(|e| format!("Failed to read directory: {}", e))?;
-    
+
+    let entries =
+        std::fs::read_dir(&path_buf).map_err(|e| format!("Failed to read directory: {}", e))?;
+
     let mut result: Vec<DirectoryEntry> = entries
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let metadata = entry.metadata().ok()?;
             let name = entry.file_name().to_string_lossy().to_string();
-            
+
             // 跳过隐藏文件（以 . 开头）
             if name.starts_with('.') {
                 return None;
             }
-            
+
             Some(DirectoryEntry {
                 name,
                 path: entry.path().to_string_lossy().to_string(),
                 is_directory: metadata.is_dir(),
-                size: if metadata.is_file() { Some(metadata.len()) } else { None },
+                size: if metadata.is_file() {
+                    Some(metadata.len())
+                } else {
+                    None
+                },
             })
         })
         .collect();
-    
+
     // 目录优先，然后按名称排序
-    result.sort_by(|a, b| {
-        match (a.is_directory, b.is_directory) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
+    result.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
-    
+
     Ok(result)
 }
 
@@ -131,28 +133,36 @@ pub fn save_app_settings(settings: crate::settings::AppSettings) -> Result<(), S
 
 /// 更新单个配置项
 #[tauri::command]
-pub fn update_app_setting(key: String, value: String) -> Result<crate::settings::AppSettings, String> {
-    crate::settings::update_setting(|s| {
-        match key.as_str() {
-            "theme" => s.theme = value.clone(),
-            "language" => s.language = value.clone(),
-            "view_mode" => s.view_mode = value.clone(),
-            _ => {}
-        }
-    }).map_err(|e| e.to_string())
+pub fn update_app_setting(
+    key: String,
+    value: String,
+) -> Result<crate::settings::AppSettings, String> {
+    crate::settings::update_setting(|s| match key.as_str() {
+        "theme" => s.theme = value.clone(),
+        "language" => s.language = value.clone(),
+        "view_mode" => s.view_mode = value.clone(),
+        "motion_level" => s.motion_level = Some(value.clone()),
+        _ => {}
+    })
+    .map_err(|e| e.to_string())
 }
 
 /// 获取所有 Scraper 配置
 #[tauri::command]
-pub fn get_scraper_configs() -> Result<std::collections::HashMap<String, crate::settings::ScraperConfig>, String> {
+pub fn get_scraper_configs(
+) -> Result<std::collections::HashMap<String, crate::settings::ScraperConfig>, String> {
     Ok(crate::settings::get_settings().scrapers)
 }
 
 /// 保存单个 Scraper 配置
 #[tauri::command]
-pub fn save_scraper_config(provider: String, config: crate::settings::ScraperConfig) -> Result<(), String> {
+pub fn save_scraper_config(
+    provider: String,
+    config: crate::settings::ScraperConfig,
+) -> Result<(), String> {
     crate::settings::update_setting(|s| {
         s.scrapers.insert(provider, config);
-    }).map_err(|e| e.to_string())?;
+    })
+    .map_err(|e| e.to_string())?;
     Ok(())
 }

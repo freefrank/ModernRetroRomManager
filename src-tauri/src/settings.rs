@@ -53,6 +53,9 @@ pub struct AppSettings {
     pub language: String,
     /// 视图模式: grid, list
     pub view_mode: String,
+    /// 动效等级: off, low, full(旧版 settings.json 无此字段,缺省为 None)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub motion_level: Option<String>,
     /// 目录列表
     #[serde(default)]
     pub directories: Vec<DirectoryConfig>,
@@ -67,6 +70,7 @@ impl Default for AppSettings {
             theme: "dark".to_string(),
             language: "zh".to_string(),
             view_mode: "grid".to_string(),
+            motion_level: None,
             directories: Vec::new(),
             scrapers: HashMap::new(),
         }
@@ -78,7 +82,7 @@ static SETTINGS: RwLock<Option<AppSettings>> = RwLock::new(None);
 /// 加载配置（如果不存在则创建默认配置）
 pub fn load_settings() -> Result<AppSettings, Box<dyn std::error::Error>> {
     let path = config::get_settings_path();
-    
+
     if path.exists() {
         let content = fs::read_to_string(&path)?;
         let settings: AppSettings = serde_json::from_str(&content)?;
@@ -95,12 +99,12 @@ pub fn load_settings() -> Result<AppSettings, Box<dyn std::error::Error>> {
 /// 保存配置
 pub fn save_settings(settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
     let path = config::get_settings_path();
-    
+
     // 确保目录存在
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    
+
     let content = serde_json::to_string_pretty(settings)?;
     fs::write(&path, content)?;
     *SETTINGS.write().unwrap() = Some(settings.clone());
@@ -109,11 +113,7 @@ pub fn save_settings(settings: &AppSettings) -> Result<(), Box<dyn std::error::E
 
 /// 获取当前配置（内存缓存）
 pub fn get_settings() -> AppSettings {
-    SETTINGS
-        .read()
-        .unwrap()
-        .clone()
-        .unwrap_or_default()
+    SETTINGS.read().unwrap().clone().unwrap_or_default()
 }
 
 /// 更新单个配置项
@@ -125,4 +125,35 @@ where
     updater(&mut settings);
     save_settings(&settings)?;
     Ok(settings)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn motion_level_serde_roundtrip_and_backward_compat() {
+        // 序列化/反序列化往返
+        let mut s = AppSettings::default();
+        assert!(s.motion_level.is_none());
+        s.motion_level = Some("low".to_string());
+        let json = serde_json::to_string(&s).unwrap();
+        let loaded: AppSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.motion_level.as_deref(), Some("low"));
+
+        // 旧版 settings.json(无 motion_level 字段)向后兼容
+        let legacy = r#"{"theme":"dark","language":"zh","view_mode":"grid"}"#;
+        let loaded: AppSettings = serde_json::from_str(legacy).unwrap();
+        assert!(loaded.motion_level.is_none());
+    }
+
+    #[test]
+    fn update_motion_level_then_reload_reads_back() {
+        let updated = update_setting(|s| s.motion_level = Some("off".to_string())).unwrap();
+        assert_eq!(updated.motion_level.as_deref(), Some("off"));
+
+        // 重新从磁盘加载,能读回 motion_level
+        let reloaded = load_settings().unwrap();
+        assert_eq!(reloaded.motion_level.as_deref(), Some("off"));
+    }
 }

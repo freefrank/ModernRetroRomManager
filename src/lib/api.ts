@@ -1,4 +1,4 @@
-import type { SystemRoms, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions } from "@/types";
+import type { SystemRoms, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo } from "@/types";
 
 declare global {
   interface Window {
@@ -258,6 +258,35 @@ export const scraperApi = {
     if (isTauri()) {
       await tauriInvoke("delete_temp_media", { system, romId, assetType });
     }
+  },
+};
+
+// ============ Theme API ============
+
+export const themeApi = {
+  /** 列出已导入的自定义主题 */
+  async listCustomThemes(): Promise<CustomThemeInfo[]> {
+    if (isTauri()) {
+      return tauriInvoke<CustomThemeInfo[]>("list_custom_themes");
+    }
+    throw new Error("主题包管理仅桌面版可用");
+  },
+
+  /** 导入 .rrtheme 主题包 */
+  async importThemePack(path: string): Promise<CustomThemeInfo> {
+    if (isTauri()) {
+      return tauriInvoke<CustomThemeInfo>("import_theme_pack", { filePath: path });
+    }
+    throw new Error("主题包管理仅桌面版可用");
+  },
+
+  /** 删除已导入的自定义主题 */
+  async deleteCustomTheme(id: string): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("delete_custom_theme", { id });
+      return;
+    }
+    throw new Error("主题包管理仅桌面版可用");
   },
 };
 

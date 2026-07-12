@@ -7,7 +7,6 @@ pub mod settings;
 pub mod system_mapping;
 
 use commands::scraper::ScraperState;
-use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,7 +15,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(ScraperState::new())
-        .setup(|app| {
+        .setup(|_app| {
             // Debug: 输出配置目录位置
             println!("[DEBUG] Config directory: {:?}", config::get_config_dir());
             println!("[DEBUG] Settings file: {:?}", config::get_settings_path());
@@ -29,7 +28,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::system::get_systems,
             commands::system::get_system,
-commands::rom::get_roms,
+            commands::rom::get_roms,
             commands::rom::get_rom_stats,
             commands::rom::get_roms_for_single_directory,
             commands::directory::add_directory,
@@ -61,13 +60,11 @@ commands::rom::get_roms,
             commands::scraper::save_temp_metadata,
             commands::scraper::get_temp_media_list,
             commands::scraper::delete_temp_media,
-
             // Export (New location)
             commands::export::export_scraped_data,
             commands::export::export_to_emulationstation, // Placeholder
-            commands::export::export_to_pegasus, // Placeholder
-            
-// Naming check / CN ROM Tool
+            commands::export::export_to_pegasus,          // Placeholder
+            // Naming check / CN ROM Tool
             commands::naming_check::scan_directory_for_naming_check,
             commands::naming_check::get_naming_check_results,
             commands::naming_check::auto_fix_naming,
@@ -76,12 +73,14 @@ commands::rom::get_roms,
             commands::naming_check::export_cn_metadata,
             commands::naming_check::update_english_name,
             commands::naming_check::update_extracted_cn_name,
-
             // Tools
             commands::tools::update_cn_repo,
-
             // PS3
             commands::ps3::generate_ps3_boxart,
+            // Theme
+            commands::theme::list_custom_themes,
+            commands::theme::import_theme_pack,
+            commands::theme::delete_custom_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
