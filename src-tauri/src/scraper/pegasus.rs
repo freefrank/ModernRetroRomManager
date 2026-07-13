@@ -256,7 +256,11 @@ fn apply_key_value(
     let key = key_lower.as_str();
 
     if let Some(ref mut g) = game {
-        let first_value = || value.split_whitespace().next().map(|v| v.to_string());
+        // 资源字段在本项目中只保存一个路径；路径本身可能包含空格，不能按空白截断。
+        let asset_value = || {
+            let value = value.trim().trim_matches('"');
+            (!value.is_empty()).then(|| value.to_string())
+        };
 
         match key {
             "file" => g.file = Some(value.to_string()),
@@ -272,22 +276,22 @@ fn apply_key_value(
             "sort_title" | "sort_name" | "sort-by" => g.sort_title = Some(value.to_string()),
 
             "assets.boxfront" | "assets.box_front" | "assets.boxart2d" | "boxart" | "cover" => {
-                g.box_front = first_value();
+                g.box_front = asset_value();
             }
-            "assets.boxback" | "assets.box_back" => g.box_back = first_value(),
-            "assets.boxspine" | "assets.box_spine" => g.box_spine = first_value(),
-            "assets.boxfull" | "assets.box_full" => g.box_full = first_value(),
-            "assets.cartridge" | "assets.disc" | "assets.cart" => g.cartridge = first_value(),
-            "assets.logo" | "assets.wheel" => g.logo = first_value(),
-            "assets.marquee" | "assets.banner" => g.marquee = first_value(),
-            "assets.bezel" | "assets.screenmarquee" => g.bezel = first_value(),
-            "assets.gridicon" | "assets.steam" | "assets.poster" => g.gridicon = first_value(),
-            "assets.flyer" => g.flyer = first_value(),
-            "assets.background" | "assets.fanart" => g.background = first_value(),
-            "assets.music" => g.music = first_value(),
-            "assets.screenshot" | "assets.screenshots" => g.screenshot = first_value(),
-            "assets.titlescreen" | "assets.title_screen" => g.titlescreen = first_value(),
-            "assets.video" | "assets.videos" => g.video = first_value(),
+            "assets.boxback" | "assets.box_back" => g.box_back = asset_value(),
+            "assets.boxspine" | "assets.box_spine" => g.box_spine = asset_value(),
+            "assets.boxfull" | "assets.box_full" => g.box_full = asset_value(),
+            "assets.cartridge" | "assets.disc" | "assets.cart" => g.cartridge = asset_value(),
+            "assets.logo" | "assets.wheel" => g.logo = asset_value(),
+            "assets.marquee" | "assets.banner" => g.marquee = asset_value(),
+            "assets.bezel" | "assets.screenmarquee" => g.bezel = asset_value(),
+            "assets.gridicon" | "assets.steam" | "assets.poster" => g.gridicon = asset_value(),
+            "assets.flyer" => g.flyer = asset_value(),
+            "assets.background" | "assets.fanart" => g.background = asset_value(),
+            "assets.music" => g.music = asset_value(),
+            "assets.screenshot" | "assets.screenshots" => g.screenshot = asset_value(),
+            "assets.titlescreen" | "assets.title_screen" => g.titlescreen = asset_value(),
+            "assets.video" | "assets.videos" => g.video = asset_value(),
 
             "x-english-name" => {
                 g.extra
@@ -669,6 +673,7 @@ developer: Nintendo
 genre: Platform
 players: 2
 rating: 95%
+assets.boxFront: media/Super Mario World/boxfront.png
 "#;
         let result = parse_pegasus_content(content).unwrap();
         assert_eq!(result.collections.len(), 1);
@@ -676,5 +681,9 @@ rating: 95%
         assert_eq!(result.games.len(), 1);
         assert_eq!(result.games[0].name, "Super Mario World");
         assert_eq!(result.games[0].developer, Some("Nintendo".to_string()));
+        assert_eq!(
+            result.games[0].box_front.as_deref(),
+            Some("media/Super Mario World/boxfront.png")
+        );
     }
 }

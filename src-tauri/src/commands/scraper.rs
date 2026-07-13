@@ -3,6 +3,7 @@
 //! 前端调用的 Scraper 相关命令
 
 use crate::config::{get_cache_dir_for_library, get_temp_dir, get_temp_dir_for_library};
+use crate::rom_index::invalidate_index;
 use crate::rom_service::RomInfo;
 use crate::scraper::{
     cartridge_header::identify_cartridge_rom,
@@ -577,6 +578,7 @@ pub async fn apply_scraped_data(
 
     // 3. 元数据和已选媒体路径一次写入，ROM 库刷新后即可显示封面。
     save_metadata_pegasus_with_media(&rom, &options.metadata, &materialized, true)?;
+    invalidate_index();
     if let Some(provider) = options.provider_id.as_deref() {
         record_selected(provider);
     }
@@ -858,6 +860,8 @@ pub async fn batch_scrape(
             })
             .await;
 
+        invalidate_index();
+
         let was_cancelled = batch_cancelled.load(Ordering::Acquire);
         let current = completed.load(Ordering::Relaxed);
         batch_running.store(false, Ordering::Release);
@@ -957,7 +961,9 @@ pub async fn save_temp_metadata(
         ..Default::default()
     };
 
-    save_metadata_pegasus(&rom, &metadata, true)
+    save_metadata_pegasus(&rom, &metadata, true)?;
+    invalidate_index();
+    Ok(())
 }
 
 #[tauri::command]
@@ -990,6 +996,7 @@ pub async fn delete_temp_media(
         }
     }
 
+    invalidate_index();
     Ok(())
 }
 

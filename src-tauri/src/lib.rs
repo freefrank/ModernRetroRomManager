@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod ps3;
 pub mod rom_archive;
+mod rom_index;
 mod rom_service;
 mod scraper;
 pub mod settings;
@@ -32,8 +33,11 @@ pub fn run() {
             commands::system::get_systems,
             commands::system::get_system,
             commands::rom::get_roms,
+            commands::rom::get_rom_library_summary,
+            commands::rom::get_system_roms,
             commands::rom::get_rom_stats,
             commands::rom::get_roms_for_single_directory,
+            commands::rom::scan_rom_library,
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,

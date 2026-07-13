@@ -1,3 +1,4 @@
+use crate::rom_index::invalidate_index;
 use crate::settings::{get_settings, update_setting, DirectoryConfig};
 use crate::system_mapping::find_mapping_by_folder;
 use serde::{Deserialize, Serialize};
@@ -85,6 +86,7 @@ pub fn add_directory(
         }
     })
     .map_err(|e| e.to_string())?;
+    invalidate_index();
 
     Ok(DirectoryInfo {
         path: normalized,
@@ -104,6 +106,7 @@ pub fn remove_directory(path: String) -> Result<(), String> {
             .retain(|d| normalize_path(&d.path) != normalized);
     })
     .map_err(|e| e.to_string())?;
+    invalidate_index();
 
     Ok(())
 }

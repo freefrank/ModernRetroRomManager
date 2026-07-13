@@ -1,6 +1,10 @@
-use crate::rom_service::{get_all_roms, get_roms_for_directory, SystemRoms};
+use crate::rom_index::{load_cached_roms, scan_library as scan_index, ScanMode};
+use crate::rom_service::{get_roms_for_directory, SystemRoms};
 use crate::settings::DirectoryConfig;
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,13 +19,125 @@ pub struct RomStats {
     pub total_systems: usize,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RomSystemSummary {
+    pub system: String,
+    pub path: String,
+    pub rom_count: usize,
+    pub scraped_count: usize,
+    pub total_size: u64,
+}
+
+fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
+    systems
+        .iter()
+        .map(|entry| RomSystemSummary {
+            system: entry.system.clone(),
+            path: entry.path.clone(),
+            rom_count: entry.roms.len(),
+            scraped_count: entry
+                .roms
+                .iter()
+                .filter(|rom| {
+                    rom.box_front.is_some()
+                        || rom.description.is_some()
+                        || rom.temp_data.as_ref().is_some_and(|game| {
+                            game.box_front.is_some() || game.description.is_some()
+                        })
+                })
+                .count(),
+            total_size: entry.roms.iter().filter_map(|rom| rom.file_size).sum(),
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RomScanProgress {
+    pub current: usize,
+    pub total: usize,
+    pub system: Option<String>,
+    pub mode: String,
+    pub message: String,
+    pub finished: bool,
+    pub changed: bool,
+}
+
+async fn scan_with_events(app: AppHandle, mode: ScanMode) -> Result<Vec<SystemRoms>, String> {
+    let mode_name = match mode {
+        ScanMode::Full => "full",
+        ScanMode::Incremental => "incremental",
+    }
+    .to_string();
+    let current = Arc::new(AtomicUsize::new(0));
+    let total = Arc::new(AtomicUsize::new(0));
+    let event_app = app.clone();
+    let event_mode = mode_name.clone();
+    let event_current = Arc::clone(&current);
+    let event_total = Arc::clone(&total);
+
+    let _ = app.emit(
+        "rom-scan-progress",
+        RomScanProgress {
+            current: 0,
+            total: 0,
+            system: None,
+            mode: mode_name.clone(),
+            message: "正在准备 ROM 扫描".to_string(),
+            finished: false,
+            changed: false,
+        },
+    );
+
+    let systems = tokio::task::spawn_blocking(move || {
+        scan_index(mode, |update| {
+            event_current.store(update.current, Ordering::Release);
+            event_total.store(update.total, Ordering::Release);
+            let action = if update.changed { "扫描" } else { "检查" };
+            let _ = event_app.emit(
+                "rom-scan-progress",
+                RomScanProgress {
+                    current: update.current,
+                    total: update.total,
+                    system: Some(update.system.clone()),
+                    mode: event_mode.clone(),
+                    message: format!("正在{action}: {}", update.system),
+                    finished: false,
+                    changed: update.changed,
+                },
+            );
+        })
+    })
+    .await
+    .map_err(|error| format!("ROM 扫描任务失败: {error}"))??;
+
+    let _ = app.emit(
+        "rom-scan-progress",
+        RomScanProgress {
+            current: current.load(Ordering::Acquire),
+            total: total.load(Ordering::Acquire),
+            system: None,
+            mode: mode_name,
+            message: "ROM 扫描完成".to_string(),
+            finished: true,
+            changed: false,
+        },
+    );
+    Ok(systems)
+}
+
 /// 获取 ROM 列表 (按系统分组或扁平化)
 #[tauri::command]
-pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, String> {
-    // 在后台线程中执行IO密集型操作，避免阻塞UI
-    let all_systems = tokio::task::spawn_blocking(get_all_roms)
-        .await
-        .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
+pub async fn get_roms(
+    app: AppHandle,
+    filter: Option<RomFilter>,
+) -> Result<Vec<SystemRoms>, String> {
+    let all_systems = if let Some(cached) = load_cached_roms() {
+        cached
+    } else {
+        scan_with_events(app, ScanMode::Full).await?
+    };
 
     if let Some(f) = filter {
         let mut filtered_systems = Vec::new();
@@ -61,13 +177,39 @@ pub async fn get_roms(filter: Option<RomFilter>) -> Result<Vec<SystemRoms>, Stri
     }
 }
 
+#[tauri::command]
+pub async fn get_rom_library_summary(app: AppHandle) -> Result<Vec<RomSystemSummary>, String> {
+    let systems = if let Some(cached) = load_cached_roms() {
+        cached
+    } else {
+        scan_with_events(app, ScanMode::Full).await?
+    };
+    Ok(summarize(&systems))
+}
+
+#[tauri::command]
+pub async fn get_system_roms(app: AppHandle, system: String) -> Result<SystemRoms, String> {
+    let systems = if let Some(cached) = load_cached_roms() {
+        cached
+    } else {
+        scan_with_events(app, ScanMode::Full).await?
+    };
+    systems
+        .into_iter()
+        .find(|entry| entry.system.eq_ignore_ascii_case(&system))
+        .ok_or_else(|| format!("未找到 ROM 平台: {system}"))
+}
+
 /// 获取 ROM 统计信息
 #[tauri::command]
 pub async fn get_rom_stats() -> Result<RomStats, String> {
-    // 在后台线程中执行IO密集型操作，避免阻塞UI
-    let all_systems = tokio::task::spawn_blocking(get_all_roms)
-        .await
-        .map_err(|e| format!("Failed to spawn blocking task: {}", e))??;
+    let all_systems = if let Some(cached) = load_cached_roms() {
+        cached
+    } else {
+        tokio::task::spawn_blocking(|| scan_index(ScanMode::Full, |_| {}))
+            .await
+            .map_err(|error| format!("ROM 扫描任务失败: {error}"))??
+    };
 
     let total_systems = all_systems.len();
     let total_roms = all_systems.iter().map(|s| s.roms.len()).sum();
@@ -76,6 +218,20 @@ pub async fn get_rom_stats() -> Result<RomStats, String> {
         total_roms,
         total_systems,
     })
+}
+
+#[tauri::command]
+pub async fn scan_rom_library(app: AppHandle, full: bool) -> Result<Vec<RomSystemSummary>, String> {
+    let systems = scan_with_events(
+        app,
+        if full {
+            ScanMode::Full
+        } else {
+            ScanMode::Incremental
+        },
+    )
+    .await?;
+    Ok(summarize(&systems))
 }
 
 /// 获取单个目录的ROM列表

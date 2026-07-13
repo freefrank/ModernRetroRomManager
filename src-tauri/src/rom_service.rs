@@ -442,25 +442,31 @@ fn fill_missing_temp_media_from_index(
     index: &TempMediaIndex,
     rom_file: &str,
 ) {
-    if game.box_front.is_none() {
+    let missing_local_asset = |asset: &Option<String>| {
+        asset
+            .as_ref()
+            .is_none_or(|path| !path.starts_with("http") && !Path::new(path).is_file())
+    };
+
+    if missing_local_asset(&game.box_front) {
         game.box_front = find_temp_media_in_index(index, rom_file, "boxfront");
     }
-    if game.box_back.is_none() {
+    if missing_local_asset(&game.box_back) {
         game.box_back = find_temp_media_in_index(index, rom_file, "boxback");
     }
-    if game.logo.is_none() {
+    if missing_local_asset(&game.logo) {
         game.logo = find_temp_media_in_index(index, rom_file, "logo");
     }
-    if game.screenshot.is_none() {
+    if missing_local_asset(&game.screenshot) {
         game.screenshot = find_temp_media_in_index(index, rom_file, "screenshot");
     }
-    if game.titlescreen.is_none() {
+    if missing_local_asset(&game.titlescreen) {
         game.titlescreen = find_temp_media_in_index(index, rom_file, "titlescreen");
     }
-    if game.video.is_none() {
+    if missing_local_asset(&game.video) {
         game.video = find_temp_media_in_index(index, rom_file, "video");
     }
-    if game.background.is_none() {
+    if missing_local_asset(&game.background) {
         game.background = find_temp_media_in_index(index, rom_file, "hero");
     }
 }
@@ -581,6 +587,13 @@ fn try_load_from_temp_metadata(
 
 /// 获取单个目录的ROM列表
 pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> Vec<SystemRoms> {
+    get_roms_for_directory_with_progress(dir_config, &|_| {})
+}
+
+pub fn get_roms_for_directory_with_progress(
+    dir_config: &crate::settings::DirectoryConfig,
+    on_system: &dyn Fn(&str),
+) -> Vec<SystemRoms> {
     let mut systems = Vec::new();
     let dir_path = Path::new(&dir_config.path);
 
@@ -614,6 +627,7 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
                         .and_then(|n| n.to_str())
                         .unwrap_or("Unknown")
                         .to_string();
+                    on_system(&system_name);
 
                     // 尝试加载临时元数据
                     if let Some(roms) =
@@ -663,6 +677,15 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
             .and_then(|n| n.to_str())
             .unwrap_or("Unknown")
             .to_string();
+        if !root_ps3_games.is_empty()
+            || std::fs::read_dir(dir_path).ok().is_some_and(|entries| {
+                entries
+                    .filter_map(Result::ok)
+                    .any(|entry| entry.path().is_file())
+            })
+        {
+            on_system(&root_system_name);
+        }
 
         let format = detect_metadata_format(dir_path);
         let root_scan = if format == "none" {
@@ -733,6 +756,7 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
                 .unwrap_or("Unknown")
                 .to_string()
         });
+        on_system(&system_name);
 
         println!(
             "[DEBUG] 开始扫描单系统目录: {:?}, system={}",
@@ -789,6 +813,7 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
     systems
 }
 
+#[allow(dead_code)]
 pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
     let settings = get_settings();
 
@@ -1471,6 +1496,18 @@ mod tests {
 
         fill_missing_temp_media(&mut game, &dir, "CT特种部队1.zip");
 
+        assert_eq!(
+            game.box_front.as_deref(),
+            Some(media_dir.join("boxfront.png").to_string_lossy().as_ref())
+        );
+
+        game.box_front = Some(
+            dir.join("media")
+                .join("CT特种部队1")
+                .to_string_lossy()
+                .into_owned(),
+        );
+        fill_missing_temp_media(&mut game, &dir, "CT特种部队1.zip");
         assert_eq!(
             game.box_front.as_deref(),
             Some(media_dir.join("boxfront.png").to_string_lossy().as_ref())
