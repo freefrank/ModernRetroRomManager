@@ -275,7 +275,20 @@ export default function ScraperSection() {
                       <Activity className="w-3 h-3" />
                       {formatCapabilities(p.capabilities)}
                     </span>
+                    <span className="text-xs text-text-muted">
+                      {t("settings.apiConfig.stats", {
+                        matched: p.matched_count,
+                        selected: p.selected_count,
+                        cached: p.cache_hit_count,
+                        errors: p.error_count,
+                      })}
+                    </span>
                   </div>
+                  {p.last_error && (
+                    <p className="mt-1 max-w-2xl truncate text-xs text-accent-error" title={p.last_error}>
+                      {t("settings.apiConfig.lastError", { error: p.last_error })}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4">

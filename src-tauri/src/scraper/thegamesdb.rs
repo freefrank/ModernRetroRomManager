@@ -9,6 +9,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 const PROVIDER_ID: &str = "thegamesdb";
+const SEARCH_ENDPOINT: &str = "/v1/Games/ByGameName";
 
 pub struct TheGamesDbClient {
     api_key: String,
@@ -139,14 +140,13 @@ impl ScraperProvider for TheGamesDbClient {
         let requested_platform = query.system.as_deref().and_then(Self::platform_id);
         let mut params = vec![
             ("name", query.name.clone()),
-            ("mode", "natural".into()),
             ("fields", "players,overview,rating,platform".into()),
             ("include", "boxart,platform".into()),
         ];
         if let Some(platform_id) = requested_platform {
             params.push(("filter[platform]", platform_id.to_string()));
         }
-        let response: TgdbGames = self.request("/v1.1/Games/ByGameName", &params).await?;
+        let response: TgdbGames = self.request(SEARCH_ENDPOINT, &params).await?;
         Ok(response
             .data
             .games
@@ -314,4 +314,15 @@ struct TgdbVideoData {
 #[derive(Deserialize)]
 struct TgdbVideo {
     filename: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn uses_current_v1_search_endpoint_and_gba_platform() {
+        assert_eq!(SEARCH_ENDPOINT, "/v1/Games/ByGameName");
+        assert_eq!(TheGamesDbClient::platform_id("gba"), Some("5"));
+    }
 }

@@ -14,8 +14,8 @@ use super::{
     screenscraper::ScreenScraperClient,
     steamgriddb::SteamGridDBClient,
     thegamesdb::TheGamesDbClient,
-    GameMetadata, MediaAsset, ProviderCapability, RomHash, ScrapeQuery, ScrapeResult,
-    ScraperProvider, SearchResult,
+    GameMetadata, MediaAsset, ProviderCapability, ProviderSearchOutcome, RomHash, ScrapeQuery,
+    ScrapeResult, ScraperProvider, SearchResult,
 };
 use crate::settings::{get_settings, update_setting, AppSettings, ScraperConfig};
 
@@ -24,6 +24,34 @@ fn usable_asset(asset: &MediaAsset) -> bool {
     !url.is_empty()
         && (url.starts_with("https://") || url.starts_with("http://"))
         && asset.asset_type.as_str() != "other"
+}
+
+fn record_search_stats(provider: &str, matched: usize, cache_hit: bool, error: Option<&str>) {
+    let provider = provider.to_string();
+    let error = error.map(str::to_string);
+    if let Err(write_error) = update_setting(move |settings| {
+        let stats = settings.scraper_stats.entry(provider).or_default();
+        stats.matched_count = stats.matched_count.saturating_add(matched as u64);
+        if cache_hit {
+            stats.cache_hit_count = stats.cache_hit_count.saturating_add(1);
+        }
+        if let Some(error) = error {
+            stats.error_count = stats.error_count.saturating_add(1);
+            stats.last_error = Some(error);
+        }
+    }) {
+        eprintln!("[scraper] 保存 Provider 搜索统计失败: {write_error}");
+    }
+}
+
+pub fn record_selected(provider: &str) {
+    let provider = provider.to_string();
+    if let Err(error) = update_setting(move |settings| {
+        let stats = settings.scraper_stats.entry(provider).or_default();
+        stats.selected_count = stats.selected_count.saturating_add(1);
+    }) {
+        eprintln!("[scraper] 保存 Provider 采用统计失败: {error}");
+    }
 }
 
 /// Provider 配置
@@ -87,6 +115,17 @@ pub struct ProviderInfo {
     pub rate_limit: u32,
     pub threads: u32,
     pub developer_mode: bool,
+    pub matched_count: u64,
+    pub selected_count: u64,
+    pub cache_hit_count: u64,
+    pub error_count: u64,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SearchReport {
+    pub results: Vec<SearchResult>,
+    pub outcomes: Vec<ProviderSearchOutcome>,
 }
 
 /// 判断给定 provider 的凭证是否已配置完整
@@ -232,6 +271,11 @@ impl ScraperManager {
             .iter()
             .map(|descriptor| {
                 let config = settings.scrapers.get(descriptor.id);
+                let stats = settings
+                    .scraper_stats
+                    .get(descriptor.id)
+                    .cloned()
+                    .unwrap_or_default();
                 ProviderInfo {
                     id: descriptor.id.to_string(),
                     name: descriptor.name.to_string(),
@@ -247,6 +291,11 @@ impl ScraperManager {
                     rate_limit: config.map(|c| c.rate_limit).unwrap_or(1),
                     threads: config.map(|c| c.threads).unwrap_or(1),
                     developer_mode: config.map(|c| c.developer_mode).unwrap_or(false),
+                    matched_count: stats.matched_count,
+                    selected_count: stats.selected_count,
+                    cache_hit_count: stats.cache_hit_count,
+                    error_count: stats.error_count,
+                    last_error: stats.last_error,
                 }
             })
             .collect()
@@ -308,11 +357,18 @@ impl ScraperManager {
     /// 统一搜索 - 并行查询所有启用的 providers,结果经评分排序
     #[allow(dead_code)]
     pub async fn search(&self, query: &ScrapeQuery) -> Vec<SearchResult> {
-        self.search_with_providers_internal(query, &[], false).await
+        self.search_with_providers_internal(query, &[], false)
+            .await
+            .results
     }
 
     /// 用户主动点击搜索时跳过持久缓存，重新查询 Provider 并刷新缓存。
+    #[allow(dead_code)]
     pub async fn search_fresh(&self, query: &ScrapeQuery) -> Vec<SearchResult> {
+        self.search_fresh_report(query).await.results
+    }
+
+    pub async fn search_fresh_report(&self, query: &ScrapeQuery) -> SearchReport {
         self.search_with_providers_internal(query, &[], true).await
     }
 
@@ -321,7 +377,7 @@ impl ScraperManager {
         query: &ScrapeQuery,
         provider_ids: &[String],
         force_refresh: bool,
-    ) -> Vec<SearchResult> {
+    ) -> SearchReport {
         let providers = self.enabled_providers_matching(provider_ids);
 
         // 并行查询所有 provider
@@ -335,14 +391,14 @@ impl ScraperManager {
                 async move {
                     if !force_refresh {
                         if let Some(results) = cache::load_search(&provider_id, &q) {
-                            return (provider_id, Ok(results));
+                            return (provider_id, Ok(results), true);
                         }
                     }
                     let result = provider.search(&q).await;
                     if let Ok(results) = &result {
                         cache::save_search(&provider_id, &q, results);
                     }
-                    (provider_id, result)
+                    (provider_id, result, false)
                 }
             })
             .collect();
@@ -350,12 +406,29 @@ impl ScraperManager {
         let results = join_all(futures).await;
 
         // 合并结果并按重算后的置信度降序排序
+        let mut outcomes = Vec::with_capacity(results.len());
         let merged: Vec<SearchResult> = results
             .into_iter()
-            .filter_map(|(provider, result)| match result {
-                Ok(results) => Some(results),
+            .filter_map(|(provider, result, cache_hit)| match result {
+                Ok(results) => {
+                    outcomes.push(ProviderSearchOutcome {
+                        provider: provider.clone(),
+                        matched: results.len(),
+                        cache_hit,
+                        error: None,
+                    });
+                    record_search_stats(&provider, results.len(), cache_hit, None);
+                    Some(results)
+                }
                 Err(error) => {
                     eprintln!("[scraper] {provider} 搜索失败: {error}");
+                    outcomes.push(ProviderSearchOutcome {
+                        provider: provider.clone(),
+                        matched: 0,
+                        cache_hit,
+                        error: Some(error.clone()),
+                    });
+                    record_search_stats(&provider, 0, cache_hit, Some(&error));
                     None
                 }
             })
@@ -415,14 +488,28 @@ impl ScraperManager {
                 .partial_cmp(&left.confidence)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        ranked
+        SearchReport {
+            results: ranked,
+            outcomes,
+        }
     }
 
+    #[allow(dead_code)]
     pub async fn search_with_providers(
         &self,
         query: &ScrapeQuery,
         provider_ids: &[String],
     ) -> Vec<SearchResult> {
+        self.search_with_providers_internal(query, provider_ids, false)
+            .await
+            .results
+    }
+
+    pub async fn search_with_providers_report(
+        &self,
+        query: &ScrapeQuery,
+        provider_ids: &[String],
+    ) -> SearchReport {
         self.search_with_providers_internal(query, provider_ids, false)
             .await
     }
@@ -605,7 +692,8 @@ impl ScraperManager {
             None
         };
         let mut matches: HashMap<String, SearchResult> = HashMap::new();
-        for result in self.search_with_providers(query, provider_ids).await {
+        let search_report = self.search_with_providers_report(query, provider_ids).await;
+        for result in search_report.results {
             matches.entry(result.provider.clone()).or_insert(result);
         }
         if let Some(result) = hash_match {
@@ -614,7 +702,6 @@ impl ScraperManager {
         if matches.is_empty() {
             return Err("No results found".to_string());
         }
-
         let providers = self.enabled_providers_matching(provider_ids);
         let metadata_futures: Vec<_> = providers
             .iter()
@@ -658,6 +745,7 @@ impl ScraperManager {
             metadata,
             media,
             sources: metadata_sources,
+            provider_outcomes: search_report.outcomes,
         })
     }
 

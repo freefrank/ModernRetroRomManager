@@ -74,6 +74,8 @@
       "rateLimit": "Requests per second",
       "threads": "Concurrent threads",
       "rateLimitHint": "These limits apply only to this provider and still respect server throttling responses.",
+      "stats": "Matched {{matched}} · Selected {{selected}} · Cached {{cached}} · Errors {{errors}}",
+      "lastError": "Last error: {{error}}",
       "mediaSelection": "Media Types",
       "mediaSelectionHint": "Only checked assets are requested and cached. Videos and manuals are off by default. Up to 3 candidates per provider and type are cached.",
       "mediaTypes": {

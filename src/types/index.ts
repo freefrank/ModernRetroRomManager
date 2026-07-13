@@ -107,6 +107,11 @@ export interface ScraperProviderInfo {
   rate_limit: number;
   threads: number;
   developer_mode: boolean;
+  matched_count: number;
+  selected_count: number;
+  cache_hit_count: number;
+  error_count: number;
+  last_error?: string;
 }
 
 export interface ScraperCredentials {
@@ -161,6 +166,7 @@ export interface ApplyScrapedDataOptions {
   system: string;
   metadata: ScraperGameMetadata;
   selected_media: ScraperMediaAsset[];
+  provider_id?: string;
 }
 
 

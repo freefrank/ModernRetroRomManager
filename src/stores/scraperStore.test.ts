@@ -28,6 +28,10 @@ const makeProvider = (
   rate_limit: 1,
   threads: 1,
   developer_mode: false,
+  matched_count: 0,
+  selected_count: 0,
+  cache_hit_count: 0,
+  error_count: 0,
   ...overrides,
 });
 

@@ -8,7 +8,7 @@ use crate::scraper::{
     cartridge_header::identify_cartridge_rom,
     dat_hash::identify_dat_rom,
     gba_header::identify_gba_rom,
-    manager::{ProviderInfo, ScraperManager},
+    manager::{record_selected, ProviderInfo, ScraperManager},
     persistence::{download_media, save_metadata_pegasus, save_metadata_pegasus_with_media},
     platform_header::{
         identify_nds_rom, identify_playstation_pbp, identify_psp_iso, identify_sega_disc,
@@ -23,7 +23,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use tauri::{Emitter, State};
+use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
 
 use crate::settings::{get_settings, update_setting, ScraperConfig};
@@ -116,6 +116,43 @@ pub struct ProviderCredentials {
     pub threads: Option<u32>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct AppLog {
+    level: &'static str,
+    source: String,
+    message: String,
+}
+
+fn emit_provider_outcomes(app: &AppHandle, outcomes: &[crate::scraper::ProviderSearchOutcome]) {
+    for outcome in outcomes {
+        let (level, message) = if let Some(error) = &outcome.error {
+            let level = if error.contains("限流") || error.contains("429") {
+                "warn"
+            } else {
+                "error"
+            };
+            (level, format!("搜索失败: {error}"))
+        } else if outcome.cache_hit {
+            (
+                "debug",
+                format!("缓存命中，返回 {} 个候选", outcome.matched),
+            )
+        } else if outcome.matched == 0 {
+            ("warn", "未匹配到候选".to_string())
+        } else {
+            ("info", format!("匹配到 {} 个候选", outcome.matched))
+        };
+        let _ = app.emit(
+            "app-log",
+            AppLog {
+                level,
+                source: outcome.provider.clone(),
+                message,
+            },
+        );
+    }
+}
+
 // ============================================================================
 // Tauri Commands
 // ============================================================================
@@ -161,7 +198,7 @@ pub async fn configure_scraper_provider(
                 .or(current_config.api_key)
                 .unwrap_or_default();
             if api_key.trim().is_empty() {
-                return Err("请输入有效的 SteamGridDB API Key".to_string());
+                return Err(format!("请输入有效的 {} API Key", provider_id));
             }
             new_config.api_key = Some(api_key);
         }
@@ -215,6 +252,7 @@ pub async fn configure_scraper_provider(
 /// 搜索游戏
 #[tauri::command]
 pub async fn scraper_search(
+    app: AppHandle,
     state: State<'_, ScraperState>,
     name: String,
     file_name: String,
@@ -230,8 +268,9 @@ pub async fn scraper_search(
         query = query.with_system(sys);
     }
 
-    let results = state.manager.read().await.search_fresh(&query).await;
-    Ok(results)
+    let report = state.manager.read().await.search_fresh_report(&query).await;
+    emit_provider_outcomes(&app, &report.outcomes);
+    Ok(report.results)
 }
 
 /// 获取游戏元数据
@@ -501,10 +540,12 @@ pub struct ApplyScrapedDataOptions {
     pub system: String,    // 系统
     pub metadata: GameMetadata,
     pub selected_media: Vec<MediaAsset>,
+    pub provider_id: Option<String>,
 }
 
 #[tauri::command]
 pub async fn apply_scraped_data(
+    app: AppHandle,
     state: State<'_, ScraperState>,
     options: ApplyScrapedDataOptions,
 ) -> Result<(), String> {
@@ -536,6 +577,20 @@ pub async fn apply_scraped_data(
 
     // 3. 元数据和已选媒体路径一次写入，ROM 库刷新后即可显示封面。
     save_metadata_pegasus_with_media(&rom, &options.metadata, &materialized, true)?;
+    if let Some(provider) = options.provider_id.as_deref() {
+        record_selected(provider);
+    }
+    let _ = app.emit(
+        "app-log",
+        AppLog {
+            level: "info",
+            source: options
+                .provider_id
+                .clone()
+                .unwrap_or_else(|| "scraper".to_string()),
+            message: format!("已应用元数据和 {} 项资源", materialized.len()),
+        },
+    );
 
     Ok(())
 }
@@ -710,6 +765,13 @@ pub async fn batch_scrape(
                     };
 
                     if let Ok(result) = scrape_res {
+                        emit_provider_outcomes(&app, &result.provider_outcomes);
+                        let selected_providers: Vec<String> = result
+                            .provider_outcomes
+                            .iter()
+                            .filter(|outcome| outcome.matched > 0 && outcome.error.is_none())
+                            .map(|outcome| outcome.provider.clone())
+                            .collect();
                         let rom = RomInfo {
                             file: file_name.clone(),
                             name: result.metadata.name.clone(),
@@ -759,11 +821,26 @@ pub async fn batch_scrape(
                                 materialized.extend(downloaded);
                             }
                         }
-                        let _ = save_metadata_pegasus_with_media(
+                        if save_metadata_pegasus_with_media(
                             &rom,
                             &result.metadata,
                             &materialized,
                             true,
+                        )
+                        .is_ok()
+                        {
+                            for provider in selected_providers {
+                                record_selected(&provider);
+                            }
+                        }
+                    } else if let Err(error) = scrape_res {
+                        let _ = app.emit(
+                            "app-log",
+                            AppLog {
+                                level: "error",
+                                source: "scraper".to_string(),
+                                message: format!("{}: {}", file_name, error),
+                            },
                         );
                     }
                     let current = completed.fetch_add(1, Ordering::Relaxed) + 1;

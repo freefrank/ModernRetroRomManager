@@ -75,6 +75,21 @@ impl Default for ScraperConfig {
     }
 }
 
+/// Provider 累计运行统计，便于确认抓取源是否实际参与工作。
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ScraperStats {
+    #[serde(default)]
+    pub matched_count: u64,
+    #[serde(default)]
+    pub selected_count: u64,
+    #[serde(default)]
+    pub cache_hit_count: u64,
+    #[serde(default)]
+    pub error_count: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
+
 /// 应用配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -93,6 +108,9 @@ pub struct AppSettings {
     /// Scraper API 配置 (key: provider id)
     #[serde(default)]
     pub scrapers: HashMap<String, ScraperConfig>,
+    /// Provider 累计匹配、采用、缓存和错误统计。
+    #[serde(default)]
+    pub scraper_stats: HashMap<String, ScraperStats>,
     /// 自动抓取和候选缓存允许的媒体类型
     #[serde(default = "default_scraper_media_types")]
     pub scraper_media_types: Vec<String>,
@@ -114,6 +132,7 @@ impl Default for AppSettings {
             motion_level: None,
             directories: Vec::new(),
             scrapers: HashMap::new(),
+            scraper_stats: HashMap::new(),
             scraper_media_types: default_scraper_media_types(),
         }
     }
@@ -163,9 +182,15 @@ pub fn update_setting<F>(updater: F) -> Result<AppSettings, Box<dyn std::error::
 where
     F: FnOnce(&mut AppSettings),
 {
-    let mut settings = get_settings();
+    let mut guard = SETTINGS.write().unwrap();
+    let mut settings = guard.clone().unwrap_or_default();
     updater(&mut settings);
-    save_settings(&settings)?;
+    let path = config::get_settings_path();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&path, serde_json::to_string_pretty(&settings)?)?;
+    *guard = Some(settings.clone());
     Ok(settings)
 }
 

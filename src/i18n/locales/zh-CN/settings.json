@@ -74,6 +74,8 @@
       "rateLimit": "每秒请求数",
       "threads": "并发线程数",
       "rateLimitHint": "配置仅作用于当前 Provider；请求仍会遵守该服务返回的限流响应。",
+      "stats": "匹配 {{matched}} · 采用 {{selected}} · 缓存 {{cached}} · 错误 {{errors}}",
+      "lastError": "最近错误：{{error}}",
       "mediaSelection": "抓取资源类型",
       "mediaSelectionHint": "只请求并缓存勾选的资源；视频和手册默认关闭。每个来源、每种类型最多缓存 3 个候选。",
       "mediaTypes": {

@@ -93,6 +93,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
         directory: rom.directory,
       }, sortedResults);
       clearSelectedDetails();
+      await fetchProviders();
     } catch (error) {
       console.error("Search failed:", error);
     } finally {
@@ -146,10 +147,12 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
         directory: rom.directory,
         system: rom.system,
         metadata,
-        selected_media: selectedMedia
+        selected_media: selectedMedia,
+        provider_id: selectedResult.provider,
       });
 
       await fetchRoms();
+      await fetchProviders();
       onClose();
     } catch (error) {
       console.error("Apply failed:", error);

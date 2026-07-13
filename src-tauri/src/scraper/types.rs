@@ -182,6 +182,17 @@ pub struct ScrapeResult {
     pub media: Vec<MediaAsset>,
     /// 数据来源列表
     pub sources: Vec<String>,
+    /// 本次各 Provider 的搜索状态，用于进度日志和诊断。
+    #[serde(default)]
+    pub provider_outcomes: Vec<ProviderSearchOutcome>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderSearchOutcome {
+    pub provider: String,
+    pub matched: usize,
+    pub cache_hit: bool,
+    pub error: Option<String>,
 }
 
 // ============================================================================
