@@ -7,14 +7,21 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 ## Features
 
 - Scan and organize multi-platform ROM libraries
+- Open large libraries quickly with a persistent index, per-system lazy loading, and automatic incremental scans
+- Run a visible full refresh when needed, with current-system progress and structured Console logs
 - Identify supported cartridge games from ROM headers, serials, and embedded databases
 - Match filename-based platforms and modified ROM sets with normalized game names
 - Search multiple metadata providers, with platform-aware confidence ranking and fallback handling
 - Scrape individual games, selected games, an entire platform, or the complete ROM library
-- Select optional media types and cache alternative artwork for review
-- Read and write EmulationStation `gamelist.xml` and Pegasus `metadata.pegasus.txt`
+- Select optional media types, reuse persistent scrape results across libraries, and cache alternative artwork for review
+- Export metadata and related media for EmulationStation `gamelist.xml` and Pegasus `metadata.pegasus.txt`
+- Inspect scan, scrape, provider, and error messages in a level-filtered bottom Console
 - Import custom themes and use the built-in responsive dark interface
 - Run on Windows, Linux, and macOS through Tauri 2
+
+## Library model
+
+Version 0.5 treats one configured ROM root as the active library. Its child folders may contain different console systems, and each system is indexed and refreshed independently. Management and switching for multiple independent libraries is planned for a later release.
 
 ## Metadata providers
 

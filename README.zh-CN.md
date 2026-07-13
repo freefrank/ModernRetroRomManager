@@ -7,14 +7,21 @@ ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM �
 ## 功能特性
 
 - 扫描并整理多平台 ROM 游戏库
+- 使用持久索引、按系统延迟加载和自动增量扫描快速打开大型游戏库
+- 可随时执行带当前系统和进度提示的全量刷新，并在 Console 中查看结构化日志
 - 通过 ROM Header、序列号和内置数据库识别支持的卡带游戏
 - 对文件名型平台和魔改 ROM 集进行名称标准化匹配
 - 聚合多个元数据 Provider，并根据平台匹配度、资源完整度进行置信度排序和故障切换
 - 支持单游戏、已选游戏、整个平台或整个 ROM 库批量刮削
-- 可选择需要下载的媒体类型，并缓存备选图片供用户确认
-- 读取和写入 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt`
+- 可选择需要下载的媒体类型，跨 ROM 库复用持久抓取缓存，并保留备选图片供用户确认
+- 按 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt` 格式导出元数据及相关媒体资源
+- 在支持日志级别筛选的底部 Console 中查看扫描、抓取、Provider 和错误信息
 - 支持导入自定义主题，并提供响应式暗色界面
 - 基于 Tauri 2 支持 Windows、Linux 和 macOS
+
+## 游戏库模型
+
+0.5 版本将一个已配置的 ROM 根目录视为当前活动游戏库。根目录下可以包含不同 Console System，各系统会独立建立索引并刷新。多个独立游戏库的管理和切换计划在后续版本实现。
 
 ## 元数据来源
 
