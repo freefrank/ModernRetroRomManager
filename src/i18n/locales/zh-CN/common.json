@@ -24,6 +24,11 @@
     "scrapedCount": "已 Scrape: {{count}}",
     "storageUsed": "存储: {{size}}"
   },
+  "console": {
+    "title": "控制台",
+    "clear": "清空日志",
+    "empty": "暂无日志"
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",

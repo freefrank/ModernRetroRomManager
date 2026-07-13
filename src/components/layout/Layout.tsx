@@ -9,6 +9,7 @@ import Backdrop from "@/theme/Backdrop";
 import { Toaster } from "@/components/ui";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
+import ConsolePanel from "./ConsolePanel";
 
 export default function Layout() {
   const { t } = useTranslation();
@@ -90,6 +91,8 @@ export default function Layout() {
       <div className="relative z-20">
         <StatusBar />
       </div>
+
+      <ConsolePanel />
 
       {/* 全局 Toast 通知(右下角堆叠) */}
       <Toaster />

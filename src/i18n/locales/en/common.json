@@ -24,6 +24,11 @@
     "scrapedCount": "Scraped: {{count}}",
     "storageUsed": "Storage: {{size}}"
   },
+  "console": {
+    "title": "Console",
+    "clear": "Clear logs",
+    "empty": "No logs"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
