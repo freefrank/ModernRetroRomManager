@@ -6,10 +6,12 @@ use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
 use crate::scraper::cartridge_header::identify_cartridge_rom;
 use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
+use crate::scraper::dat_hash::identify_dat_rom;
 use crate::scraper::gba_header::identify_gba_rom;
 use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::local_cn::{smart_cn_similarity, to_pinyin_initials};
 use crate::scraper::pegasus::parse_pegasus_file;
+use crate::scraper::platform_header::{identify_nds_rom, identify_psp_iso};
 use crate::scraper::three_ds_header::identify_3ds_rom;
 use crate::system_mapping::find_mapping_by_folder;
 use rayon::prelude::*;
@@ -1226,6 +1228,14 @@ pub async fn auto_fix_naming(
         });
     let is_3ds = find_mapping_by_folder(&system_name)
         .is_some_and(|mapping| mapping.folder_name.eq_ignore_ascii_case("3DS"));
+    let canonical_system = find_mapping_by_folder(&system_name)
+        .map(|mapping| mapping.folder_name.to_ascii_uppercase())
+        .unwrap_or_else(|| system_name.to_ascii_uppercase());
+    let is_nds = canonical_system == "NDS";
+    let is_psp = canonical_system == "PSP";
+    let dat_hash_system = ["GB", "GBC", "GG"]
+        .contains(&canonical_system.as_str())
+        .then_some(canonical_system.as_str());
 
     // 一次性加载 cn_repo CSV 到内存（优先使用打包资源）
     let repo_paths = get_cn_repo_paths(&app);
@@ -1354,6 +1364,57 @@ pub async fn auto_fix_naming(
                 Err(error) => eprintln!(
                     "[auto_fix_naming] Failed to inspect 3DS ROM {:?}: {}",
                     rom_path, error
+                ),
+            }
+        }
+
+        if is_nds {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_nds_rom(&rom_path) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to inspect NDS ROM {:?}: {}",
+                    rom_path, error
+                ),
+            }
+        }
+
+        if is_psp {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_psp_iso(&rom_path) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to inspect PSP ISO {:?}: {}",
+                    rom_path, error
+                ),
+            }
+        }
+
+        if let Some(system) = dat_hash_system {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_dat_rom(system, &rom_path) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to hash {} ROM {:?}: {}",
+                    system, rom_path, error
                 ),
             }
         }

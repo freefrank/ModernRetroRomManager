@@ -1,5 +1,6 @@
 pub mod cartridge_header;
 pub mod cn_repo;
+pub mod dat_hash;
 pub mod gba_header;
 pub mod jy6d_dz;
 pub mod local_cn;
@@ -7,6 +8,7 @@ pub mod manager;
 pub mod matcher;
 pub mod pegasus;
 pub mod persistence;
+pub mod platform_header;
 pub mod rate_limit;
 pub mod screenscraper;
 pub mod steamgriddb;

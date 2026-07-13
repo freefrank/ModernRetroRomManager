@@ -171,7 +171,7 @@ fn extract_game_info(
 
                 match key.as_str() {
                     "TITLE" => info.title = Some(value),
-                    "TITLE_ID" => info.title_id = Some(value),
+                    "TITLE_ID" | "DISC_ID" => info.title_id = Some(value),
                     "VERSION" => info.version = Some(value),
                     "APP_VER" => info.app_ver = Some(value),
                     "CATEGORY" => info.category = Some(value),
@@ -217,7 +217,7 @@ fn read_string(buffer: &[u8], start: usize, length: usize) -> Result<String, Str
 }
 
 /// 从字节数组解析 PARAM.SFO
-fn parse_param_sfo_from_bytes(buffer: &[u8]) -> Result<Ps3GameInfo, String> {
+pub fn parse_param_sfo_from_bytes(buffer: &[u8]) -> Result<Ps3GameInfo, String> {
     if buffer.len() < 20 {
         return Err("SFO data too small".to_string());
     }
@@ -239,6 +239,13 @@ fn parse_param_sfo_from_bytes(buffer: &[u8]) -> Result<Ps3GameInfo, String> {
 
 /// 从 ISO 文件中提取并解析 PARAM.SFO
 pub fn parse_param_sfo_from_iso(iso_path: &Path) -> Result<Ps3GameInfo, String> {
+    parse_param_sfo_from_iso_directory(iso_path, "PS3_GAME")
+}
+
+pub fn parse_param_sfo_from_iso_directory(
+    iso_path: &Path,
+    game_directory: &str,
+) -> Result<Ps3GameInfo, String> {
     let file = File::open(iso_path).map_err(|e| format!("Failed to open ISO file: {}", e))?;
 
     let reader = FileReader::new(file);
@@ -246,7 +253,7 @@ pub fn parse_param_sfo_from_iso(iso_path: &Path) -> Result<Ps3GameInfo, String> 
         .ok_or_else(|| "Failed to parse ISO9660 filesystem".to_string())?;
 
     // 查找并读取 PS3_GAME/PARAM.SFO 文件
-    let sfo_data = find_and_read_sfo(&mut iso)
+    let sfo_data = find_and_read_sfo(&mut iso, game_directory)
         .map_err(|e| format!("Failed to find PARAM.SFO in ISO: {}", e))?;
 
     // 解析 SFO 数据
@@ -254,18 +261,20 @@ pub fn parse_param_sfo_from_iso(iso_path: &Path) -> Result<Ps3GameInfo, String> 
 }
 
 /// 在 ISO 文件系统中查找并读取 PARAM.SFO
-fn find_and_read_sfo(iso: &mut ISO9660) -> Result<Vec<u8>, String> {
+fn find_and_read_sfo(iso: &mut ISO9660, game_directory: &str) -> Result<Vec<u8>, String> {
     // 读取根目录
     let root_entries: Vec<_> = iso.read_root().collect();
 
     // 查找 PS3_GAME 目录（不区分大小写，支持版本号）
+    let expected_directory = game_directory.to_ascii_uppercase();
     let ps3_game_entry = root_entries
         .iter()
         .find(|entry| {
             let name = entry.name.to_uppercase();
-            (name == "PS3_GAME" || name.starts_with("PS3_GAME;")) && entry.is_folder()
+            (name == expected_directory || name.starts_with(&format!("{expected_directory};")))
+                && entry.is_folder()
         })
-        .ok_or_else(|| "PS3_GAME directory not found".to_string())?;
+        .ok_or_else(|| format!("{expected_directory} directory not found"))?;
 
     // 读取 PS3_GAME 目录内容
     let ps3_game_lba = ps3_game_entry.lsb_position() as usize;
