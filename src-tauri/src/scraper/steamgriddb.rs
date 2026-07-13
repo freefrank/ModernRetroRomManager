@@ -20,11 +20,11 @@ pub struct SteamGridDBClient {
 }
 
 impl SteamGridDBClient {
-    pub fn new(api_key: String, media_types: &[String]) -> Self {
+    pub fn new(api_key: String, media_types: &[String], rate_limit: u32, threads: u32) -> Self {
         Self {
             api_key,
             client: Client::new(),
-            limiter: ProviderRateLimiter::per_second(4),
+            limiter: ProviderRateLimiter::per_second(rate_limit, threads),
             media_types: media_types.iter().cloned().collect(),
         }
     }
@@ -38,7 +38,7 @@ impl SteamGridDBClient {
             "https://www.steamgriddb.com/api/v2/{}/game/{}",
             endpoint, source_id
         );
-        self.limiter.acquire().await;
+        let _permit = self.limiter.acquire().await;
         let resp = self
             .client
             .get(&url)
@@ -109,7 +109,7 @@ impl ScraperProvider for SteamGridDBClient {
             "https://www.steamgriddb.com/api/v2/search/autocomplete/{}",
             urlencoding::encode(&query.name)
         );
-        self.limiter.acquire().await;
+        let _permit = self.limiter.acquire().await;
         let resp = self
             .client
             .get(&url)
@@ -157,7 +157,7 @@ impl ScraperProvider for SteamGridDBClient {
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
         // SteamGridDB 主要用于媒体，元数据有限
         let url = format!("https://www.steamgriddb.com/api/v2/games/id/{}", source_id);
-        self.limiter.acquire().await;
+        let _permit = self.limiter.acquire().await;
         let resp = self
             .client
             .get(&url)

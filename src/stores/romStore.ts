@@ -57,7 +57,7 @@ interface RomState {
   // 批量 Scrape
   isBatchScraping: boolean;
   batchProgress: BatchProgress | null;
-  startBatchScrape: (provider: string) => Promise<void>;
+  startBatchScrape: (provider: string, mediaTypes?: string[]) => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -164,7 +164,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   // 批量 Scrape
   isBatchScraping: false,
   batchProgress: null,
-  startBatchScrape: async (providerId: string) => {
+  startBatchScrape: async (providerId: string, mediaTypes?: string[]) => {
     const { selectedRomIds, selectedSystem, systemRoms } = get();
     if (selectedRomIds.size === 0) return;
 
@@ -204,7 +204,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         throw new Error("未找到选中的 ROM");
       }
 
-      await scraperApi.batchScrape(selectedRoms, system, directory, providerId);
+      await scraperApi.batchScrape(selectedRoms, system, directory, providerId, mediaTypes);
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });

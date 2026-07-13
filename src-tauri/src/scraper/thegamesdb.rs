@@ -18,11 +18,11 @@ pub struct TheGamesDbClient {
 }
 
 impl TheGamesDbClient {
-    pub fn new(api_key: String, media_types: &[String]) -> Self {
+    pub fn new(api_key: String, media_types: &[String], rate_limit: u32, threads: u32) -> Self {
         Self {
             api_key,
             client: Client::new(),
-            limiter: ProviderRateLimiter::per_second(4),
+            limiter: ProviderRateLimiter::per_second(rate_limit, threads),
             include_video: media_types.iter().any(|value| value == "video"),
         }
     }
@@ -32,7 +32,7 @@ impl TheGamesDbClient {
         endpoint: &str,
         params: &[(&str, String)],
     ) -> Result<T, String> {
-        self.limiter.acquire().await;
+        let _permit = self.limiter.acquire().await;
         let mut query = vec![("apikey", self.api_key.clone())];
         query.extend_from_slice(params);
         let response = self

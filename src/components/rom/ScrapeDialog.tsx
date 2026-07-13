@@ -6,6 +6,7 @@ import { useScraperStore } from "@/stores/scraperStore";
 import type { Rom, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset } from "@/types";
 import { Button, Dialog, Input, Badge, Spinner, EmptyState } from "@/components/ui";
 import { clsx } from "clsx";
+import MediaTypeSelector from "./MediaTypeSelector";
 
 interface ScrapeDialogProps {
   rom: Rom;
@@ -32,9 +33,11 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
   const [selectedMediaUrls, setSelectedMediaUrls] = useState<Set<string>>(new Set());
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [mediaTypes, setMediaTypes] = useState<string[]>([]);
 
   useEffect(() => {
     fetchProviders();
+    scraperApi.getMediaTypes().then(setMediaTypes).catch(console.error);
   }, [fetchProviders]);
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
           romDirectory: rom.directory,
           system: rom.system,
           romId: rom.file,
+          mediaTypes,
         })
       ]);
       setMetadata(metaResult);
@@ -178,6 +182,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
         {/* Left: Search & Results */}
         <div className="w-[340px] shrink-0 border-r-[length:var(--border-width)] border-border-default p-5 flex flex-col gap-5 bg-bg-secondary/10 overflow-y-auto custom-scrollbar">
           <div className="space-y-3">
+            <MediaTypeSelector value={mediaTypes} onChange={setMediaTypes} />
             <div className="flex items-center gap-2">
               <Input
                 type="text"

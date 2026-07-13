@@ -104,6 +104,8 @@ export interface ScraperProviderInfo {
   requires_credentials: boolean;
   has_credentials: boolean;
   capabilities: string[];
+  rate_limit: number;
+  threads: number;
 }
 
 export interface ScraperCredentials {
@@ -112,6 +114,8 @@ export interface ScraperCredentials {
   client_secret?: string;
   username?: string;
   password?: string;
+  rate_limit?: number;
+  threads?: number;
 }
 
 export interface ScraperSearchResult {

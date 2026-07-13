@@ -5,6 +5,8 @@ import { useScraperStore } from "@/stores/scraperStore";
 import { useRomStore } from "@/stores/romStore";
 import { Button, Dialog, Spinner } from "@/components/ui";
 import { clsx } from "clsx";
+import { scraperApi } from "@/lib/api";
+import MediaTypeSelector from "./MediaTypeSelector";
 
 interface BatchScrapeDialogProps {
   isOpen: boolean;
@@ -16,9 +18,11 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
   const { providers, fetchProviders } = useScraperStore();
   const { startBatchScrape, selectedRomIds, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+  const [mediaTypes, setMediaTypes] = useState<string[]>([]);
 
   useEffect(() => {
     fetchProviders();
+    scraperApi.getMediaTypes().then(setMediaTypes).catch(console.error);
   }, [fetchProviders]);
 
   useEffect(() => {
@@ -30,7 +34,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
 
   const handleStart = async () => {
     if (!selectedProviderId) return;
-    await startBatchScrape(selectedProviderId);
+    await startBatchScrape(selectedProviderId, mediaTypes);
   };
 
   // 批量抓取进行中禁止关闭(完成后允许)
@@ -130,6 +134,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
             </div>
 
             <div className="space-y-4">
+              <MediaTypeSelector value={mediaTypes} onChange={setMediaTypes} />
               <div className="flex items-center justify-between px-1">
                 <label className="text-xs font-black text-text-muted uppercase tracking-widest">{t("scraper.batch.selectSource")}</label>
                 <span className="text-[10px] text-accent-primary font-bold">{t("scraper.batch.recommended")}</span>

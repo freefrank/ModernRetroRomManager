@@ -1,26 +1,36 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 pub struct ProviderRateLimiter {
     next_request: Mutex<Instant>,
     interval: Duration,
+    concurrency: Arc<Semaphore>,
 }
 
 impl ProviderRateLimiter {
-    pub fn per_second(requests: u32) -> Self {
+    pub fn per_second(requests: u32, threads: u32) -> Self {
         Self {
             next_request: Mutex::new(Instant::now()),
             interval: Duration::from_secs_f64(1.0 / requests.max(1) as f64),
+            concurrency: Arc::new(Semaphore::new(threads.clamp(1, 32) as usize)),
         }
     }
 
-    pub async fn acquire(&self) {
+    pub async fn acquire(&self) -> OwnedSemaphorePermit {
+        let permit = self
+            .concurrency
+            .clone()
+            .acquire_owned()
+            .await
+            .expect("rate limiter semaphore closed");
         let mut next = self.next_request.lock().await;
         let now = Instant::now();
         if *next > now {
             tokio::time::sleep(*next - now).await;
         }
         *next = Instant::now() + self.interval;
+        permit
     }
 }
 

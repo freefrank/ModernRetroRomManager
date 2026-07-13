@@ -31,6 +31,10 @@
       "metadata": "Metadata",
       "media": "Media"
     },
+    "mediaOptions": {
+      "title": "Media types for this scrape",
+      "selected": "{{count}} selected"
+    },
     "providers": {
       "igdb": {
         "name": "IGDB",

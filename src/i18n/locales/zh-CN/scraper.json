@@ -31,6 +31,10 @@
       "metadata": "元数据",
       "media": "媒体"
     },
+    "mediaOptions": {
+      "title": "本次抓取资源类型",
+      "selected": "已选 {{count}} 项"
+    },
     "providers": {
       "igdb": {
         "name": "IGDB",

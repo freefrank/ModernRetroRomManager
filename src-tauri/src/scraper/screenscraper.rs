@@ -22,7 +22,14 @@ pub struct ScreenScraperClient {
 }
 
 impl ScreenScraperClient {
-    pub fn new(ssid: String, sspassword: String, devid: String, devpassword: String) -> Self {
+    pub fn new(
+        ssid: String,
+        sspassword: String,
+        devid: String,
+        devpassword: String,
+        rate_limit: u32,
+        threads: u32,
+    ) -> Self {
         Self {
             ssid,
             sspassword,
@@ -30,7 +37,7 @@ impl ScreenScraperClient {
             devpassword,
             softname: "ModernRetroRomManager".to_string(),
             client: Client::new(),
-            limiter: ProviderRateLimiter::per_second(1),
+            limiter: ProviderRateLimiter::per_second(rate_limit, threads),
         }
     }
 
@@ -56,11 +63,14 @@ impl ScreenScraperClient {
         );
         url.push_str(&format!(
             "&devid={}&devpassword={}&softname={}",
-            self.devid, self.devpassword, self.softname
+            urlencoding::encode(&self.devid),
+            urlencoding::encode(&self.devpassword),
+            urlencoding::encode(&self.softname)
         ));
         url.push_str(&format!(
             "&ssid={}&sspassword={}",
-            self.ssid, self.sspassword
+            urlencoding::encode(&self.ssid),
+            urlencoding::encode(&self.sspassword)
         ));
         for (key, value) in params {
             url.push_str(&format!("&{}={}", key, urlencoding::encode(&value)));
@@ -138,7 +148,7 @@ impl ScreenScraperClient {
 
     /// 调用 jeuInfos API
     async fn fetch_game_info(&self, params: Vec<(&str, String)>) -> Result<Option<SSGame>, String> {
-        self.limiter.acquire().await;
+        let _permit = self.limiter.acquire().await;
         let url = self.build_url("jeuInfos", params);
         let resp = self
             .client

@@ -9,9 +9,11 @@ use crate::scraper::{
     persistence::{download_media, save_metadata_pegasus},
     types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
 };
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
@@ -54,6 +56,8 @@ pub struct ProviderCredentials {
     pub client_secret: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
+    pub rate_limit: Option<u32>,
+    pub threads: Option<u32>,
 }
 
 // ============================================================================
@@ -85,26 +89,49 @@ pub async fn configure_scraper_provider(
         priority: current_config.priority,
         ..Default::default()
     };
+    new_config.rate_limit = credentials
+        .rate_limit
+        .unwrap_or(current_config.rate_limit)
+        .clamp(1, 60);
+    new_config.threads = credentials
+        .threads
+        .unwrap_or(current_config.threads)
+        .clamp(1, 32);
 
     match provider_id.as_str() {
         "steamgriddb" | "thegamesdb" => {
-            let api_key = credentials.api_key.unwrap_or_default();
+            let api_key = credentials
+                .api_key
+                .or(current_config.api_key)
+                .unwrap_or_default();
             if api_key.trim().is_empty() {
                 return Err("请输入有效的 SteamGridDB API Key".to_string());
             }
             new_config.api_key = Some(api_key);
         }
         "screenscraper" => {
-            let username = credentials.username.unwrap_or_default();
-            let password = credentials.password.unwrap_or_default();
-            let client_id = credentials.client_id.unwrap_or_default();
-            let client_secret = credentials.client_secret.unwrap_or_default();
+            let username = credentials
+                .username
+                .or(current_config.username)
+                .unwrap_or_default();
+            let password = credentials
+                .password
+                .or(current_config.password)
+                .unwrap_or_default();
+            let client_id = credentials
+                .client_id
+                .or(current_config.client_id)
+                .unwrap_or_default();
+            let client_secret = credentials
+                .client_secret
+                .or(current_config.client_secret)
+                .unwrap_or_default();
             if username.trim().is_empty()
                 || password.trim().is_empty()
                 || client_id.trim().is_empty()
                 || client_secret.trim().is_empty()
             {
-                return Err("请输入完整的 ScreenScraper 用户及开发者凭证".to_string());
+                return Err("请输入 ScreenScraper 普通账户用户名/密码及软件开发者凭证".to_string());
             }
             new_config.username = Some(username);
             new_config.password = Some(password);
@@ -160,9 +187,12 @@ pub async fn scraper_get_media(
     rom_directory: Option<String>,
     system: Option<String>,
     rom_id: Option<String>,
+    media_types: Option<Vec<String>>,
 ) -> Result<Vec<MediaAsset>, String> {
     let manager = state.manager.read().await;
-    let media = manager.get_media(&provider_id, &source_id).await?;
+    let media = manager
+        .get_media(&provider_id, &source_id, media_types.as_deref())
+        .await?;
     if let (Some(directory), Some(system), Some(rom_id)) = (rom_directory, system, rom_id) {
         cache_media_candidates(&manager.http_client, &directory, &system, &rom_id, &media).await?;
     }
@@ -381,54 +411,92 @@ pub async fn batch_scrape(
     roms: Vec<BatchScrapeRom>,
     system: String,
     directory: String,
-    _provider_id: String,
+    provider_id: String,
+    media_types: Option<Vec<String>>,
 ) -> Result<(), String> {
     let manager_arc = Arc::clone(&state.manager);
     let total = roms.len();
+    let concurrency = get_settings()
+        .scrapers
+        .get(&provider_id)
+        .map(|config| config.threads)
+        .unwrap_or(1)
+        .clamp(1, 32) as usize;
+    let allowed_media = media_types.unwrap_or_else(|| get_settings().scraper_media_types);
 
     tokio::spawn(async move {
-        for (i, rom_item) in roms.into_iter().enumerate() {
-            let current = i + 1;
-            let file_name = rom_item.file_name;
-            let search_name = if rom_item.search_name.trim().is_empty() {
-                file_name.clone()
-            } else {
-                rom_item.search_name
-            };
+        let completed = Arc::new(AtomicUsize::new(0));
+        futures::stream::iter(roms.into_iter())
+            .for_each_concurrent(concurrency, |rom_item| {
+                let app = app.clone();
+                let manager_arc = Arc::clone(&manager_arc);
+                let system = system.clone();
+                let directory = directory.clone();
+                let allowed_media = allowed_media.clone();
+                let completed = Arc::clone(&completed);
+                async move {
+                    let file_name = rom_item.file_name;
+                    let search_name = if rom_item.search_name.trim().is_empty() {
+                        file_name.clone()
+                    } else {
+                        rom_item.search_name
+                    };
 
-            let _ = app.emit(
-                "batch-scrape-progress",
-                BatchProgress {
-                    current,
-                    total,
-                    message: format!("正在抓取: {}", search_name),
-                    finished: false,
-                },
-            );
+                    let _ = app.emit(
+                        "batch-scrape-progress",
+                        BatchProgress {
+                            current: completed.load(Ordering::Relaxed) + 1,
+                            total,
+                            message: format!("正在抓取: {}", search_name),
+                            finished: false,
+                        },
+                    );
 
-            let query =
-                ScrapeQuery::new(search_name, file_name.clone()).with_system(system.clone());
+                    let query = ScrapeQuery::new(search_name, file_name.clone())
+                        .with_system(system.clone());
 
-            let scrape_res = {
-                let manager = manager_arc.read().await;
-                manager.scrape(&query).await
-            };
+                    let scrape_res = {
+                        let manager = manager_arc.read().await;
+                        manager.scrape(&query).await
+                    };
 
-            if let Ok(result) = scrape_res {
-                let rom = RomInfo {
-                    file: file_name.clone(),
-                    name: result.metadata.name.clone(),
-                    system: system.clone(),
-                    directory: directory.clone(),
-                    ..Default::default()
-                };
-                let _ = save_metadata_pegasus(&rom, &result.metadata, true);
-                let client = manager_arc.read().await.http_client.clone();
-                let _ =
-                    cache_media_candidates(&client, &directory, &system, &file_name, &result.media)
+                    if let Ok(result) = scrape_res {
+                        let rom = RomInfo {
+                            file: file_name.clone(),
+                            name: result.metadata.name.clone(),
+                            system: system.clone(),
+                            directory: directory.clone(),
+                            ..Default::default()
+                        };
+                        let _ = save_metadata_pegasus(&rom, &result.metadata, true);
+                        let client = manager_arc.read().await.http_client.clone();
+                        let media: Vec<_> = result
+                            .media
+                            .into_iter()
+                            .filter(|asset| {
+                                allowed_media
+                                    .iter()
+                                    .any(|value| value == asset.asset_type.as_str())
+                            })
+                            .collect();
+                        let _ = cache_media_candidates(
+                            &client, &directory, &system, &file_name, &media,
+                        )
                         .await;
-            }
-        }
+                    }
+                    let current = completed.fetch_add(1, Ordering::Relaxed) + 1;
+                    let _ = app.emit(
+                        "batch-scrape-progress",
+                        BatchProgress {
+                            current,
+                            total,
+                            message: format!("已处理: {}", file_name),
+                            finished: false,
+                        },
+                    );
+                }
+            })
+            .await;
 
         let _ = app.emit(
             "batch-scrape-progress",

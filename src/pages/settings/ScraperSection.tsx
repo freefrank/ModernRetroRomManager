@@ -160,7 +160,7 @@ export default function ScraperSection() {
 
   const handleEditConfig = (provider: ScraperProviderInfo) => {
     setEditingProvider(provider.id);
-    setCredentials({});
+    setCredentials({ rate_limit: provider.rate_limit, threads: provider.threads });
   };
 
   const handleTestProvider = async (providerId: string) => {
@@ -318,6 +318,9 @@ export default function ScraperSection() {
 
                     {p.id === "screenscraper" && (
                       <>
+                        <p className="text-xs text-text-muted">
+                          {t("settings.apiConfig.screenScraperAuthHint")}
+                        </p>
                         <div>
                           <label className="block text-sm font-medium text-text-primary mb-2">
                             {t("settings.apiConfig.username")}
@@ -352,7 +355,7 @@ export default function ScraperSection() {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-text-primary mb-2">
-                            ScreenScraper Developer ID
+                            {t("settings.apiConfig.developerId")}
                           </label>
                           <Input
                             type="text"
@@ -362,7 +365,7 @@ export default function ScraperSection() {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-text-primary mb-2">
-                            ScreenScraper Developer Password
+                            {t("settings.apiConfig.developerPassword")}
                           </label>
                           <Input
                             type="password"
@@ -392,6 +395,34 @@ export default function ScraperSection() {
                         />
                       </div>
                     )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-primary mb-2">
+                          {t("settings.apiConfig.rateLimit")}
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={60}
+                          value={credentials.rate_limit ?? 1}
+                          onChange={(e) => setCredentials({ ...credentials, rate_limit: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-primary mb-2">
+                          {t("settings.apiConfig.threads")}
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={32}
+                          value={credentials.threads ?? 1}
+                          onChange={(e) => setCredentials({ ...credentials, threads: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-text-muted">{t("settings.apiConfig.rateLimitHint")}</p>
 
                     <div className="flex justify-end gap-3 pt-2">
                       <Button

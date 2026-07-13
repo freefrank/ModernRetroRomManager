@@ -25,6 +25,8 @@ const makeProvider = (
   requires_credentials: true,
   has_credentials: false,
   capabilities: ["search", "media"],
+  rate_limit: 1,
+  threads: 1,
   ...overrides,
 });
 

@@ -38,10 +38,21 @@ pub struct ScraperConfig {
     pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+    #[serde(default = "default_rate_limit")]
+    pub rate_limit: u32,
+    #[serde(default = "default_threads")]
+    pub threads: u32,
 }
 
 fn default_priority() -> u32 {
     100
+}
+
+fn default_rate_limit() -> u32 {
+    1
+}
+fn default_threads() -> u32 {
+    1
 }
 
 impl Default for ScraperConfig {
@@ -55,6 +66,8 @@ impl Default for ScraperConfig {
             client_secret: None,
             username: None,
             password: None,
+            rate_limit: default_rate_limit(),
+            threads: default_threads(),
         }
     }
 }

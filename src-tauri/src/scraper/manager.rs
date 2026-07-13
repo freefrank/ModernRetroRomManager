@@ -72,6 +72,8 @@ pub struct ProviderInfo {
     pub requires_credentials: bool,
     pub has_credentials: bool,
     pub capabilities: Vec<String>,
+    pub rate_limit: u32,
+    pub threads: u32,
 }
 
 /// 判断给定 provider 的凭证是否已配置完整
@@ -162,7 +164,12 @@ impl ScraperManager {
                 "steamgriddb" => {
                     if let Some(api_key) = config.api_key.clone() {
                         self.register_with_config(
-                            SteamGridDBClient::new(api_key, &settings.scraper_media_types),
+                            SteamGridDBClient::new(
+                                api_key,
+                                &settings.scraper_media_types,
+                                config.rate_limit,
+                                config.threads,
+                            ),
                             provider_config,
                         );
                     }
@@ -170,7 +177,12 @@ impl ScraperManager {
                 "thegamesdb" => {
                     if let Some(api_key) = config.api_key.clone() {
                         self.register_with_config(
-                            TheGamesDbClient::new(api_key, &settings.scraper_media_types),
+                            TheGamesDbClient::new(
+                                api_key,
+                                &settings.scraper_media_types,
+                                config.rate_limit,
+                                config.threads,
+                            ),
                             provider_config,
                         );
                     }
@@ -183,7 +195,14 @@ impl ScraperManager {
                         config.client_secret.clone(),
                     ) {
                         self.register_with_config(
-                            ScreenScraperClient::new(username, password, devid, devpassword),
+                            ScreenScraperClient::new(
+                                username,
+                                password,
+                                devid,
+                                devpassword,
+                                config.rate_limit,
+                                config.threads,
+                            ),
                             provider_config,
                         );
                     }
@@ -211,6 +230,8 @@ impl ScraperManager {
                         .iter()
                         .map(|c| c.to_string())
                         .collect(),
+                    rate_limit: config.map(|c| c.rate_limit).unwrap_or(1),
+                    threads: config.map(|c| c.threads).unwrap_or(1),
                 }
             })
             .collect()
@@ -341,13 +362,15 @@ impl ScraperManager {
         &self,
         provider_id: &str,
         source_id: &str,
+        media_types: Option<&[String]>,
     ) -> Result<Vec<MediaAsset>, String> {
         let provider = self
             .providers
             .get(provider_id)
             .ok_or_else(|| format!("Provider '{}' not found", provider_id))?;
 
-        let allowed = get_settings().scraper_media_types;
+        let configured = get_settings().scraper_media_types;
+        let allowed = media_types.unwrap_or(&configured);
         Ok(provider
             .get_media(source_id)
             .await?
