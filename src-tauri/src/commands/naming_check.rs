@@ -11,7 +11,9 @@ use crate::scraper::gba_header::identify_gba_rom;
 use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::local_cn::{smart_cn_similarity, to_pinyin_initials};
 use crate::scraper::pegasus::parse_pegasus_file;
-use crate::scraper::platform_header::{identify_nds_rom, identify_psp_iso};
+use crate::scraper::platform_header::{
+    identify_nds_rom, identify_playstation_pbp, identify_psp_iso, identify_sega_disc,
+};
 use crate::scraper::three_ds_header::identify_3ds_rom;
 use crate::system_mapping::find_mapping_by_folder;
 use rayon::prelude::*;
@@ -1233,6 +1235,10 @@ pub async fn auto_fix_naming(
         .unwrap_or_else(|| system_name.to_ascii_uppercase());
     let is_nds = canonical_system == "NDS";
     let is_psp = canonical_system == "PSP";
+    let is_playstation = canonical_system == "PS";
+    let sega_disc_system = ["SS", "DC"]
+        .contains(&canonical_system.as_str())
+        .then_some(canonical_system.as_str());
     let dat_hash_system = ["GB", "GBC", "GG"]
         .contains(&canonical_system.as_str())
         .then_some(canonical_system.as_str());
@@ -1398,6 +1404,40 @@ pub async fn auto_fix_naming(
                 Err(error) => eprintln!(
                     "[auto_fix_naming] Failed to inspect PSP ISO {:?}: {}",
                     rom_path, error
+                ),
+            }
+        }
+
+        if is_playstation {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_playstation_pbp(&rom_path) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to inspect PlayStation PBP {:?}: {}",
+                    rom_path, error
+                ),
+            }
+        }
+
+        if let Some(system) = sega_disc_system {
+            let rom_path = dir_path.join(&entry.file);
+            match identify_sega_disc(&rom_path, system) {
+                Ok(Some(identification)) => {
+                    entry.english_name = Some(identification.scrape_name);
+                    entry.confidence = Some(identification.confidence);
+                    success_count += 1;
+                    continue;
+                }
+                Ok(None) => {}
+                Err(error) => eprintln!(
+                    "[auto_fix_naming] Failed to inspect {} disc {:?}: {}",
+                    system, rom_path, error
                 ),
             }
         }

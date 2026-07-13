@@ -135,6 +135,105 @@ pub fn identify_psp_iso(path: &Path) -> Result<Option<PlatformIdentification>, S
     }))
 }
 
+pub fn identify_playstation_pbp(path: &Path) -> Result<Option<PlatformIdentification>, String> {
+    if !path
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| value.eq_ignore_ascii_case("pbp"))
+    {
+        return Ok(None);
+    }
+    let mut file = File::open(path).map_err(|error| error.to_string())?;
+    let mut header = [0_u8; 16];
+    file.read_exact(&mut header)
+        .map_err(|error| error.to_string())?;
+    if &header[..4] != b"\0PBP" {
+        return Ok(None);
+    }
+    let sfo_start = u32::from_le_bytes(header[8..12].try_into().unwrap()) as u64;
+    let sfo_end = u32::from_le_bytes(header[12..16].try_into().unwrap()) as u64;
+    if sfo_end <= sfo_start || sfo_end - sfo_start > 4 * 1024 * 1024 {
+        return Err("PBP PARAM.SFO 偏移无效".to_string());
+    }
+    file.seek(SeekFrom::Start(sfo_start))
+        .map_err(|error| error.to_string())?;
+    let mut sfo = vec![0_u8; (sfo_end - sfo_start) as usize];
+    file.read_exact(&mut sfo)
+        .map_err(|error| error.to_string())?;
+    identification_from_sfo(&sfo, 98.0)
+}
+
+fn identification_from_sfo(
+    data: &[u8],
+    confidence: f32,
+) -> Result<Option<PlatformIdentification>, String> {
+    let info = crate::ps3::sfo::parse_param_sfo_from_bytes(data)?;
+    let Some(title) = info.title.filter(|value| !value.trim().is_empty()) else {
+        return Ok(None);
+    };
+    Ok(Some(PlatformIdentification {
+        internal_title: title.clone(),
+        product_code: info.title_id.unwrap_or_default(),
+        release_name: title.clone(),
+        scrape_name: title,
+        confidence,
+    }))
+}
+
+pub fn identify_sega_disc(
+    path: &Path,
+    system: &str,
+) -> Result<Option<PlatformIdentification>, String> {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    if !["bin", "img", "iso", "cdi"]
+        .iter()
+        .any(|candidate| extension.eq_ignore_ascii_case(candidate))
+    {
+        return Ok(None);
+    }
+    let mut file = File::open(path).map_err(|error| error.to_string())?;
+    let mut data = Vec::new();
+    file.by_ref()
+        .take(16 * 1024 * 1024)
+        .read_to_end(&mut data)
+        .map_err(|error| error.to_string())?;
+    let (magic, code_offset, code_length, title_offset, title_length) = match system {
+        "SS" => (b"SEGA SEGASATURN".as_slice(), 0x20, 10, 0x60, 112),
+        "DC" => (b"SEGA SEGAKATANA".as_slice(), 0x40, 10, 0x80, 128),
+        _ => return Ok(None),
+    };
+    let Some(start) = data
+        .windows(magic.len())
+        .rposition(|window| window == magic)
+    else {
+        return Ok(None);
+    };
+    let end = start + title_offset + title_length;
+    if end > data.len() {
+        return Ok(None);
+    }
+    let clean = |bytes: &[u8]| {
+        String::from_utf8_lossy(bytes)
+            .trim_matches(|c: char| c == '\0' || c.is_whitespace())
+            .to_string()
+    };
+    let product_code = clean(&data[start + code_offset..start + code_offset + code_length]);
+    let title = clean(&data[start + title_offset..end]);
+    if title.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(PlatformIdentification {
+        internal_title: title.clone(),
+        product_code,
+        release_name: title.clone(),
+        scrape_name: title,
+        confidence: 96.0,
+    }))
+}
+
 fn iso_record(record: &[u8]) -> Option<(u32, u32, bool, String)> {
     if record.len() < 34 || record[0] as usize > record.len() {
         return None;
