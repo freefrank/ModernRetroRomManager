@@ -5,11 +5,18 @@
 use crate::config::{get_cache_dir_for_library, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::RomInfo;
 use crate::scraper::{
+    cartridge_header::identify_cartridge_rom,
+    dat_hash::identify_dat_rom,
     gba_header::identify_gba_rom,
     manager::{ProviderInfo, ScraperManager},
     persistence::{download_media, save_metadata_pegasus, save_metadata_pegasus_with_media},
+    platform_header::{
+        identify_nds_rom, identify_playstation_pbp, identify_psp_iso, identify_sega_disc,
+    },
+    three_ds_header::identify_3ds_rom,
     types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
 };
+use crate::system_mapping::find_mapping_by_folder;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -20,6 +27,49 @@ use tauri::{Emitter, State};
 use tokio::sync::RwLock;
 
 use crate::settings::{get_settings, update_setting, ScraperConfig};
+
+fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &str) -> String {
+    let path = Path::new(directory).join(file_name);
+    let canonical = find_mapping_by_folder(system)
+        .map(|mapping| mapping.folder_name.to_ascii_uppercase())
+        .unwrap_or_else(|| system.to_ascii_uppercase());
+    let identified = match canonical.as_str() {
+        "GBA" => identify_gba_rom(&path)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "MD" | "N64" | "SFC" => identify_cartridge_rom(&path, &canonical)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "3DS" => identify_3ds_rom(&path)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "NDS" => identify_nds_rom(&path)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "PSP" => identify_psp_iso(&path)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "PS" => identify_playstation_pbp(&path)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "SS" | "DC" => identify_sega_disc(&path, &canonical)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        "GB" | "GBC" | "GG" => identify_dat_rom(&canonical, &path)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name),
+        _ => None,
+    };
+    identified.unwrap_or(name)
+}
 
 // ============================================================================
 // State - ScraperManager 全局状态
@@ -167,16 +217,8 @@ pub async fn scraper_search(
     system: Option<String>,
     directory: Option<String>,
 ) -> Result<Vec<SearchResult>, String> {
-    let manager = state.manager.read().await;
-
     let resolved_name = match (system.as_deref(), directory.as_deref()) {
-        (Some(system), Some(directory)) if system.eq_ignore_ascii_case("gba") => {
-            identify_gba_rom(&Path::new(directory).join(&file_name))
-                .ok()
-                .flatten()
-                .map(|identification| identification.scrape_name)
-                .unwrap_or(name)
-        }
+        (Some(system), Some(directory)) => resolve_scrape_name(name, &file_name, system, directory),
         _ => name,
     };
     let mut query = ScrapeQuery::new(resolved_name, file_name);
@@ -184,7 +226,7 @@ pub async fn scraper_search(
         query = query.with_system(sys);
     }
 
-    let results = manager.search(&query).await;
+    let results = state.manager.read().await.search(&query).await;
     Ok(results)
 }
 
@@ -554,6 +596,8 @@ pub async fn batch_scrape(
                     } else {
                         rom_item.search_name
                     };
+                    let search_name =
+                        resolve_scrape_name(search_name, &file_name, &system, &directory);
 
                     let _ = app.emit(
                         "batch-scrape-progress",

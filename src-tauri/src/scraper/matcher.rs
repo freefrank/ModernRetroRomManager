@@ -146,25 +146,57 @@ pub fn normalize_game_name(name: &str) -> String {
     result.trim().to_string()
 }
 
-fn sequel_number(name: &str) -> Option<u8> {
-    name.split(|character: char| !character.is_ascii_alphanumeric())
-        .find_map(|token| {
-            if let Ok(number) = token.parse::<u8>() {
-                return (2..=20).contains(&number).then_some(number);
+fn installment_token_number(token: &str) -> Option<u8> {
+    if !token.starts_with('0') {
+        if let Ok(number) = token.parse::<u8>() {
+            if (2..=20).contains(&number) {
+                return Some(number);
             }
-            match token.to_ascii_uppercase().as_str() {
-                "II" => Some(2),
-                "III" => Some(3),
-                "IV" => Some(4),
-                "V" => Some(5),
-                "VI" => Some(6),
-                "VII" => Some(7),
-                "VIII" => Some(8),
-                "IX" => Some(9),
-                "X" => Some(10),
-                _ => None,
-            }
-        })
+        }
+    }
+    match token.to_ascii_uppercase().as_str() {
+        "II" => Some(2),
+        "III" => Some(3),
+        "IV" => Some(4),
+        "V" => Some(5),
+        "VI" => Some(6),
+        "VII" => Some(7),
+        "VIII" => Some(8),
+        "IX" => Some(9),
+        "X" => Some(10),
+        _ => None,
+    }
+}
+
+fn sequel_identity(name: &str) -> Option<(u8, String)> {
+    let tokens: Vec<_> = name
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .collect();
+    let (position, number) = tokens
+        .iter()
+        .enumerate()
+        // 标题开头的“2 Games in 1”“007”不是续作标识。
+        .skip(1)
+        .find_map(|(position, token)| {
+            installment_token_number(token).map(|number| (position, number))
+        })?;
+    let stem = tokens
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| *index != position)
+        .flat_map(|(_, token)| token.chars())
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect();
+    Some((number, stem))
+}
+
+fn compact_name(name: &str) -> String {
+    name.chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 /// 计算搜索结果的置信度分数
@@ -182,10 +214,17 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     }
 
     // 续作编号是强身份信号：二代不能与无编号的一代或其他续作获得相同评分。
-    match (sequel_number(&query_name), sequel_number(&result_name)) {
-        (Some(query_number), Some(result_number)) if query_number == result_number => score += 0.1,
-        (Some(_), Some(_)) => score -= 0.4,
-        (Some(_), None) | (None, Some(_)) => score -= 0.3,
+    match (sequel_identity(&query_name), sequel_identity(&result_name)) {
+        (Some((query_number, query_stem)), Some((result_number, result_stem)))
+            if query_stem == result_stem && query_number == result_number =>
+        {
+            score += 0.1
+        }
+        (Some((_, query_stem)), Some((_, result_stem))) if query_stem == result_stem => {
+            score -= 0.4
+        }
+        (Some((_, query_stem)), None) if query_stem == compact_name(&result_name) => score -= 0.3,
+        (None, Some((_, result_stem))) if compact_name(&query_name) == result_stem => score -= 0.3,
         _ => {}
     }
 
@@ -378,6 +417,29 @@ mod tests {
         assert!(
             calculate_confidence(&original_query, &original)
                 > calculate_confidence(&original_query, &sequel) + 0.2
+        );
+    }
+
+    #[test]
+    fn sequel_detection_ignores_leading_numbers_and_regional_subtitles() {
+        assert_eq!(sequel_identity("007 - Everything or Nothing"), None);
+        assert_eq!(sequel_identity("2 Games in 1 - Sonic Advance"), None);
+
+        let query = ScrapeQuery::new("Luigis Mansion: Dark Moon".into(), "luigi.3ds".into())
+            .with_system("3DS");
+        let result = SearchResult {
+            provider: "test".into(),
+            source_id: "luigi-2".into(),
+            name: "Luigis Mansion 2".into(),
+            year: None,
+            system: Some("3DS".into()),
+            thumbnail: Some("https://example.com/box.png".into()),
+            confidence: 0.0,
+        };
+        let expected_without_sequel_penalty =
+            jaro_winkler_similarity("Luigis Mansion: Dark Moon", "Luigis Mansion 2") * 0.65 + 0.2;
+        assert!(
+            (calculate_confidence(&query, &result) - expected_without_sequel_penalty).abs() < 0.001
         );
     }
 }
