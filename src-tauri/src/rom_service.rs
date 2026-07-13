@@ -379,9 +379,54 @@ fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) 
                 resolve(&mut resolved_game.video);
                 resolve(&mut resolved_game.background);
 
+                fill_missing_temp_media(&mut resolved_game, &base_dir, &rom.file);
+
                 rom.temp_data = Some(resolved_game);
             }
         }
+    }
+}
+
+fn find_temp_media(base_dir: &Path, rom_file: &str, asset_type: &str) -> Option<String> {
+    let rom_stem = Path::new(rom_file)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(rom_file);
+    fs::read_dir(base_dir.join("media").join(rom_stem))
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.is_file()
+                && path
+                    .file_stem()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|value| value.eq_ignore_ascii_case(asset_type))
+        })
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+fn fill_missing_temp_media(game: &mut PegasusGame, base_dir: &Path, rom_file: &str) {
+    if game.box_front.is_none() {
+        game.box_front = find_temp_media(base_dir, rom_file, "boxfront");
+    }
+    if game.box_back.is_none() {
+        game.box_back = find_temp_media(base_dir, rom_file, "boxback");
+    }
+    if game.logo.is_none() {
+        game.logo = find_temp_media(base_dir, rom_file, "logo");
+    }
+    if game.screenshot.is_none() {
+        game.screenshot = find_temp_media(base_dir, rom_file, "screenshot");
+    }
+    if game.titlescreen.is_none() {
+        game.titlescreen = find_temp_media(base_dir, rom_file, "titlescreen");
+    }
+    if game.video.is_none() {
+        game.video = find_temp_media(base_dir, rom_file, "video");
+    }
+    if game.background.is_none() {
+        game.background = find_temp_media(base_dir, rom_file, "hero");
     }
 }
 
@@ -433,26 +478,6 @@ fn try_load_from_temp_metadata(
                 rom.has_temp_metadata = true;
                 fill_file_metadata(&mut rom, &rom_path);
 
-                // 构造 temp_data (用于前端编辑显示)
-                let temp_game = PegasusGame {
-                    name: rom.name.clone(),
-                    file: Some(rom.file.clone()),
-                    description: rom.description.clone(),
-                    developer: rom.developer.clone(),
-                    publisher: rom.publisher.clone(),
-                    genre: rom.genre.clone(),
-                    release: rom.release.clone(),
-                    rating: rom.rating.clone(),
-                    box_front: rom.box_front.clone(),
-                    box_back: rom.box_back.clone(),
-                    logo: rom.logo.clone(),
-                    screenshot: rom.screenshot.clone(),
-                    video: rom.video.clone(),
-                    background: rom.background.clone(),
-                    ..Default::default()
-                };
-                rom.temp_data = Some(temp_game);
-
                 // 解析媒体路径为绝对路径
                 let resolve = |path: &mut Option<String>| {
                     if let Some(p) = path.as_ref() {
@@ -477,6 +502,27 @@ fn try_load_from_temp_metadata(
                 resolve(&mut rom.cartridge);
                 resolve(&mut rom.box_spine);
                 resolve(&mut rom.box_full);
+
+                let mut temp_game = PegasusGame {
+                    name: rom.name.clone(),
+                    file: Some(rom.file.clone()),
+                    description: rom.description.clone(),
+                    developer: rom.developer.clone(),
+                    publisher: rom.publisher.clone(),
+                    genre: rom.genre.clone(),
+                    release: rom.release.clone(),
+                    rating: rom.rating.clone(),
+                    box_front: rom.box_front.clone(),
+                    box_back: rom.box_back.clone(),
+                    logo: rom.logo.clone(),
+                    screenshot: rom.screenshot.clone(),
+                    titlescreen: rom.titlescreen.clone(),
+                    video: rom.video.clone(),
+                    background: rom.background.clone(),
+                    ..Default::default()
+                };
+                fill_missing_temp_media(&mut temp_game, &base_dir, &rom.file);
+                rom.temp_data = Some(temp_game);
 
                 Some(rom)
             })
@@ -1351,6 +1397,23 @@ mod tests {
         assert_eq!(roms.len(), 1);
         assert_eq!(roms[0].file, "测试游戏");
         assert_eq!(roms[0].name, "测试游戏");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn temp_media_fallback_recovers_existing_boxart() {
+        let dir = create_temp_dir();
+        let media_dir = dir.join("media").join("CT特种部队1");
+        fs::create_dir_all(&media_dir).unwrap();
+        fs::write(media_dir.join("boxfront.png"), b"image").unwrap();
+        let mut game = PegasusGame::default();
+
+        fill_missing_temp_media(&mut game, &dir, "CT特种部队1.zip");
+
+        assert_eq!(
+            game.box_front.as_deref(),
+            Some(media_dir.join("boxfront.png").to_string_lossy().as_ref())
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 }
