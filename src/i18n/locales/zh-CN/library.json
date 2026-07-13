@@ -30,6 +30,8 @@
     "batch": {
       "selectedCount": "已选择 {{count}} 项",
       "scrape": "批量抓取",
+      "scrapePlatform": "抓取此平台",
+      "scrapeLibrary": "抓取整个 ROM 库",
       "scraping": "批量抓取中..."
     },
     "boxart": {

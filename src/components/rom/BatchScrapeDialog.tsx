@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Database, Globe, Activity, PlayCircle, CheckCircle2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useScraperStore } from "@/stores/scraperStore";
-import { useRomStore } from "@/stores/romStore";
+import { useRomStore, type BatchScrapeScope } from "@/stores/romStore";
 import { Button, Dialog, Spinner } from "@/components/ui";
 import { clsx } from "clsx";
 import { scraperApi } from "@/lib/api";
@@ -11,12 +11,13 @@ import MediaTypeSelector from "./MediaTypeSelector";
 interface BatchScrapeDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  scope?: BatchScrapeScope;
 }
 
-export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialogProps) {
+export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection" }: BatchScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
-  const { startBatchScrape, selectedRomIds, isBatchScraping, batchProgress } = useRomStore();
+  const { startBatchScrape, selectedRomIds, selectedSystem, systemRoms, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
 
@@ -34,7 +35,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
 
   const handleStart = async () => {
     if (!selectedProviderId) return;
-    await startBatchScrape(selectedProviderId, mediaTypes);
+    await startBatchScrape(selectedProviderId, mediaTypes, scope);
   };
 
   // 批量抓取进行中禁止关闭(完成后允许)
@@ -44,6 +45,11 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
   };
 
   const activeProviders = providers.filter(p => p.enabled);
+  const targetCount = scope === "library"
+    ? systemRoms.reduce((count, item) => count + item.roms.length, 0)
+    : scope === "platform"
+      ? systemRoms.find(item => item.system === selectedSystem)?.roms.length || 0
+      : selectedRomIds.size;
   const progressPercent = batchProgress
     ? Math.round((batchProgress.current / batchProgress.total) * 100)
     : 0;
@@ -66,7 +72,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
             </Button>
             <Button
               onClick={handleStart}
-              disabled={!selectedProviderId || activeProviders.length === 0}
+              disabled={!selectedProviderId || activeProviders.length === 0 || targetCount === 0}
             >
               <Database className="w-4 h-4" />
               {t("scraper.batch.start")}
@@ -125,7 +131,7 @@ export default function BatchScrapeDialog({ isOpen, onClose }: BatchScrapeDialog
               <PlayCircle className="w-10 h-10 text-accent-primary shrink-0 opacity-80" />
               <div>
                 <p className="text-text-primary font-bold text-lg leading-tight">
-                  {t("scraper.batch.pendingTitle", { count: selectedRomIds.size })}
+                  {t("scraper.batch.pendingTitle", { count: targetCount })}
                 </p>
                 <p className="text-sm text-text-muted mt-1 leading-relaxed">
                   {t("scraper.batch.pendingDesc")}

@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ghost, Plus } from "lucide-react";
+import { Database, Ghost, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
 import { Button, Card, EmptyState } from "@/components/ui";
 import SystemCard from "@/components/rom/SystemCard";
+import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 import type { GameSystem } from "@/types";
 
 const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
@@ -24,6 +25,7 @@ export default function LibraryShelf() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { availableSystems, stats, systems, fetchSystems } = useRomStore();
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
 
   // 装载预置系统列表以解析各系统 logo
   useEffect(() => {
@@ -43,15 +45,21 @@ export default function LibraryShelf() {
   return (
     <div className="rr-page flex flex-col h-full max-w-[1600px] mx-auto w-full">
       {/* Header */}
-      <header className="py-4">
-        <h1 className="text-4xl font-bold tracking-tight text-text-primary mb-2">
-          {t("library.title")}
-        </h1>
-        <p className="text-text-secondary font-medium">
-          {t("library.shelf.systemCount", { count: availableSystems.length })}
-          {" · "}
-          {t("library.gameCount", { count: stats.totalRoms })}
-        </p>
+      <header className="py-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-text-primary mb-2">
+            {t("library.title")}
+          </h1>
+          <p className="text-text-secondary font-medium">
+            {t("library.shelf.systemCount", { count: availableSystems.length })}
+            {" · "}
+            {t("library.gameCount", { count: stats.totalRoms })}
+          </p>
+        </div>
+        <Button onClick={() => setIsBatchDialogOpen(true)} disabled={stats.totalRoms === 0}>
+          <Database className="w-4 h-4" />
+          {t("library.batch.scrapeLibrary")}
+        </Button>
       </header>
 
       {availableSystems.length === 0 ? (
@@ -103,6 +111,11 @@ export default function LibraryShelf() {
           </div>
         </div>
       )}
+      <BatchScrapeDialog
+        isOpen={isBatchDialogOpen}
+        onClose={() => setIsBatchDialogOpen(false)}
+        scope="library"
+      />
     </div>
   );
 }

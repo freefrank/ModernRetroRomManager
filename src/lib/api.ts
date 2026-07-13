@@ -265,7 +265,13 @@ export const scraperApi = {
   },
 
   /** 批量抓取 */
-  async batchScrape(roms: { file_name: string; search_name: string }[], system: string, directory: string, providerId: string, mediaTypes?: string[]): Promise<void> {
+  async batchScrape(
+    roms: { file_name: string; search_name: string; system?: string; directory?: string }[],
+    system: string,
+    directory: string,
+    providerId: string,
+    mediaTypes?: string[],
+  ): Promise<void> {
     if (isTauri()) {
       await tauriInvoke("batch_scrape", { roms, system, directory, providerId, mediaTypes });
     }

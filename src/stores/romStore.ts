@@ -21,6 +21,8 @@ interface SystemInfo {
   romCount: number;
 }
 
+export type BatchScrapeScope = "selection" | "platform" | "library";
+
 // 判定 ROM 是否已刮削:已有封面或描述(含待导出的 temp_data)即视为已刮削
 function isRomScraped(rom: Rom): boolean {
   return Boolean(
@@ -57,7 +59,7 @@ interface RomState {
   // 批量 Scrape
   isBatchScraping: boolean;
   batchProgress: BatchProgress | null;
-  startBatchScrape: (provider: string, mediaTypes?: string[]) => Promise<void>;
+  startBatchScrape: (provider: string, mediaTypes?: string[], scope?: BatchScrapeScope) => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -164,19 +166,30 @@ export const useRomStore = create<RomState>((set, get) => ({
   // 批量 Scrape
   isBatchScraping: false,
   batchProgress: null,
-  startBatchScrape: async (providerId: string, mediaTypes?: string[]) => {
+  startBatchScrape: async (providerId: string, mediaTypes?: string[], scope = "selection") => {
     const { selectedRomIds, selectedSystem, systemRoms } = get();
-    if (selectedRomIds.size === 0) return;
 
     if (!isTauri()) {
       console.warn("Batch scrape not supported in web mode");
       return;
     }
 
-    // 获取当前系统的目录信息
-    const systemInfo = systemRoms.find(s => s.system === selectedSystem);
-    const directory = systemInfo?.path || "";
-    const system = selectedSystem || "";
+    const selectedSystemInfo = systemRoms.find(s => s.system === selectedSystem);
+    const targetSystems = scope === "library"
+      ? systemRoms
+      : selectedSystemInfo ? [selectedSystemInfo] : [];
+    const targetRoms = targetSystems.flatMap(systemInfo =>
+      systemInfo.roms
+        .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
+        .map(rom => ({
+          file_name: rom.file,
+          search_name: rom.english_name?.trim() || rom.name || rom.file,
+          system: systemInfo.system,
+          directory: systemInfo.path || "",
+        })),
+    );
+
+    if (targetRoms.length === 0) return;
 
     set({ isBatchScraping: true, batchProgress: null });
     try {
@@ -193,18 +206,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      const selectedRoms = systemInfo?.roms
-        .filter(rom => selectedRomIds.has(rom.file))
-        .map(rom => ({
-          file_name: rom.file,
-          search_name: rom.english_name?.trim() || rom.name || rom.file,
-        })) || [];
-
-      if (selectedRoms.length === 0) {
-        throw new Error("未找到选中的 ROM");
-      }
-
-      await scraperApi.batchScrape(selectedRoms, system, directory, providerId, mediaTypes);
+      await scraperApi.batchScrape(targetRoms, "", "", providerId, mediaTypes);
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });

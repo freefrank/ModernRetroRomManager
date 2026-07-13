@@ -51,6 +51,7 @@ export default function Library() {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [activeRom, setActiveRom] = useState<Rom | null>(null);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [batchScope, setBatchScope] = useState<"selection" | "platform">("selection");
   const [isGeneratingBoxart, setIsGeneratingBoxart] = useState(false);
   const [boxartProgress, setBoxartProgress] = useState({ current: 0, total: 0 });
   const [cardScale, setCardScale] = useState(1);
@@ -142,7 +143,7 @@ export default function Library() {
             {t("library.batch.selectedCount", { count: selectedRomIds.size })}
           </div>
 
-          <Button size="sm" onClick={() => setIsBatchDialogOpen(true)} disabled={isBatchScraping}>
+          <Button size="sm" onClick={() => { setBatchScope("selection"); setIsBatchDialogOpen(true); }} disabled={isBatchScraping}>
             <Database className="w-4 h-4" />
             {t("library.batch.scrape")}
           </Button>
@@ -205,6 +206,15 @@ export default function Library() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => { setBatchScope("platform"); setIsBatchDialogOpen(true); }}
+            disabled={isBatchScraping || romsOfSystem.length === 0}
+          >
+            <Database className="w-5 h-5" />
+            <span className="hidden md:inline">{t("library.batch.scrapePlatform")}</span>
+          </Button>
+
           {/* PS3 Boxart Generation Button */}
           {isPs3 && (
             <Button
@@ -299,7 +309,11 @@ export default function Library() {
       <RomDetail rom={activeRom} onClose={() => setActiveRom(null)} />
 
       {/* Batch Scrape Dialog */}
-      <BatchScrapeDialog isOpen={isBatchDialogOpen} onClose={() => setIsBatchDialogOpen(false)} />
+      <BatchScrapeDialog
+        isOpen={isBatchDialogOpen}
+        onClose={() => setIsBatchDialogOpen(false)}
+        scope={batchScope}
+      />
     </div>
   );
 }

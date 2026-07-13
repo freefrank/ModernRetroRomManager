@@ -501,6 +501,10 @@ pub struct BatchProgress {
 pub struct BatchScrapeRom {
     pub file_name: String,
     pub search_name: String,
+    #[serde(default)]
+    pub system: String,
+    #[serde(default)]
+    pub directory: String,
 }
 
 #[tauri::command]
@@ -529,12 +533,22 @@ pub async fn batch_scrape(
             .for_each_concurrent(concurrency, |rom_item| {
                 let app = app.clone();
                 let manager_arc = Arc::clone(&manager_arc);
-                let system = system.clone();
-                let directory = directory.clone();
+                let fallback_system = system.clone();
+                let fallback_directory = directory.clone();
                 let allowed_media = allowed_media.clone();
                 let completed = Arc::clone(&completed);
                 async move {
                     let file_name = rom_item.file_name;
+                    let system = if rom_item.system.trim().is_empty() {
+                        fallback_system
+                    } else {
+                        rom_item.system
+                    };
+                    let directory = if rom_item.directory.trim().is_empty() {
+                        fallback_directory
+                    } else {
+                        rom_item.directory
+                    };
                     let search_name = if rom_item.search_name.trim().is_empty() {
                         file_name.clone()
                     } else {

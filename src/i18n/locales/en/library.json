@@ -30,6 +30,8 @@
     "batch": {
       "selectedCount": "{{count}} selected",
       "scrape": "Batch Scrape",
+      "scrapePlatform": "Scrape This Platform",
+      "scrapeLibrary": "Scrape Entire ROM Library",
       "scraping": "Batch scraping..."
     },
     "boxart": {
