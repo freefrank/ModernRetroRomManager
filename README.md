@@ -1,57 +1,62 @@
-# ModernRetroRomManager - 现代化 Retro ROM 管理软件
-MRRM
-打造一款**现代化、跨平台、开源**的 Retro ROM 管理软件，替代老旧的 ARRM 和 Skraper。
+# ModernRetroRomManager
 
-## ✨ 特性
+[简体中文](./README.zh-CN.md) | English
 
-- 🎨 **现代化 UI**: 基于 React + TailwindCSS 的 Cyberpunk 风格界面
-- ⚡ **高性能**: Rust (Tauri) 后端，原生级性能，极低的资源占用
-- 🎮 **多系统支持**: 预置 NES, SNES, PSX, GBA 等 17+ 种主流游戏系统
-- 📄 **Metadata 驱动**: 直接读取 `gamelist.xml` 或 `metadata.txt`，无需本地数据库
-- 🌐 **跨平台**: 支持 Windows, macOS, Linux
+ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM library manager. It is designed as a lightweight alternative to tools such as ARRM and Skraper, with a React interface and a native Rust/Tauri backend.
 
-## 🏗️ 技术栈
+## Features
 
-- **Frontend**: React 19, TypeScript, TailwindCSS v4, Framer Motion, Lucide React
-- **Backend**: Rust, Tauri v2
-- **Tooling**: Vite, pnpm, Cargo
+- Scan and organize multi-platform ROM libraries
+- Identify supported cartridge games from ROM headers, serials, and embedded databases
+- Match filename-based platforms and modified ROM sets with normalized game names
+- Search multiple metadata providers, with platform-aware confidence ranking and fallback handling
+- Scrape individual games, selected games, an entire platform, or the complete ROM library
+- Select optional media types and cache alternative artwork for review
+- Read and write EmulationStation `gamelist.xml` and Pegasus `metadata.pegasus.txt`
+- Import custom themes and use the built-in responsive dark interface
+- Run on Windows, Linux, and macOS through Tauri 2
 
-## 📚 资源与致谢
+## Metadata providers
 
-- **中文 ROM 数据库**: 
-  - [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) - 提供了极其宝贵的 ROM 中英文对照数据，使得本软件能够实现精确的中文名匹配与搜索。
-  - [emu.jy6d.com](http://emu.jy6d.com/dz/) - 提供了丰富的游戏中英文对照数据，作为补充数据源增强匹配覆盖率。
-- **Scraper 数据源**:
-  - [ScreenScraper](https://www.screenscraper.fr/)
-  - [SteamGridDB](https://www.steamgriddb.com/)
+- [ScreenScraper](https://www.screenscraper.fr/)
+- [SteamGridDB](https://www.steamgriddb.com/)
+- [TheGamesDB](https://thegamesdb.net/)
 
-## 🚀 快速开始
+Provider credentials, rate limits, worker threads, priority, and optional media types can be configured in the application settings.
 
-### 前置要求
+## Technology
 
-- Node.js (v20+)
+- Frontend: React 19, TypeScript, Tailwind CSS 4, Vite
+- Backend: Rust, Tauri 2
+- Package management: pnpm and Cargo
+
+## Development
+
+Requirements:
+
+- Node.js 20 or later
 - pnpm
-- Rust (最新稳定版)
+- Latest stable Rust toolchain
+- Tauri system prerequisites for your operating system
 
-### 安装依赖
+Install dependencies and start the desktop development build:
 
 ```bash
 pnpm install
-```
-
-### 开发模式运行
-
-```bash
 pnpm tauri dev
 ```
 
-### 构建生产版本
+Create a production build:
 
 ```bash
 pnpm tauri build
 ```
 
-## 📄 许可证
+## Data acknowledgements
+
+- [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) provides valuable Chinese and English ROM name mappings.
+- [emu.jy6d.com](http://emu.jy6d.com/dz/) provides additional bilingual game-name data.
+
+## License
 
 MIT License
-Test

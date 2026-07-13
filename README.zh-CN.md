@@ -1,0 +1,62 @@
+# ModernRetroRomManager
+
+简体中文 | [English](./README.md)
+
+ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM 游戏库管理器。项目采用 React 界面和原生 Rust/Tauri 后端，目标是提供比 ARRM、Skraper 等传统工具更轻量、易用的管理体验。
+
+## 功能特性
+
+- 扫描并整理多平台 ROM 游戏库
+- 通过 ROM Header、序列号和内置数据库识别支持的卡带游戏
+- 对文件名型平台和魔改 ROM 集进行名称标准化匹配
+- 聚合多个元数据 Provider，并根据平台匹配度、资源完整度进行置信度排序和故障切换
+- 支持单游戏、已选游戏、整个平台或整个 ROM 库批量刮削
+- 可选择需要下载的媒体类型，并缓存备选图片供用户确认
+- 读取和写入 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt`
+- 支持导入自定义主题，并提供响应式暗色界面
+- 基于 Tauri 2 支持 Windows、Linux 和 macOS
+
+## 元数据来源
+
+- [ScreenScraper](https://www.screenscraper.fr/)
+- [SteamGridDB](https://www.steamgriddb.com/)
+- [TheGamesDB](https://thegamesdb.net/)
+
+可以在应用设置中配置 Provider 凭据、请求速率、并发线程、优先级和可选媒体类型。
+
+## 技术栈
+
+- 前端：React 19、TypeScript、Tailwind CSS 4、Vite
+- 后端：Rust、Tauri 2
+- 包管理：pnpm、Cargo
+
+## 开发运行
+
+环境要求：
+
+- Node.js 20 或更高版本
+- pnpm
+- 最新稳定版 Rust 工具链
+- 当前操作系统所需的 Tauri 系统依赖
+
+安装依赖并启动桌面开发版本：
+
+```bash
+pnpm install
+pnpm tauri dev
+```
+
+构建生产版本：
+
+```bash
+pnpm tauri build
+```
+
+## 数据与致谢
+
+- [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) 提供了宝贵的 ROM 中英文名称对照数据。
+- [emu.jy6d.com](http://emu.jy6d.com/dz/) 提供了补充的游戏中英文名称数据。
+
+## 许可证
+
+MIT License
