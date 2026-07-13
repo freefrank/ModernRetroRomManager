@@ -52,6 +52,8 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
+版本号、更新日志和 portable 发布流程见 [docs/release-process.md](./docs/release-process.md)。发布前运行 `pnpm release:check`。
+
 ## 数据与致谢
 
 - [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) 提供了宝贵的 ROM 中英文名称对照数据。

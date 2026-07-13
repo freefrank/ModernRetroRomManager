@@ -1,0 +1,32 @@
+{
+  "description": "MRRM 版本与发布文档流程守卫",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/release-agent-hook.mjs prompt",
+            "commandWindows": "node scripts/release-agent-hook.mjs prompt",
+            "timeout": 10,
+            "statusMessage": "检查是否需要载入发布流程"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/release-agent-hook.mjs pre-tool",
+            "commandWindows": "node scripts/release-agent-hook.mjs pre-tool",
+            "timeout": 15,
+            "statusMessage": "校验版本号与发布文档"
+          }
+        ]
+      }
+    ]
+  }
+}

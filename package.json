@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "eslint src",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "release:check": "node scripts/release-tools.mjs check",
+    "release:bump": "node scripts/release-tools.mjs bump"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.18",

@@ -52,6 +52,8 @@ Create a production build:
 pnpm tauri build
 ```
 
+The versioning, changelog, and portable release workflow is documented in [docs/release-process.md](./docs/release-process.md). Run `pnpm release:check` before publishing a release.
+
 ## Data acknowledgements
 
 - [yingw/rom-name-cn](https://github.com/yingw/rom-name-cn) provides valuable Chinese and English ROM name mappings.
