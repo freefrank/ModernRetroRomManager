@@ -178,6 +178,15 @@ pub fn save_metadata_pegasus(
     metadata: &GameMetadata,
     is_temp: bool,
 ) -> Result<(), String> {
+    save_metadata_pegasus_with_media(rom, metadata, &[], is_temp)
+}
+
+pub fn save_metadata_pegasus_with_media(
+    rom: &RomInfo,
+    metadata: &GameMetadata,
+    media: &[(MediaType, PathBuf)],
+    is_temp: bool,
+) -> Result<(), String> {
     let metadata_path = if is_temp {
         // rom.directory 是 ROM 所在目录，library_path 是其父目录
         let rom_dir = Path::new(&rom.directory);
@@ -208,13 +217,70 @@ pub fn save_metadata_pegasus(
         game.extra.insert("x-english-name".to_string(), en.clone());
     }
 
+    let metadata_dir = metadata_path.parent().unwrap_or_else(|| Path::new(""));
+    for (media_type, path) in media {
+        let value = path
+            .strip_prefix(metadata_dir)
+            .unwrap_or(path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        match media_type {
+            MediaType::BoxFront => game.box_front = Some(value),
+            MediaType::BoxBack => game.box_back = Some(value),
+            MediaType::Box3D => game.box_full = Some(value),
+            MediaType::Screenshot => game.screenshot = Some(value),
+            MediaType::TitleScreen => game.titlescreen = Some(value),
+            MediaType::Logo => game.logo = Some(value),
+            MediaType::Icon => game.gridicon = Some(value),
+            MediaType::Hero => game.background = Some(value),
+            MediaType::Banner => game.marquee = Some(value),
+            MediaType::Video => game.video = Some(value),
+            MediaType::Manual | MediaType::Other => {}
+        }
+    }
+
     // 导出选项：包含 collection header（仅当文件不存在时）
     let options = PegasusExportOptions {
         include_collection: !metadata_path.exists(),
         collection_name: Some(rom.system.clone()),
+        include_assets: true,
         ..Default::default()
     };
 
     // 使用 merge 模式写入，更新已存在的游戏或追加新游戏
     write_pegasus_file(&metadata_path, &[game], &options, true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saved_pegasus_metadata_contains_selected_boxart_path() {
+        let root = std::env::temp_dir().join(format!("mrrm-media-metadata-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom = RomInfo {
+            file: "game.zip".into(),
+            name: "Game".into(),
+            directory: root.to_string_lossy().into_owned(),
+            system: "gba".into(),
+            ..Default::default()
+        };
+        let media_path = root.join("media").join("game").join("boxfront.png");
+        save_metadata_pegasus_with_media(
+            &rom,
+            &GameMetadata {
+                name: "Game".into(),
+                ..Default::default()
+            },
+            &[(MediaType::BoxFront, media_path)],
+            false,
+        )
+        .unwrap();
+
+        let content = fs::read_to_string(root.join("metadata.txt")).unwrap();
+        assert!(content.contains("assets.boxFront: media/game/boxfront.png"));
+        fs::remove_dir_all(root).unwrap();
+    }
 }

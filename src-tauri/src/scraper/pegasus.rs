@@ -590,11 +590,23 @@ pub fn write_pegasus_file(
                         if new_game.box_back.is_some() {
                             existing_game.box_back = new_game.box_back.clone();
                         }
+                        if new_game.box_full.is_some() {
+                            existing_game.box_full = new_game.box_full.clone();
+                        }
                         if new_game.logo.is_some() {
                             existing_game.logo = new_game.logo.clone();
                         }
+                        if new_game.marquee.is_some() {
+                            existing_game.marquee = new_game.marquee.clone();
+                        }
+                        if new_game.gridicon.is_some() {
+                            existing_game.gridicon = new_game.gridicon.clone();
+                        }
                         if new_game.screenshot.is_some() {
                             existing_game.screenshot = new_game.screenshot.clone();
+                        }
+                        if new_game.titlescreen.is_some() {
+                            existing_game.titlescreen = new_game.titlescreen.clone();
                         }
                         if new_game.video.is_some() {
                             existing_game.video = new_game.video.clone();

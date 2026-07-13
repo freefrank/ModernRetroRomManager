@@ -7,7 +7,7 @@ use crate::rom_service::RomInfo;
 use crate::scraper::{
     gba_header::identify_gba_rom,
     manager::{ProviderInfo, ScraperManager},
-    persistence::{download_media, save_metadata_pegasus},
+    persistence::{download_media, save_metadata_pegasus, save_metadata_pegasus_with_media},
     types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
 };
 use futures::StreamExt;
@@ -297,7 +297,12 @@ async fn cache_media_candidates(
         if fs::create_dir_all(&directory).is_err() {
             continue;
         }
-        let target = directory.join(format!("candidate-{}.{}", *index, extension));
+        let target = directory.join(format!(
+            "candidate-{}-{:016x}.{}",
+            *index,
+            asset_cache_key(&asset.url),
+            extension
+        ));
         if target.exists() {
             continue;
         }
@@ -319,6 +324,68 @@ async fn cache_media_candidates(
         }
     }
     Ok(())
+}
+
+fn asset_cache_key(url: &str) -> u64 {
+    url.as_bytes()
+        .iter()
+        .fold(0xcbf29ce484222325, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+        })
+}
+
+fn find_cached_asset(
+    rom_directory: &str,
+    system: &str,
+    rom_id: &str,
+    asset: &MediaAsset,
+) -> Option<PathBuf> {
+    let rom_dir = Path::new(rom_directory);
+    let library = rom_dir.parent().unwrap_or(rom_dir);
+    let rom_stem = Path::new(rom_id)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(rom_id);
+    let directory = get_cache_dir_for_library(library, system)
+        .join(rom_stem)
+        .join(&asset.provider)
+        .join(asset.asset_type.as_str());
+    let marker = format!("-{:016x}.", asset_cache_key(&asset.url));
+    fs::read_dir(directory)
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.is_file()
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.contains(&marker))
+        })
+}
+
+fn copy_cached_asset_to_temp(
+    rom: &RomInfo,
+    asset: &MediaAsset,
+    cached: &Path,
+) -> Result<(crate::scraper::MediaType, PathBuf), String> {
+    let rom_dir = Path::new(&rom.directory);
+    let library = rom_dir.parent().unwrap_or(rom_dir);
+    let rom_stem = Path::new(&rom.file)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(&rom.name);
+    let target_dir = get_temp_dir_for_library(library, &rom.system)
+        .join("media")
+        .join(rom_stem);
+    fs::create_dir_all(&target_dir).map_err(|error| error.to_string())?;
+    let extension = cached
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("png");
+    let target = target_dir.join(format!("{}.{}", asset.asset_type.as_str(), extension));
+    fs::copy(cached, &target).map_err(|error| error.to_string())?;
+    Ok((asset.asset_type, target))
 }
 
 /// 智能 scrape - 自动匹配并聚合数据
@@ -398,14 +465,25 @@ pub async fn apply_scraped_data(
         ..Default::default()
     };
 
-    // 2. 下载媒体文件到临时目录
-    if !options.selected_media.is_empty() {
+    // 2. 优先复用点开条目时已下载的候选缓存，仅对缓存缺失项访问网络。
+    let mut materialized = Vec::new();
+    let mut uncached = Vec::new();
+    for asset in &options.selected_media {
+        if let Some(cached) =
+            find_cached_asset(&options.directory, &options.system, &options.rom_id, asset)
+        {
+            materialized.push(copy_cached_asset_to_temp(&rom, asset, &cached)?);
+        } else {
+            uncached.push(asset.clone());
+        }
+    }
+    if !uncached.is_empty() {
         let manager = state.manager.read().await;
-        download_media(&manager.http_client, &rom, &options.selected_media, true).await?;
+        materialized.extend(download_media(&manager.http_client, &rom, &uncached, true).await?);
     }
 
-    // 3. 写入元数据到临时目录
-    save_metadata_pegasus(&rom, &options.metadata, true)?;
+    // 3. 元数据和已选媒体路径一次写入，ROM 库刷新后即可显示封面。
+    save_metadata_pegasus_with_media(&rom, &options.metadata, &materialized, true)?;
 
     Ok(())
 }
