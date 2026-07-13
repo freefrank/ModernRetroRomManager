@@ -5,6 +5,7 @@
 use crate::config::{get_cache_dir_for_library, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::RomInfo;
 use crate::scraper::{
+    gba_header::identify_gba_rom,
     manager::{ProviderInfo, ScraperManager},
     persistence::{download_media, save_metadata_pegasus},
     types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
@@ -164,10 +165,21 @@ pub async fn scraper_search(
     name: String,
     file_name: String,
     system: Option<String>,
+    directory: Option<String>,
 ) -> Result<Vec<SearchResult>, String> {
     let manager = state.manager.read().await;
 
-    let mut query = ScrapeQuery::new(name, file_name);
+    let resolved_name = match (system.as_deref(), directory.as_deref()) {
+        (Some(system), Some(directory)) if system.eq_ignore_ascii_case("gba") => {
+            identify_gba_rom(&Path::new(directory).join(&file_name))
+                .ok()
+                .flatten()
+                .map(|identification| identification.scrape_name)
+                .unwrap_or(name)
+        }
+        _ => name,
+    };
+    let mut query = ScrapeQuery::new(resolved_name, file_name);
     if let Some(sys) = system {
         query = query.with_system(sys);
     }

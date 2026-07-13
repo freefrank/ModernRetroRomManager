@@ -301,7 +301,9 @@ impl ScraperProvider for ScreenScraperClient {
             .ok_or_else(|| "ScreenScraper 缺少受支持的平台映射".to_string())?;
         let jeu = self
             .fetch_game_info(vec![
-                ("romnom", query.file_name.clone()),
+                // 中文 ROM 文件名通常不是 ScreenScraper 可识别标题，优先使用
+                // 内部标识或用户输入解析出的标准搜索名称。
+                ("romnom", query.name.clone()),
                 ("systemeid", system_id.to_string()),
             ])
             .await?;

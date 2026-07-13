@@ -28,10 +28,20 @@ function useMediaUrl(path: string | undefined): string | null {
   return url;
 }
 
-export default function RomDetail({ rom, onClose }: RomDetailProps) {
+export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps) {
   const { t } = useTranslation();
   const toast = useToast();
   const { exportData, updateTempMetadata, deleteTempMedia, isExporting, exportProgress } = useRomStore();
+  const rom = useRomStore(state => {
+    if (!selectedRom) return null;
+    return state.systemRoms
+      .flatMap(system => system.roms)
+      .find(item =>
+        item.file === selectedRom.file &&
+        item.system === selectedRom.system &&
+        item.directory === selectedRom.directory
+      ) ?? selectedRom;
+  });
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

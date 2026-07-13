@@ -3,6 +3,7 @@ import { Search, Image as ImageIcon, Check, Gamepad2, Play, Activity, Globe, Inf
 import { useTranslation } from "react-i18next";
 import { scraperApi } from "@/lib/api";
 import { useScraperStore } from "@/stores/scraperStore";
+import { useRomStore } from "@/stores/romStore";
 import type { Rom, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset } from "@/types";
 import { Button, Dialog, Input, Badge, Spinner, EmptyState } from "@/components/ui";
 import { clsx } from "clsx";
@@ -23,6 +24,7 @@ function confidenceVariant(confidence: number): "success" | "warning" | "error" 
 export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
+  const fetchRoms = useRomStore(state => state.fetchRoms);
   const [query, setQuery] = useState(rom.english_name?.trim() || rom.name);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [results, setResults] = useState<ScraperSearchResult[]>([]);
@@ -57,7 +59,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
     if (!query) return;
     setIsSearching(true);
     try {
-      const searchResults = await scraperApi.search(query, rom.file, rom.system);
+      const searchResults = await scraperApi.search(query, rom.file, rom.system, rom.directory);
       setResults(searchResults.sort((a, b) => b.confidence - a.confidence));
       setSelectedResult(null);
       setMetadata(null);
@@ -125,6 +127,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
         selected_media: selectedMedia
       });
 
+      await fetchRoms();
       onClose();
     } catch (error) {
       console.error("Apply failed:", error);

@@ -168,8 +168,9 @@ pub async fn download_media(
     Ok(downloaded)
 }
 
-/// 将元数据写入 metadata.txt (Pegasus 格式)
-/// 如果 is_temp 为 true，则写入程序目录下的 temp/{system}/metadata.txt
+/// 将元数据写入 Pegasus 格式文件。
+/// 临时数据统一写入 temp/{library}/{system}/metadata.pegasus.txt，
+/// 与 ROM 扫描和 CN ROM Tool 的读取约定保持一致。
 ///
 /// 使用统一的 pegasus 模块进行文件写入，支持合并模式
 pub fn save_metadata_pegasus(
@@ -183,7 +184,7 @@ pub fn save_metadata_pegasus(
         let library_path = rom_dir.parent().unwrap_or(rom_dir);
         let temp_sys_dir = get_temp_dir_for_library(library_path, &rom.system);
         fs::create_dir_all(&temp_sys_dir).map_err(|e| e.to_string())?;
-        temp_sys_dir.join("metadata.txt")
+        temp_sys_dir.join("metadata.pegasus.txt")
     } else {
         Path::new(&rom.directory).join("metadata.txt")
     };

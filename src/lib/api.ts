@@ -188,9 +188,9 @@ export const scraperApi = {
   },
 
   /** 搜索游戏 */
-  async search(name: string, fileName: string, system?: string): Promise<ScraperSearchResult[]> {
+  async search(name: string, fileName: string, system?: string, directory?: string): Promise<ScraperSearchResult[]> {
     if (isTauri()) {
-      return tauriInvoke<ScraperSearchResult[]>("scraper_search", { name, fileName, system });
+      return tauriInvoke<ScraperSearchResult[]>("scraper_search", { name, fileName, system, directory });
     }
     return [];
   },

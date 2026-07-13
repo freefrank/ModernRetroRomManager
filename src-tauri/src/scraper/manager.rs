@@ -298,17 +298,24 @@ impl ScraperManager {
             .filter(|p| p.capabilities().has(ProviderCapability::Search))
             .map(|p| {
                 let provider = Arc::clone(p);
+                let provider_id = provider.id().to_string();
                 let q = query.clone();
-                async move { provider.search(&q).await }
+                async move { (provider_id, provider.search(&q).await) }
             })
             .collect();
 
-        let results: Vec<Result<Vec<SearchResult>, String>> = join_all(futures).await;
+        let results = join_all(futures).await;
 
         // 合并结果并按重算后的置信度降序排序
         let merged: Vec<SearchResult> = results
             .into_iter()
-            .filter_map(|r: Result<Vec<SearchResult>, String>| r.ok())
+            .filter_map(|(provider, result)| match result {
+                Ok(results) => Some(results),
+                Err(error) => {
+                    eprintln!("[scraper] {provider} 搜索失败: {error}");
+                    None
+                }
+            })
             .flatten()
             .collect();
 
