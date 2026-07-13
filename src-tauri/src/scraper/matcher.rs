@@ -4,6 +4,31 @@
 
 use crate::scraper::{ScrapeQuery, SearchResult};
 
+fn canonical_system(system: &str) -> String {
+    match system
+        .trim()
+        .to_ascii_lowercase()
+        .replace([' ', '-', '_'], "")
+        .as_str()
+    {
+        "3" | "n64" | "nintendo64" => "n64",
+        "5" | "gba" | "gameboyadvance" => "gba",
+        "6" | "sfc" | "snes" | "superfamicom" => "sfc",
+        "7" | "nes" | "fc" | "famicom" => "fc",
+        "8" | "nds" | "nintendods" => "nds",
+        "gb" | "gameboy" => "gb",
+        "gbc" | "gameboycolor" => "gbc",
+        "4912" | "3ds" | "nintendo3ds" => "3ds",
+        "18" | "md" | "genesis" | "megadrive" => "md",
+        "ps" | "ps1" | "playstation" => "ps",
+        "psp" | "playstationportable" => "psp",
+        "ss" | "saturn" | "segasaturn" => "ss",
+        "dc" | "dreamcast" => "dc",
+        value => value,
+    }
+    .to_string()
+}
+
 /// 计算两个字符串的相似度 (Jaro-Winkler)
 pub fn jaro_winkler_similarity(s1: &str, s2: &str) -> f32 {
     let jaro = jaro_similarity(s1, s2);
@@ -126,25 +151,27 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     let query_name = normalize_game_name(&query.name);
     let result_name = normalize_game_name(&result.name);
 
-    // 基础名称相似度 (权重 0.7)
+    // 名称仍是主要信号，但为平台一致性预留更高权重。
     let name_similarity = jaro_winkler_similarity(&query_name, &result_name);
-    let mut score = name_similarity * 0.7;
+    let mut score = name_similarity * 0.65;
 
     // 完全匹配奖励
     if query_name.to_lowercase() == result_name.to_lowercase() {
-        score += 0.2;
+        score += 0.15;
     }
 
-    // 系统匹配奖励 (权重 0.1)
+    // 平台一致奖励 20%；明确冲突则扣 25%，避免同名跨平台移植版排在前面。
     if let (Some(query_sys), Some(result_sys)) = (&query.system, &result.system) {
-        if query_sys.to_lowercase() == result_sys.to_lowercase() {
-            score += 0.1;
+        if canonical_system(query_sys) == canonical_system(result_sys) {
+            score += 0.2;
+        } else {
+            score -= 0.25;
         }
     }
 
     // 年份匹配可以考虑但目前 query 没有年份信息
 
-    score.min(1.0)
+    score.clamp(0.0, 1.0)
 }
 
 /// 对搜索结果重新计算置信度并排序
@@ -220,7 +247,7 @@ mod tests {
         assert_eq!(ranked[0].name, "Super Mario World");
         assert_eq!(ranked[2].name, "Zelda");
         // 置信度已重算且降序排列
-        assert!(ranked[0].confidence >= 0.9);
+        assert!(ranked[0].confidence >= 0.79);
         assert!(ranked[0].confidence >= ranked[1].confidence);
         assert!(ranked[1].confidence >= ranked[2].confidence);
     }
@@ -243,7 +270,25 @@ mod tests {
         };
 
         let confidence = calculate_confidence(&query, &result);
-        // 完全同名且无系统信息时的满分为 0.7 + 0.2 = 0.9
-        assert!(confidence >= 0.9);
+        // 无平台信息时保守封顶，避免盖过已验证平台的结果。
+        assert!((confidence - 0.8).abs() < 0.001);
+    }
+
+    #[test]
+    fn platform_aliases_and_numeric_ids_receive_stronger_weight() {
+        let query = ScrapeQuery::new("Sonic".into(), "Sonic.zip".into()).with_system("MD");
+        let result = |system: Option<&str>| SearchResult {
+            provider: "test".into(),
+            source_id: "1".into(),
+            name: "Sonic".into(),
+            year: None,
+            system: system.map(str::to_string),
+            thumbnail: None,
+            confidence: 0.0,
+        };
+        assert!((calculate_confidence(&query, &result(Some("18"))) - 1.0).abs() < 0.001);
+        assert!((calculate_confidence(&query, &result(Some("Genesis"))) - 1.0).abs() < 0.001);
+        assert!(calculate_confidence(&query, &result(Some("SNES"))) < 0.6);
+        assert!(calculate_confidence(&query, &result(None)) < 0.9);
     }
 }

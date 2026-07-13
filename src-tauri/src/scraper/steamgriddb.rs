@@ -146,7 +146,9 @@ impl ScraperProvider for SteamGridDBClient {
                         let year = 1970 + (secs / 31536000);
                         year.to_string()
                     }),
-                    system: None, // SteamGridDB 不区分系统
+                    // autocomplete 不返回平台字段，保留本次 ROM 平台作为搜索上下文，
+                    // 让统一排序能优先当前平台而不是把结果当成完全未知平台。
+                    system: query.system.clone(),
                     thumbnail: None,
                     confidence,
                 }

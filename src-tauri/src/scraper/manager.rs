@@ -14,6 +14,13 @@ use super::{
 };
 use crate::settings::{get_settings, update_setting, AppSettings, ScraperConfig};
 
+fn usable_asset(asset: &MediaAsset) -> bool {
+    let url = asset.url.trim();
+    !url.is_empty()
+        && (url.starts_with("https://") || url.starts_with("http://"))
+        && asset.asset_type.as_str() != "other"
+}
+
 /// Provider 配置
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
@@ -374,6 +381,7 @@ impl ScraperManager {
             .get_media(source_id)
             .await?
             .into_iter()
+            .filter(usable_asset)
             .filter(|asset| {
                 allowed
                     .iter()
@@ -480,6 +488,7 @@ impl ScraperManager {
             .into_iter()
             .filter_map(|r: Result<Vec<MediaAsset>, String>| r.ok())
             .flatten()
+            .filter(usable_asset)
             .filter(|asset| {
                 get_settings()
                     .scraper_media_types
@@ -567,6 +576,21 @@ mod tests {
     use super::*;
     use crate::scraper::Capabilities;
     use async_trait::async_trait;
+
+    #[test]
+    fn empty_or_invalid_media_assets_are_filtered() {
+        let asset = |url: &str| MediaAsset {
+            provider: "test".into(),
+            url: url.into(),
+            asset_type: crate::scraper::MediaType::BoxFront,
+            width: None,
+            height: None,
+        };
+        assert!(!usable_asset(&asset("")));
+        assert!(!usable_asset(&asset("   ")));
+        assert!(!usable_asset(&asset("file:///missing.png")));
+        assert!(usable_asset(&asset("https://cdn.example/cover.png")));
+    }
 
     #[test]
     fn test_manager_creation() {

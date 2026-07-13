@@ -136,13 +136,14 @@ impl ScraperProvider for TheGamesDbClient {
     }
 
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
+        let requested_platform = query.system.as_deref().and_then(Self::platform_id);
         let mut params = vec![
             ("name", query.name.clone()),
             ("mode", "natural".into()),
             ("fields", "players,overview,rating,platform".into()),
             ("include", "boxart,platform".into()),
         ];
-        if let Some(platform_id) = query.system.as_deref().and_then(Self::platform_id) {
+        if let Some(platform_id) = requested_platform {
             params.push(("filter[platform]", platform_id.to_string()));
         }
         let response: TgdbGames = self.request("/v1.1/Games/ByGameName", &params).await?;
@@ -158,7 +159,11 @@ impl ScraperProvider for TheGamesDbClient {
                 year: game
                     .release_date
                     .and_then(|date| date.split('-').next().map(str::to_string)),
-                system: game.platform.map(|id| id.to_string()),
+                system: if game.platform.map(|id| id.to_string()).as_deref() == requested_platform {
+                    query.system.clone()
+                } else {
+                    game.platform.map(|id| id.to_string())
+                },
                 thumbnail: None,
                 confidence: (0.92 - index as f32 * 0.05).max(0.5),
             })
