@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ConsoleLevel = "info" | "success" | "warning" | "error";
+export type ConsoleLevel = "debug" | "info" | "warn" | "error";
 
 export interface ConsoleEntry {
   id: number;
@@ -56,10 +56,11 @@ export function installConsoleCapture(): void {
   if (typeof window === "undefined" || window.__mrrmConsoleCaptureInstalled) return;
   window.__mrrmConsoleCaptureInstalled = true;
 
-  const methods: Array<["log" | "info" | "warn" | "error", ConsoleLevel]> = [
+  const methods: Array<["debug" | "log" | "info" | "warn" | "error", ConsoleLevel]> = [
+    ["debug", "debug"],
     ["log", "info"],
     ["info", "info"],
-    ["warn", "warning"],
+    ["warn", "warn"],
     ["error", "error"],
   ];
   for (const [method, level] of methods) {

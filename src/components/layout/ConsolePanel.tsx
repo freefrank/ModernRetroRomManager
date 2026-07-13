@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { ChevronDown, ChevronUp, CircleAlert, Terminal, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
@@ -20,29 +20,38 @@ interface LogPayload {
 }
 
 const levelClass: Record<ConsoleLevel, string> = {
+  debug: "text-text-muted",
   info: "text-text-secondary",
-  success: "text-accent-success",
-  warning: "text-accent-warning",
+  warn: "text-accent-warning",
   error: "text-accent-error",
 };
+
+const levels: ConsoleLevel[] = ["debug", "info", "warn", "error"];
 
 export default function ConsolePanel() {
   const { t } = useTranslation();
   const { entries, expanded, addEntry, clear, toggle } = useConsoleStore();
+  const [visibleLevels, setVisibleLevels] = useState<Set<ConsoleLevel>>(
+    () => new Set(levels),
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
-  const latest = entries[entries.length - 1];
+  const visibleEntries = useMemo(
+    () => entries.filter((entry) => visibleLevels.has(entry.level)),
+    [entries, visibleLevels],
+  );
+  const latest = visibleEntries[visibleEntries.length - 1];
   const errorCount = entries.filter((entry) => entry.level === "error").length;
 
   useEffect(() => {
     const cleanups = [
       listen<ProgressPayload>("batch-scrape-progress", ({ payload }) => {
         const level = payload.finished
-          ? payload.cancelled ? "warning" : "success"
+          ? payload.cancelled ? "warn" : "info"
           : "info";
         addEntry(level, `${payload.message} (${payload.current}/${payload.total})`, "scraper");
       }),
       listen<ProgressPayload>("export-progress", ({ payload }) => {
-        addEntry(payload.finished ? "success" : "info", payload.message, "export");
+        addEntry("info", payload.message, "export");
       }),
       listen<LogPayload>("app-log", ({ payload }) => {
         addEntry(payload.level || "info", payload.message, payload.source || "backend");
@@ -97,18 +106,47 @@ export default function ConsolePanel() {
       </div>
 
       {expanded && (
-        <div ref={scrollRef} className="h-[32vh] overflow-y-auto border-t border-border-default bg-black/25 px-3 py-2 font-mono text-[11px] custom-scrollbar">
-          {entries.length === 0 ? (
+        <div className="border-t border-border-default bg-black/25 font-mono text-[11px]">
+          <div className="flex items-center gap-1 border-b border-border-default px-3 py-1">
+            {levels.map((level) => {
+              const active = visibleLevels.has(level);
+              const count = entries.filter((entry) => entry.level === level).length;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setVisibleLevels((current) => {
+                    const next = new Set(current);
+                    if (next.has(level)) next.delete(level);
+                    else next.add(level);
+                    return next;
+                  })}
+                  className={clsx(
+                    "rounded border px-1.5 py-0.5 uppercase transition-opacity",
+                    levelClass[level],
+                    active ? "border-current opacity-100" : "border-border-default opacity-40",
+                  )}
+                >
+                  {level} {count}
+                </button>
+              );
+            })}
+          </div>
+          <div ref={scrollRef} className="h-[calc(32vh-2rem)] overflow-y-auto px-3 py-2 custom-scrollbar">
+          {visibleEntries.length === 0 ? (
             <p className="text-text-muted">{t("console.empty")}</p>
-          ) : entries.map((entry) => (
-            <div key={entry.id} className="grid grid-cols-[5rem_6rem_1fr] gap-2 py-0.5 leading-5">
+          ) : visibleEntries.map((entry) => (
+            <div key={entry.id} className="grid grid-cols-[5rem_3.5rem_6rem_1fr] gap-2 py-0.5 leading-5">
               <time className="text-text-muted">
                 {new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })}
               </time>
+              <span className={clsx("font-bold uppercase", levelClass[entry.level])}>{entry.level}</span>
               <span className={clsx("truncate", levelClass[entry.level])}>[{entry.source}]</span>
               <span className={clsx("whitespace-pre-wrap break-words", levelClass[entry.level])}>{entry.message}</span>
             </div>
           ))}
+          </div>
         </div>
       )}
     </section>
