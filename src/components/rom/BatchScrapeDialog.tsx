@@ -7,6 +7,7 @@ import { Button, Dialog, Spinner } from "@/components/ui";
 import { clsx } from "clsx";
 import { scraperApi } from "@/lib/api";
 import MediaTypeSelector from "./MediaTypeSelector";
+import { hasMetadataAndAsset } from "@/lib/romScrapeStatus";
 
 interface BatchScrapeDialogProps {
   isOpen: boolean;
@@ -55,11 +56,12 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   };
 
   const activeProviders = providers.filter(p => p.enabled);
-  const targetCount = scope === "library"
-    ? systemRoms.reduce((count, item) => count + item.roms.length, 0)
-    : scope === "platform"
-      ? systemRoms.find(item => item.system === selectedSystem)?.roms.length || 0
-      : selectedRomIds.size;
+  const targetCount = systemRoms
+    .filter(item => scope === "library" || item.system === selectedSystem)
+    .flatMap(item => item.roms)
+    .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
+    .filter(rom => !hasMetadataAndAsset(rom))
+    .length;
   const progressPercent = batchProgress
     ? Math.round((batchProgress.current / batchProgress.total) * 100)
     : 0;

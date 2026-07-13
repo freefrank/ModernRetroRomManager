@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { api, scraperApi, isTauri } from "@/lib/api";
 import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms, ScraperGameMetadata } from "@/types";
+import { hasMetadataAndAsset } from "@/lib/romScrapeStatus";
 
 interface ScanProgress {
   current: number;
@@ -183,6 +184,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     const targetRoms = targetSystems.flatMap(systemInfo =>
       systemInfo.roms
         .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
+        .filter(rom => !hasMetadataAndAsset(rom))
         .map(rom => ({
           file_name: rom.file,
           search_name: rom.english_name?.trim() || rom.name || rom.file,
