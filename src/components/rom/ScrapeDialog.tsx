@@ -9,6 +9,7 @@ import { Button, Dialog, Input, Badge, Spinner, EmptyState } from "@/components/
 import { clsx } from "clsx";
 import MediaTypeSelector from "./MediaTypeSelector";
 import { cacheSearchResults, getCachedSearchResults } from "@/lib/scraperSearchCache";
+import { normalizeMediaType, selectOneAssetPerType } from "@/lib/mediaSelection";
 
 interface ScrapeDialogProps {
   rom: Rom;
@@ -116,13 +117,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
       setMetadata(metaResult);
       setMedia(mediaResults);
 
-      const defaultSelection = new Set<string>();
-      mediaResults.forEach(m => {
-        if (m.asset_type === "boxfront" || m.asset_type === "box-2D" || m.asset_type === "box-2d") {
-          defaultSelection.add(m.url);
-        }
-      });
-      setSelectedMediaUrls(defaultSelection);
+      setSelectedMediaUrls(selectOneAssetPerType(mediaResults));
     } catch (error) {
       console.error("Failed to load details:", error);
     } finally {
@@ -311,9 +306,9 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
               {/* Game Details */}
               <div className="flex gap-8">
                 <div className="w-48 shrink-0">
-                  {media.find(m => m.asset_type === "boxfront" || m.asset_type === "box-2D") ? (
+                  {media.find(m => normalizeMediaType(m.asset_type) === "boxfront") ? (
                     <img
-                      src={media.find(m => m.asset_type === "boxfront" || m.asset_type === "box-2D")?.url}
+                      src={media.find(m => normalizeMediaType(m.asset_type) === "boxfront")?.url}
                       className="w-full aspect-[3/4] object-cover rounded-[var(--radius-lg)] border-[length:var(--border-width)] border-border-default [box-shadow:var(--shadow-card)]"
                       alt={t("scrapeDialog.coverAlt")}
                     />
