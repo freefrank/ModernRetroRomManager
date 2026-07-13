@@ -61,9 +61,26 @@
       "apiKey": "API Key",
       "usernamePlaceholder": "输入用户名",
       "passwordPlaceholder": "输入密码",
-      "apiKeyPlaceholder": "输入 SteamGridDB API Key",
-      "credentialsHint": "请输入该源的 API 凭据。这些信息将加密存储在本地。",
-      "authenticated": "已认证"
+      "apiKeyPlaceholder": "输入该数据源的 API Key",
+      "credentialsHint": "请输入该源的 API 凭据。凭据仅保存在本机配置文件中。",
+      "authenticated": "已认证",
+      "testConnection": "测试连接",
+      "testFailed": "连接测试失败：{{error}}",
+      "mediaSelection": "抓取资源类型",
+      "mediaSelectionHint": "只请求并缓存勾选的资源；视频和手册默认关闭。每个来源、每种类型最多缓存 3 个候选。",
+      "mediaTypes": {
+        "boxfront": "正面封面",
+        "boxback": "背面封面",
+        "box3d": "3D 封面",
+        "logo": "Logo",
+        "screenshot": "游戏截图",
+        "titlescreen": "标题画面",
+        "hero": "背景图",
+        "banner": "横幅",
+        "icon": "图标",
+        "video": "视频（可选）",
+        "manual": "说明书（可选）"
+      }
     },
     "language": {
       "title": "语言",

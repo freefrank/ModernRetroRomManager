@@ -61,9 +61,26 @@
       "apiKey": "API Key",
       "usernamePlaceholder": "Enter username",
       "passwordPlaceholder": "Enter password",
-      "apiKeyPlaceholder": "Enter SteamGridDB API Key",
-      "credentialsHint": "Please enter your API credentials. They are stored securely on your machine.",
-      "authenticated": "Authenticated"
+      "apiKeyPlaceholder": "Enter the provider API key",
+      "credentialsHint": "Enter the provider API credentials. Credentials are stored only in the local configuration file.",
+      "authenticated": "Authenticated",
+      "testConnection": "Test Connection",
+      "testFailed": "Connection test failed: {{error}}",
+      "mediaSelection": "Media Types",
+      "mediaSelectionHint": "Only checked assets are requested and cached. Videos and manuals are off by default. Up to 3 candidates per provider and type are cached.",
+      "mediaTypes": {
+        "boxfront": "Front Cover",
+        "boxback": "Back Cover",
+        "box3d": "3D Cover",
+        "logo": "Logo",
+        "screenshot": "Screenshot",
+        "titlescreen": "Title Screen",
+        "hero": "Hero",
+        "banner": "Banner",
+        "icon": "Icon",
+        "video": "Video (optional)",
+        "manual": "Manual (optional)"
+      }
     },
     "language": {
       "title": "Language",

@@ -204,11 +204,29 @@ export const scraperApi = {
   },
 
   /** 获取媒体资产 */
-  async getMedia(providerId: string, sourceId: string): Promise<ScraperMediaAsset[]> {
+  async getMedia(
+    providerId: string,
+    sourceId: string,
+    context?: { romDirectory: string; system: string; romId: string },
+  ): Promise<ScraperMediaAsset[]> {
     if (isTauri()) {
-      return tauriInvoke<ScraperMediaAsset[]>("scraper_get_media", { providerId, sourceId });
+      return tauriInvoke<ScraperMediaAsset[]>("scraper_get_media", {
+        providerId,
+        sourceId,
+        romDirectory: context?.romDirectory,
+        system: context?.system,
+        romId: context?.romId,
+      });
     }
     return [];
+  },
+
+  async getMediaTypes(): Promise<string[]> {
+    return isTauri() ? tauriInvoke<string[]>("get_scraper_media_types") : [];
+  },
+
+  async setMediaTypes(mediaTypes: string[]): Promise<void> {
+    if (isTauri()) await tauriInvoke("set_scraper_media_types", { mediaTypes });
   },
 
   /** 智能 scrape - 自动匹配并聚合数据 */
@@ -231,6 +249,11 @@ export const scraperApi = {
     if (isTauri()) {
       await tauriInvoke("scraper_set_provider_priority", { providerId, priority });
     }
+  },
+
+  async testProvider(providerId: string): Promise<string> {
+    if (isTauri()) return tauriInvoke<string>("test_scraper_provider", { providerId });
+    throw new Error("Not available in web mode");
   },
 
   /** 应用抓取到的数据 */

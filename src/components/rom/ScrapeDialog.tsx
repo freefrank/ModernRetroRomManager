@@ -74,7 +74,11 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
     try {
       const [metaResult, mediaResults] = await Promise.all([
         scraperApi.getMetadata(result.provider, result.source_id),
-        scraperApi.getMedia(result.provider, result.source_id)
+        scraperApi.getMedia(result.provider, result.source_id, {
+          romDirectory: rom.directory,
+          system: rom.system,
+          romId: rom.file,
+        })
       ]);
       setMetadata(metaResult);
       setMedia(mediaResults);

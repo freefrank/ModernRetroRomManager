@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useScraperStore } from "@/stores/scraperStore";
+import { scraperApi } from "@/lib/api";
 import type { ScraperCredentials, ScraperProviderInfo } from "@/types";
-import { Badge, Button, IconButton, Input } from "@/components/ui";
+import { Badge, Button, IconButton, Input, toast } from "@/components/ui";
 
 const getProviderIcon = (id: string) => {
   switch (id) {
@@ -48,6 +49,12 @@ export default function ScraperSection() {
   } = useScraperStore();
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<ScraperCredentials>({});
+  const [mediaTypes, setMediaTypes] = useState<string[]>([]);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const mediaTypeOptions = [
+    "boxfront", "boxback", "box3d", "logo", "screenshot", "titlescreen",
+    "hero", "banner", "icon", "video", "manual",
+  ];
 
   // 能力枚举 → 中文标签(未知值回退原文)
   const formatCapabilities = (capabilities: string[]) =>
@@ -64,7 +71,21 @@ export default function ScraperSection() {
 
   useEffect(() => {
     fetchProviders();
+    scraperApi.getMediaTypes().then(setMediaTypes).catch(console.error);
   }, [fetchProviders]);
+
+  const handleMediaTypeChange = async (type: string, enabled: boolean) => {
+    const next = enabled
+      ? Array.from(new Set([...mediaTypes, type]))
+      : mediaTypes.filter((value) => value !== type);
+    setMediaTypes(next);
+    try {
+      await scraperApi.setMediaTypes(next);
+    } catch (error) {
+      console.error("Failed to save media types:", error);
+      setMediaTypes(await scraperApi.getMediaTypes());
+    }
+  };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (isDragging) {
@@ -140,6 +161,17 @@ export default function ScraperSection() {
   const handleEditConfig = (provider: ScraperProviderInfo) => {
     setEditingProvider(provider.id);
     setCredentials({});
+  };
+
+  const handleTestProvider = async (providerId: string) => {
+    setTestingProvider(providerId);
+    try {
+      toast.success(await scraperApi.testProvider(providerId));
+    } catch (error) {
+      toast.error(t("settings.apiConfig.testFailed", { error: String(error) }));
+    } finally {
+      setTestingProvider(null);
+    }
   };
 
   const handleSaveConfig = async () => {
@@ -243,6 +275,16 @@ export default function ScraperSection() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                  {p.has_credentials && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      loading={testingProvider === p.id}
+                      onClick={() => handleTestProvider(p.id)}
+                    >
+                      {t("settings.apiConfig.testConnection")}
+                    </Button>
+                  )}
                   <IconButton
                     onClick={() => handleEditConfig(p)}
                     title={t("settings.apiConfig.editConfig")}
@@ -308,10 +350,30 @@ export default function ScraperSection() {
                             placeholder={t("settings.apiConfig.passwordPlaceholder")}
                           />
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-2">
+                            ScreenScraper Developer ID
+                          </label>
+                          <Input
+                            type="text"
+                            value={credentials.client_id || ""}
+                            onChange={(e) => setCredentials({ ...credentials, client_id: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-primary mb-2">
+                            ScreenScraper Developer Password
+                          </label>
+                          <Input
+                            type="password"
+                            value={credentials.client_secret || ""}
+                            onChange={(e) => setCredentials({ ...credentials, client_secret: e.target.value })}
+                          />
+                        </div>
                       </>
                     )}
 
-                    {p.id === "steamgriddb" && (
+                    {(p.id === "steamgriddb" || p.id === "thegamesdb") && (
                       <div>
                         <label className="block text-sm font-medium text-text-primary mb-2">
                           {t("settings.apiConfig.apiKey")}
@@ -348,6 +410,32 @@ export default function ScraperSection() {
                 </div>
               )}
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-medium text-text-primary mb-2">
+          {t("settings.apiConfig.mediaSelection")}
+        </h2>
+        <p className="text-sm text-text-muted mb-4">
+          {t("settings.apiConfig.mediaSelectionHint")}
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {mediaTypeOptions.map((type) => (
+            <label
+              key={type}
+              className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-bg-secondary border border-border-default cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={mediaTypes.includes(type)}
+                onChange={(event) => handleMediaTypeChange(type, event.target.checked)}
+              />
+              <span className="text-sm text-text-primary">
+                {t(`settings.apiConfig.mediaTypes.${type}`)}
+              </span>
+            </label>
           ))}
         </div>
       </section>

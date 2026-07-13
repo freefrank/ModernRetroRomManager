@@ -108,6 +108,8 @@ export interface ScraperProviderInfo {
 
 export interface ScraperCredentials {
   api_key?: string;
+  client_id?: string;
+  client_secret?: string;
   username?: string;
   password?: string;
 }
