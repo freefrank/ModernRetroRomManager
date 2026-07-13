@@ -549,6 +549,37 @@ pub struct BatchScrapeRom {
     pub directory: String,
 }
 
+fn select_batch_primary_media(media: &[MediaAsset]) -> Vec<MediaAsset> {
+    use crate::scraper::MediaType;
+
+    let mut selected = Vec::new();
+    if let Some(boxart) = media
+        .iter()
+        .find(|asset| asset.asset_type == MediaType::BoxFront)
+    {
+        selected.push(boxart.clone());
+    }
+    for preferred_type in [
+        MediaType::Screenshot,
+        MediaType::TitleScreen,
+        MediaType::Hero,
+        MediaType::Logo,
+        MediaType::Banner,
+        MediaType::Icon,
+        MediaType::BoxBack,
+        MediaType::Box3D,
+    ] {
+        if let Some(artwork) = media.iter().find(|asset| {
+            asset.asset_type == preferred_type
+                && selected.iter().all(|selected| selected.url != asset.url)
+        }) {
+            selected.push(artwork.clone());
+            break;
+        }
+    }
+    selected
+}
+
 #[tauri::command]
 pub async fn batch_scrape(
     app: tauri::AppHandle,
@@ -625,9 +656,9 @@ pub async fn batch_scrape(
                             directory: directory.clone(),
                             ..Default::default()
                         };
-                        let _ = save_metadata_pegasus(&rom, &result.metadata, true);
                         let client = manager_arc.read().await.http_client.clone();
-                        let media: Vec<_> = result
+                        let primary_media = select_batch_primary_media(&result.media);
+                        let mut media: Vec<_> = result
                             .media
                             .into_iter()
                             .filter(|asset| {
@@ -636,10 +667,43 @@ pub async fn batch_scrape(
                                     .any(|value| value == asset.asset_type.as_str())
                             })
                             .collect();
+                        for asset in &primary_media {
+                            if !media.iter().any(|candidate| candidate.url == asset.url) {
+                                media.push(asset.clone());
+                            }
+                        }
                         let _ = cache_media_candidates(
                             &client, &directory, &system, &file_name, &media,
                         )
                         .await;
+
+                        let mut materialized = Vec::new();
+                        let mut uncached = Vec::new();
+                        for asset in &primary_media {
+                            if let Some(cached) =
+                                find_cached_asset(&directory, &system, &file_name, asset)
+                            {
+                                match copy_cached_asset_to_temp(&rom, asset, &cached) {
+                                    Ok(copied) => materialized.push(copied),
+                                    Err(_) => uncached.push(asset.clone()),
+                                }
+                            } else {
+                                uncached.push(asset.clone());
+                            }
+                        }
+                        if !uncached.is_empty() {
+                            if let Ok(downloaded) =
+                                download_media(&client, &rom, &uncached, true).await
+                            {
+                                materialized.extend(downloaded);
+                            }
+                        }
+                        let _ = save_metadata_pegasus_with_media(
+                            &rom,
+                            &result.metadata,
+                            &materialized,
+                            true,
+                        );
                     }
                     let current = completed.fetch_add(1, Ordering::Relaxed) + 1;
                     let _ = app.emit(
@@ -667,6 +731,47 @@ pub async fn batch_scrape(
     });
 
     Ok(())
+}
+
+#[cfg(test)]
+mod batch_tests {
+    use super::*;
+    use crate::scraper::MediaType;
+
+    fn asset(asset_type: MediaType, suffix: &str) -> MediaAsset {
+        MediaAsset {
+            provider: "test".into(),
+            url: format!("https://example.com/{suffix}.png"),
+            asset_type,
+            width: None,
+            height: None,
+        }
+    }
+
+    #[test]
+    fn batch_primary_media_selects_boxart_and_prefers_screenshot() {
+        let media = vec![
+            asset(MediaType::Logo, "logo"),
+            asset(MediaType::Screenshot, "screen"),
+            asset(MediaType::BoxFront, "box"),
+            asset(MediaType::Hero, "hero"),
+        ];
+        let selected = select_batch_primary_media(&media);
+        assert_eq!(selected.len(), 2);
+        assert_eq!(selected[0].asset_type, MediaType::BoxFront);
+        assert_eq!(selected[1].asset_type, MediaType::Screenshot);
+    }
+
+    #[test]
+    fn batch_primary_media_falls_back_to_other_artwork() {
+        let media = vec![
+            asset(MediaType::BoxFront, "box"),
+            asset(MediaType::Logo, "logo"),
+        ];
+        let selected = select_batch_primary_media(&media);
+        assert_eq!(selected.len(), 2);
+        assert_eq!(selected[1].asset_type, MediaType::Logo);
+    }
 }
 
 #[tauri::command]
