@@ -57,6 +57,14 @@ pub fn get_temp_dir_for_library(library_path: &std::path::Path, system: &str) ->
     get_temp_dir().join(normalized_library).join(system)
 }
 
+pub fn get_cache_dir_for_library(library_path: &std::path::Path, system: &str) -> PathBuf {
+    let normalized_library = normalize_path_to_dirname(library_path);
+    get_config_dir()
+        .join("cache")
+        .join(normalized_library)
+        .join(system)
+}
+
 /// 获取设置文件路径
 pub fn get_settings_path() -> PathBuf {
     get_config_dir().join("settings.json")

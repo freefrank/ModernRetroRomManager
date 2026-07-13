@@ -2,7 +2,7 @@
 //!
 //! 前端调用的 Scraper 相关命令
 
-use crate::config::{get_temp_dir, get_temp_dir_for_library};
+use crate::config::{get_cache_dir_for_library, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::RomInfo;
 use crate::scraper::{
     manager::{ProviderInfo, ScraperManager},
@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
 
-use crate::settings::ScraperConfig;
+use crate::settings::{get_settings, update_setting, ScraperConfig};
 
 // ============================================================================
 // State - ScraperManager 全局状态
@@ -50,6 +50,8 @@ impl Default for ScraperState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderCredentials {
     pub api_key: Option<String>,
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
 }
@@ -85,7 +87,7 @@ pub async fn configure_scraper_provider(
     };
 
     match provider_id.as_str() {
-        "steamgriddb" => {
+        "steamgriddb" | "thegamesdb" => {
             let api_key = credentials.api_key.unwrap_or_default();
             if api_key.trim().is_empty() {
                 return Err("请输入有效的 SteamGridDB API Key".to_string());
@@ -95,11 +97,19 @@ pub async fn configure_scraper_provider(
         "screenscraper" => {
             let username = credentials.username.unwrap_or_default();
             let password = credentials.password.unwrap_or_default();
-            if username.trim().is_empty() || password.trim().is_empty() {
-                return Err("请输入有效的 ScreenScraper 用户名和密码".to_string());
+            let client_id = credentials.client_id.unwrap_or_default();
+            let client_secret = credentials.client_secret.unwrap_or_default();
+            if username.trim().is_empty()
+                || password.trim().is_empty()
+                || client_id.trim().is_empty()
+                || client_secret.trim().is_empty()
+            {
+                return Err("请输入完整的 ScreenScraper 用户及开发者凭证".to_string());
             }
             new_config.username = Some(username);
             new_config.password = Some(password);
+            new_config.client_id = Some(client_id);
+            new_config.client_secret = Some(client_secret);
         }
         _ => return Err(format!("未知的数据源: {}", provider_id)),
     }
@@ -147,9 +157,117 @@ pub async fn scraper_get_media(
     state: State<'_, ScraperState>,
     provider_id: String,
     source_id: String,
+    rom_directory: Option<String>,
+    system: Option<String>,
+    rom_id: Option<String>,
 ) -> Result<Vec<MediaAsset>, String> {
     let manager = state.manager.read().await;
-    manager.get_media(&provider_id, &source_id).await
+    let media = manager.get_media(&provider_id, &source_id).await?;
+    if let (Some(directory), Some(system), Some(rom_id)) = (rom_directory, system, rom_id) {
+        cache_media_candidates(&manager.http_client, &directory, &system, &rom_id, &media).await?;
+    }
+    Ok(media)
+}
+
+#[tauri::command]
+pub fn get_scraper_media_types() -> Vec<String> {
+    get_settings().scraper_media_types
+}
+
+#[tauri::command]
+pub async fn set_scraper_media_types(
+    state: State<'_, ScraperState>,
+    media_types: Vec<String>,
+) -> Result<(), String> {
+    let allowed = [
+        "boxfront",
+        "boxback",
+        "box3d",
+        "screenshot",
+        "titlescreen",
+        "logo",
+        "icon",
+        "hero",
+        "banner",
+        "video",
+        "manual",
+    ];
+    let mut normalized: Vec<String> = media_types
+        .into_iter()
+        .filter(|value| allowed.contains(&value.as_str()))
+        .collect();
+    normalized.sort();
+    normalized.dedup();
+    update_setting(|settings| settings.scraper_media_types = normalized)
+        .map(|_| ())
+        .map_err(|error| error.to_string())?;
+    state.manager.write().await.rebuild_from_settings();
+    Ok(())
+}
+
+async fn cache_media_candidates(
+    client: &reqwest::Client,
+    rom_directory: &str,
+    system: &str,
+    rom_id: &str,
+    media: &[MediaAsset],
+) -> Result<(), String> {
+    let rom_dir = Path::new(rom_directory);
+    let library = rom_dir.parent().unwrap_or(rom_dir);
+    let rom_stem = Path::new(rom_id)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(rom_id);
+    let root = get_cache_dir_for_library(library, system).join(rom_stem);
+    let mut counts = std::collections::HashMap::<(String, String), usize>::new();
+    for asset in media {
+        let key = (
+            asset.provider.clone(),
+            asset.asset_type.as_str().to_string(),
+        );
+        let index = counts.entry(key).or_default();
+        if *index >= 3 {
+            continue;
+        }
+        *index += 1;
+        let extension = asset
+            .url
+            .split('?')
+            .next()
+            .and_then(|value| Path::new(value).extension())
+            .and_then(|value| value.to_str())
+            .filter(|value| value.len() <= 5)
+            .unwrap_or(if asset.asset_type.as_str() == "video" {
+                "mp4"
+            } else {
+                "jpg"
+            });
+        let directory = root.join(&asset.provider).join(asset.asset_type.as_str());
+        if fs::create_dir_all(&directory).is_err() {
+            continue;
+        }
+        let target = directory.join(format!("candidate-{}.{}", *index, extension));
+        if target.exists() {
+            continue;
+        }
+        let Ok(response) = client.get(&asset.url).send().await else {
+            continue;
+        };
+        if !response.status().is_success() {
+            continue;
+        }
+        let Ok(bytes) = response.bytes().await else {
+            continue;
+        };
+        let temporary = target.with_extension(format!("{extension}.part"));
+        if fs::write(&temporary, bytes).is_err() {
+            continue;
+        }
+        if fs::rename(&temporary, &target).is_err() {
+            let _ = fs::remove_file(&temporary);
+        }
+    }
+    Ok(())
 }
 
 /// 智能 scrape - 自动匹配并聚合数据
@@ -192,6 +310,14 @@ pub async fn scraper_set_provider_priority(
     let mut manager = state.manager.write().await;
     manager.set_priority(&provider_id, priority);
     Ok(())
+}
+
+#[tauri::command]
+pub async fn test_scraper_provider(
+    state: State<'_, ScraperState>,
+    provider_id: String,
+) -> Result<String, String> {
+    state.manager.read().await.test_provider(&provider_id).await
 }
 
 // ============================================================================
@@ -297,6 +423,10 @@ pub async fn batch_scrape(
                     ..Default::default()
                 };
                 let _ = save_metadata_pegasus(&rom, &result.metadata, true);
+                let client = manager_arc.read().await.http_client.clone();
+                let _ =
+                    cache_media_candidates(&client, &directory, &system, &file_name, &result.media)
+                        .await;
             }
         }
 

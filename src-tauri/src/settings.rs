@@ -77,6 +77,16 @@ pub struct AppSettings {
     /// Scraper API 配置 (key: provider id)
     #[serde(default)]
     pub scrapers: HashMap<String, ScraperConfig>,
+    /// 自动抓取和候选缓存允许的媒体类型
+    #[serde(default = "default_scraper_media_types")]
+    pub scraper_media_types: Vec<String>,
+}
+
+fn default_scraper_media_types() -> Vec<String> {
+    ["boxfront", "logo", "screenshot", "titlescreen", "hero"]
+        .into_iter()
+        .map(str::to_string)
+        .collect()
 }
 
 impl Default for AppSettings {
@@ -88,6 +98,7 @@ impl Default for AppSettings {
             motion_level: None,
             directories: Vec::new(),
             scrapers: HashMap::new(),
+            scraper_media_types: default_scraper_media_types(),
         }
     }
 }

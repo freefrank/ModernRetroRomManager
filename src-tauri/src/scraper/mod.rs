@@ -7,8 +7,10 @@ pub mod manager;
 pub mod matcher;
 pub mod pegasus;
 pub mod persistence;
+pub mod rate_limit;
 pub mod screenscraper;
 pub mod steamgriddb;
+pub mod thegamesdb;
 pub mod three_ds_header;
 pub mod types;
 

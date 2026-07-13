@@ -1,5 +1,6 @@
 //! ScreenScraper Provider - 全能型 Scraper，支持 Hash 匹配
 
+use crate::scraper::rate_limit::{response_error, ProviderRateLimiter};
 use crate::scraper::{
     Capabilities, GameMetadata, MediaAsset, MediaType, ProviderCapability, RomHash, ScrapeQuery,
     ScraperProvider, SearchResult,
@@ -17,17 +18,34 @@ pub struct ScreenScraperClient {
     devpassword: String,
     softname: String,
     client: Client,
+    limiter: ProviderRateLimiter,
 }
 
 impl ScreenScraperClient {
-    pub fn new(ssid: String, sspassword: String) -> Self {
+    pub fn new(ssid: String, sspassword: String, devid: String, devpassword: String) -> Self {
         Self {
             ssid,
             sspassword,
-            devid: "anonymous".to_string(),
-            devpassword: "anonymous".to_string(),
+            devid,
+            devpassword,
             softname: "ModernRetroRomManager".to_string(),
             client: Client::new(),
+            limiter: ProviderRateLimiter::per_second(1),
+        }
+    }
+
+    fn system_id(system: &str) -> Option<&'static str> {
+        match system.to_ascii_lowercase().as_str() {
+            "md" | "genesis" | "megadrive" => Some("1"),
+            "nes" | "fc" | "famicom" => Some("3"),
+            "sfc" | "snes" | "superfamicom" => Some("4"),
+            "gb" | "gameboy" => Some("9"),
+            "gbc" | "gameboycolor" => Some("10"),
+            "gba" | "gameboyadvance" => Some("12"),
+            "n64" | "nintendo64" => Some("14"),
+            "nds" | "nintendods" => Some("15"),
+            "3ds" | "nintendo3ds" => Some("17"),
+            _ => None,
         }
     }
 
@@ -120,6 +138,7 @@ impl ScreenScraperClient {
 
     /// 调用 jeuInfos API
     async fn fetch_game_info(&self, params: Vec<(&str, String)>) -> Result<Option<SSGame>, String> {
+        self.limiter.acquire().await;
         let url = self.build_url("jeuInfos", params);
         let resp = self
             .client
@@ -132,7 +151,18 @@ impl ScreenScraperClient {
             return Ok(None);
         }
 
-        let ss_resp: SSResponse = resp.json().await.map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(response_error("ScreenScraper", resp).await);
+        }
+
+        let body = resp.text().await.map_err(|e| e.to_string())?;
+        if !body.trim_start().starts_with('{') {
+            return Err(format!(
+                "ScreenScraper API: {}",
+                body.chars().take(200).collect::<String>()
+            ));
+        }
+        let ss_resp: SSResponse = serde_json::from_str(&body).map_err(|e| e.to_string())?;
 
         Ok(ss_resp.response.and_then(|r| r.jeu))
     }
@@ -248,8 +278,16 @@ impl ScraperProvider for ScreenScraperClient {
 
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
         // ScreenScraper 使用 romnom 参数搜索
+        let system_id = query
+            .system
+            .as_deref()
+            .and_then(Self::system_id)
+            .ok_or_else(|| "ScreenScraper 缺少受支持的平台映射".to_string())?;
         let jeu = self
-            .fetch_game_info(vec![("romnom", query.file_name.clone())])
+            .fetch_game_info(vec![
+                ("romnom", query.file_name.clone()),
+                ("systemeid", system_id.to_string()),
+            ])
             .await?;
 
         match jeu {
@@ -320,8 +358,9 @@ impl ScraperProvider for ScreenScraperClient {
 
         // 添加系统 ID (如果有)
         if let Some(sys) = system {
-            // TODO: 映射系统名到 ScreenScraper systemid
-            params.push(("systemeid", sys.to_string()));
+            if let Some(system_id) = Self::system_id(sys) {
+                params.push(("systemeid", system_id.to_string()));
+            }
         }
 
         let jeu = self.fetch_game_info(params).await?;

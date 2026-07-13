@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use super::{
     matcher::rank_results, screenscraper::ScreenScraperClient, steamgriddb::SteamGridDBClient,
-    GameMetadata, MediaAsset, ProviderCapability, RomHash, ScrapeQuery, ScrapeResult,
-    ScraperProvider, SearchResult,
+    thegamesdb::TheGamesDbClient, GameMetadata, MediaAsset, ProviderCapability, RomHash,
+    ScrapeQuery, ScrapeResult, ScraperProvider, SearchResult,
 };
 use crate::settings::{get_settings, update_setting, AppSettings, ScraperConfig};
 
@@ -42,6 +42,12 @@ struct ProviderDescriptor {
 
 /// 受支持的 provider 目录
 const PROVIDER_CATALOG: &[ProviderDescriptor] = &[
+    ProviderDescriptor {
+        id: "thegamesdb",
+        name: "TheGamesDB",
+        requires_credentials: true,
+        capabilities: &["search", "hash_lookup", "metadata", "media"],
+    },
     ProviderDescriptor {
         id: "steamgriddb",
         name: "SteamGridDB",
@@ -78,6 +84,10 @@ fn credentials_present(provider_id: &str, config: Option<&ScraperConfig>) -> boo
             .api_key
             .as_deref()
             .is_some_and(|k| !k.trim().is_empty()),
+        "thegamesdb" => config
+            .api_key
+            .as_deref()
+            .is_some_and(|k| !k.trim().is_empty()),
         "screenscraper" => {
             config
                 .username
@@ -87,6 +97,14 @@ fn credentials_present(provider_id: &str, config: Option<&ScraperConfig>) -> boo
                     .password
                     .as_deref()
                     .is_some_and(|p| !p.trim().is_empty())
+                && config
+                    .client_id
+                    .as_deref()
+                    .is_some_and(|value| !value.trim().is_empty())
+                && config
+                    .client_secret
+                    .as_deref()
+                    .is_some_and(|value| !value.trim().is_empty())
         }
         _ => false,
     }
@@ -143,15 +161,29 @@ impl ScraperManager {
             match descriptor.id {
                 "steamgriddb" => {
                     if let Some(api_key) = config.api_key.clone() {
-                        self.register_with_config(SteamGridDBClient::new(api_key), provider_config);
+                        self.register_with_config(
+                            SteamGridDBClient::new(api_key, &settings.scraper_media_types),
+                            provider_config,
+                        );
+                    }
+                }
+                "thegamesdb" => {
+                    if let Some(api_key) = config.api_key.clone() {
+                        self.register_with_config(
+                            TheGamesDbClient::new(api_key, &settings.scraper_media_types),
+                            provider_config,
+                        );
                     }
                 }
                 "screenscraper" => {
-                    if let (Some(username), Some(password)) =
-                        (config.username.clone(), config.password.clone())
-                    {
+                    if let (Some(username), Some(password), Some(devid), Some(devpassword)) = (
+                        config.username.clone(),
+                        config.password.clone(),
+                        config.client_id.clone(),
+                        config.client_secret.clone(),
+                    ) {
                         self.register_with_config(
-                            ScreenScraperClient::new(username, password),
+                            ScreenScraperClient::new(username, password, devid, devpassword),
                             provider_config,
                         );
                     }
@@ -290,6 +322,20 @@ impl ScraperManager {
         provider.get_metadata(source_id).await
     }
 
+    pub async fn test_provider(&self, provider_id: &str) -> Result<String, String> {
+        let provider = self
+            .providers
+            .get(provider_id)
+            .ok_or_else(|| format!("Provider '{provider_id}' 未配置完整凭证"))?;
+        let query = ScrapeQuery::new(
+            "Super Mario World".to_string(),
+            "Super Mario World.sfc".to_string(),
+        )
+        .with_system("snes");
+        let results = provider.search(&query).await?;
+        Ok(format!("连接正常，返回 {} 个结果", results.len()))
+    }
+
     /// 获取媒体 - 指定 provider
     pub async fn get_media(
         &self,
@@ -301,32 +347,17 @@ impl ScraperManager {
             .get(provider_id)
             .ok_or_else(|| format!("Provider '{}' not found", provider_id))?;
 
-        provider.get_media(source_id).await
-    }
-
-    /// 聚合多个 provider 的元数据（按优先级合并）
-    async fn aggregate_metadata(&self, best_match: &SearchResult) -> (GameMetadata, Vec<String>) {
-        let providers = self.enabled_providers();
-
-        // 并行获取所有支持元数据的 provider 的数据
-        let futures: Vec<_> = providers
-            .iter()
-            .filter(|p| p.capabilities().has(ProviderCapability::Metadata))
-            .map(|p| {
-                let provider = Arc::clone(p);
-                let source_id = best_match.source_id.clone();
-                let provider_id = p.id().to_string();
-                async move {
-                    let result = provider.get_metadata(&source_id).await;
-                    (provider_id, result)
-                }
+        let allowed = get_settings().scraper_media_types;
+        Ok(provider
+            .get_media(source_id)
+            .await?
+            .into_iter()
+            .filter(|asset| {
+                allowed
+                    .iter()
+                    .any(|value| value == asset.asset_type.as_str())
             })
-            .collect();
-
-        let results = join_all(futures).await;
-
-        // 合并元数据（按优先级，providers 已排序）
-        self.merge_metadata(results)
+            .collect())
     }
 
     /// 合并多个 provider 的元数据（优先级从高到低）
@@ -382,41 +413,43 @@ impl ScraperManager {
 
     /// 智能 scrape - 自动匹配 + 聚合多源数据
     pub async fn scrape(&self, query: &ScrapeQuery) -> Result<ScrapeResult, String> {
-        // 1. 先尝试 Hash 精确匹配
-        let best_match = if let Some(ref hash) = query.hash {
+        // 每个 provider 必须使用自己的 source_id，不能跨平台复用 ID。
+        let hash_match = if let Some(ref hash) = query.hash {
             self.lookup_by_hash(hash, query.system.as_deref()).await
         } else {
             None
         };
+        let mut matches: HashMap<String, SearchResult> = HashMap::new();
+        for result in self.search(query).await {
+            matches.entry(result.provider.clone()).or_insert(result);
+        }
+        if let Some(result) = hash_match {
+            matches.insert(result.provider.clone(), result);
+        }
+        if matches.is_empty() {
+            return Err("No results found".to_string());
+        }
 
-        // 2. 如果没有 Hash 匹配，进行名称搜索
-        let best_match = match best_match {
-            Some(m) => m,
-            None => {
-                let results = self.search(query).await;
-                if results.is_empty() {
-                    return Err("No results found".to_string());
-                }
-                // 选择置信度最高的结果
-                results
-                    .into_iter()
-                    .max_by(|a, b| a.confidence.partial_cmp(&b.confidence).unwrap())
-                    .ok_or_else(|| "No results found".to_string())?
-            }
-        };
-
-        // 3. 聚合多个 provider 的元数据
-        let (metadata, metadata_sources) = self.aggregate_metadata(&best_match).await;
-
-        // 4. 并行获取所有 provider 的媒体
         let providers = self.enabled_providers();
+        let metadata_futures: Vec<_> = providers
+            .iter()
+            .filter(|provider| provider.capabilities().has(ProviderCapability::Metadata))
+            .filter_map(|provider| {
+                let source_id = matches.get(provider.id())?.source_id.clone();
+                let provider = Arc::clone(provider);
+                let provider_id = provider.id().to_string();
+                Some(async move { (provider_id, provider.get_metadata(&source_id).await) })
+            })
+            .collect();
+        let (metadata, metadata_sources) = self.merge_metadata(join_all(metadata_futures).await);
+
         let media_futures: Vec<_> = providers
             .iter()
             .filter(|p| p.capabilities().has(ProviderCapability::Media))
-            .map(|p| {
-                let provider = Arc::clone(p);
-                let source_id = best_match.source_id.clone();
-                async move { provider.get_media(&source_id).await }
+            .filter_map(|provider| {
+                let source_id = matches.get(provider.id())?.source_id.clone();
+                let provider = Arc::clone(provider);
+                Some(async move { provider.get_media(&source_id).await })
             })
             .collect();
 
@@ -425,6 +458,12 @@ impl ScraperManager {
             .into_iter()
             .filter_map(|r: Result<Vec<MediaAsset>, String>| r.ok())
             .flatten()
+            .filter(|asset| {
+                get_settings()
+                    .scraper_media_types
+                    .iter()
+                    .any(|value| value == asset.asset_type.as_str())
+            })
             .collect();
 
         Ok(ScrapeResult {
@@ -528,6 +567,7 @@ mod tests {
         assert_eq!(infos.len(), PROVIDER_CATALOG.len());
         let ids: Vec<&str> = infos.iter().map(|i| i.id.as_str()).collect();
         assert!(ids.contains(&"steamgriddb"));
+        assert!(ids.contains(&"thegamesdb"));
         assert!(ids.contains(&"screenscraper"));
         for info in &infos {
             assert!(info.enabled);
@@ -590,6 +630,15 @@ mod tests {
                 ScraperConfig {
                     username: Some("user".to_string()),
                     password: Some("pass".to_string()),
+                    client_id: Some("developer".to_string()),
+                    client_secret: Some("developer-pass".to_string()),
+                    ..Default::default()
+                },
+            ),
+            (
+                "thegamesdb",
+                ScraperConfig {
+                    api_key: Some("tgdb-key".to_string()),
                     ..Default::default()
                 },
             ),
@@ -597,7 +646,7 @@ mod tests {
         manager.rebuild_from(&settings);
         let mut ids = manager.provider_ids();
         ids.sort();
-        assert_eq!(ids, vec!["screenscraper", "steamgriddb"]);
+        assert_eq!(ids, vec!["screenscraper", "steamgriddb", "thegamesdb"]);
 
         // 保存后再次重建即时生效:清空凭证 → provider 注销
         manager.rebuild_from(&AppSettings::default());
@@ -634,25 +683,32 @@ mod tests {
 
     /// 返回固定结果的 mock provider,用于验证搜索聚合排序
     struct MockProvider {
+        id: &'static str,
         results: Vec<SearchResult>,
     }
 
     #[async_trait]
     impl ScraperProvider for MockProvider {
         fn id(&self) -> &'static str {
-            "mock"
+            self.id
         }
 
         fn capabilities(&self) -> Capabilities {
-            Capabilities::new().with(ProviderCapability::Search)
+            Capabilities::new()
+                .with(ProviderCapability::Search)
+                .with(ProviderCapability::Metadata)
         }
 
         async fn search(&self, _query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
             Ok(self.results.clone())
         }
 
-        async fn get_metadata(&self, _source_id: &str) -> Result<GameMetadata, String> {
-            Err("不支持".to_string())
+        async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
+            Ok(GameMetadata {
+                name: format!("{}-{source_id}", self.id),
+                genres: vec![source_id.to_string()],
+                ..Default::default()
+            })
         }
 
         async fn get_media(&self, _source_id: &str) -> Result<Vec<MediaAsset>, String> {
@@ -675,6 +731,7 @@ mod tests {
         let mut manager = ScraperManager::new();
         manager.register_with_config(
             MockProvider {
+                id: "mock",
                 // 故意乱序且给低匹配度结果虚高置信度
                 results: vec![
                     make_result("Zelda", 0.99),
@@ -692,5 +749,36 @@ mod tests {
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].name, "Super Mario World");
         assert!(results[0].confidence >= results[1].confidence);
+    }
+
+    #[tokio::test]
+    async fn scrape_uses_each_provider_own_source_id() {
+        let mut manager = ScraperManager::new();
+        for (id, source_id, priority) in [("first", "id-a", 10), ("second", "id-b", 20)] {
+            manager.register_with_config(
+                MockProvider {
+                    id,
+                    results: vec![SearchResult {
+                        provider: id.to_string(),
+                        source_id: source_id.to_string(),
+                        name: "Test Game".to_string(),
+                        year: None,
+                        system: Some("snes".to_string()),
+                        thumbnail: None,
+                        confidence: 1.0,
+                    }],
+                },
+                ProviderConfig {
+                    enabled: true,
+                    priority,
+                },
+            );
+        }
+        let result = manager
+            .scrape(&ScrapeQuery::new("Test Game".into(), "test.sfc".into()).with_system("snes"))
+            .await
+            .unwrap();
+        assert!(result.metadata.genres.contains(&"id-a".to_string()));
+        assert!(result.metadata.genres.contains(&"id-b".to_string()));
     }
 }
