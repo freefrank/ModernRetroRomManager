@@ -29,6 +29,13 @@
     "clear": "Clear logs",
     "empty": "No logs"
   },
+  "scan": {
+    "preparing": "Preparing",
+    "mode": {
+      "incremental": "Incremental scan",
+      "full": "Full scan"
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

@@ -1,13 +1,16 @@
 import { create } from "zustand";
 import { api, scraperApi, isTauri } from "@/lib/api";
-import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms, ScraperGameMetadata } from "@/types";
+import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms, ScraperGameMetadata, RomSystemSummary } from "@/types";
 import { hasMetadataAndAsset } from "@/lib/romScrapeStatus";
 
 interface ScanProgress {
   current: number;
-  total?: number;
+  total: number;
+  system?: string;
+  mode: "incremental" | "full";
   message: string;
   finished: boolean;
+  changed: boolean;
 }
 
 interface BatchProgress {
@@ -21,25 +24,32 @@ interface BatchProgress {
 interface SystemInfo {
   name: string;
   romCount: number;
+  path: string;
+  scrapedCount: number;
+  totalSize: number;
 }
 
 export type BatchScrapeScope = "selection" | "platform" | "library";
 
-// 判定 ROM 是否已刮削:已有封面或描述(含待导出的 temp_data)即视为已刮削
-function isRomScraped(rom: Rom): boolean {
-  return Boolean(
-    rom.box_front || rom.description || rom.temp_data?.box_front || rom.temp_data?.description
-  );
+let scanProgressListenerInstalled = false;
+let systemRequestSequence = 0;
+
+function computeSummaryStats(summaries: RomSystemSummary[]) {
+  return {
+    totalRoms: summaries.reduce((sum, entry) => sum + entry.romCount, 0),
+    scrapedRoms: summaries.reduce((sum, entry) => sum + entry.scrapedCount, 0),
+    totalSize: summaries.reduce((sum, entry) => sum + entry.totalSize, 0),
+  };
 }
 
-// 从 systemRoms 聚合统计信息(totalSize 由后端扫描的 file_size 聚合,缺失按 0 计)
-function computeStats(systemRoms: SystemRoms[]) {
-  const allRoms = systemRoms.flatMap((s) => s.roms);
-  return {
-    totalRoms: allRoms.length,
-    scrapedRoms: allRoms.filter(isRomScraped).length,
-    totalSize: allRoms.reduce((sum, rom) => sum + (rom.file_size ?? 0), 0),
-  };
+function mapSummaries(summaries: RomSystemSummary[]): SystemInfo[] {
+  return summaries.map(entry => ({
+    name: entry.system,
+    path: entry.path,
+    romCount: entry.romCount,
+    scrapedCount: entry.scrapedCount,
+    totalSize: entry.totalSize,
+  }));
 }
 
 interface RomState {
@@ -50,6 +60,10 @@ interface RomState {
   selectedSystem: string | null;
   setSelectedSystem: (system: string | null) => void;
   fetchRoms: (filter?: FilterOption) => Promise<void>;
+  fetchLibrarySummary: () => Promise<void>;
+  fetchSystemRoms: (system: string) => Promise<void>;
+  scanLibrary: (full?: boolean) => Promise<void>;
+  initializeScanProgress: () => Promise<void>;
   isLoadingRoms: boolean;
   
   // 选中的 ROM
@@ -103,7 +117,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     set({ selectedSystem: system });
     const { systemRoms } = get();
     if (system === null) {
-      set({ roms: systemRoms.flatMap(s => s.roms) });
+      set({ roms: [] });
     } else {
       const filtered = systemRoms.find(s => s.system === system);
       set({ roms: filtered ? filtered.roms : [] });
@@ -114,32 +128,45 @@ export const useRomStore = create<RomState>((set, get) => ({
   exportProgress: null,
 
   fetchRoms: async (_filter?: FilterOption) => {
+    const selected = get().selectedSystem;
+    if (selected) {
+      await Promise.all([get().fetchLibrarySummary(), get().fetchSystemRoms(selected)]);
+    } else {
+      await get().fetchLibrarySummary();
+    }
+  },
+
+  fetchLibrarySummary: async () => {
     set({ isLoadingRoms: true });
     try {
-      const systemRoms = await api.getRoms();
-      const availableSystems = systemRoms.map(s => ({
-        name: s.system,
-        romCount: s.roms.length,
-      }));
-      const { selectedSystem } = get();
-      let roms: Rom[];
-      if (selectedSystem) {
-        const filtered = systemRoms.find(s => s.system === selectedSystem);
-        roms = filtered ? filtered.roms : [];
-      } else {
-        roms = systemRoms.flatMap(s => s.roms);
-      }
-      // 直接从 systemRoms 计算 stats，避免额外的后端调用
+      const summaries = await api.getRomLibrarySummary();
       set({
-        systemRoms,
-        availableSystems,
-        roms,
+        availableSystems: mapSummaries(summaries),
         isLoadingRoms: false,
-        stats: computeStats(systemRoms),
+        stats: computeSummaryStats(summaries),
       });
     } catch (error) {
-      console.error("Failed to fetch roms:", error);
+      console.error("Failed to fetch ROM library summary:", error);
       set({ isLoadingRoms: false });
+    }
+  },
+
+  fetchSystemRoms: async (system: string) => {
+    const requestId = ++systemRequestSequence;
+    set({ isLoadingRoms: true });
+    try {
+      const loaded = await api.getSystemRoms(system);
+      set((state) => ({
+        systemRoms: [
+          ...state.systemRoms.filter(entry => entry.system !== loaded.system),
+          loaded,
+        ],
+        roms: state.selectedSystem === system ? loaded.roms : state.roms,
+        isLoadingRoms: requestId === systemRequestSequence ? false : state.isLoadingRoms,
+      }));
+    } catch (error) {
+      console.error(`Failed to fetch ROM system ${system}:`, error);
+      if (requestId === systemRequestSequence) set({ isLoadingRoms: false });
     }
   },
 
@@ -168,16 +195,17 @@ export const useRomStore = create<RomState>((set, get) => ({
   isBatchScraping: false,
   batchProgress: null,
   startBatchScrape: async (providerIds: string[], mediaTypes?: string[], scope = "selection") => {
-    const { selectedRomIds, selectedSystem, systemRoms } = get();
+    const { selectedRomIds, selectedSystem } = get();
 
     if (!isTauri()) {
       console.warn("Batch scrape not supported in web mode");
       return;
     }
 
-    const selectedSystemInfo = systemRoms.find(s => s.system === selectedSystem);
+    const sourceSystems = scope === "library" ? await api.getRoms() : get().systemRoms;
+    const selectedSystemInfo = sourceSystems.find(s => s.system === selectedSystem);
     const targetSystems = scope === "library"
-      ? systemRoms
+      ? sourceSystems
       : selectedSystemInfo ? [selectedSystemInfo] : [];
     const targetRoms = targetSystems.flatMap(systemInfo =>
       systemInfo.roms
@@ -212,6 +240,47 @@ export const useRomStore = create<RomState>((set, get) => ({
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });
+    }
+  },
+
+  initializeScanProgress: async () => {
+    if (!isTauri() || scanProgressListenerInstalled) return;
+    scanProgressListenerInstalled = true;
+    const { listen } = await import("@tauri-apps/api/event");
+    await listen<ScanProgress>("rom-scan-progress", ({ payload }) => {
+      set({
+        isScanning: !payload.finished,
+        scanProgress: payload,
+      });
+      if (payload.finished) {
+        window.setTimeout(() => {
+          if (get().scanProgress?.finished) set({ scanProgress: null });
+        }, 2500);
+      }
+    });
+  },
+
+  scanLibrary: async (full = false) => {
+    await get().initializeScanProgress();
+    set({ isScanning: true });
+    try {
+      const summaries = await api.scanRomLibrary(full);
+      const { selectedSystem } = get();
+      const selectedStillExists = selectedSystem
+        ? summaries.some((entry) => entry.system === selectedSystem)
+        : false;
+      set({
+        availableSystems: mapSummaries(summaries),
+        stats: computeSummaryStats(summaries),
+        systemRoms: [],
+        roms: selectedStillExists ? get().roms : [],
+        selectedSystem: selectedStillExists ? selectedSystem : null,
+      });
+      if (selectedStillExists && selectedSystem) await get().fetchSystemRoms(selectedSystem);
+    } catch (error) {
+      console.error("Failed to scan ROM library:", error);
+      set({ isScanning: false });
+      throw error;
     }
   },
   cancelBatchScrape: async () => {
@@ -288,45 +357,8 @@ addScanDirectory: async (path: string, metadataFormat="none") => {
       await api.addDirectory(path, metadataFormat, false, null);
       await get().fetchScanDirectories();
       
-      // 只扫描新添加的目录，而不是全部目录
-      const newSystems = await api.getRomsForDirectory(path, metadataFormat, false, null);
-      
-      // 合并到现有的 systemRoms
-      const { systemRoms, selectedSystem } = get();
-      const updatedSystemRoms = [...systemRoms];
-      
-      for (const newSystem of newSystems) {
-        const existingIndex = updatedSystemRoms.findIndex(s => s.system === newSystem.system);
-        if (existingIndex >= 0) {
-          // 系统已存在，合并 ROMs（避免重复）
-          const existingFiles = new Set(updatedSystemRoms[existingIndex].roms.map(r => r.file));
-          const uniqueRoms = newSystem.roms.filter(r => !existingFiles.has(r.file));
-          updatedSystemRoms[existingIndex].roms.push(...uniqueRoms);
-        } else {
-          // 新系统
-          updatedSystemRoms.push(newSystem);
-        }
-      }
-      
-      const availableSystems = updatedSystemRoms.map(s => ({
-        name: s.system,
-        romCount: s.roms.length,
-      }));
-      
-      let roms: Rom[];
-      if (selectedSystem) {
-        const filtered = updatedSystemRoms.find(s => s.system === selectedSystem);
-        roms = filtered ? filtered.roms : [];
-      } else {
-        roms = updatedSystemRoms.flatMap(s => s.roms);
-      }
-      
-      set({
-        systemRoms: updatedSystemRoms,
-        availableSystems,
-        roms,
-        stats: computeStats(updatedSystemRoms),
-      });
+      // 新 ROM 库第一次加入时建立完整持久索引。
+      await get().scanLibrary(true);
     } catch (error) {
       console.error("Failed to add directory:", error);
       throw error;
@@ -336,7 +368,7 @@ addScanDirectory: async (path: string, metadataFormat="none") => {
     try {
       await api.removeDirectory(path);
       await get().fetchScanDirectories();
-      await get().fetchRoms();
+      await get().scanLibrary(true);
     } catch (error) {
       console.error("Failed to remove directory:", error);
       throw error;

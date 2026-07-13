@@ -18,7 +18,7 @@ interface BatchScrapeDialogProps {
 export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection" }: BatchScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
-  const { startBatchScrape, cancelBatchScrape, selectedRomIds, selectedSystem, systemRoms, isBatchScraping, batchProgress } = useRomStore();
+  const { startBatchScrape, cancelBatchScrape, selectedRomIds, selectedSystem, systemRoms, stats, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const providersInitialized = useRef(false);
@@ -56,12 +56,14 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   };
 
   const activeProviders = providers.filter(p => p.enabled);
-  const targetCount = systemRoms
-    .filter(item => scope === "library" || item.system === selectedSystem)
-    .flatMap(item => item.roms)
-    .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
-    .filter(rom => !hasMetadataAndAsset(rom))
-    .length;
+  const targetCount = scope === "library"
+    ? Math.max(0, stats.totalRoms - stats.scrapedRoms)
+    : systemRoms
+      .filter(item => item.system === selectedSystem)
+      .flatMap(item => item.roms)
+      .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
+      .filter(rom => !hasMetadataAndAsset(rom))
+      .length;
   const progressPercent = batchProgress
     ? Math.round((batchProgress.current / batchProgress.total) * 100)
     : 0;

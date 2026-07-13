@@ -39,6 +39,8 @@ export default function Library() {
 
   const {
     fetchRoms,
+    fetchSystemRoms,
+    isLoadingRoms,
     selectedRomIds,
     toggleRomSelection,
     selectAllRoms,
@@ -60,10 +62,14 @@ export default function Library() {
   const systemData = systemRoms.find((s) => s.system === systemName);
   const romsOfSystem = useMemo(() => systemData?.roms ?? [], [systemData]);
 
-  // 同步 store 的 selectedSystem(批量抓取等既有逻辑依赖它)
   useEffect(() => {
-    setSelectedSystem(systemData ? systemName : null);
-  }, [systemData, systemName, setSelectedSystem]);
+    if (systemName && !systemData) void fetchSystemRoms(systemName);
+  }, [fetchSystemRoms, systemData, systemName]);
+
+  // 路由即为选中系统；数据随后按需加载，批量抓取等逻辑可立即拿到目标平台。
+  useEffect(() => {
+    setSelectedSystem(systemName ?? null);
+  }, [systemName, setSelectedSystem]);
 
   // 系统内搜索过滤
   const filteredRoms = useMemo(() => {
@@ -107,6 +113,17 @@ export default function Library() {
     // 刷新 ROM 列表以显示新生成的 boxart
     await fetchRoms();
   };
+
+  if (!systemData && isLoadingRoms) {
+    return (
+      <div className="rr-page flex h-full items-center justify-center max-w-[1600px] mx-auto w-full">
+        <div className="flex items-center gap-3 text-text-secondary">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
+          {t("common.loading")}
+        </div>
+      </div>
+    );
+  }
 
   // 查无此系统:空态 + 返回货架
   if (!systemData) {

@@ -1,4 +1,4 @@
-import type { SystemRoms, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo } from "@/types";
+import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo } from "@/types";
 
 declare global {
   interface Window {
@@ -58,6 +58,37 @@ export const api = {
       return tauriInvoke<SystemRoms[]>("get_roms", {});
     }
     return httpFetch<SystemRoms[]>("/roms");
+  },
+
+  async getRomLibrarySummary(): Promise<RomSystemSummary[]> {
+    if (isTauri()) {
+      return tauriInvoke<RomSystemSummary[]>("get_rom_library_summary");
+    }
+    const systems = await this.getRoms();
+    return systems.map((entry) => ({
+      system: entry.system,
+      path: entry.path,
+      romCount: entry.roms.length,
+      scrapedCount: 0,
+      totalSize: entry.roms.reduce((sum, rom) => sum + (rom.file_size || 0), 0),
+    }));
+  },
+
+  async getSystemRoms(system: string): Promise<SystemRoms> {
+    if (isTauri()) {
+      return tauriInvoke<SystemRoms>("get_system_roms", { system });
+    }
+    const systems = await this.getRoms();
+    const found = systems.find((entry) => entry.system === system);
+    if (!found) throw new Error(`System not found: ${system}`);
+    return found;
+  },
+
+  async scanRomLibrary(full: boolean): Promise<RomSystemSummary[]> {
+    if (isTauri()) {
+      return tauriInvoke<RomSystemSummary[]>("scan_rom_library", { full });
+    }
+    return this.getRomLibrarySummary();
   },
 
   async getSystems(): Promise<GameSystem[]> {

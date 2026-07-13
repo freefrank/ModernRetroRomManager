@@ -29,6 +29,13 @@
     "clear": "清空日志",
     "empty": "暂无日志"
   },
+  "scan": {
+    "preparing": "准备中",
+    "mode": {
+      "incremental": "增量扫描",
+      "full": "全量扫描"
+    }
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",

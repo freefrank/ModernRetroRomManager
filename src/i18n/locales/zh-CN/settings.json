@@ -32,6 +32,9 @@
     "general": {
       "viewModeTitle": "默认视图",
       "viewModeDescription": "ROM 库的默认显示方式",
+      "consoleTitle": "控制台",
+      "consoleDescription": "控制底部日志控制台是否显示，扫描进度条不受影响。",
+      "consoleEnabled": "显示底部控制台",
       "viewMode": {
         "grid": "网格",
         "list": "列表",
@@ -43,6 +46,7 @@
       "description": "配置 ROM 扫描目录,软件会自动检测其中的 ROM 文件",
       "empty": "暂未添加扫描目录",
       "addDirectory": "添加目录",
+      "fullScan": "全量扫描",
       "dialogTitle": "添加扫描目录",
       "metadataFormat": "元数据格式:{{format}}",
       "addFailed": "添加目录失败:{{error}}"

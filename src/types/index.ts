@@ -125,6 +125,14 @@ export interface ScraperCredentials {
   developer_mode?: boolean;
 }
 
+export interface RomSystemSummary {
+  system: string;
+  path: string;
+  romCount: number;
+  scrapedCount: number;
+  totalSize: number;
+}
+
 export interface ScraperSearchResult {
   provider: string;
   source_id: string;

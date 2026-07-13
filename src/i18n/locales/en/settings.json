@@ -32,6 +32,9 @@
     "general": {
       "viewModeTitle": "Default View",
       "viewModeDescription": "Default display mode of the ROM library",
+      "consoleTitle": "Console",
+      "consoleDescription": "Show or hide the bottom log console. Scan progress remains visible.",
+      "consoleEnabled": "Show bottom console",
       "viewMode": {
         "grid": "Grid",
         "list": "List",
@@ -43,6 +46,7 @@
       "description": "Configure ROM directories, software will detect games automatically",
       "empty": "No scan directories added",
       "addDirectory": "Add Directory",
+      "fullScan": "Full Scan",
       "dialogTitle": "Add Scan Directory",
       "metadataFormat": "Metadata format: {{format}}",
       "addFailed": "Failed to add directory: {{error}}"

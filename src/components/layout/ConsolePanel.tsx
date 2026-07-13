@@ -19,6 +19,12 @@ interface LogPayload {
   message: string;
 }
 
+interface RomScanPayload extends ProgressPayload {
+  system?: string;
+  mode: "incremental" | "full";
+  changed: boolean;
+}
+
 const levelClass: Record<ConsoleLevel, string> = {
   debug: "text-text-muted",
   info: "text-text-secondary",
@@ -55,6 +61,14 @@ export default function ConsolePanel() {
       }),
       listen<LogPayload>("app-log", ({ payload }) => {
         addEntry(payload.level || "info", payload.message, payload.source || "backend");
+      }),
+      listen<RomScanPayload>("rom-scan-progress", ({ payload }) => {
+        const level: ConsoleLevel = payload.finished ? "info" : payload.changed ? "info" : "debug";
+        addEntry(
+          level,
+          `${payload.message}${payload.total > 0 ? ` (${payload.current}/${payload.total})` : ""}`,
+          `rom-${payload.mode}`,
+        );
       }),
     ];
     return () => {
@@ -103,6 +117,9 @@ export default function ConsolePanel() {
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
+        <span className="shrink-0 border-l border-border-default pl-2 text-text-muted">
+          v{APP_VERSION}
+        </span>
       </div>
 
       {expanded && (
@@ -133,7 +150,7 @@ export default function ConsolePanel() {
               );
             })}
           </div>
-          <div ref={scrollRef} className="h-[calc(32vh-2rem)] overflow-y-auto px-3 py-2 custom-scrollbar">
+          <div ref={scrollRef} className="h-[calc(24vh-2rem)] overflow-y-auto px-3 py-2 custom-scrollbar">
           {visibleEntries.length === 0 ? (
             <p className="text-text-muted">{t("console.empty")}</p>
           ) : visibleEntries.map((entry) => (

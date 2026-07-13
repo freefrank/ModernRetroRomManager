@@ -5,15 +5,18 @@ import { FolderPlus } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
+import { useAppStore } from "@/stores/appStore";
 import Backdrop from "@/theme/Backdrop";
 import { Toaster } from "@/components/ui";
 import Sidebar from "./Sidebar";
 import StatusBar from "./StatusBar";
 import ConsolePanel from "./ConsolePanel";
+import RomScanProgress from "./RomScanProgress";
 
 export default function Layout() {
   const { t } = useTranslation();
   const { addScanDirectory } = useRomStore();
+  const consoleEnabled = useAppStore((state) => state.consoleEnabled);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -87,12 +90,14 @@ export default function Layout() {
           </div>
         </main>
       </div>
+
+      <RomScanProgress />
       
       <div className="relative z-20">
         <StatusBar />
       </div>
 
-      <ConsolePanel />
+      {consoleEnabled && <ConsolePanel />}
 
       {/* 全局 Toast 通知(右下角堆叠) */}
       <Toaster />

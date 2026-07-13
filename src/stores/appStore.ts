@@ -82,12 +82,21 @@ async function loadCustomThemes(): Promise<LoadedTheme[]> {
 // 侧边栏面板收起态持久化:后端 update_app_setting 为显式 match 且无对应分支
 // (未知 key 被静默丢弃),故沿用 localStorage 持久化(旧 key sidebar_collapsed 已废弃)
 const SIDEBAR_PANEL_COLLAPSED_KEY = "sidebar_panel_collapsed";
+const CONSOLE_ENABLED_KEY = "console_enabled";
 
 const loadSidebarPanelCollapsed = (): boolean => {
   try {
     return localStorage.getItem(SIDEBAR_PANEL_COLLAPSED_KEY) === "true";
   } catch {
     return false;
+  }
+};
+
+const loadConsoleEnabled = (): boolean => {
+  try {
+    return localStorage.getItem(CONSOLE_ENABLED_KEY) !== "false";
+  } catch {
+    return true;
   }
 };
 
@@ -125,6 +134,8 @@ interface AppState {
   // 侧边栏面板收起态(localStorage 持久化;收起 = rail-only)
   sidebarPanelCollapsed: boolean;
   setSidebarPanelCollapsed: (collapsed: boolean) => void;
+  consoleEnabled: boolean;
+  setConsoleEnabled: (enabled: boolean) => void;
 
   // UI 状态
   viewMode: ViewMode;
@@ -232,6 +243,15 @@ export const useAppStore = create<AppState>()((set, get) => ({
       localStorage.setItem(SIDEBAR_PANEL_COLLAPSED_KEY, String(collapsed));
     } catch {
       // 存储不可用时静默降级为会话内状态
+    }
+  },
+  consoleEnabled: loadConsoleEnabled(),
+  setConsoleEnabled: (enabled) => {
+    set({ consoleEnabled: enabled });
+    try {
+      localStorage.setItem(CONSOLE_ENABLED_KEY, String(enabled));
+    } catch {
+      // 存储不可用时保留会话内状态。
     }
   },
 

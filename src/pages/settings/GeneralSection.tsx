@@ -45,7 +45,7 @@ const VIEW_MODES: ViewMode[] = ["grid", "list", "cover"];
 export default function GeneralSection() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { language, setLanguage, viewMode, setViewMode } = useAppStore();
+  const { language, setLanguage, viewMode, setViewMode, consoleEnabled, setConsoleEnabled } = useAppStore();
   const {
     scanDirectories,
     fetchScanDirectories,
@@ -53,7 +53,7 @@ export default function GeneralSection() {
     removeScanDirectory,
     isScanning,
     scanProgress,
-    fetchRoms,
+    scanLibrary,
   } = useRomStore();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -178,7 +178,7 @@ export default function GeneralSection() {
         systemId: null,
       });
       await fetchScanDirectories();
-      await fetchRoms();
+      await scanLibrary(true);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
@@ -200,7 +200,7 @@ export default function GeneralSection() {
         systemId: subDir.name,
       });
       await fetchScanDirectories();
-      await fetchRoms();
+      await scanLibrary(true);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
@@ -210,7 +210,7 @@ export default function GeneralSection() {
   };
 
   const handleScan = async () => {
-    await Promise.all([fetchScanDirectories(), fetchRoms()]);
+    await Promise.all([fetchScanDirectories(), scanLibrary(true)]);
   };
 
   return (
@@ -257,6 +257,24 @@ export default function GeneralSection() {
         </Select>
       </section>
 
+      <section>
+        <h2 className="text-lg font-medium text-text-primary">
+          {t("settings.general.consoleTitle")}
+        </h2>
+        <p className="text-sm text-text-secondary mt-1 mb-4">
+          {t("settings.general.consoleDescription")}
+        </p>
+        <label className="inline-flex items-center gap-3 text-sm text-text-primary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={consoleEnabled}
+            onChange={(event) => setConsoleEnabled(event.target.checked)}
+            className="h-4 w-4 accent-[var(--accent-primary)]"
+          />
+          {t("settings.general.consoleEnabled")}
+        </label>
+      </section>
+
       {/* 扫描目录 */}
       <section>
         <div className="flex items-center justify-between mb-4">
@@ -268,10 +286,16 @@ export default function GeneralSection() {
               {t("settings.scanDirectories.description")}
             </p>
           </div>
-          <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="w-4 h-4" />
-            {t("settings.scanDirectories.addDirectory")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleScan} disabled={isScanning}>
+              <RefreshCw className={clsx("w-4 h-4", isScanning && "animate-spin")} />
+              {t("settings.scanDirectories.fullScan")}
+            </Button>
+            <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="w-4 h-4" />
+              {t("settings.scanDirectories.addDirectory")}
+            </Button>
+          </div>
         </div>
 
         {/* 扫描进度 */}

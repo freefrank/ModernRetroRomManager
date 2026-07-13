@@ -9,23 +9,23 @@ type ExportFormat = "pegasus" | "emulationstation";
 
 export default function Import() {
   const { t } = useTranslation();
-  const { systemRoms, fetchRoms, exportData, isExporting, exportProgress } = useRomStore();
+  const { availableSystems, fetchLibrarySummary, exportData, isExporting, exportProgress } = useRomStore();
   const [system, setSystem] = useState("");
   const [format, setFormat] = useState<ExportFormat>("pegasus");
   const [targetDirectory, setTargetDirectory] = useState("");
 
   useEffect(() => {
-    if (systemRoms.length === 0) fetchRoms();
-  }, [fetchRoms, systemRoms.length]);
+    if (availableSystems.length === 0) fetchLibrarySummary();
+  }, [availableSystems.length, fetchLibrarySummary]);
 
   const selected = useMemo(
-    () => systemRoms.find((entry) => entry.system === system),
-    [system, systemRoms],
+    () => availableSystems.find((entry) => entry.name === system),
+    [availableSystems, system],
   );
 
   useEffect(() => {
-    if (!system && systemRoms.length > 0) setSystem(systemRoms[0].system);
-  }, [system, systemRoms]);
+    if (!system && availableSystems.length > 0) setSystem(availableSystems[0].name);
+  }, [availableSystems, system]);
 
   useEffect(() => {
     if (selected?.path) setTargetDirectory(selected.path);
@@ -34,7 +34,7 @@ export default function Import() {
   const handleExport = async () => {
     if (!selected || !targetDirectory.trim()) return;
     try {
-      await exportData(selected.system, selected.path, format, targetDirectory.trim());
+      await exportData(selected.name, selected.path, format, targetDirectory.trim());
     } catch (error) {
       toast.error(t("import.export.failed", { error: String(error) }));
     }
@@ -62,9 +62,9 @@ export default function Import() {
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{t("import.export.system")}</span>
               <Select value={system} onChange={(event) => setSystem(event.target.value)}>
-                {systemRoms.map((entry) => (
-                  <option key={`${entry.system}-${entry.path}`} value={entry.system}>
-                    {entry.system} ({entry.roms.length})
+                {availableSystems.map((entry) => (
+                  <option key={`${entry.name}-${entry.path}`} value={entry.name}>
+                    {entry.name} ({entry.romCount})
                   </option>
                 ))}
               </Select>

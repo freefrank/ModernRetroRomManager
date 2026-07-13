@@ -10,7 +10,6 @@ import Settings from "./pages/Settings";
 import CnRomTools from "./pages/CnRomTools";
 import { useAppStore } from "./stores/appStore";
 import { useRomStore } from "./stores/romStore";
-import { preloadMediaUrls } from "./lib/api";
 
 // Update splash screen status text
 const updateSplashText = (key: string) => {
@@ -31,7 +30,7 @@ const hideSplash = () => {
 
 export default function App() {
   const { initialized, initFromBackend } = useAppStore();
-  const { fetchScanDirectories, fetchRoms } = useRomStore();
+  const { fetchScanDirectories, fetchLibrarySummary, scanLibrary, initializeScanProgress } = useRomStore();
   const initStarted = useRef(false);
 
   useEffect(() => {
@@ -44,30 +43,23 @@ export default function App() {
       updateSplashText("splash.loadingSettings");
       await initFromBackend();
 
+      // 设置和主题就绪后立即显示应用外壳；ROM 索引在后台装载/校验。
+      updateSplashText("splash.ready");
+      hideSplash();
+      await initializeScanProgress();
+
       // 2. Load ROM data and directories in parallel
-      updateSplashText("splash.loadingRoms");
       await Promise.all([
-        fetchRoms(),
+        fetchLibrarySummary(),
         fetchScanDirectories(),
       ]);
 
-      // 3. fetchRoms 已统一更新列表、系统与统计，避免启动流程绕过 Store 逻辑。
-      const { systemRoms } = useRomStore.getState();
-      const roms = systemRoms.flatMap(s => s.roms);
-
-      // 4. Preload first 50 ROM covers BEFORE showing UI
-      if (roms.length > 0) {
-        updateSplashText("splash.loadingCovers");
-        await preloadMediaUrls(roms, 50);
-      }
-
-      // 5. Hide splash after everything is ready
-      updateSplashText("splash.ready");
-      hideSplash();
+      // 3. 已有库启动时按系统做后台增量校验。
+      await scanLibrary(false);
     };
 
     init();
-  }, [initFromBackend, fetchRoms, fetchScanDirectories]);
+  }, [initFromBackend, fetchLibrarySummary, fetchScanDirectories, initializeScanProgress, scanLibrary]);
 
   // Show nothing while initializing (splash is visible)
   if (!initialized) {
