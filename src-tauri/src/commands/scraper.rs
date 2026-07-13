@@ -655,6 +655,7 @@ pub async fn batch_scrape(
         let cancel_stream = Arc::clone(&batch_cancelled);
         futures::stream::iter(roms.into_iter())
             .take_while(move |_| futures::future::ready(!cancel_stream.load(Ordering::Acquire)))
+            // 停止后不再取新 ROM；已经进入并发队列的 ROM 必须完整保存。
             .for_each_concurrent(concurrency, |rom_item| {
                 let app = app.clone();
                 let manager_arc = Arc::clone(&manager_arc);
@@ -663,7 +664,6 @@ pub async fn batch_scrape(
                 let allowed_media = allowed_media.clone();
                 let provider_ids = provider_ids.clone();
                 let completed = Arc::clone(&completed);
-                let batch_cancelled = Arc::clone(&batch_cancelled);
                 async move {
                     let file_name = rom_item.file_name;
                     let system = if rom_item.system.trim().is_empty() {
@@ -703,10 +703,6 @@ pub async fn batch_scrape(
                         manager.scrape_with_providers(&query, &provider_ids).await
                     };
 
-                    if batch_cancelled.load(Ordering::Acquire) {
-                        return;
-                    }
-
                     if let Ok(result) = scrape_res {
                         let rom = RomInfo {
                             file: file_name.clone(),
@@ -735,10 +731,6 @@ pub async fn batch_scrape(
                             &client, &directory, &system, &file_name, &media,
                         )
                         .await;
-
-                        if batch_cancelled.load(Ordering::Acquire) {
-                            return;
-                        }
 
                         let mut materialized = Vec::new();
                         let mut uncached = Vec::new();
