@@ -1,10 +1,16 @@
 {
   "import": {
     "title": "导入/导出",
-    "underDevelopment": {
-      "title": "该功能开发中",
-      "description": "当前版本请使用中文 ROM 工具箱的导出能力",
-      "goToCnTools": "前往中文 ROM 工具箱"
+    "export": {
+      "title": "导出抓取数据",
+      "description": "将所选平台已经抓取的 metadata 与相关图片、视频等资产一起导出。",
+      "system": "平台 / ROM 目录",
+      "format": "目标格式",
+      "target": "导出目录",
+      "targetHint": "默认写回 ROM 平台目录，也可以选择单独的打包目录。",
+      "contents": "包含该平台的全部临时 metadata 以及 media 目录中的相关资产。",
+      "action": "导出 Metadata 与资产",
+      "failed": "导出失败：{{error}}"
     }
   }
 }

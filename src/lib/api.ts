@@ -282,9 +282,14 @@ export const scraperApi = {
   },
 
   /** 导出临时数据到库 */
-  async exportScrapedData(system: string, directory: string): Promise<void> {
+  async exportScrapedData(
+    system: string,
+    directory: string,
+    format = "auto",
+    targetDirectory?: string,
+  ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_scraped_data", { system, directory });
+      await tauriInvoke("export_scraped_data", { system, directory, format, targetDirectory });
     }
   },
 

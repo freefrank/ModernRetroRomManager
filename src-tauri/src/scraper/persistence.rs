@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 // ... existing code ...
 
 /// 将元数据写入 gamelist.xml (EmulationStation 格式)
+#[allow(dead_code)]
 pub fn save_metadata_emulationstation(
     rom: &RomInfo,
     metadata: &GameMetadata,

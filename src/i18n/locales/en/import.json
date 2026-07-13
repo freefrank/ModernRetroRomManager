@@ -1,10 +1,16 @@
 {
   "import": {
     "title": "Import/Export",
-    "underDevelopment": {
-      "title": "This feature is under development",
-      "description": "Please use the export capability of CN ROM Tools in the current version",
-      "goToCnTools": "Go to CN ROM Tools"
+    "export": {
+      "title": "Export scraped data",
+      "description": "Export metadata and related artwork or video assets for the selected platform.",
+      "system": "Platform / ROM directory",
+      "format": "Target format",
+      "target": "Export directory",
+      "targetHint": "Defaults to the ROM platform directory, or choose a separate bundle directory.",
+      "contents": "Includes all temporary metadata and related files under the platform media directory.",
+      "action": "Export metadata and assets",
+      "failed": "Export failed: {{error}}"
     }
   }
 }

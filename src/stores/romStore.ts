@@ -90,7 +90,7 @@ interface RomState {
   isExporting: boolean;
   exportProgress: { current: number; total: number; message: string; finished: boolean } | null;
   
-  exportData: (system: string, directory: string) => Promise<void>;
+  exportData: (system: string, directory: string, format?: string, targetDirectory?: string) => Promise<void>;
 }
 
 export const useRomStore = create<RomState>((set, get) => ({
@@ -218,7 +218,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     await scraperApi.cancelBatchScrape();
   },
 
-  exportData: async (system: string, directory: string) => {
+  exportData: async (system: string, directory: string, format = "auto", targetDirectory?: string) => {
     set({ isExporting: true, exportProgress: null });
     try {
       const { listen } = await import("@tauri-apps/api/event");
@@ -233,7 +233,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      await scraperApi.exportScrapedData(system, directory);
+      await scraperApi.exportScrapedData(system, directory, format, targetDirectory);
     } catch (error) {
       console.error("Failed to export data:", error);
       set({ isExporting: false });
