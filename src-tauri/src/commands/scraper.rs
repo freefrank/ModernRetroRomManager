@@ -549,32 +549,62 @@ pub struct BatchScrapeRom {
     pub directory: String,
 }
 
-fn select_batch_primary_media(media: &[MediaAsset]) -> Vec<MediaAsset> {
+fn select_batch_media(media: &[MediaAsset], allowed_media: &[String]) -> Vec<MediaAsset> {
     use crate::scraper::MediaType;
 
-    let mut selected = Vec::new();
+    let mut selected: Vec<MediaAsset> = media
+        .iter()
+        .filter(|asset| {
+            allowed_media
+                .iter()
+                .any(|value| value == asset.asset_type.as_str())
+        })
+        .fold(Vec::new(), |mut selected, asset| {
+            if !selected
+                .iter()
+                .any(|current| current.asset_type == asset.asset_type)
+            {
+                selected.push(asset.clone());
+            }
+            selected
+        });
+
+    // 即使用户取消了类型勾选，也维持批量抓取至少包含封面和一项其他美术资源。
     if let Some(boxart) = media
         .iter()
         .find(|asset| asset.asset_type == MediaType::BoxFront)
     {
-        selected.push(boxart.clone());
+        if !selected
+            .iter()
+            .any(|asset| asset.asset_type == MediaType::BoxFront)
+        {
+            selected.push(boxart.clone());
+        }
     }
-    for preferred_type in [
-        MediaType::Screenshot,
-        MediaType::TitleScreen,
-        MediaType::Hero,
-        MediaType::Logo,
-        MediaType::Banner,
-        MediaType::Icon,
-        MediaType::BoxBack,
-        MediaType::Box3D,
-    ] {
-        if let Some(artwork) = media.iter().find(|asset| {
-            asset.asset_type == preferred_type
-                && selected.iter().all(|selected| selected.url != asset.url)
-        }) {
-            selected.push(artwork.clone());
-            break;
+    let has_other_artwork = selected.iter().any(|asset| {
+        !matches!(
+            asset.asset_type,
+            MediaType::BoxFront | MediaType::Video | MediaType::Manual | MediaType::Other
+        )
+    });
+    if !has_other_artwork {
+        for preferred_type in [
+            MediaType::Screenshot,
+            MediaType::TitleScreen,
+            MediaType::Hero,
+            MediaType::Logo,
+            MediaType::Banner,
+            MediaType::Icon,
+            MediaType::BoxBack,
+            MediaType::Box3D,
+        ] {
+            if let Some(artwork) = media
+                .iter()
+                .find(|asset| asset.asset_type == preferred_type)
+            {
+                selected.push(artwork.clone());
+                break;
+            }
         }
     }
     selected
@@ -657,7 +687,7 @@ pub async fn batch_scrape(
                             ..Default::default()
                         };
                         let client = manager_arc.read().await.http_client.clone();
-                        let primary_media = select_batch_primary_media(&result.media);
+                        let selected_media = select_batch_media(&result.media, &allowed_media);
                         let mut media: Vec<_> = result
                             .media
                             .into_iter()
@@ -667,7 +697,7 @@ pub async fn batch_scrape(
                                     .any(|value| value == asset.asset_type.as_str())
                             })
                             .collect();
-                        for asset in &primary_media {
+                        for asset in &selected_media {
                             if !media.iter().any(|candidate| candidate.url == asset.url) {
                                 media.push(asset.clone());
                             }
@@ -679,7 +709,7 @@ pub async fn batch_scrape(
 
                         let mut materialized = Vec::new();
                         let mut uncached = Vec::new();
-                        for asset in &primary_media {
+                        for asset in &selected_media {
                             if let Some(cached) =
                                 find_cached_asset(&directory, &system, &file_name, asset)
                             {
@@ -749,17 +779,29 @@ mod batch_tests {
     }
 
     #[test]
-    fn batch_primary_media_selects_boxart_and_prefers_screenshot() {
+    fn batch_media_selects_one_asset_per_allowed_type() {
         let media = vec![
             asset(MediaType::Logo, "logo"),
-            asset(MediaType::Screenshot, "screen"),
+            asset(MediaType::Screenshot, "screen-1"),
+            asset(MediaType::Screenshot, "screen-2"),
             asset(MediaType::BoxFront, "box"),
             asset(MediaType::Hero, "hero"),
         ];
-        let selected = select_batch_primary_media(&media);
-        assert_eq!(selected.len(), 2);
-        assert_eq!(selected[0].asset_type, MediaType::BoxFront);
-        assert_eq!(selected[1].asset_type, MediaType::Screenshot);
+        let allowed = vec![
+            "boxfront".into(),
+            "logo".into(),
+            "screenshot".into(),
+            "hero".into(),
+        ];
+        let selected = select_batch_media(&media, &allowed);
+        assert_eq!(selected.len(), 4);
+        assert_eq!(
+            selected
+                .iter()
+                .filter(|asset| asset.asset_type == MediaType::Screenshot)
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -768,7 +810,7 @@ mod batch_tests {
             asset(MediaType::BoxFront, "box"),
             asset(MediaType::Logo, "logo"),
         ];
-        let selected = select_batch_primary_media(&media);
+        let selected = select_batch_media(&media, &[]);
         assert_eq!(selected.len(), 2);
         assert_eq!(selected[1].asset_type, MediaType::Logo);
     }
