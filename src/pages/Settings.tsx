@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tabs } from "@/components/ui";
 import AppearanceSection from "./settings/AppearanceSection";
@@ -12,7 +13,11 @@ const TAB_VALUES: SettingsTab[] = ["appearance", "general", "scraper", "about"];
 
 export default function Settings() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<SettingsTab>("appearance");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab") as SettingsTab | null;
+  const [tab, setTab] = useState<SettingsTab>(
+    requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "appearance",
+  );
 
   const items = TAB_VALUES.map((value) => ({
     value,
@@ -29,7 +34,11 @@ export default function Settings() {
         <Tabs
           items={items}
           value={tab}
-          onChange={(value) => setTab(value as SettingsTab)}
+          onChange={(value) => {
+            const next = value as SettingsTab;
+            setTab(next);
+            setSearchParams(next === "appearance" ? {} : { tab: next });
+          }}
         />
       </div>
 

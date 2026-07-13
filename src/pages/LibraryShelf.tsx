@@ -63,7 +63,7 @@ export default function LibraryShelf() {
             title={t("library.empty.title")}
             description={t("library.empty.description")}
             action={
-              <Button onClick={() => navigate("/settings")}>
+              <Button onClick={() => navigate("/settings?tab=general&addDirectory=1")}>
                 <Plus className="w-4 h-4" />
                 {t("library.empty.addDirectory")}
               </Button>
@@ -83,15 +83,15 @@ export default function LibraryShelf() {
               />
             ))}
 
-            {/* 「+ 添加目录」卡:跳设置页 */}
+            {/* 「+ 添加目录」卡:直接打开添加目录界面 */}
             <Card
               role="button"
               tabIndex={0}
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/settings?tab=general&addDirectory=1")}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigate("/settings");
+                  navigate("/settings?tab=general&addDirectory=1");
                 }
               }}
               className="cursor-pointer select-none border-dashed bg-transparent p-6 flex flex-col items-center justify-center gap-2 text-text-muted hover:text-text-primary hover:border-border-hover"

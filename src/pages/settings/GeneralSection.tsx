@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { Folder, HardDrive, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
@@ -43,6 +44,7 @@ const VIEW_MODES: ViewMode[] = ["grid", "list", "cover"];
 
 export default function GeneralSection() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { language, setLanguage, viewMode, setViewMode } = useAppStore();
   const {
     scanDirectories,
@@ -72,6 +74,13 @@ export default function GeneralSection() {
   useEffect(() => {
     fetchScanDirectories();
   }, [fetchScanDirectories]);
+
+  useEffect(() => {
+    if (searchParams.get("addDirectory") === "1") {
+      setIsAddDialogOpen(true);
+      setSearchParams({ tab: "general" }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const loadPaths = async () => {
@@ -134,9 +143,9 @@ export default function GeneralSection() {
   };
 
   const handleMetadataImport = async (file: MetadataFileInfo) => {
+    setIsMetadataDialogOpen(false);
     try {
       await addScanDirectory(pendingDirPath, file.format);
-      setIsMetadataDialogOpen(false);
       setIsAddDialogOpen(false);
       setPendingDirPath("");
       setDetectedMetadata([]);
@@ -147,9 +156,9 @@ export default function GeneralSection() {
   };
 
   const handleSkipImport = async () => {
+    setIsMetadataDialogOpen(false);
     try {
       await addScanDirectory(pendingDirPath, "none");
-      setIsMetadataDialogOpen(false);
       setIsAddDialogOpen(false);
       setPendingDirPath("");
       setDetectedMetadata([]);
@@ -160,6 +169,7 @@ export default function GeneralSection() {
   };
 
   const handleImportAsRoot = async () => {
+    setIsRootDialogOpen(false);
     try {
       await invoke("add_directory", {
         path: pendingDirPath,
@@ -169,7 +179,6 @@ export default function GeneralSection() {
       });
       await fetchScanDirectories();
       await fetchRoms();
-      setIsRootDialogOpen(false);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
@@ -182,6 +191,7 @@ export default function GeneralSection() {
     subDir: SubDirectoryInfo,
     format: string,
   ) => {
+    setIsRootDialogOpen(false);
     try {
       await invoke("add_directory", {
         path: subDir.path,
@@ -191,7 +201,6 @@ export default function GeneralSection() {
       });
       await fetchScanDirectories();
       await fetchRoms();
-      setIsRootDialogOpen(false);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
