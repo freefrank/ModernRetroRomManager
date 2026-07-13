@@ -421,6 +421,7 @@ impl ScraperProvider for LocalCnProvider {
                     year: None,
                     system: Some(system.to_string()),
                     thumbnail: None,
+                    asset_count: None,
                     confidence: 1.0,
                 });
                 continue;
@@ -435,6 +436,7 @@ impl ScraperProvider for LocalCnProvider {
                     year: None,
                     system: Some(system.to_string()),
                     thumbnail: None,
+                    asset_count: None,
                     confidence: 1.0,
                 });
                 continue;
@@ -473,6 +475,7 @@ impl ScraperProvider for LocalCnProvider {
                     year: None,
                     system: Some(system.to_string()),
                     thumbnail: None,
+                    asset_count: None,
                     confidence: final_score,
                 });
             }

@@ -68,6 +68,9 @@ pub struct SearchResult {
     pub system: Option<String>,
     /// 缩略图 URL
     pub thumbnail: Option<String>,
+    /// 已确认的可用资产数量；搜索阶段未展开详情时为空
+    #[serde(default)]
+    pub asset_count: Option<usize>,
     /// 匹配置信度 0.0-1.0
     pub confidence: f32,
 }

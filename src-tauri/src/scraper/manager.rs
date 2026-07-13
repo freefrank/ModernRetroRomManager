@@ -6,11 +6,15 @@ use futures::future::join_all;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock as AsyncRwLock;
 
 use super::{
-    matcher::rank_results, screenscraper::ScreenScraperClient, steamgriddb::SteamGridDBClient,
-    thegamesdb::TheGamesDbClient, GameMetadata, MediaAsset, ProviderCapability, RomHash,
-    ScrapeQuery, ScrapeResult, ScraperProvider, SearchResult,
+    matcher::{apply_asset_count_confidence, normalize_game_name, rank_results},
+    screenscraper::ScreenScraperClient,
+    steamgriddb::SteamGridDBClient,
+    thegamesdb::TheGamesDbClient,
+    GameMetadata, MediaAsset, ProviderCapability, RomHash, ScrapeQuery, ScrapeResult,
+    ScraperProvider, SearchResult,
 };
 use crate::settings::{get_settings, update_setting, AppSettings, ScraperConfig};
 
@@ -131,6 +135,8 @@ pub struct ScraperManager {
     configs: HashMap<String, ProviderConfig>,
     /// Shared HTTP Client
     pub http_client: reqwest::Client,
+    /// Provider 媒体清单缓存，搜索排名与详情页共用，避免重复请求。
+    media_cache: AsyncRwLock<HashMap<(String, String), Vec<MediaAsset>>>,
 }
 
 impl ScraperManager {
@@ -140,6 +146,7 @@ impl ScraperManager {
             providers: HashMap::new(),
             configs: HashMap::new(),
             http_client: reqwest::Client::new(),
+            media_cache: AsyncRwLock::new(HashMap::new()),
         }
     }
 
@@ -159,6 +166,7 @@ impl ScraperManager {
     pub fn rebuild_from(&mut self, settings: &AppSettings) {
         self.providers.clear();
         self.configs.clear();
+        self.media_cache.get_mut().clear();
 
         for descriptor in PROVIDER_CATALOG {
             let Some(config) = settings.scrapers.get(descriptor.id) else {
@@ -319,7 +327,60 @@ impl ScraperManager {
             .flatten()
             .collect();
 
-        rank_results(query, merged)
+        let mut ranked = rank_results(query, merged);
+
+        // Provider 已在搜索响应中给出资产数量时直接计入评分。
+        for result in &mut ranked {
+            if let Some(asset_count) = result.asset_count {
+                result.confidence = apply_asset_count_confidence(result.confidence, asset_count);
+            }
+        }
+
+        // 仅展开同 Provider 的同名重复候选，避免对所有搜索结果制造 N+1 请求。
+        let mut duplicate_counts: HashMap<(String, String), usize> = HashMap::new();
+        for result in &ranked {
+            *duplicate_counts
+                .entry((
+                    result.provider.clone(),
+                    normalize_game_name(&result.name).to_ascii_lowercase(),
+                ))
+                .or_default() += 1;
+        }
+        let media_futures: Vec<_> = ranked
+            .iter()
+            .enumerate()
+            .filter(|(_, result)| result.asset_count.is_none())
+            .filter(|(_, result)| {
+                duplicate_counts
+                    .get(&(
+                        result.provider.clone(),
+                        normalize_game_name(&result.name).to_ascii_lowercase(),
+                    ))
+                    .is_some_and(|count| *count > 1)
+            })
+            .map(|(index, result)| async move {
+                (
+                    index,
+                    self.fetch_media_cached(&result.provider, &result.source_id)
+                        .await,
+                )
+            })
+            .collect();
+        for (index, media) in join_all(media_futures).await {
+            if let Ok(media) = media {
+                let asset_count = media.len();
+                ranked[index].asset_count = Some(asset_count);
+                ranked[index].confidence =
+                    apply_asset_count_confidence(ranked[index].confidence, asset_count);
+            }
+        }
+        ranked.sort_by(|left, right| {
+            right
+                .confidence
+                .partial_cmp(&left.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        ranked
     }
 
     /// 通过 Hash 精确查找
@@ -377,24 +438,41 @@ impl ScraperManager {
         source_id: &str,
         media_types: Option<&[String]>,
     ) -> Result<Vec<MediaAsset>, String> {
-        let provider = self
-            .providers
-            .get(provider_id)
-            .ok_or_else(|| format!("Provider '{}' not found", provider_id))?;
-
         let configured = get_settings().scraper_media_types;
         let allowed = media_types.unwrap_or(&configured);
-        Ok(provider
-            .get_media(source_id)
+        Ok(self
+            .fetch_media_cached(provider_id, source_id)
             .await?
             .into_iter()
-            .filter(usable_asset)
             .filter(|asset| {
                 allowed
                     .iter()
                     .any(|value| value == asset.asset_type.as_str())
             })
             .collect())
+    }
+
+    async fn fetch_media_cached(
+        &self,
+        provider_id: &str,
+        source_id: &str,
+    ) -> Result<Vec<MediaAsset>, String> {
+        let key = (provider_id.to_string(), source_id.to_string());
+        if let Some(media) = self.media_cache.read().await.get(&key).cloned() {
+            return Ok(media);
+        }
+        let provider = self
+            .providers
+            .get(provider_id)
+            .ok_or_else(|| format!("Provider '{}' not found", provider_id))?;
+        let media: Vec<_> = provider
+            .get_media(source_id)
+            .await?
+            .into_iter()
+            .filter(usable_asset)
+            .collect();
+        self.media_cache.write().await.insert(key, media.clone());
+        Ok(media)
     }
 
     /// 合并多个 provider 的元数据（优先级从高到低）
@@ -485,8 +563,8 @@ impl ScraperManager {
             .filter(|p| p.capabilities().has(ProviderCapability::Media))
             .filter_map(|provider| {
                 let source_id = matches.get(provider.id())?.source_id.clone();
-                let provider = Arc::clone(provider);
-                Some(async move { provider.get_media(&source_id).await })
+                let provider_id = provider.id().to_string();
+                Some(async move { self.fetch_media_cached(&provider_id, &source_id).await })
             })
             .collect();
 
@@ -738,6 +816,7 @@ mod tests {
     struct MockProvider {
         id: &'static str,
         results: Vec<SearchResult>,
+        media_counts: HashMap<String, usize>,
     }
 
     #[async_trait]
@@ -750,6 +829,7 @@ mod tests {
             Capabilities::new()
                 .with(ProviderCapability::Search)
                 .with(ProviderCapability::Metadata)
+                .with(ProviderCapability::Media)
         }
 
         async fn search(&self, _query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
@@ -764,8 +844,16 @@ mod tests {
             })
         }
 
-        async fn get_media(&self, _source_id: &str) -> Result<Vec<MediaAsset>, String> {
-            Ok(vec![])
+        async fn get_media(&self, source_id: &str) -> Result<Vec<MediaAsset>, String> {
+            Ok((0..self.media_counts.get(source_id).copied().unwrap_or(0))
+                .map(|index| MediaAsset {
+                    provider: self.id.into(),
+                    url: format!("https://example.com/{source_id}/{index}.png"),
+                    asset_type: crate::scraper::MediaType::BoxFront,
+                    width: None,
+                    height: None,
+                })
+                .collect())
         }
     }
 
@@ -778,6 +866,7 @@ mod tests {
             year: None,
             system: None,
             thumbnail: None,
+            asset_count: None,
             confidence,
         };
 
@@ -790,6 +879,7 @@ mod tests {
                     make_result("Zelda", 0.99),
                     make_result("Super Mario World", 0.0),
                 ],
+                media_counts: HashMap::new(),
             },
             ProviderConfig::default(),
         );
@@ -818,8 +908,10 @@ mod tests {
                         year: None,
                         system: Some("snes".to_string()),
                         thumbnail: None,
+                        asset_count: None,
                         confidence: 1.0,
                     }],
+                    media_counts: HashMap::new(),
                 },
                 ProviderConfig {
                     enabled: true,
@@ -833,5 +925,36 @@ mod tests {
             .unwrap();
         assert!(result.metadata.genres.contains(&"id-a".to_string()));
         assert!(result.metadata.genres.contains(&"id-b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn duplicate_results_use_asset_count_for_ranking() {
+        let result = |source_id: &str| SearchResult {
+            provider: "mock".into(),
+            source_id: source_id.into(),
+            name: "CT Special Forces 2".into(),
+            year: None,
+            system: Some("GBA".into()),
+            thumbnail: Some("https://example.com/thumb.png".into()),
+            asset_count: None,
+            confidence: 0.0,
+        };
+        let mut manager = ScraperManager::new();
+        manager.register_with_config(
+            MockProvider {
+                id: "mock",
+                results: vec![result("one"), result("eight")],
+                media_counts: HashMap::from([("one".into(), 1), ("eight".into(), 8)]),
+            },
+            ProviderConfig::default(),
+        );
+
+        let query =
+            ScrapeQuery::new("CT Special Forces 2".into(), "ct2.gba".into()).with_system("GBA");
+        let results = manager.search(&query).await;
+        assert_eq!(results[0].source_id, "eight");
+        assert_eq!(results[0].asset_count, Some(8));
+        assert_eq!(results[1].asset_count, Some(1));
+        assert!(results[0].confidence > results[1].confidence);
     }
 }

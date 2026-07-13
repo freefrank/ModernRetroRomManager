@@ -327,6 +327,7 @@ impl ScraperProvider for ScreenScraperClient {
                         .iter()
                         .find(|m| m.media_type == "box-2D" || m.media_type == "box-2d")
                         .map(|m| m.url.clone()),
+                    asset_count: Some(game.medias.len()),
                     confidence: 0.9, // 文件名匹配置信度较高
                 }])
             }
@@ -397,6 +398,7 @@ impl ScraperProvider for ScreenScraperClient {
                         .iter()
                         .find(|m| m.media_type == "box-2D")
                         .map(|m| m.url.clone()),
+                    asset_count: Some(game.medias.len()),
                     confidence: 1.0, // Hash 精确匹配
                 }))
             }

@@ -150,6 +150,7 @@ impl ScraperProvider for SteamGridDBClient {
                     // 让统一排序能优先当前平台而不是把结果当成完全未知平台。
                     system: query.system.clone(),
                     thumbnail: None,
+                    asset_count: None,
                     confidence,
                 }
             })

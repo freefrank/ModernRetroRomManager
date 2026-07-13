@@ -70,6 +70,7 @@
       "searchButton": "搜索",
       "searching": "搜索中...",
       "resultsCount": "搜索结果 ({{count}})",
+      "assetCount": "{{count}} 个资产",
       "noResults": "暂无搜索结果",
       "loadingDetails": "正在加载详细信息...",
       "confidence": "置信度",

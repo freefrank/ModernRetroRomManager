@@ -127,6 +127,7 @@ export interface ScraperSearchResult {
   year?: string;
   system?: string;
   thumbnail?: string;
+  asset_count?: number;
   confidence: number;
 }
 

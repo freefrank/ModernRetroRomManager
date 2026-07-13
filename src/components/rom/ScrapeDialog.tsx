@@ -249,6 +249,11 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                             {res.provider}
                           </Badge>
                           {res.year && <span className="text-[10px] text-text-muted font-bold">{res.year}</span>}
+                          {typeof res.asset_count === "number" && (
+                            <span className="text-[10px] text-text-muted font-bold">
+                              {t("scraper.dialog.assetCount", { count: res.asset_count })}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <Badge variant={confidenceVariant(res.confidence)}>

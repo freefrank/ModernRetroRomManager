@@ -251,6 +251,12 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     score.clamp(0.0, 1.0)
 }
 
+/// 资产完整度占最终评分的 10%，8 个及以上可用资产计满。
+pub fn apply_asset_count_confidence(base_confidence: f32, asset_count: usize) -> f32 {
+    let asset_quality = asset_count.min(8) as f32 / 8.0;
+    (base_confidence * 0.9 + asset_quality * 0.1).clamp(0.0, 1.0)
+}
+
 /// 对搜索结果重新计算置信度并排序
 pub fn rank_results(query: &ScrapeQuery, mut results: Vec<SearchResult>) -> Vec<SearchResult> {
     // 重新计算置信度
@@ -310,6 +316,7 @@ mod tests {
             year: None,
             system: None,
             thumbnail: None,
+            asset_count: None,
             confidence,
         };
 
@@ -343,6 +350,7 @@ mod tests {
             year: None,
             system: None,
             thumbnail: None,
+            asset_count: None,
             confidence: 0.0,
         };
 
@@ -361,6 +369,7 @@ mod tests {
             year: None,
             system: system.map(str::to_string),
             thumbnail: None,
+            asset_count: None,
             confidence: 0.0,
         };
         assert!((calculate_confidence(&query, &result(Some("18"))) - 0.85).abs() < 0.001);
@@ -380,6 +389,7 @@ mod tests {
             year: None,
             system: Some("GBA".into()),
             thumbnail: thumbnail.map(str::to_string),
+            asset_count: None,
             confidence: 0.0,
         };
 
@@ -401,6 +411,7 @@ mod tests {
             year: None,
             system: Some("GBA".into()),
             thumbnail: Some("https://example.com/box.png".into()),
+            asset_count: None,
             confidence: 0.0,
         };
         let sequel_query =
@@ -434,6 +445,7 @@ mod tests {
             year: None,
             system: Some("3DS".into()),
             thumbnail: Some("https://example.com/box.png".into()),
+            asset_count: None,
             confidence: 0.0,
         };
         let expected_without_sequel_penalty =
@@ -441,5 +453,14 @@ mod tests {
         assert!(
             (calculate_confidence(&query, &result) - expected_without_sequel_penalty).abs() < 0.001
         );
+    }
+
+    #[test]
+    fn asset_count_breaks_equal_confidence_ties_without_saturation() {
+        let one_asset = apply_asset_count_confidence(1.0, 1);
+        let eight_assets = apply_asset_count_confidence(1.0, 8);
+        assert!(eight_assets > one_asset);
+        assert!((one_asset - 0.9125).abs() < 0.001);
+        assert!((eight_assets - 1.0).abs() < 0.001);
     }
 }

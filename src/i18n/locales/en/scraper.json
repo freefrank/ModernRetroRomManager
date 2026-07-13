@@ -70,6 +70,7 @@
       "searchButton": "Search",
       "searching": "Searching...",
       "resultsCount": "Results ({{count}})",
+      "assetCount": "{{count}} assets",
       "noResults": "No results found",
       "loadingDetails": "Loading details...",
       "confidence": "Confidence",

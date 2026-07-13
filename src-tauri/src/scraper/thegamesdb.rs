@@ -165,6 +165,7 @@ impl ScraperProvider for TheGamesDbClient {
                     game.platform.map(|id| id.to_string())
                 },
                 thumbnail: None,
+                asset_count: None,
                 confidence: (0.92 - index as f32 * 0.05).max(0.5),
             })
             .collect())
@@ -253,6 +254,7 @@ impl ScraperProvider for TheGamesDbClient {
                 year: game.release_date,
                 system: game.platform.map(|id| id.to_string()),
                 thumbnail: None,
+                asset_count: None,
                 confidence: 1.0,
             }))
     }
