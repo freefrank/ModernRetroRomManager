@@ -169,6 +169,15 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
         }
     }
 
+    // 无可用封面预览的条目降低 15%，优先展示可以直接确认和应用的结果。
+    if result
+        .thumbnail
+        .as_deref()
+        .is_none_or(|thumbnail| thumbnail.trim().is_empty())
+    {
+        score -= 0.15;
+    }
+
     // 年份匹配可以考虑但目前 query 没有年份信息
 
     score.clamp(0.0, 1.0)
@@ -247,7 +256,7 @@ mod tests {
         assert_eq!(ranked[0].name, "Super Mario World");
         assert_eq!(ranked[2].name, "Zelda");
         // 置信度已重算且降序排列
-        assert!(ranked[0].confidence >= 0.79);
+        assert!(ranked[0].confidence >= 0.64);
         assert!(ranked[0].confidence >= ranked[1].confidence);
         assert!(ranked[1].confidence >= ranked[2].confidence);
     }
@@ -270,8 +279,8 @@ mod tests {
         };
 
         let confidence = calculate_confidence(&query, &result);
-        // 无平台信息时保守封顶，避免盖过已验证平台的结果。
-        assert!((confidence - 0.8).abs() < 0.001);
+        // 无平台和封面信息时保守降权，避免盖过信息完整的结果。
+        assert!((confidence - 0.65).abs() < 0.001);
     }
 
     #[test]
@@ -286,9 +295,32 @@ mod tests {
             thumbnail: None,
             confidence: 0.0,
         };
-        assert!((calculate_confidence(&query, &result(Some("18"))) - 1.0).abs() < 0.001);
-        assert!((calculate_confidence(&query, &result(Some("Genesis"))) - 1.0).abs() < 0.001);
+        assert!((calculate_confidence(&query, &result(Some("18"))) - 0.85).abs() < 0.001);
+        assert!((calculate_confidence(&query, &result(Some("Genesis"))) - 0.85).abs() < 0.001);
         assert!(calculate_confidence(&query, &result(Some("SNES"))) < 0.6);
         assert!(calculate_confidence(&query, &result(None)) < 0.9);
+    }
+
+    #[test]
+    fn missing_or_blank_boxart_reduces_confidence() {
+        let query = ScrapeQuery::new("Metroid Fusion".into(), "Metroid Fusion.gba".into())
+            .with_system("GBA");
+        let result = |thumbnail: Option<&str>| SearchResult {
+            provider: "test".into(),
+            source_id: "1".into(),
+            name: "Metroid Fusion".into(),
+            year: None,
+            system: Some("GBA".into()),
+            thumbnail: thumbnail.map(str::to_string),
+            confidence: 0.0,
+        };
+
+        let with_boxart =
+            calculate_confidence(&query, &result(Some("https://example.com/box.png")));
+        let without_boxart = calculate_confidence(&query, &result(None));
+        let blank_boxart = calculate_confidence(&query, &result(Some("  ")));
+
+        assert!((with_boxart - without_boxart - 0.15).abs() < 0.001);
+        assert!((without_boxart - blank_boxart).abs() < 0.001);
     }
 }
