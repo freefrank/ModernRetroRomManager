@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, Calendar, User, Building2, Globe, Gamepad2, Star,
-  Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Play, Wand2
+  Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Wand2
 } from "lucide-react";
 import { resolveMediaUrlAsync, scraperApi, ps3Api } from "@/lib/api";
 import type { Rom } from "@/types";
@@ -297,10 +297,6 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
               </>
             ) : (
               <>
-                <Button>
-                  <Play className="w-4 h-4 fill-current" />
-                  <span className="hidden sm:inline">{t("romDetail.actions.play")}</span>
-                </Button>
                 <div className="flex gap-2">
                   <IconButton
                     onClick={() => setIsScrapeDialogOpen(true)}

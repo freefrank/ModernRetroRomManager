@@ -55,7 +55,7 @@ interface RomState {
   // 选中的 ROM
   selectedRomIds: Set<string>;
   toggleRomSelection: (id: string, multiSelect?: boolean) => void;
-  selectAllRoms: () => void;
+  selectAllRoms: (ids?: string[]) => void;
   clearSelection: () => void;
 
   // 批量 Scrape
@@ -77,7 +77,6 @@ interface RomState {
   // 扫描状态
   isScanning: boolean;
   scanProgress: ScanProgress | null;
-  startScan: (dirId: string) => Promise<void>;
 
   // 统计信息
   stats: {
@@ -85,7 +84,6 @@ interface RomState {
     scrapedRoms: number;
     totalSize: number;
   };
-  fetchStats: () => Promise<void>;
   updateTempMetadata: (system: string, directory: string, rom_id: string, metadata: ScraperGameMetadata) => Promise<void>;
   deleteTempMedia: (system: string, rom_id: string, assetType: string) => Promise<void>;
   // 导出状态
@@ -160,9 +158,9 @@ export const useRomStore = create<RomState>((set, get) => ({
       }
     });
   },
-  selectAllRoms: () => {
+  selectAllRoms: (ids?: string[]) => {
     // 暂时用文件路径作为 ID
-    set((state) => ({ selectedRomIds: new Set(state.roms.map(r => r.file)) }));
+    set((state) => ({ selectedRomIds: new Set(ids || state.roms.map(r => r.file)) }));
   },
   clearSelection: () => set({ selectedRomIds: new Set() }),
 
@@ -345,29 +343,14 @@ addScanDirectory: async (path: string, metadataFormat="none") => {
     }
   },
 
-  // 扫描状态 - 本地无数据库，扫描其实很快，可能不再需要复杂的进度状态
+  // 扫描状态
   isScanning: false,
   scanProgress: null,
-  startScan: async () => Promise.resolve(),
 
   // 统计信息
   stats: {
     totalRoms: 0,
     scrapedRoms: 0,
     totalSize: 0,
-  },
-  fetchStats: async () => {
-    try {
-      const stats = await api.getStats();
-      // 后端 stats 仅含总数;scrapedRoms 从已加载的 systemRoms 计算,避免被清零
-      set({
-        stats: {
-          ...computeStats(get().systemRoms),
-          totalRoms: stats.total_roms,
-        },
-      });
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    }
   },
 }));

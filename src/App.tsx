@@ -10,7 +10,7 @@ import Settings from "./pages/Settings";
 import CnRomTools from "./pages/CnRomTools";
 import { useAppStore } from "./stores/appStore";
 import { useRomStore } from "./stores/romStore";
-import { api, preloadMediaUrls } from "./lib/api";
+import { preloadMediaUrls } from "./lib/api";
 
 // Update splash screen status text
 const updateSplashText = (key: string) => {
@@ -31,7 +31,7 @@ const hideSplash = () => {
 
 export default function App() {
   const { initialized, initFromBackend } = useAppStore();
-  const { fetchScanDirectories } = useRomStore();
+  const { fetchScanDirectories, fetchRoms } = useRomStore();
   const initStarted = useRef(false);
 
   useEffect(() => {
@@ -46,26 +46,14 @@ export default function App() {
 
       // 2. Load ROM data and directories in parallel
       updateSplashText("splash.loadingRoms");
-      const [systemRoms] = await Promise.all([
-        api.getRoms(),
+      await Promise.all([
+        fetchRoms(),
         fetchScanDirectories(),
       ]);
 
-      // 3. 展平 ROM 列表并更新 store（包含统计信息）
+      // 3. fetchRoms 已统一更新列表、系统与统计，避免启动流程绕过 Store 逻辑。
+      const { systemRoms } = useRomStore.getState();
       const roms = systemRoms.flatMap(s => s.roms);
-      const totalRoms = roms.length;
-      
-      useRomStore.setState({
-        systemRoms,
-        availableSystems: systemRoms.map(s => ({ name: s.system, romCount: s.roms.length })),
-        roms,
-        isLoadingRoms: false,
-        stats: {
-          totalRoms,
-          scrapedRoms: 0,
-          totalSize: 0,
-        },
-      });
 
       // 4. Preload first 50 ROM covers BEFORE showing UI
       if (roms.length > 0) {
@@ -79,7 +67,7 @@ export default function App() {
     };
 
     init();
-  }, [initFromBackend, fetchScanDirectories]);
+  }, [initFromBackend, fetchRoms, fetchScanDirectories]);
 
   // Show nothing while initializing (splash is visible)
   if (!initialized) {

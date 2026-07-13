@@ -41,6 +41,7 @@ export default function Library() {
     fetchRoms,
     selectedRomIds,
     toggleRomSelection,
+    selectAllRoms,
     clearSelection,
     isBatchScraping,
     batchProgress,
@@ -206,6 +207,13 @@ export default function Library() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => selectAllRoms(filteredRoms.map(rom => rom.file))}
+            disabled={filteredRoms.length === 0}
+          >
+            {t("library.batch.selectAll")}
+          </Button>
           <Button
             variant="ghost"
             onClick={() => { setBatchScope("platform"); setIsBatchDialogOpen(true); }}

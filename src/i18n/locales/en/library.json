@@ -29,6 +29,7 @@
     "noResultsHint": "Try a different keyword",
     "batch": {
       "selectedCount": "{{count}} selected",
+      "selectAll": "Select Current Results",
       "scrape": "Batch Scrape",
       "scrapePlatform": "Scrape This Platform",
       "scrapeLibrary": "Scrape Entire ROM Library",

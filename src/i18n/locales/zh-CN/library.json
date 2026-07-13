@@ -29,6 +29,7 @@
     "noResultsHint": "换个关键词试试",
     "batch": {
       "selectedCount": "已选择 {{count}} 项",
+      "selectAll": "全选当前结果",
       "scrape": "批量抓取",
       "scrapePlatform": "抓取此平台",
       "scrapeLibrary": "抓取整个 ROM 库",
