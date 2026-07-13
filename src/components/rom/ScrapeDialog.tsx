@@ -8,6 +8,7 @@ import type { Rom, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset }
 import { Button, Dialog, Input, Badge, Spinner, EmptyState } from "@/components/ui";
 import { clsx } from "clsx";
 import MediaTypeSelector from "./MediaTypeSelector";
+import { cacheSearchResults, getCachedSearchResults } from "@/lib/scraperSearchCache";
 
 interface ScrapeDialogProps {
   rom: Rom;
@@ -37,6 +38,24 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
   const [isApplying, setIsApplying] = useState(false);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
 
+  const clearSelectedDetails = () => {
+    setSelectedResult(null);
+    setMetadata(null);
+    setMedia([]);
+    setSelectedMediaUrls(new Set());
+  };
+
+  const restoreCachedResults = (searchQuery: string) => {
+    const cached = getCachedSearchResults({
+      query: searchQuery,
+      fileName: rom.file,
+      system: rom.system,
+      directory: rom.directory,
+    });
+    setResults(cached || []);
+    clearSelectedDetails();
+  };
+
   useEffect(() => {
     fetchProviders();
     scraperApi.getMediaTypes().then(setMediaTypes).catch(console.error);
@@ -44,8 +63,12 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
 
   useEffect(() => {
     if (isOpen) {
-      setQuery(rom.english_name?.trim() || rom.name);
+      const initialQuery = rom.english_name?.trim() || rom.name;
+      setQuery(initialQuery);
+      restoreCachedResults(initialQuery);
     }
+    // 仅在打开弹窗或切换 ROM 时恢复缓存；详情状态由弹窗内部交互管理。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, rom.english_name, rom.name]);
 
   useEffect(() => {
@@ -60,11 +83,15 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
     setIsSearching(true);
     try {
       const searchResults = await scraperApi.search(query, rom.file, rom.system, rom.directory);
-      setResults(searchResults.sort((a, b) => b.confidence - a.confidence));
-      setSelectedResult(null);
-      setMetadata(null);
-      setMedia([]);
-      setSelectedMediaUrls(new Set());
+      const sortedResults = searchResults.sort((a, b) => b.confidence - a.confidence);
+      setResults(sortedResults);
+      cacheSearchResults({
+        query,
+        fileName: rom.file,
+        system: rom.system,
+        directory: rom.directory,
+      }, sortedResults);
+      clearSelectedDetails();
     } catch (error) {
       console.error("Search failed:", error);
     } finally {
@@ -190,7 +217,10 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
               <Input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  restoreCachedResults(e.target.value);
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder={t("scraper.dialog.searchPlaceholder")}
               />
