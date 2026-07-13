@@ -146,6 +146,27 @@ pub fn normalize_game_name(name: &str) -> String {
     result.trim().to_string()
 }
 
+fn sequel_number(name: &str) -> Option<u8> {
+    name.split(|character: char| !character.is_ascii_alphanumeric())
+        .find_map(|token| {
+            if let Ok(number) = token.parse::<u8>() {
+                return (2..=20).contains(&number).then_some(number);
+            }
+            match token.to_ascii_uppercase().as_str() {
+                "II" => Some(2),
+                "III" => Some(3),
+                "IV" => Some(4),
+                "V" => Some(5),
+                "VI" => Some(6),
+                "VII" => Some(7),
+                "VIII" => Some(8),
+                "IX" => Some(9),
+                "X" => Some(10),
+                _ => None,
+            }
+        })
+}
+
 /// 计算搜索结果的置信度分数
 pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     let query_name = normalize_game_name(&query.name);
@@ -158,6 +179,14 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     // 完全匹配奖励
     if query_name.to_lowercase() == result_name.to_lowercase() {
         score += 0.15;
+    }
+
+    // 续作编号是强身份信号：二代不能与无编号的一代或其他续作获得相同评分。
+    match (sequel_number(&query_name), sequel_number(&result_name)) {
+        (Some(query_number), Some(result_number)) if query_number == result_number => score += 0.1,
+        (Some(_), Some(_)) => score -= 0.4,
+        (Some(_), None) | (None, Some(_)) => score -= 0.3,
+        _ => {}
     }
 
     // 平台一致奖励 20%；明确冲突则扣 25%，避免同名跨平台移植版排在前面。
@@ -322,5 +351,33 @@ mod tests {
 
         assert!((with_boxart - without_boxart - 0.15).abs() < 0.001);
         assert!((without_boxart - blank_boxart).abs() < 0.001);
+    }
+
+    #[test]
+    fn sequel_number_distinguishes_ct_special_forces_entries() {
+        let make_result = |name: &str| SearchResult {
+            provider: "test".into(),
+            source_id: name.into(),
+            name: name.into(),
+            year: None,
+            system: Some("GBA".into()),
+            thumbnail: Some("https://example.com/box.png".into()),
+            confidence: 0.0,
+        };
+        let sequel_query =
+            ScrapeQuery::new("CT Special Forces 2".into(), "ct2.gba".into()).with_system("GBA");
+        let original_query =
+            ScrapeQuery::new("CT Special Forces".into(), "ct.gba".into()).with_system("GBA");
+
+        let original = make_result("CT Special Forces");
+        let sequel = make_result("CT Special Forces 2");
+        assert!(
+            calculate_confidence(&sequel_query, &sequel)
+                > calculate_confidence(&sequel_query, &original) + 0.2
+        );
+        assert!(
+            calculate_confidence(&original_query, &original)
+                > calculate_confidence(&original_query, &sequel) + 0.2
+        );
     }
 }

@@ -37,6 +37,27 @@ fn clean_release_name(name: &str) -> String {
         .to_string()
 }
 
+fn has_numbered_installment(name: &str) -> bool {
+    name.split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|token| {
+            token
+                .parse::<u8>()
+                .is_ok_and(|number| (2..=20).contains(&number))
+                || matches!(
+                    token.to_ascii_uppercase().as_str(),
+                    "II" | "III" | "IV" | "V" | "VI" | "VII" | "VIII" | "IX" | "X"
+                )
+        })
+}
+
+fn choose_regional_scrape_name(release_name: &str, regional_name: String) -> String {
+    if has_numbered_installment(release_name) && !has_numbered_installment(&regional_name) {
+        release_name.to_string()
+    } else {
+        regional_name
+    }
+}
+
 fn serial_index() -> &'static SerialIndex {
     SERIAL_INDEX.get_or_init(|| {
         let mut by_serial: HashMap<String, Vec<SerialEntry>> = HashMap::new();
@@ -171,7 +192,13 @@ pub fn identify_gba_rom(path: &Path) -> Result<Option<GbaIdentification>, String
     }
 
     let (scrape_name, confidence) = if english_candidates.len() == 1 {
-        (english_candidates.remove(0), 98.0)
+        let regional_name = english_candidates.remove(0);
+        // 部分地区会省略续作编号（例如 A9CE 的欧版标题没有“2”）。
+        // 已识别版本包含明确编号时不能用无编号的跨区标题覆盖它。
+        (
+            choose_regional_scrape_name(&release_name, regional_name),
+            98.0,
+        )
     } else {
         // 多个不同英文标题说明前三位代码不足以唯一确定跨区域版本。
         (release_name.clone(), 95.0)
@@ -202,5 +229,26 @@ mod tests {
         let index = serial_index();
         assert!(index.by_serial.contains_key("B4ZJ"));
         assert!(index.by_serial.contains_key("BZMJ"));
+    }
+
+    #[test]
+    fn detects_numbered_installments_in_arabic_and_roman_forms() {
+        assert!(has_numbered_installment("CT Special Forces 2"));
+        assert!(has_numbered_installment("Final Fantasy VI"));
+        assert!(!has_numbered_installment(
+            "CT Special Forces - Back to Hell"
+        ));
+        assert!(!has_numbered_installment("F1 2002"));
+    }
+
+    #[test]
+    fn keeps_ct_special_forces_2_number_during_regional_mapping() {
+        assert_eq!(
+            choose_regional_scrape_name(
+                "CT Special Forces 2 - Back in the Trenches",
+                "CT Special Forces - Back to Hell".to_string(),
+            ),
+            "CT Special Forces 2 - Back in the Trenches"
+        );
     }
 }
