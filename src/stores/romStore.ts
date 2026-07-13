@@ -14,6 +14,7 @@ interface BatchProgress {
   total: number;
   message: string;
   finished: boolean;
+  cancelled?: boolean;
 }
 
 interface SystemInfo {
@@ -60,6 +61,7 @@ interface RomState {
   isBatchScraping: boolean;
   batchProgress: BatchProgress | null;
   startBatchScrape: (providerIds: string[], mediaTypes?: string[], scope?: BatchScrapeScope) => Promise<void>;
+  cancelBatchScrape: () => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -211,6 +213,9 @@ export const useRomStore = create<RomState>((set, get) => ({
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });
     }
+  },
+  cancelBatchScrape: async () => {
+    await scraperApi.cancelBatchScrape();
   },
 
   exportData: async (system: string, directory: string) => {

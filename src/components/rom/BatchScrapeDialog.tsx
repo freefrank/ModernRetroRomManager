@@ -17,7 +17,7 @@ interface BatchScrapeDialogProps {
 export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection" }: BatchScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
-  const { startBatchScrape, selectedRomIds, selectedSystem, systemRoms, isBatchScraping, batchProgress } = useRomStore();
+  const { startBatchScrape, cancelBatchScrape, selectedRomIds, selectedSystem, systemRoms, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const providersInitialized = useRef(false);
@@ -47,8 +47,10 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   };
 
   // 批量抓取进行中禁止关闭(完成后允许)
-  const handleClose = () => {
-    if (isBatchScraping && !batchProgress?.finished) return;
+  const handleClose = async () => {
+    if (isBatchScraping && !batchProgress?.finished) {
+      await cancelBatchScrape();
+    }
     onClose();
   };
 
@@ -123,11 +125,22 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
             </div>
 
             {batchProgress?.finished && (
-              <div className="flex items-center gap-3 p-4 bg-accent-success/10 border-[length:var(--border-width)] border-accent-success/20 rounded-[var(--radius-lg)] text-accent-success">
-                <CheckCircle2 className="w-6 h-6 shrink-0" />
+              <div className={clsx(
+                "flex items-center gap-3 p-4 border-[length:var(--border-width)] rounded-[var(--radius-lg)]",
+                batchProgress.cancelled
+                  ? "bg-accent-warning/10 border-accent-warning/20 text-accent-warning"
+                  : "bg-accent-success/10 border-accent-success/20 text-accent-success",
+              )}>
+                {batchProgress.cancelled
+                  ? <AlertCircle className="w-6 h-6 shrink-0" />
+                  : <CheckCircle2 className="w-6 h-6 shrink-0" />}
                 <div>
-                  <div className="font-bold">{t("scraper.batch.completed")}</div>
-                  <div className="text-xs opacity-80">{t("scraper.batch.completedDesc")}</div>
+                  <div className="font-bold">
+                    {t(batchProgress.cancelled ? "scraper.batch.stopped" : "scraper.batch.completed")}
+                  </div>
+                  <div className="text-xs opacity-80">
+                    {t(batchProgress.cancelled ? "scraper.batch.stoppedDesc" : "scraper.batch.completedDesc")}
+                  </div>
                 </div>
               </div>
             )}

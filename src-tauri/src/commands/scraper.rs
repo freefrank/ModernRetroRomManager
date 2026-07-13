@@ -21,7 +21,7 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
@@ -77,6 +77,8 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
 
 pub struct ScraperState {
     pub manager: Arc<RwLock<ScraperManager>>,
+    batch_running: Arc<AtomicBool>,
+    batch_cancelled: Arc<AtomicBool>,
 }
 
 impl ScraperState {
@@ -86,6 +88,8 @@ impl ScraperState {
 
         Self {
             manager: Arc::new(RwLock::new(manager)),
+            batch_running: Arc::new(AtomicBool::new(false)),
+            batch_cancelled: Arc::new(AtomicBool::new(false)),
         }
     }
 }
@@ -537,6 +541,7 @@ pub struct BatchProgress {
     pub total: usize,
     pub message: String,
     pub finished: bool,
+    pub cancelled: bool,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -623,7 +628,17 @@ pub async fn batch_scrape(
     if provider_ids.is_empty() {
         return Err("请至少选择一个抓取来源".to_string());
     }
+    if state
+        .batch_running
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return Err("已有批量抓取任务正在运行".to_string());
+    }
+    state.batch_cancelled.store(false, Ordering::Release);
     let manager_arc = Arc::clone(&state.manager);
+    let batch_running = Arc::clone(&state.batch_running);
+    let batch_cancelled = Arc::clone(&state.batch_cancelled);
     let total = roms.len();
     let settings = get_settings();
     let concurrency = provider_ids
@@ -637,7 +652,9 @@ pub async fn batch_scrape(
 
     tokio::spawn(async move {
         let completed = Arc::new(AtomicUsize::new(0));
+        let cancel_stream = Arc::clone(&batch_cancelled);
         futures::stream::iter(roms.into_iter())
+            .take_while(move |_| futures::future::ready(!cancel_stream.load(Ordering::Acquire)))
             .for_each_concurrent(concurrency, |rom_item| {
                 let app = app.clone();
                 let manager_arc = Arc::clone(&manager_arc);
@@ -646,6 +663,7 @@ pub async fn batch_scrape(
                 let allowed_media = allowed_media.clone();
                 let provider_ids = provider_ids.clone();
                 let completed = Arc::clone(&completed);
+                let batch_cancelled = Arc::clone(&batch_cancelled);
                 async move {
                     let file_name = rom_item.file_name;
                     let system = if rom_item.system.trim().is_empty() {
@@ -673,6 +691,7 @@ pub async fn batch_scrape(
                             total,
                             message: format!("正在抓取: {}", search_name),
                             finished: false,
+                            cancelled: false,
                         },
                     );
 
@@ -683,6 +702,10 @@ pub async fn batch_scrape(
                         let manager = manager_arc.read().await;
                         manager.scrape_with_providers(&query, &provider_ids).await
                     };
+
+                    if batch_cancelled.load(Ordering::Acquire) {
+                        return;
+                    }
 
                     if let Ok(result) = scrape_res {
                         let rom = RomInfo {
@@ -712,6 +735,10 @@ pub async fn batch_scrape(
                             &client, &directory, &system, &file_name, &media,
                         )
                         .await;
+
+                        if batch_cancelled.load(Ordering::Acquire) {
+                            return;
+                        }
 
                         let mut materialized = Vec::new();
                         let mut uncached = Vec::new();
@@ -749,24 +776,42 @@ pub async fn batch_scrape(
                             total,
                             message: format!("已处理: {}", file_name),
                             finished: false,
+                            cancelled: false,
                         },
                     );
                 }
             })
             .await;
 
+        let was_cancelled = batch_cancelled.load(Ordering::Acquire);
+        let current = completed.load(Ordering::Relaxed);
+        batch_running.store(false, Ordering::Release);
         let _ = app.emit(
             "batch-scrape-progress",
             BatchProgress {
-                current: total,
+                current,
                 total,
-                message: "批量处理完成".to_string(),
+                message: if was_cancelled {
+                    "批量抓取已停止".to_string()
+                } else {
+                    "批量处理完成".to_string()
+                },
                 finished: true,
+                cancelled: was_cancelled,
             },
         );
     });
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn cancel_batch_scrape(state: State<'_, ScraperState>) -> bool {
+    if !state.batch_running.load(Ordering::Acquire) {
+        return false;
+    }
+    state.batch_cancelled.store(true, Ordering::Release);
+    true
 }
 
 #[cfg(test)]

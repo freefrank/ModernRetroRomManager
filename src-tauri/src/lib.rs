@@ -63,6 +63,7 @@ pub fn run() {
             commands::scraper::test_scraper_provider,
             commands::scraper::apply_scraped_data,
             commands::scraper::batch_scrape,
+            commands::scraper::cancel_batch_scrape,
             commands::scraper::save_temp_metadata,
             commands::scraper::get_temp_media_list,
             commands::scraper::delete_temp_media,

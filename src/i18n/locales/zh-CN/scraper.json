@@ -95,6 +95,8 @@
       "preparing": "准备中...",
       "completed": "抓取完成!",
       "completedDesc": "本次任务中的游戏信息已完成更新。",
+      "stopped": "抓取已停止",
+      "stoppedDesc": "未开始的游戏不会继续抓取，已完成的结果会保留。",
       "pendingTitle": "即将为 {{count}} 个游戏抓取数据",
       "pendingDesc": "系统将自动匹配文件名并尝试获取最佳元数据和封面。",
       "selectSource": "选择抓取源",

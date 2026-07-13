@@ -95,6 +95,8 @@
       "preparing": "Preparing...",
       "completed": "Scrape Completed!",
       "completedDesc": "The games in this task have been updated.",
+      "stopped": "Scrape Stopped",
+      "stoppedDesc": "Pending games will not be scraped; completed results are kept.",
       "pendingTitle": "Scraping {{count}} games",
       "pendingDesc": "System will auto-match filenames and fetch the best metadata and covers.",
       "selectSource": "Select Source",

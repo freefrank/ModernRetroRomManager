@@ -277,6 +277,10 @@ export const scraperApi = {
     }
   },
 
+  async cancelBatchScrape(): Promise<boolean> {
+    return isTauri() ? tauriInvoke<boolean>("cancel_batch_scrape") : false;
+  },
+
   /** 导出临时数据到库 */
   async exportScrapedData(system: string, directory: string): Promise<void> {
     if (isTauri()) {
