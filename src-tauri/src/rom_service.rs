@@ -1059,6 +1059,90 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
     };
 
     let mut roms = Vec::new();
+    let system_lower = system_name.to_lowercase();
+
+    if system_lower == "ports" || system_lower.contains("ports (") || system_lower == "psbios" {
+        return Ok(roms);
+    }
+
+    // EasyRPG 一个直属文件夹就是一个游戏，只使用文件夹名，不扫描内部素材。
+    if system_lower == "easyrpg" {
+        if let Ok(entries) = fs::read_dir(dir_path) {
+            for entry in entries.filter_map(|entry| entry.ok()) {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                let folder_name = entry.file_name().to_string_lossy().into_owned();
+                let mut rom = RomInfo {
+                    file: folder_name.clone(),
+                    name: folder_name,
+                    directory: dir_path.to_string_lossy().to_string(),
+                    system: system_name.to_string(),
+                    ..Default::default()
+                };
+                fill_file_metadata(&mut rom, &path);
+                roms.push(rom);
+            }
+        }
+        return Ok(roms);
+    }
+
+    // 普通文件型平台允许分类子目录，保留相对路径并跳过媒体/备份目录。
+    if !system_lower.contains("ps3") {
+        fn collect_rom_paths(
+            directory: &Path,
+            allowed: &HashSet<String>,
+            paths: &mut Vec<PathBuf>,
+        ) {
+            let Ok(entries) = fs::read_dir(directory) else {
+                return;
+            };
+            for entry in entries.filter_map(|entry| entry.ok()) {
+                let path = entry.path();
+                if path.is_dir() {
+                    let name = entry.file_name().to_string_lossy().to_lowercase();
+                    if ["media", "images", "artwork", "screenshots", "_archives"]
+                        .contains(&name.as_str())
+                    {
+                        continue;
+                    }
+                    collect_rom_paths(&path, allowed, paths);
+                } else {
+                    let name = entry.file_name().to_string_lossy().to_lowercase();
+                    if allowed
+                        .iter()
+                        .any(|extension| name.ends_with(&format!(".{extension}")))
+                    {
+                        paths.push(path);
+                    }
+                }
+            }
+        }
+
+        let mut paths = Vec::new();
+        collect_rom_paths(dir_path, &allowed_extensions, &mut paths);
+        paths.sort();
+        for path in paths {
+            let relative = path.strip_prefix(dir_path).unwrap_or(&path);
+            let file = relative.to_string_lossy().into_owned();
+            let name = path
+                .file_stem()
+                .and_then(|value| value.to_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let mut rom = RomInfo {
+                file,
+                name,
+                directory: dir_path.to_string_lossy().to_string(),
+                system: system_name.to_string(),
+                ..Default::default()
+            };
+            fill_file_metadata(&mut rom, &path);
+            roms.push(rom);
+        }
+        return Ok(roms);
+    }
 
     println!("[DEBUG] 开始 read_dir...");
     if let Ok(entries) = fs::read_dir(dir_path) {
@@ -1237,6 +1321,36 @@ mod tests {
         let modified_at = roms[0].modified_at.expect("modified_at 应存在");
         assert!(modified_at > 0, "modified_at 应为正的 unix 秒");
 
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn scan_rom_files_supports_category_subdirectories() {
+        let dir = create_temp_dir();
+        fs::create_dir_all(dir.join("RPG")).unwrap();
+        fs::write(dir.join("RPG").join("Test Game.zip"), b"rom").unwrap();
+        fs::write(dir.join("RPG").join("cover.png"), b"image").unwrap();
+
+        let roms = scan_rom_files(&dir, "FC").unwrap();
+        assert_eq!(roms.len(), 1);
+        assert_eq!(
+            roms[0].file,
+            Path::new("RPG").join("Test Game.zip").to_string_lossy()
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn easyrpg_uses_direct_child_folder_names_only() {
+        let dir = create_temp_dir();
+        let game = dir.join("测试游戏");
+        fs::create_dir_all(game.join("Picture")).unwrap();
+        fs::write(game.join("Picture").join("asset.png"), b"image").unwrap();
+
+        let roms = scan_rom_files(&dir, "EASYRPG").unwrap();
+        assert_eq!(roms.len(), 1);
+        assert_eq!(roms[0].file, "测试游戏");
+        assert_eq!(roms[0].name, "测试游戏");
         let _ = fs::remove_dir_all(&dir);
     }
 }
