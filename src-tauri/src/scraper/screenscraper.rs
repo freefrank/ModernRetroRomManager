@@ -12,6 +12,7 @@ use serde::Deserialize;
 const PROVIDER_ID: &str = "screenscraper";
 
 pub struct ScreenScraperClient {
+    developer_mode: bool,
     ssid: String,
     sspassword: String,
     devid: String,
@@ -23,6 +24,7 @@ pub struct ScreenScraperClient {
 
 impl ScreenScraperClient {
     pub fn new(
+        developer_mode: bool,
         ssid: String,
         sspassword: String,
         devid: String,
@@ -31,6 +33,7 @@ impl ScreenScraperClient {
         threads: u32,
     ) -> Self {
         Self {
+            developer_mode,
             ssid,
             sspassword,
             devid,
@@ -61,17 +64,20 @@ impl ScreenScraperClient {
             "https://api.screenscraper.fr/api2/{}.php?output=json",
             endpoint
         );
-        url.push_str(&format!(
-            "&devid={}&devpassword={}&softname={}",
-            urlencoding::encode(&self.devid),
-            urlencoding::encode(&self.devpassword),
-            urlencoding::encode(&self.softname)
-        ));
-        url.push_str(&format!(
-            "&ssid={}&sspassword={}",
-            urlencoding::encode(&self.ssid),
-            urlencoding::encode(&self.sspassword)
-        ));
+        if self.developer_mode {
+            url.push_str(&format!(
+                "&devid={}&devpassword={}&softname={}",
+                urlencoding::encode(&self.devid),
+                urlencoding::encode(&self.devpassword),
+                urlencoding::encode(&self.softname)
+            ));
+        } else {
+            url.push_str(&format!(
+                "&ssid={}&sspassword={}",
+                urlencoding::encode(&self.ssid),
+                urlencoding::encode(&self.sspassword)
+            ));
+        }
         for (key, value) in params {
             url.push_str(&format!("&{}={}", key, urlencoding::encode(&value)));
         }

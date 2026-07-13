@@ -56,6 +56,7 @@ pub struct ProviderCredentials {
     pub client_secret: Option<String>,
     pub username: Option<String>,
     pub password: Option<String>,
+    pub developer_mode: Option<bool>,
     pub rate_limit: Option<u32>,
     pub threads: Option<u32>,
 }
@@ -110,6 +111,9 @@ pub async fn configure_scraper_provider(
             new_config.api_key = Some(api_key);
         }
         "screenscraper" => {
+            let developer_mode = credentials
+                .developer_mode
+                .unwrap_or(current_config.developer_mode);
             let username = credentials
                 .username
                 .or(current_config.username)
@@ -126,17 +130,22 @@ pub async fn configure_scraper_provider(
                 .client_secret
                 .or(current_config.client_secret)
                 .unwrap_or_default();
-            if username.trim().is_empty()
-                || password.trim().is_empty()
-                || client_id.trim().is_empty()
-                || client_secret.trim().is_empty()
-            {
-                return Err("请输入 ScreenScraper 普通账户用户名/密码及软件开发者凭证".to_string());
+            if developer_mode {
+                if client_id.trim().is_empty() || client_secret.trim().is_empty() {
+                    return Err(
+                        "请输入 ScreenScraper Developer ID 和 Developer Password".to_string()
+                    );
+                }
+                new_config.client_id = Some(client_id);
+                new_config.client_secret = Some(client_secret);
+            } else {
+                if username.trim().is_empty() || password.trim().is_empty() {
+                    return Err("请输入 ScreenScraper 用户名和密码".to_string());
+                }
+                new_config.username = Some(username);
+                new_config.password = Some(password);
             }
-            new_config.username = Some(username);
-            new_config.password = Some(password);
-            new_config.client_id = Some(client_id);
-            new_config.client_secret = Some(client_secret);
+            new_config.developer_mode = developer_mode;
         }
         _ => return Err(format!("未知的数据源: {}", provider_id)),
     }

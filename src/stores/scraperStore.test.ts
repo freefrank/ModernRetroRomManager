@@ -27,6 +27,7 @@ const makeProvider = (
   capabilities: ["search", "media"],
   rate_limit: 1,
   threads: 1,
+  developer_mode: false,
   ...overrides,
 });
 

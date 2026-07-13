@@ -74,6 +74,7 @@ pub struct ProviderInfo {
     pub capabilities: Vec<String>,
     pub rate_limit: u32,
     pub threads: u32,
+    pub developer_mode: bool,
 }
 
 /// 判断给定 provider 的凭证是否已配置完整
@@ -91,22 +92,25 @@ fn credentials_present(provider_id: &str, config: Option<&ScraperConfig>) -> boo
             .as_deref()
             .is_some_and(|k| !k.trim().is_empty()),
         "screenscraper" => {
-            config
-                .username
-                .as_deref()
-                .is_some_and(|u| !u.trim().is_empty())
-                && config
-                    .password
-                    .as_deref()
-                    .is_some_and(|p| !p.trim().is_empty())
-                && config
+            if config.developer_mode {
+                config
                     .client_id
                     .as_deref()
-                    .is_some_and(|value| !value.trim().is_empty())
-                && config
-                    .client_secret
+                    .is_some_and(|v| !v.trim().is_empty())
+                    && config
+                        .client_secret
+                        .as_deref()
+                        .is_some_and(|v| !v.trim().is_empty())
+            } else {
+                config
+                    .username
                     .as_deref()
-                    .is_some_and(|value| !value.trim().is_empty())
+                    .is_some_and(|v| !v.trim().is_empty())
+                    && config
+                        .password
+                        .as_deref()
+                        .is_some_and(|v| !v.trim().is_empty())
+            }
         }
         _ => false,
     }
@@ -188,24 +192,18 @@ impl ScraperManager {
                     }
                 }
                 "screenscraper" => {
-                    if let (Some(username), Some(password), Some(devid), Some(devpassword)) = (
-                        config.username.clone(),
-                        config.password.clone(),
-                        config.client_id.clone(),
-                        config.client_secret.clone(),
-                    ) {
-                        self.register_with_config(
-                            ScreenScraperClient::new(
-                                username,
-                                password,
-                                devid,
-                                devpassword,
-                                config.rate_limit,
-                                config.threads,
-                            ),
-                            provider_config,
-                        );
-                    }
+                    self.register_with_config(
+                        ScreenScraperClient::new(
+                            config.developer_mode,
+                            config.username.clone().unwrap_or_default(),
+                            config.password.clone().unwrap_or_default(),
+                            config.client_id.clone().unwrap_or_default(),
+                            config.client_secret.clone().unwrap_or_default(),
+                            config.rate_limit,
+                            config.threads,
+                        ),
+                        provider_config,
+                    );
                 }
                 _ => {}
             }
@@ -232,6 +230,7 @@ impl ScraperManager {
                         .collect(),
                     rate_limit: config.map(|c| c.rate_limit).unwrap_or(1),
                     threads: config.map(|c| c.threads).unwrap_or(1),
+                    developer_mode: config.map(|c| c.developer_mode).unwrap_or(false),
                 }
             })
             .collect()

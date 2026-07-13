@@ -106,6 +106,7 @@ export interface ScraperProviderInfo {
   capabilities: string[];
   rate_limit: number;
   threads: number;
+  developer_mode: boolean;
 }
 
 export interface ScraperCredentials {
@@ -116,6 +117,7 @@ export interface ScraperCredentials {
   password?: string;
   rate_limit?: number;
   threads?: number;
+  developer_mode?: boolean;
 }
 
 export interface ScraperSearchResult {
