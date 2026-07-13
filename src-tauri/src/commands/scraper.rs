@@ -617,18 +617,23 @@ pub async fn batch_scrape(
     roms: Vec<BatchScrapeRom>,
     system: String,
     directory: String,
-    provider_id: String,
+    provider_ids: Vec<String>,
     media_types: Option<Vec<String>>,
 ) -> Result<(), String> {
+    if provider_ids.is_empty() {
+        return Err("请至少选择一个抓取来源".to_string());
+    }
     let manager_arc = Arc::clone(&state.manager);
     let total = roms.len();
-    let concurrency = get_settings()
-        .scrapers
-        .get(&provider_id)
+    let settings = get_settings();
+    let concurrency = provider_ids
+        .iter()
+        .filter_map(|provider_id| settings.scrapers.get(provider_id))
         .map(|config| config.threads)
+        .min()
         .unwrap_or(1)
         .clamp(1, 32) as usize;
-    let allowed_media = media_types.unwrap_or_else(|| get_settings().scraper_media_types);
+    let allowed_media = media_types.unwrap_or(settings.scraper_media_types);
 
     tokio::spawn(async move {
         let completed = Arc::new(AtomicUsize::new(0));
@@ -639,6 +644,7 @@ pub async fn batch_scrape(
                 let fallback_system = system.clone();
                 let fallback_directory = directory.clone();
                 let allowed_media = allowed_media.clone();
+                let provider_ids = provider_ids.clone();
                 let completed = Arc::clone(&completed);
                 async move {
                     let file_name = rom_item.file_name;
@@ -675,7 +681,7 @@ pub async fn batch_scrape(
 
                     let scrape_res = {
                         let manager = manager_arc.read().await;
-                        manager.scrape(&query).await
+                        manager.scrape_with_providers(&query, &provider_ids).await
                     };
 
                     if let Ok(result) = scrape_res {

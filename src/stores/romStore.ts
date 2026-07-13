@@ -59,7 +59,7 @@ interface RomState {
   // 批量 Scrape
   isBatchScraping: boolean;
   batchProgress: BatchProgress | null;
-  startBatchScrape: (provider: string, mediaTypes?: string[], scope?: BatchScrapeScope) => Promise<void>;
+  startBatchScrape: (providerIds: string[], mediaTypes?: string[], scope?: BatchScrapeScope) => Promise<void>;
   
   // 游戏系统
   systems: GameSystem[];
@@ -166,7 +166,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   // 批量 Scrape
   isBatchScraping: false,
   batchProgress: null,
-  startBatchScrape: async (providerId: string, mediaTypes?: string[], scope = "selection") => {
+  startBatchScrape: async (providerIds: string[], mediaTypes?: string[], scope = "selection") => {
     const { selectedRomIds, selectedSystem, systemRoms } = get();
 
     if (!isTauri()) {
@@ -206,7 +206,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      await scraperApi.batchScrape(targetRoms, "", "", providerId, mediaTypes);
+      await scraperApi.batchScrape(targetRoms, "", "", providerIds, mediaTypes);
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });

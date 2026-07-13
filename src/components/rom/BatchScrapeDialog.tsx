@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Database, Globe, Activity, PlayCircle, CheckCircle2, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useScraperStore } from "@/stores/scraperStore";
@@ -18,8 +18,9 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
   const { startBatchScrape, selectedRomIds, selectedSystem, systemRoms, isBatchScraping, batchProgress } = useRomStore();
-  const [selectedProviderId, setSelectedProviderId] = useState<string>("");
+  const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
+  const providersInitialized = useRef(false);
 
   useEffect(() => {
     fetchProviders();
@@ -27,15 +28,22 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   }, [fetchProviders]);
 
   useEffect(() => {
-    if (providers.length > 0 && !selectedProviderId) {
-      const firstEnabled = providers.find(p => p.enabled);
-      if (firstEnabled) setSelectedProviderId(firstEnabled.id);
+    const enabledIds = providers.filter(p => p.enabled).map(p => p.id);
+    if (enabledIds.length > 0 && !providersInitialized.current) {
+      setSelectedProviderIds(enabledIds);
+      providersInitialized.current = true;
     }
-  }, [providers, selectedProviderId]);
+  }, [providers]);
 
   const handleStart = async () => {
-    if (!selectedProviderId) return;
-    await startBatchScrape(selectedProviderId, mediaTypes, scope);
+    if (selectedProviderIds.length === 0) return;
+    await startBatchScrape(selectedProviderIds, mediaTypes, scope);
+  };
+
+  const toggleProvider = (providerId: string) => {
+    setSelectedProviderIds(current => current.includes(providerId)
+      ? current.filter(id => id !== providerId)
+      : [...current, providerId]);
   };
 
   // 批量抓取进行中禁止关闭(完成后允许)
@@ -72,7 +80,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
             </Button>
             <Button
               onClick={handleStart}
-              disabled={!selectedProviderId || activeProviders.length === 0 || targetCount === 0}
+              disabled={selectedProviderIds.length === 0 || activeProviders.length === 0 || targetCount === 0}
             >
               <Database className="w-4 h-4" />
               {t("scraper.batch.start")}
@@ -154,12 +162,12 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
                   </div>
                 ) : (
                   activeProviders.map(p => {
-                    const isSelected = selectedProviderId === p.id;
+                    const isSelected = selectedProviderIds.includes(p.id);
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        onClick={() => setSelectedProviderId(p.id)}
+                        onClick={() => toggleProvider(p.id)}
                         aria-pressed={isSelected}
                         className={clsx(
                           "rr-card flex items-center gap-4 p-4 rounded-[var(--radius-lg)] border-[length:var(--border-width)] text-left group",

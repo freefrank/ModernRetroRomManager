@@ -281,11 +281,19 @@ impl ScraperManager {
     }
 
     /// 获取已启用的 providers (按优先级排序)
+    #[cfg(test)]
     fn enabled_providers(&self) -> Vec<Arc<dyn ScraperProvider>> {
+        self.enabled_providers_matching(&[])
+    }
+
+    fn enabled_providers_matching(&self, provider_ids: &[String]) -> Vec<Arc<dyn ScraperProvider>> {
         let mut providers: Vec<_> = self
             .providers
             .iter()
             .filter(|(id, _)| self.configs.get(*id).map(|c| c.enabled).unwrap_or(true))
+            .filter(|(id, _)| {
+                provider_ids.is_empty() || provider_ids.iter().any(|value| value == *id)
+            })
             .map(|(id, p)| {
                 let priority = self.configs.get(id).map(|c| c.priority).unwrap_or(100);
                 (priority, Arc::clone(p))
@@ -298,7 +306,15 @@ impl ScraperManager {
 
     /// 统一搜索 - 并行查询所有启用的 providers,结果经评分排序
     pub async fn search(&self, query: &ScrapeQuery) -> Vec<SearchResult> {
-        let providers = self.enabled_providers();
+        self.search_with_providers(query, &[]).await
+    }
+
+    async fn search_with_providers(
+        &self,
+        query: &ScrapeQuery,
+        provider_ids: &[String],
+    ) -> Vec<SearchResult> {
+        let providers = self.enabled_providers_matching(provider_ids);
 
         // 并行查询所有 provider
         let futures: Vec<_> = providers
@@ -383,13 +399,13 @@ impl ScraperManager {
         ranked
     }
 
-    /// 通过 Hash 精确查找
-    pub async fn lookup_by_hash(
+    async fn lookup_by_hash_with_providers(
         &self,
         hash: &RomHash,
         system: Option<&str>,
+        provider_ids: &[String],
     ) -> Option<SearchResult> {
-        let providers = self.enabled_providers();
+        let providers = self.enabled_providers_matching(provider_ids);
 
         for provider in providers
             .iter()
@@ -528,14 +544,23 @@ impl ScraperManager {
 
     /// 智能 scrape - 自动匹配 + 聚合多源数据
     pub async fn scrape(&self, query: &ScrapeQuery) -> Result<ScrapeResult, String> {
+        self.scrape_with_providers(query, &[]).await
+    }
+
+    pub async fn scrape_with_providers(
+        &self,
+        query: &ScrapeQuery,
+        provider_ids: &[String],
+    ) -> Result<ScrapeResult, String> {
         // 每个 provider 必须使用自己的 source_id，不能跨平台复用 ID。
         let hash_match = if let Some(ref hash) = query.hash {
-            self.lookup_by_hash(hash, query.system.as_deref()).await
+            self.lookup_by_hash_with_providers(hash, query.system.as_deref(), provider_ids)
+                .await
         } else {
             None
         };
         let mut matches: HashMap<String, SearchResult> = HashMap::new();
-        for result in self.search(query).await {
+        for result in self.search_with_providers(query, provider_ids).await {
             matches.entry(result.provider.clone()).or_insert(result);
         }
         if let Some(result) = hash_match {
@@ -545,7 +570,7 @@ impl ScraperManager {
             return Err("No results found".to_string());
         }
 
-        let providers = self.enabled_providers();
+        let providers = self.enabled_providers_matching(provider_ids);
         let metadata_futures: Vec<_> = providers
             .iter()
             .filter(|provider| provider.capabilities().has(ProviderCapability::Metadata))
@@ -925,6 +950,39 @@ mod tests {
             .unwrap();
         assert!(result.metadata.genres.contains(&"id-a".to_string()));
         assert!(result.metadata.genres.contains(&"id-b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn scrape_with_providers_only_uses_selected_sources() {
+        let mut manager = ScraperManager::new();
+        for (id, source_id) in [("first", "id-a"), ("second", "id-b")] {
+            manager.register_with_config(
+                MockProvider {
+                    id,
+                    results: vec![SearchResult {
+                        provider: id.to_string(),
+                        source_id: source_id.to_string(),
+                        name: "Test Game".to_string(),
+                        year: None,
+                        system: Some("snes".to_string()),
+                        thumbnail: None,
+                        asset_count: None,
+                        confidence: 1.0,
+                    }],
+                    media_counts: HashMap::new(),
+                },
+                ProviderConfig::default(),
+            );
+        }
+
+        let result = manager
+            .scrape_with_providers(
+                &ScrapeQuery::new("Test Game".into(), "test.sfc".into()).with_system("snes"),
+                &["second".to_string()],
+            )
+            .await
+            .unwrap();
+        assert_eq!(result.metadata.genres, vec!["id-b".to_string()]);
     }
 
     #[tokio::test]

@@ -269,11 +269,11 @@ export const scraperApi = {
     roms: { file_name: string; search_name: string; system?: string; directory?: string }[],
     system: string,
     directory: string,
-    providerId: string,
+    providerIds: string[],
     mediaTypes?: string[],
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("batch_scrape", { roms, system, directory, providerId, mediaTypes });
+      await tauriInvoke("batch_scrape", { roms, system, directory, providerIds, mediaTypes });
     }
   },
 
