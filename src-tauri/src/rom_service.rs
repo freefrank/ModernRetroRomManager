@@ -353,12 +353,14 @@ fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) 
     };
 
     if let Ok(temp_metadata) = parse_pegasus_file(&metadata_path) {
+        let games_by_file: std::collections::HashMap<String, PegasusGame> = temp_metadata
+            .games
+            .into_iter()
+            .filter_map(|game| game.file.clone().map(|file| (file, game)))
+            .collect();
+        let media_index = build_temp_media_index(&base_dir);
         for rom in roms {
-            if let Some(temp_game) = temp_metadata
-                .games
-                .iter()
-                .find(|g| g.file == Some(rom.file.clone()))
-            {
+            if let Some(temp_game) = games_by_file.get(&rom.file) {
                 rom.has_temp_metadata = true;
                 // 克隆并解析媒体路径为绝对路径
                 let mut resolved_game = temp_game.clone();
@@ -379,7 +381,7 @@ fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) 
                 resolve(&mut resolved_game.video);
                 resolve(&mut resolved_game.background);
 
-                fill_missing_temp_media(&mut resolved_game, &base_dir, &rom.file);
+                fill_missing_temp_media_from_index(&mut resolved_game, &media_index, &rom.file);
 
                 rom.temp_data = Some(resolved_game);
             }
@@ -387,47 +389,86 @@ fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) 
     }
 }
 
-fn find_temp_media(base_dir: &Path, rom_file: &str, asset_type: &str) -> Option<String> {
+type TempMediaIndex = std::collections::HashMap<String, std::collections::HashMap<String, String>>;
+
+fn build_temp_media_index(base_dir: &Path) -> TempMediaIndex {
+    let mut index = TempMediaIndex::new();
+    let Ok(game_dirs) = fs::read_dir(base_dir.join("media")) else {
+        return index;
+    };
+    for game_dir in game_dirs.filter_map(Result::ok) {
+        let path = game_dir.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let key = game_dir.file_name().to_string_lossy().to_ascii_lowercase();
+        let Ok(assets) = fs::read_dir(&path) else {
+            continue;
+        };
+        let entries = index.entry(key).or_default();
+        for asset in assets.filter_map(Result::ok) {
+            let asset_path = asset.path();
+            if !asset_path.is_file() {
+                continue;
+            }
+            if let Some(stem) = asset_path.file_stem().and_then(|value| value.to_str()) {
+                entries.insert(
+                    stem.to_ascii_lowercase(),
+                    asset_path.to_string_lossy().into_owned(),
+                );
+            }
+        }
+    }
+    index
+}
+
+fn find_temp_media_in_index(
+    index: &TempMediaIndex,
+    rom_file: &str,
+    asset_type: &str,
+) -> Option<String> {
     let rom_stem = Path::new(rom_file)
         .file_stem()
         .and_then(|value| value.to_str())
         .unwrap_or(rom_file);
-    fs::read_dir(base_dir.join("media").join(rom_stem))
-        .ok()?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .find(|path| {
-            path.is_file()
-                && path
-                    .file_stem()
-                    .and_then(|value| value.to_str())
-                    .is_some_and(|value| value.eq_ignore_ascii_case(asset_type))
-        })
-        .map(|path| path.to_string_lossy().into_owned())
+    index
+        .get(&rom_stem.to_ascii_lowercase())?
+        .get(&asset_type.to_ascii_lowercase())
+        .cloned()
 }
 
-fn fill_missing_temp_media(game: &mut PegasusGame, base_dir: &Path, rom_file: &str) {
+fn fill_missing_temp_media_from_index(
+    game: &mut PegasusGame,
+    index: &TempMediaIndex,
+    rom_file: &str,
+) {
     if game.box_front.is_none() {
-        game.box_front = find_temp_media(base_dir, rom_file, "boxfront");
+        game.box_front = find_temp_media_in_index(index, rom_file, "boxfront");
     }
     if game.box_back.is_none() {
-        game.box_back = find_temp_media(base_dir, rom_file, "boxback");
+        game.box_back = find_temp_media_in_index(index, rom_file, "boxback");
     }
     if game.logo.is_none() {
-        game.logo = find_temp_media(base_dir, rom_file, "logo");
+        game.logo = find_temp_media_in_index(index, rom_file, "logo");
     }
     if game.screenshot.is_none() {
-        game.screenshot = find_temp_media(base_dir, rom_file, "screenshot");
+        game.screenshot = find_temp_media_in_index(index, rom_file, "screenshot");
     }
     if game.titlescreen.is_none() {
-        game.titlescreen = find_temp_media(base_dir, rom_file, "titlescreen");
+        game.titlescreen = find_temp_media_in_index(index, rom_file, "titlescreen");
     }
     if game.video.is_none() {
-        game.video = find_temp_media(base_dir, rom_file, "video");
+        game.video = find_temp_media_in_index(index, rom_file, "video");
     }
     if game.background.is_none() {
-        game.background = find_temp_media(base_dir, rom_file, "hero");
+        game.background = find_temp_media_in_index(index, rom_file, "hero");
     }
+}
+
+#[cfg(test)]
+fn fill_missing_temp_media(game: &mut PegasusGame, base_dir: &Path, rom_file: &str) {
+    let index = build_temp_media_index(base_dir);
+    fill_missing_temp_media_from_index(game, &index, rom_file);
 }
 
 /// 尝试从临时元数据加载 ROM 列表
@@ -455,6 +496,7 @@ fn try_load_from_temp_metadata(
     println!("[DEBUG] 发现临时元数据，尝试加载: {:?}", path_to_read);
 
     if let Ok(metadata) = parse_pegasus_file(&path_to_read) {
+        let media_index = build_temp_media_index(&base_dir);
         let roms: Vec<RomInfo> = metadata
             .games
             .into_iter()
@@ -521,7 +563,7 @@ fn try_load_from_temp_metadata(
                     background: rom.background.clone(),
                     ..Default::default()
                 };
-                fill_missing_temp_media(&mut temp_game, &base_dir, &rom.file);
+                fill_missing_temp_media_from_index(&mut temp_game, &media_index, &rom.file);
                 rom.temp_data = Some(temp_game);
 
                 Some(rom)
@@ -623,7 +665,14 @@ pub fn get_roms_for_directory(dir_config: &crate::settings::DirectoryConfig) -> 
             .to_string();
 
         let format = detect_metadata_format(dir_path);
-        if let Ok(mut roms) = get_roms_from_directory(dir_path, &format, &root_system_name) {
+        let root_scan = if format == "none" {
+            // 根目录模式的子目录已经作为独立系统处理，这里只读取直属文件，
+            // 避免把所有平台递归复制成一个额外的根目录系统。
+            scan_rom_files_internal(dir_path, &root_system_name, false)
+        } else {
+            get_roms_from_directory(dir_path, &format, &root_system_name)
+        };
+        if let Ok(mut roms) = root_scan {
             // 添加根目录下的PS3游戏文件夹
             for ps3_game_path in root_ps3_games {
                 let folder_name = ps3_game_path
@@ -1076,6 +1125,14 @@ fn get_system_extensions(system_name: &str) -> Option<Vec<String>> {
 
 /// 无 metadata 时扫描 ROM 文件
 fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, String> {
+    scan_rom_files_internal(dir_path, system_name, true)
+}
+
+fn scan_rom_files_internal(
+    dir_path: &Path,
+    system_name: &str,
+    recursive: bool,
+) -> Result<Vec<RomInfo>, String> {
     use std::collections::HashSet;
     use std::fs;
 
@@ -1140,6 +1197,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
             directory: &Path,
             allowed: &HashSet<String>,
             paths: &mut Vec<PathBuf>,
+            recursive: bool,
         ) {
             let Ok(entries) = fs::read_dir(directory) else {
                 return;
@@ -1147,13 +1205,16 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
             for entry in entries.filter_map(|entry| entry.ok()) {
                 let path = entry.path();
                 if path.is_dir() {
+                    if !recursive {
+                        continue;
+                    }
                     let name = entry.file_name().to_string_lossy().to_lowercase();
                     if ["media", "images", "artwork", "screenshots", "_archives"]
                         .contains(&name.as_str())
                     {
                         continue;
                     }
-                    collect_rom_paths(&path, allowed, paths);
+                    collect_rom_paths(&path, allowed, paths, recursive);
                 } else {
                     let name = entry.file_name().to_string_lossy().to_lowercase();
                     if allowed
@@ -1167,7 +1228,7 @@ fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, St
         }
 
         let mut paths = Vec::new();
-        collect_rom_paths(dir_path, &allowed_extensions, &mut paths);
+        collect_rom_paths(dir_path, &allowed_extensions, &mut paths, recursive);
         paths.sort();
         for path in paths {
             let relative = path.strip_prefix(dir_path).unwrap_or(&path);
