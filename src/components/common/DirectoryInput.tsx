@@ -47,20 +47,20 @@ export default function DirectoryInput({
             return;
         }
 
-        console.log("[DEBUG] DirectoryInput: 开始验证, value:", value);
+        console.debug("DirectoryInput: 开始验证, value:", value);
         const timer = setTimeout(async () => {
-            console.log("[DEBUG] DirectoryInput: 执行验证...");
+            console.debug("DirectoryInput: 执行验证...");
             setIsValidating(true);
             setError(null);
             try {
                 const result = await invoke<PathValidation>("validate_path", { path: value });
-                console.log("[DEBUG] DirectoryInput: 验证结果:", result);
+                console.debug("DirectoryInput: 验证结果:", result);
                 setValidation(result);
                 if (result.exists && result.is_directory && result.readable) {
                     onValidPathRef.current?.(result);
                 }
             } catch (err) {
-                console.error("[DEBUG] DirectoryInput: 验证错误:", err);
+                console.error("DirectoryInput: 验证错误:", err);
                 setError(String(err));
                 setValidation(null);
             } finally {
