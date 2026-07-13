@@ -28,9 +28,17 @@ describe("scraperSearchCache", () => {
     })).toEqual([result]);
   });
 
+  it("reuses results across ROM libraries and file names", () => {
+    cacheSearchResults(context, [result]);
+    expect(getCachedSearchResults({
+      ...context,
+      fileName: "translated-name.zip",
+      directory: "Y:/another-library/GBA",
+    })).toEqual([result]);
+  });
+
   it("does not reuse results for another query", () => {
     cacheSearchResults(context, [result]);
     expect(getCachedSearchResults({ ...context, query: "CT Special Forces" })).toBeNull();
   });
 });
-

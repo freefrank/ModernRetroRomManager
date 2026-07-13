@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock as AsyncRwLock;
 
 use super::{
+    cache,
     matcher::{apply_asset_count_confidence, normalize_game_name, rank_results},
     screenscraper::ScreenScraperClient,
     steamgriddb::SteamGridDBClient,
@@ -305,14 +306,21 @@ impl ScraperManager {
     }
 
     /// 统一搜索 - 并行查询所有启用的 providers,结果经评分排序
+    #[allow(dead_code)]
     pub async fn search(&self, query: &ScrapeQuery) -> Vec<SearchResult> {
-        self.search_with_providers(query, &[]).await
+        self.search_with_providers_internal(query, &[], false).await
     }
 
-    async fn search_with_providers(
+    /// 用户主动点击搜索时跳过持久缓存，重新查询 Provider 并刷新缓存。
+    pub async fn search_fresh(&self, query: &ScrapeQuery) -> Vec<SearchResult> {
+        self.search_with_providers_internal(query, &[], true).await
+    }
+
+    async fn search_with_providers_internal(
         &self,
         query: &ScrapeQuery,
         provider_ids: &[String],
+        force_refresh: bool,
     ) -> Vec<SearchResult> {
         let providers = self.enabled_providers_matching(provider_ids);
 
@@ -324,7 +332,18 @@ impl ScraperManager {
                 let provider = Arc::clone(p);
                 let provider_id = provider.id().to_string();
                 let q = query.clone();
-                async move { (provider_id, provider.search(&q).await) }
+                async move {
+                    if !force_refresh {
+                        if let Some(results) = cache::load_search(&provider_id, &q) {
+                            return (provider_id, Ok(results));
+                        }
+                    }
+                    let result = provider.search(&q).await;
+                    if let Ok(results) = &result {
+                        cache::save_search(&provider_id, &q, results);
+                    }
+                    (provider_id, result)
+                }
             })
             .collect();
 
@@ -399,6 +418,15 @@ impl ScraperManager {
         ranked
     }
 
+    pub async fn search_with_providers(
+        &self,
+        query: &ScrapeQuery,
+        provider_ids: &[String],
+    ) -> Vec<SearchResult> {
+        self.search_with_providers_internal(query, provider_ids, false)
+            .await
+    }
+
     async fn lookup_by_hash_with_providers(
         &self,
         hash: &RomHash,
@@ -425,12 +453,7 @@ impl ScraperManager {
         provider_id: &str,
         source_id: &str,
     ) -> Result<GameMetadata, String> {
-        let provider = self
-            .providers
-            .get(provider_id)
-            .ok_or_else(|| format!("Provider '{}' not found", provider_id))?;
-
-        provider.get_metadata(source_id).await
+        self.fetch_metadata_cached(provider_id, source_id).await
     }
 
     pub async fn test_provider(&self, provider_id: &str) -> Result<String, String> {
@@ -477,6 +500,10 @@ impl ScraperManager {
         if let Some(media) = self.media_cache.read().await.get(&key).cloned() {
             return Ok(media);
         }
+        if let Some(media) = cache::load_media(provider_id, source_id) {
+            self.media_cache.write().await.insert(key, media.clone());
+            return Ok(media);
+        }
         let provider = self
             .providers
             .get(provider_id)
@@ -487,8 +514,26 @@ impl ScraperManager {
             .into_iter()
             .filter(usable_asset)
             .collect();
+        cache::save_media(provider_id, source_id, &media);
         self.media_cache.write().await.insert(key, media.clone());
         Ok(media)
+    }
+
+    async fn fetch_metadata_cached(
+        &self,
+        provider_id: &str,
+        source_id: &str,
+    ) -> Result<GameMetadata, String> {
+        if let Some(metadata) = cache::load_metadata(provider_id, source_id) {
+            return Ok(metadata);
+        }
+        let provider = self
+            .providers
+            .get(provider_id)
+            .ok_or_else(|| format!("Provider '{}' not found", provider_id))?;
+        let metadata = provider.get_metadata(source_id).await?;
+        cache::save_metadata(provider_id, source_id, &metadata);
+        Ok(metadata)
     }
 
     /// 合并多个 provider 的元数据（优先级从高到低）
@@ -576,9 +621,11 @@ impl ScraperManager {
             .filter(|provider| provider.capabilities().has(ProviderCapability::Metadata))
             .filter_map(|provider| {
                 let source_id = matches.get(provider.id())?.source_id.clone();
-                let provider = Arc::clone(provider);
                 let provider_id = provider.id().to_string();
-                Some(async move { (provider_id, provider.get_metadata(&source_id).await) })
+                Some(async move {
+                    let metadata = self.fetch_metadata_cached(&provider_id, &source_id).await;
+                    (provider_id, metadata)
+                })
             })
             .collect();
         let (metadata, metadata_sources) = self.merge_metadata(join_all(metadata_futures).await);

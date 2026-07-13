@@ -23,9 +23,7 @@ function normalize(value?: string): string {
 
 function cacheKey(context: SearchCacheContext): string {
   return JSON.stringify([
-    normalize(context.directory),
     normalize(context.system),
-    normalize(context.fileName),
     normalize(context.query),
   ]);
 }

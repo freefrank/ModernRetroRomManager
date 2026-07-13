@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod cartridge_header;
 pub mod cn_repo;
 pub mod dat_hash;

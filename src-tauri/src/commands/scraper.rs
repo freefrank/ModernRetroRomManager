@@ -230,7 +230,7 @@ pub async fn scraper_search(
         query = query.with_system(sys);
     }
 
-    let results = state.manager.read().await.search(&query).await;
+    let results = state.manager.read().await.search_fresh(&query).await;
     Ok(results)
 }
 
@@ -304,18 +304,12 @@ pub async fn set_scraper_media_types(
 
 async fn cache_media_candidates(
     client: &reqwest::Client,
-    rom_directory: &str,
-    system: &str,
-    rom_id: &str,
+    _rom_directory: &str,
+    _system: &str,
+    _rom_id: &str,
     media: &[MediaAsset],
 ) -> Result<(), String> {
-    let rom_dir = Path::new(rom_directory);
-    let library = rom_dir.parent().unwrap_or(rom_dir);
-    let rom_stem = Path::new(rom_id)
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or(rom_id);
-    let root = get_cache_dir_for_library(library, system).join(rom_stem);
+    let root = crate::scraper::cache::asset_root();
     let mut counts = std::collections::HashMap::<(String, String), usize>::new();
     for asset in media {
         let key = (
@@ -386,6 +380,15 @@ fn find_cached_asset(
     rom_id: &str,
     asset: &MediaAsset,
 ) -> Option<PathBuf> {
+    let marker = format!("-{:016x}.", asset_cache_key(&asset.url));
+    let global_directory = crate::scraper::cache::asset_root()
+        .join(&asset.provider)
+        .join(asset.asset_type.as_str());
+    if let Some(path) = find_asset_with_marker(&global_directory, &marker) {
+        return Some(path);
+    }
+
+    // 向后兼容 0.4.x 按库保存的候选缓存。
     let rom_dir = Path::new(rom_directory);
     let library = rom_dir.parent().unwrap_or(rom_dir);
     let rom_stem = Path::new(rom_id)
@@ -396,7 +399,10 @@ fn find_cached_asset(
         .join(rom_stem)
         .join(&asset.provider)
         .join(asset.asset_type.as_str());
-    let marker = format!("-{:016x}.", asset_cache_key(&asset.url));
+    find_asset_with_marker(&directory, &marker)
+}
+
+fn find_asset_with_marker(directory: &Path, marker: &str) -> Option<PathBuf> {
     fs::read_dir(directory)
         .ok()?
         .filter_map(Result::ok)
@@ -406,7 +412,7 @@ fn find_cached_asset(
                 && path
                     .file_name()
                     .and_then(|name| name.to_str())
-                    .is_some_and(|name| name.contains(&marker))
+                    .is_some_and(|name| name.contains(marker))
         })
 }
 
