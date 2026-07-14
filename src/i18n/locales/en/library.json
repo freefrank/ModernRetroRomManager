@@ -76,7 +76,6 @@
       "localPath": "Local Path"
     },
     "actions": {
-      "play": "Play",
       "scrape": "Scrape",
       "edit": "Edit",
       "remove": "Remove",

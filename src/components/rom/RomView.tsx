@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Gamepad2, Play, Star, CheckCircle2 } from "lucide-react";
+import { Gamepad2, Star, CheckCircle2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTranslation } from "react-i18next";
 import { resolveMediaUrlAsync, getCachedMediaUrl } from "@/lib/api";
@@ -207,14 +207,6 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 
       {/* Hover overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/90 via-bg-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-normal)] ease-[var(--motion-easing)] flex flex-col justify-end p-3">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <button
-            className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)] hover:bg-accent-primary/90"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Play className="w-5 h-5 ml-0.5" />
-          </button>
-        </div>
         <h3 className="text-sm font-semibold text-text-primary truncate transform translate-y-2 group-hover:translate-y-0 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)]">
           {rom.name}
         </h3>
@@ -286,15 +278,6 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
             <Gamepad2 className="w-12 h-12 text-text-muted/10 group-hover:text-accent-primary/20 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
           </div>
         )}
-
-        <div className="absolute inset-0 bg-bg-primary/60 opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-normal)] ease-[var(--motion-easing)] flex items-center justify-center backdrop-blur-sm">
-          <button
-            className="p-3 rounded-full bg-accent-primary text-text-primary transform scale-50 group-hover:scale-100 transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)] hover:bg-accent-primary/90"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Play className="w-6 h-6 ml-1" />
-          </button>
-        </div>
 
         <div
           className={clsx(

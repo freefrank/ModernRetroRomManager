@@ -76,7 +76,6 @@
       "localPath": "本地路径"
     },
     "actions": {
-      "play": "开始游戏",
       "scrape": "抓取元数据",
       "edit": "手动编辑",
       "remove": "移除游戏",
