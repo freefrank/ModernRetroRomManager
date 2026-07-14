@@ -257,7 +257,7 @@ impl ScraperManager {
 
     /// 遍历受支持的 provider 目录,结合给定设置生成 provider 信息列表
     pub fn provider_infos_from(settings: &AppSettings) -> Vec<ProviderInfo> {
-        PROVIDER_CATALOG
+        let mut infos: Vec<_> = PROVIDER_CATALOG
             .iter()
             .map(|descriptor| {
                 let config = settings.scrapers.get(descriptor.id);
@@ -294,7 +294,11 @@ impl ScraperManager {
                     last_error: stats.last_error,
                 }
             })
-            .collect()
+            .collect();
+        // Provider 列表是前端所有抓取入口的权威顺序，不应泄漏
+        // 内置目录的固定声明顺序。相同优先级保留目录顺序。
+        infos.sort_by_key(|info| info.priority);
+        infos
     }
 
     /// 基于当前持久化设置生成 provider 信息列表
@@ -886,6 +890,10 @@ mod tests {
         ]);
 
         let infos = ScraperManager::provider_infos_from(&settings);
+        assert_eq!(
+            infos.first().map(|info| info.id.as_str()),
+            Some("steamgriddb")
+        );
         let sgdb = infos.iter().find(|i| i.id == "steamgriddb").unwrap();
         assert!(!sgdb.enabled);
         assert_eq!(sgdb.priority, 5);

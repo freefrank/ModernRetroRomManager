@@ -29,7 +29,10 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   }, [fetchProviders]);
 
   useEffect(() => {
-    const enabledIds = providers.filter(p => p.enabled).map(p => p.id);
+    const enabledIds = [...providers]
+      .filter(p => p.enabled)
+      .sort((left, right) => left.priority - right.priority)
+      .map(p => p.id);
     if (enabledIds.length > 0 && !providersInitialized.current) {
       setSelectedProviderIds(enabledIds);
       providersInitialized.current = true;
@@ -55,7 +58,11 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
     onClose();
   };
 
-  const activeProviders = providers.filter(p => p.enabled);
+  // 后端会按优先级调度；弹窗也显式排序，避免旧状态或
+  // HTTP fallback 的返回顺序与设置页不一致。
+  const activeProviders = [...providers]
+    .filter(p => p.enabled)
+    .sort((left, right) => left.priority - right.priority);
   const targetCount = scope === "library"
     ? Math.max(0, stats.totalRoms - stats.scrapedRoms)
     : systemRoms
