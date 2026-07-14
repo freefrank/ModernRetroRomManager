@@ -122,24 +122,11 @@ struct AppLog {
 }
 
 fn emit_provider_outcomes(app: &AppHandle, outcomes: &[crate::scraper::ProviderSearchOutcome]) {
+    let fallback_available = outcomes
+        .iter()
+        .any(|outcome| outcome.error.is_none() && outcome.matched > 0);
     for outcome in outcomes {
-        let (level, message) = if let Some(error) = &outcome.error {
-            let level = if error.contains("限流") || error.contains("429") {
-                "warn"
-            } else {
-                "error"
-            };
-            (level, format!("搜索失败: {error}"))
-        } else if outcome.cache_hit {
-            (
-                "debug",
-                format!("缓存命中，返回 {} 个候选", outcome.matched),
-            )
-        } else if outcome.matched == 0 {
-            ("warn", "未匹配到候选".to_string())
-        } else {
-            ("info", format!("匹配到 {} 个候选", outcome.matched))
-        };
+        let (level, message) = provider_outcome_log(outcome, fallback_available);
         let _ = app.emit(
             "app-log",
             AppLog {
@@ -148,6 +135,32 @@ fn emit_provider_outcomes(app: &AppHandle, outcomes: &[crate::scraper::ProviderS
                 message,
             },
         );
+    }
+}
+
+fn provider_outcome_log(
+    outcome: &crate::scraper::ProviderSearchOutcome,
+    fallback_available: bool,
+) -> (&'static str, String) {
+    if let Some(error) = &outcome.error {
+        if fallback_available {
+            return ("warn", format!("搜索失败，已由其他来源补充: {error}"));
+        }
+        let level = if error.contains("限流") || error.contains("429") {
+            "warn"
+        } else {
+            "error"
+        };
+        (level, format!("搜索失败: {error}"))
+    } else if outcome.cache_hit {
+        (
+            "debug",
+            format!("缓存命中，返回 {} 个候选", outcome.matched),
+        )
+    } else if outcome.matched == 0 {
+        ("warn", "未匹配到候选".to_string())
+    } else {
+        ("info", format!("匹配到 {} 个候选", outcome.matched))
     }
 }
 
@@ -918,6 +931,21 @@ mod batch_tests {
         let selected = select_batch_media(&media, &[]);
         assert_eq!(selected.len(), 2);
         assert_eq!(selected[1].asset_type, MediaType::Logo);
+    }
+
+    #[test]
+    fn recovered_provider_failure_is_logged_as_warning() {
+        let outcome = crate::scraper::ProviderSearchOutcome {
+            provider: "screenscraper".into(),
+            matched: 0,
+            cache_hit: false,
+            error: Some("temporary failure".into()),
+        };
+
+        let (level, message) = provider_outcome_log(&outcome, true);
+
+        assert_eq!(level, "warn");
+        assert!(message.contains("已由其他来源补充"));
     }
 }
 

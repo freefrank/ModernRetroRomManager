@@ -687,10 +687,20 @@ impl ScraperManager {
         };
         let mut matches: HashMap<String, SearchResult> = HashMap::new();
         let search_report = self.search_with_providers_report(query, provider_ids).await;
+        let mut fallback_name = None;
+        let mut fallback_year = None;
         for result in search_report.results {
+            if fallback_name.is_none() && !result.name.trim().is_empty() {
+                fallback_name = Some(result.name.clone());
+                fallback_year = result.year.clone();
+            }
             matches.entry(result.provider.clone()).or_insert(result);
         }
         if let Some(result) = hash_match {
+            if fallback_name.is_none() && !result.name.trim().is_empty() {
+                fallback_name = Some(result.name.clone());
+                fallback_year = result.year.clone();
+            }
             matches.insert(result.provider.clone(), result);
         }
         if matches.is_empty() {
@@ -709,7 +719,16 @@ impl ScraperManager {
                 })
             })
             .collect();
-        let (metadata, metadata_sources) = self.merge_metadata(join_all(metadata_futures).await);
+        let (mut metadata, metadata_sources) =
+            self.merge_metadata(join_all(metadata_futures).await);
+        // 搜索成功但详情接口失败、或命中的 Provider 只提供媒体时，仍保留候选名称，
+        // 避免单个 Provider 故障让整个 ROM 生成空 metadata 并继续被视为未抓取。
+        if metadata.name.trim().is_empty() {
+            metadata.name = fallback_name.unwrap_or_else(|| query.name.clone());
+        }
+        if metadata.release_date.is_none() {
+            metadata.release_date = fallback_year;
+        }
 
         let media_futures: Vec<_> = providers
             .iter()
@@ -986,6 +1005,8 @@ mod tests {
         id: &'static str,
         results: Vec<SearchResult>,
         media_counts: HashMap<String, usize>,
+        search_error: Option<&'static str>,
+        metadata_error: Option<&'static str>,
     }
 
     #[async_trait]
@@ -1002,10 +1023,16 @@ mod tests {
         }
 
         async fn search(&self, _query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
+            if let Some(error) = self.search_error {
+                return Err(error.to_string());
+            }
             Ok(self.results.clone())
         }
 
         async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
+            if let Some(error) = self.metadata_error {
+                return Err(error.to_string());
+            }
             Ok(GameMetadata {
                 name: format!("{}-{source_id}", self.id),
                 genres: vec![source_id.to_string()],
@@ -1049,6 +1076,8 @@ mod tests {
                     make_result("Super Mario World", 0.0),
                 ],
                 media_counts: HashMap::new(),
+                search_error: None,
+                metadata_error: None,
             },
             ProviderConfig::default(),
         );
@@ -1081,6 +1110,8 @@ mod tests {
                         confidence: 1.0,
                     }],
                     media_counts: HashMap::new(),
+                    search_error: None,
+                    metadata_error: None,
                 },
                 ProviderConfig {
                     enabled: true,
@@ -1114,6 +1145,8 @@ mod tests {
                         confidence: 1.0,
                     }],
                     media_counts: HashMap::new(),
+                    search_error: None,
+                    metadata_error: None,
                 },
                 ProviderConfig::default(),
             );
@@ -1147,6 +1180,8 @@ mod tests {
                 id: "mock",
                 results: vec![result("one"), result("eight")],
                 media_counts: HashMap::from([("one".into(), 1), ("eight".into(), 8)]),
+                search_error: None,
+                metadata_error: None,
             },
             ProviderConfig::default(),
         );
@@ -1158,5 +1193,93 @@ mod tests {
         assert_eq!(results[0].asset_count, Some(8));
         assert_eq!(results[1].asset_count, Some(1));
         assert!(results[0].confidence > results[1].confidence);
+    }
+
+    #[tokio::test]
+    async fn scrape_continues_when_one_provider_search_fails() {
+        let mut manager = ScraperManager::new();
+        manager.register_with_config(
+            MockProvider {
+                id: "broken",
+                results: Vec::new(),
+                media_counts: HashMap::new(),
+                search_error: Some("temporary provider failure"),
+                metadata_error: None,
+            },
+            ProviderConfig {
+                enabled: true,
+                priority: 1,
+            },
+        );
+        manager.register_with_config(
+            MockProvider {
+                id: "working",
+                results: vec![SearchResult {
+                    provider: "working".into(),
+                    source_id: "working-id".into(),
+                    name: "Working Game".into(),
+                    year: Some("2002".into()),
+                    system: Some("gba".into()),
+                    thumbnail: None,
+                    asset_count: Some(1),
+                    confidence: 1.0,
+                }],
+                media_counts: HashMap::from([("working-id".into(), 1)]),
+                search_error: None,
+                metadata_error: None,
+            },
+            ProviderConfig {
+                enabled: true,
+                priority: 2,
+            },
+        );
+
+        let scraped = manager
+            .scrape(&ScrapeQuery::new("Working Game".into(), "game.gba".into()).with_system("gba"))
+            .await
+            .unwrap();
+
+        assert_eq!(scraped.metadata.name, "working-working-id");
+        assert_eq!(scraped.media.len(), 1);
+        assert!(scraped
+            .provider_outcomes
+            .iter()
+            .any(|outcome| outcome.provider == "broken" && outcome.error.is_some()));
+    }
+
+    #[tokio::test]
+    async fn scrape_uses_search_metadata_when_details_fail() {
+        let mut manager = ScraperManager::new();
+        manager.register_with_config(
+            MockProvider {
+                id: "partial",
+                results: vec![SearchResult {
+                    provider: "partial".into(),
+                    source_id: "partial-id".into(),
+                    name: "Search Result Name".into(),
+                    year: Some("2003".into()),
+                    system: Some("gba".into()),
+                    thumbnail: None,
+                    asset_count: Some(1),
+                    confidence: 1.0,
+                }],
+                media_counts: HashMap::from([("partial-id".into(), 1)]),
+                search_error: None,
+                metadata_error: Some("details unavailable"),
+            },
+            ProviderConfig::default(),
+        );
+
+        let scraped = manager
+            .scrape(
+                &ScrapeQuery::new("Search Result Name".into(), "game.gba".into())
+                    .with_system("gba"),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(scraped.metadata.name, "Search Result Name");
+        assert_eq!(scraped.metadata.release_date.as_deref(), Some("2003"));
+        assert_eq!(scraped.media.len(), 1);
     }
 }
