@@ -3,13 +3,21 @@
     "title": "导入/导出",
     "export": {
       "title": "导出抓取数据",
-      "description": "将所选平台已经抓取的 metadata 与相关图片、视频等资产一起导出。",
+      "description": "选择 Library，导出整个库或其中一个平台的 metadata 与相关资产。",
+      "library": "Library",
+      "scope": "导出范围",
+      "noLibraries": "尚未添加 Library",
+      "loadingSystems": "正在读取平台…",
+      "entireLibrary": "整个 Library（{{systems}} 个平台 / {{roms}} 个 ROM）",
       "system": "平台 / ROM 目录",
       "format": "目标格式",
       "target": "导出目录",
-      "targetHint": "默认写回 ROM 平台目录，也可以选择单独的打包目录。",
+      "targetHint": "默认写回所选 Library/平台目录。整库导出到其他目录时会保留平台子目录结构。",
       "contents": "包含该平台的全部临时 metadata 以及 media 目录中的相关资产。",
+      "libraryContents": "包含该 Library 中所有已抓取平台的 metadata 与 media 资产；未抓取平台会自动跳过。",
       "action": "导出 Metadata 与资产",
+      "libraryAction": "导出整个 Library",
+      "libraryLoadFailed": "读取 Library 失败：{{error}}",
       "failed": "导出失败：{{error}}"
     }
   }

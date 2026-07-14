@@ -34,6 +34,7 @@ pub fn run() {
             commands::system::get_system,
             commands::rom::get_roms,
             commands::rom::get_rom_library_summary,
+            commands::rom::get_library_rom_summary,
             commands::rom::get_system_roms,
             commands::rom::get_rom_stats,
             commands::rom::get_roms_for_single_directory,
@@ -75,6 +76,7 @@ pub fn run() {
             commands::scraper::delete_temp_media,
             // Export (New location)
             commands::export::export_scraped_data,
+            commands::export::export_library_scraped_data,
             commands::export::export_to_emulationstation, // Placeholder
             commands::export::export_to_pegasus,          // Placeholder
             // Naming check / CN ROM Tool

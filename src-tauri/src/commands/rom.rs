@@ -1,4 +1,7 @@
-use crate::rom_index::{load_cached_roms, scan_library as scan_index, ScanMode};
+use crate::rom_index::{
+    load_cached_roms, load_cached_roms_for_library, scan_library as scan_index, scan_library_by_id,
+    ScanMode,
+};
 use crate::rom_service::{get_roms_for_directory, SystemRoms};
 use crate::settings::DirectoryConfig;
 use serde::{Deserialize, Serialize};
@@ -34,7 +37,7 @@ fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
         .iter()
         .map(|entry| RomSystemSummary {
             system: entry.system.clone(),
-            path: entry.path.clone(),
+            path: entry.path.replace('\\', "/"),
             rom_count: entry.roms.len(),
             scraped_count: entry
                 .roms
@@ -50,6 +53,18 @@ fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
             total_size: entry.roms.iter().filter_map(|rom| rom.file_size).sum(),
         })
         .collect()
+}
+
+#[tauri::command]
+pub async fn get_library_rom_summary(library_id: String) -> Result<Vec<RomSystemSummary>, String> {
+    let systems = if let Some(cached) = load_cached_roms_for_library(&library_id) {
+        cached
+    } else {
+        tokio::task::spawn_blocking(move || scan_library_by_id(&library_id, ScanMode::Full, |_| {}))
+            .await
+            .map_err(|error| format!("ROM 扫描任务失败: {error}"))??
+    };
+    Ok(summarize(&systems))
 }
 
 #[derive(Debug, Clone, Serialize)]

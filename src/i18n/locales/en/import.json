@@ -3,13 +3,21 @@
     "title": "Import/Export",
     "export": {
       "title": "Export scraped data",
-      "description": "Export metadata and related artwork or video assets for the selected platform.",
+      "description": "Select a library and export its entire scraped collection or one platform with related assets.",
+      "library": "Library",
+      "scope": "Export scope",
+      "noLibraries": "No library added",
+      "loadingSystems": "Loading platforms…",
+      "entireLibrary": "Entire library ({{systems}} platforms / {{roms}} ROMs)",
       "system": "Platform / ROM directory",
       "format": "Target format",
       "target": "Export directory",
-      "targetHint": "Defaults to the ROM platform directory, or choose a separate bundle directory.",
+      "targetHint": "Defaults to the selected library or platform. Whole-library exports preserve platform subdirectories in another destination.",
       "contents": "Includes all temporary metadata and related files under the platform media directory.",
+      "libraryContents": "Includes metadata and media for every scraped platform in this library. Platforms without scraped data are skipped.",
       "action": "Export metadata and assets",
+      "libraryAction": "Export entire library",
+      "libraryLoadFailed": "Failed to load library: {{error}}",
       "failed": "Export failed: {{error}}"
     }
   }

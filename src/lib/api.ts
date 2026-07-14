@@ -74,6 +74,13 @@ export const api = {
     }));
   },
 
+  async getLibraryRomSummary(libraryId: string): Promise<RomSystemSummary[]> {
+    if (isTauri()) {
+      return tauriInvoke<RomSystemSummary[]>("get_library_rom_summary", { libraryId });
+    }
+    return this.getRomLibrarySummary();
+  },
+
   async getSystemRoms(system: string): Promise<SystemRoms> {
     if (isTauri()) {
       return tauriInvoke<SystemRoms>("get_system_roms", { system });
@@ -336,6 +343,17 @@ export const scraperApi = {
   ): Promise<void> {
     if (isTauri()) {
       await tauriInvoke("export_scraped_data", { system, directory, format, targetDirectory });
+    }
+  },
+
+  /** 导出指定 Library 中所有已抓取平台 */
+  async exportLibraryScrapedData(
+    libraryId: string,
+    format = "auto",
+    targetDirectory?: string,
+  ): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory });
     }
   },
 

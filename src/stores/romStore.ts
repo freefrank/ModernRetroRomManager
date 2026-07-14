@@ -112,6 +112,7 @@ interface RomState {
   exportProgress: { current: number; total: number; message: string; finished: boolean } | null;
   
   exportData: (system: string, directory: string, format?: string, targetDirectory?: string) => Promise<void>;
+  exportLibraryData: (libraryId: string, format?: string, targetDirectory?: string) => Promise<void>;
 }
 
 export const useRomStore = create<RomState>((set, get) => ({
@@ -298,21 +299,23 @@ export const useRomStore = create<RomState>((set, get) => ({
 
   exportData: async (system: string, directory: string, format = "auto", targetDirectory?: string) => {
     set({ isExporting: true, exportProgress: null });
+    let unlisten: (() => void) | undefined;
     try {
       const { listen } = await import("@tauri-apps/api/event");
-      const unlisten = await listen<{ current: number; total: number; message: string; finished: boolean }>("export-progress", (event) => {
+      unlisten = await listen<{ current: number; total: number; message: string; finished: boolean }>("export-progress", (event) => {
         set({ exportProgress: event.payload });
         if (event.payload.finished) {
           setTimeout(() => {
             set({ isExporting: false, exportProgress: null });
             get().fetchRoms();
           }, 1500);
-          unlisten();
+          unlisten?.();
         }
       });
 
       await scraperApi.exportScrapedData(system, directory, format, targetDirectory);
     } catch (error) {
+      unlisten?.();
       console.error("Failed to export data:", error);
       set({ isExporting: false });
       throw error;
@@ -408,6 +411,31 @@ export const useRomStore = create<RomState>((set, get) => ({
       }
     } catch (error) {
       console.error("Failed to remove directory:", error);
+      throw error;
+    }
+  },
+
+  exportLibraryData: async (libraryId: string, format = "auto", targetDirectory?: string) => {
+    set({ isExporting: true, exportProgress: null });
+    let unlisten: (() => void) | undefined;
+    try {
+      const { listen } = await import("@tauri-apps/api/event");
+      unlisten = await listen<{ current: number; total: number; message: string; finished: boolean }>("export-progress", (event) => {
+        set({ exportProgress: event.payload });
+        if (event.payload.finished) {
+          setTimeout(() => {
+            set({ isExporting: false, exportProgress: null });
+            get().fetchRoms();
+          }, 1500);
+          unlisten?.();
+        }
+      });
+
+      await scraperApi.exportLibraryScrapedData(libraryId, format, targetDirectory);
+    } catch (error) {
+      unlisten?.();
+      console.error("Failed to export library data:", error);
+      set({ isExporting: false });
       throw error;
     }
   },

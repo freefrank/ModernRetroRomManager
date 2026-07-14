@@ -242,6 +242,15 @@ pub fn load_cached_roms() -> Option<Vec<SystemRoms>> {
     load_index_for(library).map(|index| flatten_directories(&index.directories))
 }
 
+pub fn load_cached_roms_for_library(library_id: &str) -> Option<Vec<SystemRoms>> {
+    let settings = get_settings();
+    let library = settings
+        .directories
+        .iter()
+        .find(|library| library.id == library_id)?;
+    load_index_for(library).map(|index| flatten_directories(&index.directories))
+}
+
 pub fn invalidate_index() {
     if let Some(library) = get_settings().active_library() {
         invalidate_library_index(&library.id);
@@ -260,6 +269,28 @@ pub fn scan_library(
     let Some(library) = settings.active_library().cloned() else {
         return Ok(Vec::new());
     };
+    scan_library_config(library, mode, on_progress)
+}
+
+pub fn scan_library_by_id(
+    library_id: &str,
+    mode: ScanMode,
+    on_progress: impl Fn(ScanUpdate),
+) -> Result<Vec<SystemRoms>, String> {
+    let settings = get_settings();
+    let library = settings
+        .directories
+        .into_iter()
+        .find(|library| library.id == library_id)
+        .ok_or_else(|| format!("Library 不存在: {library_id}"))?;
+    scan_library_config(library, mode, on_progress)
+}
+
+fn scan_library_config(
+    library: DirectoryConfig,
+    mode: ScanMode,
+    on_progress: impl Fn(ScanUpdate),
+) -> Result<Vec<SystemRoms>, String> {
     let candidates = discover_candidates(std::slice::from_ref(&library));
     let total = candidates.len();
     let previous: HashMap<String, IndexedDirectory> = if mode == ScanMode::Incremental {
