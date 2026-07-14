@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasMetadataAndAsset } from "./romScrapeStatus";
+import { hasMetadataAndAsset, shouldIncludeInBatchScrape } from "./romScrapeStatus";
 import type { Rom } from "@/types";
 
 function rom(overrides: Partial<Rom> = {}): Rom {
@@ -29,5 +29,16 @@ describe("hasMetadataAndAsset", () => {
       has_temp_metadata: true,
       temp_data: { box_front: "cache/box.png" },
     }))).toBe(true);
+  });
+
+  it("includes already scraped ROMs when full rescrape is enabled", () => {
+    const scraped = rom({
+      description: "Description",
+      box_front: "media/box.png",
+    });
+
+    expect(shouldIncludeInBatchScrape(scraped, false)).toBe(false);
+    expect(shouldIncludeInBatchScrape(scraped, true)).toBe(true);
+    expect(shouldIncludeInBatchScrape(rom(), false)).toBe(true);
   });
 });

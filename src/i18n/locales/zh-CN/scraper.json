@@ -99,6 +99,8 @@
       "stoppedDesc": "未开始的游戏不会继续抓取，已完成的结果会保留。",
       "pendingTitle": "即将为 {{count}} 个游戏抓取数据",
       "pendingDesc": "系统将自动匹配文件名并尝试获取最佳元数据和封面。",
+      "forceRescrape": "全量重新抓取",
+      "forceRescrapeDesc": "包含已有 metadata 和资产的游戏，跳过抓取缓存并重新向数据源查询和更新资源。",
       "selectSource": "选择抓取源",
       "recommended": "推荐使用 ScreenScraper",
       "noSourceEnabled": "请先在设置中启用至少一个抓取源",

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { api, scraperApi, isTauri } from "@/lib/api";
 import type { Rom, GameSystem, ScanDirectory, FilterOption, SystemRoms, ScraperGameMetadata, RomSystemSummary } from "@/types";
-import { hasMetadataAndAsset } from "@/lib/romScrapeStatus";
+import { shouldIncludeInBatchScrape } from "@/lib/romScrapeStatus";
 
 interface ScanProgress {
   current: number;
@@ -75,7 +75,12 @@ interface RomState {
   // 批量 Scrape
   isBatchScraping: boolean;
   batchProgress: BatchProgress | null;
-  startBatchScrape: (providerIds: string[], mediaTypes?: string[], scope?: BatchScrapeScope) => Promise<void>;
+  startBatchScrape: (
+    providerIds: string[],
+    mediaTypes?: string[],
+    scope?: BatchScrapeScope,
+    forceRescrape?: boolean,
+  ) => Promise<void>;
   cancelBatchScrape: () => Promise<void>;
   
   // 游戏系统
@@ -202,7 +207,12 @@ export const useRomStore = create<RomState>((set, get) => ({
   // 批量 Scrape
   isBatchScraping: false,
   batchProgress: null,
-  startBatchScrape: async (providerIds: string[], mediaTypes?: string[], scope = "selection") => {
+  startBatchScrape: async (
+    providerIds: string[],
+    mediaTypes?: string[],
+    scope = "selection",
+    forceRescrape = false,
+  ) => {
     const { selectedRomIds, selectedSystem } = get();
 
     if (!isTauri()) {
@@ -218,7 +228,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     const targetRoms = targetSystems.flatMap(systemInfo =>
       systemInfo.roms
         .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
-        .filter(rom => !hasMetadataAndAsset(rom))
+        .filter(rom => shouldIncludeInBatchScrape(rom, forceRescrape))
         .map(rom => ({
           file_name: rom.file,
           search_name: rom.english_name?.trim() || rom.name || rom.file,
@@ -244,7 +254,14 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      await scraperApi.batchScrape(targetRoms, "", "", providerIds, mediaTypes);
+      await scraperApi.batchScrape(
+        targetRoms,
+        "",
+        "",
+        providerIds,
+        mediaTypes,
+        forceRescrape,
+      );
     } catch (error) {
       console.error("Failed to start batch scrape:", error);
       set({ isBatchScraping: false });

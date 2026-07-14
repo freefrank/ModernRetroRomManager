@@ -289,7 +289,15 @@ pub async fn scraper_get_media(
         .get_media(&provider_id, &source_id, media_types.as_deref())
         .await?;
     if let (Some(directory), Some(system), Some(rom_id)) = (rom_directory, system, rom_id) {
-        cache_media_candidates(&manager.http_client, &directory, &system, &rom_id, &media).await?;
+        cache_media_candidates(
+            &manager.http_client,
+            &directory,
+            &system,
+            &rom_id,
+            &media,
+            false,
+        )
+        .await?;
     }
     Ok(media)
 }
@@ -336,6 +344,7 @@ async fn cache_media_candidates(
     _system: &str,
     _rom_id: &str,
     media: &[MediaAsset],
+    force_refresh: bool,
 ) -> Result<(), String> {
     let root = crate::scraper::cache::asset_root();
     let mut counts = std::collections::HashMap::<(String, String), usize>::new();
@@ -371,7 +380,7 @@ async fn cache_media_candidates(
             asset_cache_key(&asset.url),
             extension
         ));
-        if target.exists() {
+        if target.exists() && !force_refresh {
             continue;
         }
         let Ok(response) = client.get(&asset.url).send().await else {
@@ -387,7 +396,10 @@ async fn cache_media_candidates(
         if fs::write(&temporary, bytes).is_err() {
             continue;
         }
-        if fs::rename(&temporary, &target).is_err() {
+        if force_refresh && target.exists() {
+            let _ = fs::copy(&temporary, &target);
+            let _ = fs::remove_file(&temporary);
+        } else if fs::rename(&temporary, &target).is_err() {
             let _ = fs::remove_file(&temporary);
         }
     }
@@ -675,6 +687,7 @@ pub async fn batch_scrape(
     directory: String,
     provider_ids: Vec<String>,
     media_types: Option<Vec<String>>,
+    force_rescrape: bool,
 ) -> Result<(), String> {
     if provider_ids.is_empty() {
         return Err("请至少选择一个抓取来源".to_string());
@@ -714,6 +727,7 @@ pub async fn batch_scrape(
                 let fallback_directory = directory.clone();
                 let allowed_media = allowed_media.clone();
                 let provider_ids = provider_ids.clone();
+                let force_rescrape = force_rescrape;
                 let completed = Arc::clone(&completed);
                 async move {
                     let file_name = rom_item.file_name;
@@ -751,7 +765,13 @@ pub async fn batch_scrape(
 
                     let scrape_res = {
                         let manager = manager_arc.read().await;
-                        manager.scrape_with_providers(&query, &provider_ids).await
+                        if force_rescrape {
+                            manager
+                                .scrape_with_providers_fresh(&query, &provider_ids)
+                                .await
+                        } else {
+                            manager.scrape_with_providers(&query, &provider_ids).await
+                        }
                     };
 
                     if let Ok(result) = scrape_res {
@@ -786,7 +806,12 @@ pub async fn batch_scrape(
                             }
                         }
                         let _ = cache_media_candidates(
-                            &client, &directory, &system, &file_name, &media,
+                            &client,
+                            &directory,
+                            &system,
+                            &file_name,
+                            &media,
+                            force_rescrape,
                         )
                         .await;
 

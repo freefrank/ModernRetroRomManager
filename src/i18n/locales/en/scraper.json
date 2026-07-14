@@ -99,6 +99,8 @@
       "stoppedDesc": "Pending games will not be scraped; completed results are kept.",
       "pendingTitle": "Scraping {{count}} games",
       "pendingDesc": "System will auto-match filenames and fetch the best metadata and covers.",
+      "forceRescrape": "Full rescrape",
+      "forceRescrapeDesc": "Include games that already have metadata and assets, bypass scraper caches, and query providers again.",
       "selectSource": "Select Source",
       "recommended": "ScreenScraper recommended",
       "noSourceEnabled": "Enable at least one source in settings first",

@@ -469,7 +469,7 @@ impl ScraperManager {
             .map(|(index, result)| async move {
                 (
                     index,
-                    self.fetch_media_cached(&result.provider, &result.source_id)
+                    self.fetch_media(&result.provider, &result.source_id, force_refresh)
                         .await,
                 )
             })
@@ -503,15 +503,6 @@ impl ScraperManager {
         self.search_with_providers_internal(query, provider_ids, false)
             .await
             .results
-    }
-
-    pub async fn search_with_providers_report(
-        &self,
-        query: &ScrapeQuery,
-        provider_ids: &[String],
-    ) -> SearchReport {
-        self.search_with_providers_internal(query, provider_ids, false)
-            .await
     }
 
     async fn lookup_by_hash_with_providers(
@@ -577,13 +568,24 @@ impl ScraperManager {
         provider_id: &str,
         source_id: &str,
     ) -> Result<Vec<MediaAsset>, String> {
+        self.fetch_media(provider_id, source_id, false).await
+    }
+
+    async fn fetch_media(
+        &self,
+        provider_id: &str,
+        source_id: &str,
+        force_refresh: bool,
+    ) -> Result<Vec<MediaAsset>, String> {
         let key = (provider_id.to_string(), source_id.to_string());
-        if let Some(media) = self.media_cache.read().await.get(&key).cloned() {
-            return Ok(media);
-        }
-        if let Some(media) = cache::load_media(provider_id, source_id) {
-            self.media_cache.write().await.insert(key, media.clone());
-            return Ok(media);
+        if !force_refresh {
+            if let Some(media) = self.media_cache.read().await.get(&key).cloned() {
+                return Ok(media);
+            }
+            if let Some(media) = cache::load_media(provider_id, source_id) {
+                self.media_cache.write().await.insert(key, media.clone());
+                return Ok(media);
+            }
         }
         let provider = self
             .providers
@@ -605,8 +607,19 @@ impl ScraperManager {
         provider_id: &str,
         source_id: &str,
     ) -> Result<GameMetadata, String> {
-        if let Some(metadata) = cache::load_metadata(provider_id, source_id) {
-            return Ok(metadata);
+        self.fetch_metadata(provider_id, source_id, false).await
+    }
+
+    async fn fetch_metadata(
+        &self,
+        provider_id: &str,
+        source_id: &str,
+        force_refresh: bool,
+    ) -> Result<GameMetadata, String> {
+        if !force_refresh {
+            if let Some(metadata) = cache::load_metadata(provider_id, source_id) {
+                return Ok(metadata);
+            }
         }
         let provider = self
             .providers
@@ -678,6 +691,25 @@ impl ScraperManager {
         query: &ScrapeQuery,
         provider_ids: &[String],
     ) -> Result<ScrapeResult, String> {
+        self.scrape_with_providers_internal(query, provider_ids, false)
+            .await
+    }
+
+    pub async fn scrape_with_providers_fresh(
+        &self,
+        query: &ScrapeQuery,
+        provider_ids: &[String],
+    ) -> Result<ScrapeResult, String> {
+        self.scrape_with_providers_internal(query, provider_ids, true)
+            .await
+    }
+
+    async fn scrape_with_providers_internal(
+        &self,
+        query: &ScrapeQuery,
+        provider_ids: &[String],
+        force_refresh: bool,
+    ) -> Result<ScrapeResult, String> {
         // 每个 provider 必须使用自己的 source_id，不能跨平台复用 ID。
         let hash_match = if let Some(ref hash) = query.hash {
             self.lookup_by_hash_with_providers(hash, query.system.as_deref(), provider_ids)
@@ -686,7 +718,9 @@ impl ScraperManager {
             None
         };
         let mut matches: HashMap<String, SearchResult> = HashMap::new();
-        let search_report = self.search_with_providers_report(query, provider_ids).await;
+        let search_report = self
+            .search_with_providers_internal(query, provider_ids, force_refresh)
+            .await;
         let mut fallback_name = None;
         let mut fallback_year = None;
         for result in search_report.results {
@@ -714,7 +748,9 @@ impl ScraperManager {
                 let source_id = matches.get(provider.id())?.source_id.clone();
                 let provider_id = provider.id().to_string();
                 Some(async move {
-                    let metadata = self.fetch_metadata_cached(&provider_id, &source_id).await;
+                    let metadata = self
+                        .fetch_metadata(&provider_id, &source_id, force_refresh)
+                        .await;
                     (provider_id, metadata)
                 })
             })
@@ -736,7 +772,10 @@ impl ScraperManager {
             .filter_map(|provider| {
                 let source_id = matches.get(provider.id())?.source_id.clone();
                 let provider_id = provider.id().to_string();
-                Some(async move { self.fetch_media_cached(&provider_id, &source_id).await })
+                Some(async move {
+                    self.fetch_media(&provider_id, &source_id, force_refresh)
+                        .await
+                })
             })
             .collect();
 
@@ -837,6 +876,7 @@ mod tests {
     use super::*;
     use crate::scraper::Capabilities;
     use async_trait::async_trait;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn empty_or_invalid_media_assets_are_filtered() {
@@ -1050,6 +1090,59 @@ mod tests {
                     height: None,
                 })
                 .collect())
+        }
+    }
+
+    struct CountingProvider {
+        search_calls: Arc<AtomicUsize>,
+        metadata_calls: Arc<AtomicUsize>,
+        media_calls: Arc<AtomicUsize>,
+    }
+
+    #[async_trait]
+    impl ScraperProvider for CountingProvider {
+        fn id(&self) -> &'static str {
+            "counting"
+        }
+
+        fn capabilities(&self) -> Capabilities {
+            Capabilities::new()
+                .with(ProviderCapability::Search)
+                .with(ProviderCapability::Metadata)
+                .with(ProviderCapability::Media)
+        }
+
+        async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
+            self.search_calls.fetch_add(1, Ordering::Relaxed);
+            Ok(vec![SearchResult {
+                provider: self.id().into(),
+                source_id: "fresh-id".into(),
+                name: query.name.clone(),
+                year: Some("2004".into()),
+                system: query.system.clone(),
+                thumbnail: None,
+                asset_count: Some(1),
+                confidence: 1.0,
+            }])
+        }
+
+        async fn get_metadata(&self, _source_id: &str) -> Result<GameMetadata, String> {
+            self.metadata_calls.fetch_add(1, Ordering::Relaxed);
+            Ok(GameMetadata {
+                name: "Fresh Game".into(),
+                ..Default::default()
+            })
+        }
+
+        async fn get_media(&self, _source_id: &str) -> Result<Vec<MediaAsset>, String> {
+            self.media_calls.fetch_add(1, Ordering::Relaxed);
+            Ok(vec![MediaAsset {
+                provider: self.id().into(),
+                url: "https://example.com/fresh.png".into(),
+                asset_type: crate::scraper::MediaType::BoxFront,
+                width: None,
+                height: None,
+            }])
         }
     }
 
@@ -1281,5 +1374,39 @@ mod tests {
         assert_eq!(scraped.metadata.name, "Search Result Name");
         assert_eq!(scraped.metadata.release_date.as_deref(), Some("2003"));
         assert_eq!(scraped.media.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn fresh_scrape_bypasses_provider_caches() {
+        let search_calls = Arc::new(AtomicUsize::new(0));
+        let metadata_calls = Arc::new(AtomicUsize::new(0));
+        let media_calls = Arc::new(AtomicUsize::new(0));
+        let mut manager = ScraperManager::new();
+        manager.register_with_config(
+            CountingProvider {
+                search_calls: Arc::clone(&search_calls),
+                metadata_calls: Arc::clone(&metadata_calls),
+                media_calls: Arc::clone(&media_calls),
+            },
+            ProviderConfig::default(),
+        );
+        let query = ScrapeQuery::new("Fresh Game".into(), "fresh.gba".into()).with_system("gba");
+
+        manager
+            .scrape_with_providers_fresh(&query, &[])
+            .await
+            .unwrap();
+        manager.scrape_with_providers(&query, &[]).await.unwrap();
+        assert_eq!(search_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(metadata_calls.load(Ordering::Relaxed), 1);
+        assert_eq!(media_calls.load(Ordering::Relaxed), 1);
+
+        manager
+            .scrape_with_providers_fresh(&query, &[])
+            .await
+            .unwrap();
+        assert_eq!(search_calls.load(Ordering::Relaxed), 2);
+        assert_eq!(metadata_calls.load(Ordering::Relaxed), 2);
+        assert_eq!(media_calls.load(Ordering::Relaxed), 2);
     }
 }

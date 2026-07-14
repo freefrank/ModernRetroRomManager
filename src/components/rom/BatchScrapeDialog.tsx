@@ -7,7 +7,7 @@ import { Button, Dialog, Spinner } from "@/components/ui";
 import { clsx } from "clsx";
 import { scraperApi } from "@/lib/api";
 import MediaTypeSelector from "./MediaTypeSelector";
-import { hasMetadataAndAsset } from "@/lib/romScrapeStatus";
+import { shouldIncludeInBatchScrape } from "@/lib/romScrapeStatus";
 
 interface BatchScrapeDialogProps {
   isOpen: boolean;
@@ -21,12 +21,17 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   const { startBatchScrape, cancelBatchScrape, selectedRomIds, selectedSystem, systemRoms, stats, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
+  const [forceRescrape, setForceRescrape] = useState(false);
   const providersInitialized = useRef(false);
 
   useEffect(() => {
     fetchProviders();
     scraperApi.getMediaTypes().then(setMediaTypes).catch(console.error);
   }, [fetchProviders]);
+
+  useEffect(() => {
+    if (isOpen) setForceRescrape(false);
+  }, [isOpen, scope]);
 
   useEffect(() => {
     const enabledIds = [...providers]
@@ -41,7 +46,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
 
   const handleStart = async () => {
     if (selectedProviderIds.length === 0) return;
-    await startBatchScrape(selectedProviderIds, mediaTypes, scope);
+    await startBatchScrape(selectedProviderIds, mediaTypes, scope, forceRescrape);
   };
 
   const toggleProvider = (providerId: string) => {
@@ -64,12 +69,12 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
     .filter(p => p.enabled)
     .sort((left, right) => left.priority - right.priority);
   const targetCount = scope === "library"
-    ? Math.max(0, stats.totalRoms - stats.scrapedRoms)
+    ? forceRescrape ? stats.totalRoms : Math.max(0, stats.totalRoms - stats.scrapedRoms)
     : systemRoms
       .filter(item => item.system === selectedSystem)
       .flatMap(item => item.roms)
       .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
-      .filter(rom => !hasMetadataAndAsset(rom))
+      .filter(rom => shouldIncludeInBatchScrape(rom, forceRescrape))
       .length;
   const progressPercent = batchProgress
     ? Math.round((batchProgress.current / batchProgress.total) * 100)
@@ -172,6 +177,22 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
             </div>
 
             <div className="space-y-4">
+              <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default bg-bg-secondary/50 p-4 hover:border-border-hover">
+                <input
+                  type="checkbox"
+                  checked={forceRescrape}
+                  onChange={(event) => setForceRescrape(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-accent-primary"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-text-primary">
+                    {t("scraper.batch.forceRescrape")}
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed text-text-muted">
+                    {t("scraper.batch.forceRescrapeDesc")}
+                  </span>
+                </span>
+              </label>
               <MediaTypeSelector value={mediaTypes} onChange={setMediaTypes} />
               <div className="flex items-center justify-between px-1">
                 <label className="text-xs font-black text-text-muted uppercase tracking-widest">{t("scraper.batch.selectSource")}</label>

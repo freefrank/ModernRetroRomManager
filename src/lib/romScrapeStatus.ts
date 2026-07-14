@@ -25,3 +25,7 @@ export function hasMetadataAndAsset(rom: Rom): boolean {
   );
   return hasMetadata && hasAsset;
 }
+
+export function shouldIncludeInBatchScrape(rom: Rom, forceRescrape: boolean): boolean {
+  return forceRescrape || !hasMetadataAndAsset(rom);
+}
