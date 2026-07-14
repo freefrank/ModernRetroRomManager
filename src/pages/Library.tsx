@@ -49,7 +49,9 @@ export default function Library() {
     batchProgress,
     systemRoms,
     setSelectedSystem,
+    scanDirectories,
   } = useRomStore();
+  const activeLibrary = scanDirectories.find(item => item.isActive);
   const { viewMode, setViewMode, searchQuery, setSearchQuery } = useAppStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [activeRom, setActiveRom] = useState<Rom | null>(null);
@@ -210,7 +212,7 @@ export default function Library() {
               to="/library"
               className="hover:text-text-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
             >
-              {t("library.title")}
+              {activeLibrary?.name ?? t("library.title")}
             </Link>
             <ChevronRight className="w-4 h-4 text-text-muted" />
             <span className="text-text-primary font-medium truncate">{systemName}</span>

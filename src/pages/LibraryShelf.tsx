@@ -24,8 +24,9 @@ function findSystemLogo(systems: GameSystem[], folderName: string): string | und
 export default function LibraryShelf() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { availableSystems, stats, systems, fetchSystems } = useRomStore();
+  const { availableSystems, stats, systems, fetchSystems, scanDirectories } = useRomStore();
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const activeLibrary = scanDirectories.find(item => item.isActive);
 
   // 装载预置系统列表以解析各系统 logo
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function LibraryShelf() {
       <header className="py-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight text-text-primary mb-2">
-            {t("library.title")}
+            {activeLibrary?.name ?? t("library.title")}
           </h1>
           <p className="text-text-secondary font-medium">
             {t("library.shelf.systemCount", { count: availableSystems.length })}

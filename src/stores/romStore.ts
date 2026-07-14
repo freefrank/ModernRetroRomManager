@@ -85,8 +85,15 @@ interface RomState {
   // 扫描目录
   scanDirectories: ScanDirectory[];
   fetchScanDirectories: () => Promise<void>;
-  addScanDirectory: (path: string, metadataFormat?: string) => Promise<void>;
+  addScanDirectory: (
+    path: string,
+    metadataFormat?: string,
+    isRoot?: boolean,
+    systemId?: string | null,
+  ) => Promise<void>;
   removeScanDirectory: (id: string) => Promise<void>;
+  activateLibrary: (id: string, fullScan?: boolean) => Promise<void>;
+  renameLibrary: (id: string, name: string) => Promise<void>;
 
   // 扫描状态
   isScanning: boolean;
@@ -275,11 +282,13 @@ export const useRomStore = create<RomState>((set, get) => ({
         systemRoms: [],
         roms: selectedStillExists ? get().roms : [],
         selectedSystem: selectedStillExists ? selectedSystem : null,
+        isScanning: false,
+        isLoadingRoms: false,
       });
       if (selectedStillExists && selectedSystem) await get().fetchSystemRoms(selectedSystem);
     } catch (error) {
       console.error("Failed to scan ROM library:", error);
-      set({ isScanning: false });
+      set({ isScanning: false, isLoadingRoms: false });
       throw error;
     }
   },
@@ -351,12 +360,27 @@ export const useRomStore = create<RomState>((set, get) => ({
       console.error("Failed to fetch directories:", error);
     }
   },
-addScanDirectory: async (path: string, metadataFormat="none") => {
+  addScanDirectory: async (
+    path: string,
+    metadataFormat = "none",
+    isRoot = false,
+    systemId = null,
+  ) => {
     try {
-      // 先添加目录到配置
-      await api.addDirectory(path, metadataFormat, false, null);
+      // 新目录由后端自动设为激活 Library；先清空旧库状态再开始首次全量扫描。
+      await api.addDirectory(path, metadataFormat, isRoot, systemId);
+      systemRequestSequence++;
+      set({
+        roms: [],
+        systemRoms: [],
+        availableSystems: [],
+        selectedSystem: null,
+        selectedRomIds: new Set(),
+        stats: { totalRoms: 0, scrapedRoms: 0, totalSize: 0 },
+        isLoadingRoms: true,
+      });
       await get().fetchScanDirectories();
-      
+
       // 新 ROM 库第一次加入时建立完整持久索引。
       await get().scanLibrary(true);
     } catch (error) {
@@ -364,13 +388,59 @@ addScanDirectory: async (path: string, metadataFormat="none") => {
       throw error;
     }
   },
-  removeScanDirectory: async (path: string) => {
+  removeScanDirectory: async (id: string) => {
     try {
-      await api.removeDirectory(path);
+      const wasActive = get().scanDirectories.some(item => item.id === id && item.isActive);
+      await api.removeDirectory(id);
       await get().fetchScanDirectories();
-      await get().scanLibrary(true);
+      if (wasActive) {
+        systemRequestSequence++;
+        set({
+          roms: [],
+          systemRoms: [],
+          availableSystems: [],
+          selectedSystem: null,
+          selectedRomIds: new Set(),
+          stats: { totalRoms: 0, scrapedRoms: 0, totalSize: 0 },
+          isLoadingRoms: true,
+        });
+        await get().scanLibrary(false);
+      }
     } catch (error) {
       console.error("Failed to remove directory:", error);
+      throw error;
+    }
+  },
+
+  activateLibrary: async (id: string, fullScan = false) => {
+    const current = get().scanDirectories.find(item => item.isActive);
+    if (current?.id === id && !fullScan) return;
+    try {
+      if (current?.id !== id) await api.setActiveLibrary(id);
+      systemRequestSequence++;
+      set({
+        roms: [],
+        systemRoms: [],
+        availableSystems: [],
+        selectedSystem: null,
+        selectedRomIds: new Set(),
+        stats: { totalRoms: 0, scrapedRoms: 0, totalSize: 0 },
+        isLoadingRoms: true,
+      });
+      await get().fetchScanDirectories();
+      await get().scanLibrary(fullScan);
+    } catch (error) {
+      console.error("Failed to activate library:", error);
+      throw error;
+    }
+  },
+
+  renameLibrary: async (id: string, name: string) => {
+    try {
+      await api.renameLibrary(id, name);
+      await get().fetchScanDirectories();
+    } catch (error) {
+      console.error("Failed to rename library:", error);
       throw error;
     }
   },

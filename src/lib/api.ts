@@ -105,16 +105,31 @@ export const api = {
     return [];
   },
 
-  async addDirectory(path: string, metadataFormat: string, isRoot: boolean, systemId: string | null): Promise<void> {
+  async addDirectory(path: string, metadataFormat: string, isRoot: boolean, systemId: string | null): Promise<ScanDirectory | null> {
     if (isTauri()) {
-      await tauriInvoke("add_directory", { path, metadataFormat, isRoot, systemId });
+      return tauriInvoke<ScanDirectory>("add_directory", { path, metadataFormat, isRoot, systemId });
+    }
+    return null;
+  },
+
+  async removeDirectory(libraryId: string): Promise<void> {
+    if (isTauri()) {
+      await tauriInvoke("remove_directory", { libraryId });
     }
   },
 
-async removeDirectory(path: string): Promise<void> {
+  async setActiveLibrary(libraryId: string): Promise<ScanDirectory | null> {
     if (isTauri()) {
-      await tauriInvoke("remove_directory", { path });
+      return tauriInvoke<ScanDirectory>("set_active_library", { libraryId });
     }
+    return null;
+  },
+
+  async renameLibrary(libraryId: string, name: string): Promise<ScanDirectory | null> {
+    if (isTauri()) {
+      return tauriInvoke<ScanDirectory>("rename_library", { libraryId, name });
+    }
+    return null;
   },
 
   async getRomsForDirectory(path: string, metadataFormat: string, isRoot: boolean, systemId: string | null): Promise<SystemRoms[]> {

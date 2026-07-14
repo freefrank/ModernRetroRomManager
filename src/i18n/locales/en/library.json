@@ -5,8 +5,8 @@
     "search": "Search...",
     "empty": {
       "title": "Library is empty",
-      "description": "Add a scan directory to start managing your ROM collection",
-      "addDirectory": "Add Directory"
+      "description": "Add a library to start managing your ROM collection",
+      "addDirectory": "Add Library"
     },
     "viewMode": {
       "cover": "Cover View",
@@ -15,8 +15,8 @@
     },
     "shelf": {
       "systemCount": "{{count}} systems",
-      "addCard": "Add Directory",
-      "addCardHint": "Add scan directories in Settings"
+      "addCard": "Add Library",
+      "addCardHint": "Add an independent ROM library in Settings"
     },
     "breadcrumb": "Breadcrumb",
     "systemNotFound": {

@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
-import { Input } from "@/components/ui";
+import { Input, Select, toast } from "@/components/ui";
 
 /** 工具箱子项(rail 的 section 判定与面板列表共用) */
 export const TOOL_ITEMS: { to: string; labelKey: string }[] = [
@@ -35,8 +35,27 @@ const panelTitleClass =
 /** 库 section 面板:系统树(标题 + 实时搜索过滤 + 系统行) */
 function LibraryPanel() {
   const { t } = useTranslation();
-  const { availableSystems } = useRomStore();
+  const navigate = useNavigate();
+  const {
+    availableSystems,
+    scanDirectories,
+    activateLibrary,
+    isScanning,
+    isBatchScraping,
+  } = useRomStore();
   const [query, setQuery] = useState("");
+  const activeLibrary = scanDirectories.find(item => item.isActive);
+
+  const handleLibraryChange = async (libraryId: string) => {
+    if (!libraryId || libraryId === activeLibrary?.id) return;
+    navigate("/library");
+    setQuery("");
+    try {
+      await activateLibrary(libraryId);
+    } catch (error) {
+      toast.error(t("nav.librarySwitchFailed", { error: String(error) }));
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -47,7 +66,19 @@ function LibraryPanel() {
   return (
     <div className="w-50 h-full flex flex-col">
       <div className="px-3 pt-4 pb-2 space-y-2 shrink-0">
-        <h2 className={panelTitleClass}>{t("nav.library")}</h2>
+        <Select
+          value={activeLibrary?.id ?? ""}
+          onChange={(event) => void handleLibraryChange(event.target.value)}
+          disabled={scanDirectories.length === 0 || isScanning || isBatchScraping}
+          aria-label={t("nav.selectLibrary")}
+          title={activeLibrary?.path}
+          className="h-8 px-2 font-semibold"
+        >
+          {scanDirectories.length === 0 && <option value="">{t("nav.library")}</option>}
+          {scanDirectories.map((library) => (
+            <option key={library.id} value={library.id}>{library.name}</option>
+          ))}
+        </Select>
         <Input
           type="search"
           value={query}

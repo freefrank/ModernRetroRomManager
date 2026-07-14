@@ -11,6 +11,8 @@
     "tools": "工具箱",
     "cnTools": "中文 ROM 工具",
     "searchSystems": "搜索系统",
+    "selectLibrary": "选择 Library",
+    "librarySwitchFailed": "切换 Library 失败:{{error}}",
     "noMatchingSystems": "无匹配的系统",
     "expandPanel": "展开面板",
     "collapsePanel": "收起面板"

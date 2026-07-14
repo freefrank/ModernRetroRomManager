@@ -42,14 +42,22 @@
       }
     },
     "scanDirectories": {
-      "title": "扫描目录",
-      "description": "配置 ROM 扫描目录,软件会自动检测其中的 ROM 文件",
-      "empty": "暂未添加扫描目录",
-      "addDirectory": "添加目录",
-      "fullScan": "全量扫描",
-      "dialogTitle": "添加扫描目录",
+      "title": "ROM 游戏库",
+      "description": "每个扫描目录都是一个独立 Library；点击列表项可切换当前激活的 Library",
+      "empty": "暂未添加 Library",
+      "addDirectory": "添加 Library",
+      "fullScan": "全量扫描当前 Library",
+      "dialogTitle": "添加 Library",
       "metadataFormat": "元数据格式:{{format}}",
-      "addFailed": "添加目录失败:{{error}}"
+      "addFailed": "添加 Library 失败:{{error}}",
+      "active": "当前使用",
+      "libraryName": "Library 名称",
+      "rename": "重命名 Library",
+      "renameSuccess": "Library 名称已保存",
+      "renameFailed": "重命名 Library 失败:{{error}}",
+      "switchFailed": "切换 Library 失败:{{error}}",
+      "removeFailed": "删除 Library 失败:{{error}}",
+      "scanThisLibrary": "激活并全量扫描此 Library"
     },
     "storage": {
       "title": "存储设置",

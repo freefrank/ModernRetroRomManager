@@ -177,10 +177,13 @@ export interface ApplyScrapedDataOptions {
 // 扫描目录配置
 // 目录配置
 export interface DirectoryConfig {
+  id: string;
+  name: string;
   path: string;
   isRootDirectory: boolean;
   metadataFormat: string;
   systemId?: string;
+  isActive: boolean;
 }
 
 // 兼容别名

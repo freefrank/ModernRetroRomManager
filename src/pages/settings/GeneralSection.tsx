@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { Folder, HardDrive, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Folder, HardDrive, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 import i18n, { languages } from "@/i18n";
 import { useAppStore } from "@/stores/appStore";
@@ -13,6 +13,7 @@ import MetadataImportDialog from "@/components/common/MetadataImportDialog";
 import RootDirectoryDialog from "@/components/common/RootDirectoryDialog";
 import {
   Button,
+  Badge,
   Dialog,
   EmptyState,
   IconButton,
@@ -51,7 +52,10 @@ export default function GeneralSection() {
     fetchScanDirectories,
     addScanDirectory,
     removeScanDirectory,
+    activateLibrary,
+    renameLibrary,
     isScanning,
+    isBatchScraping,
     scanProgress,
     scanLibrary,
   } = useRomStore();
@@ -61,6 +65,8 @@ export default function GeneralSection() {
   const [isValidPath, setIsValidPath] = useState(false);
   const [configDir, setConfigDir] = useState<string | null>(null);
   const [mediaDir, setMediaDir] = useState<string | null>(null);
+  const [editingLibraryId, setEditingLibraryId] = useState<string | null>(null);
+  const [editingLibraryName, setEditingLibraryName] = useState("");
 
   // 元数据检测状态
   const [detectedMetadata, setDetectedMetadata] = useState<MetadataFileInfo[]>([]);
@@ -171,14 +177,7 @@ export default function GeneralSection() {
   const handleImportAsRoot = async () => {
     setIsRootDialogOpen(false);
     try {
-      await invoke("add_directory", {
-        path: pendingDirPath,
-        metadataFormat: "auto",
-        isRoot: true,
-        systemId: null,
-      });
-      await fetchScanDirectories();
-      await scanLibrary(true);
+      await addScanDirectory(pendingDirPath, "auto", true, null);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
@@ -193,14 +192,7 @@ export default function GeneralSection() {
   ) => {
     setIsRootDialogOpen(false);
     try {
-      await invoke("add_directory", {
-        path: subDir.path,
-        metadataFormat: format,
-        isRoot: false,
-        systemId: subDir.name,
-      });
-      await fetchScanDirectories();
-      await scanLibrary(true);
+      await addScanDirectory(subDir.path, format, false, subDir.name);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
@@ -210,7 +202,46 @@ export default function GeneralSection() {
   };
 
   const handleScan = async () => {
-    await Promise.all([fetchScanDirectories(), scanLibrary(true)]);
+    await scanLibrary(true);
+  };
+
+  const handleActivateLibrary = async (id: string, fullScan = false) => {
+    if (isScanning || isBatchScraping) return;
+    try {
+      await activateLibrary(id, fullScan);
+    } catch (error) {
+      toast.error(t("settings.scanDirectories.switchFailed", { error: String(error) }));
+    }
+  };
+
+  const startRenamingLibrary = (id: string, name: string) => {
+    setEditingLibraryId(id);
+    setEditingLibraryName(name);
+  };
+
+  const cancelRenamingLibrary = () => {
+    setEditingLibraryId(null);
+    setEditingLibraryName("");
+  };
+
+  const saveLibraryName = async (id: string) => {
+    const name = editingLibraryName.trim();
+    if (!name) return;
+    try {
+      await renameLibrary(id, name);
+      cancelRenamingLibrary();
+      toast.success(t("settings.scanDirectories.renameSuccess"));
+    } catch (error) {
+      toast.error(t("settings.scanDirectories.renameFailed", { error: String(error) }));
+    }
+  };
+
+  const handleRemoveLibrary = async (id: string) => {
+    try {
+      await removeScanDirectory(id);
+    } catch (error) {
+      toast.error(t("settings.scanDirectories.removeFailed", { error: String(error) }));
+    }
   };
 
   return (
@@ -275,7 +306,7 @@ export default function GeneralSection() {
         </label>
       </section>
 
-      {/* 扫描目录 */}
+      {/* Library 管理 */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -287,11 +318,20 @@ export default function GeneralSection() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleScan} disabled={isScanning}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleScan}
+              disabled={isScanning || isBatchScraping || scanDirectories.length === 0}
+            >
               <RefreshCw className={clsx("w-4 h-4", isScanning && "animate-spin")} />
               {t("settings.scanDirectories.fullScan")}
             </Button>
-            <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => setIsAddDialogOpen(true)}
+              disabled={isScanning || isBatchScraping}
+            >
               <Plus className="w-4 h-4" />
               {t("settings.scanDirectories.addDirectory")}
             </Button>
@@ -347,18 +387,54 @@ export default function GeneralSection() {
           ) : (
             scanDirectories.map((dir) => (
               <div
-                key={dir.path}
-                className="group p-4 bg-bg-secondary border-[length:var(--border-width)] border-border-default rounded-[var(--radius-lg)] hover:border-border-hover transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)] flex items-center justify-between"
+                key={dir.id}
+                role="button"
+                tabIndex={editingLibraryId === dir.id ? -1 : 0}
+                aria-current={dir.isActive ? "true" : undefined}
+                onClick={() => void handleActivateLibrary(dir.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    void handleActivateLibrary(dir.id);
+                  }
+                }}
+                className={clsx(
+                  "group p-4 bg-bg-secondary border-[length:var(--border-width)] rounded-[var(--radius-lg)] transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)] flex items-center justify-between",
+                  dir.isActive
+                    ? "border-accent-primary/70 bg-accent-primary/5"
+                    : "border-border-default hover:border-border-hover cursor-pointer",
+                )}
               >
                 <div className="flex items-center gap-4 overflow-hidden">
                   <div className="w-10 h-10 bg-bg-tertiary rounded-[var(--radius-md)] flex items-center justify-center flex-shrink-0">
                     <HardDrive className="w-5 h-5 text-accent-secondary" />
                   </div>
                   <div className="min-w-0">
-                    <div
-                      className="text-text-primary font-medium truncate text-sm"
-                      title={dir.path}
-                    >
+                    {editingLibraryId === dir.id ? (
+                      <Input
+                        autoFocus
+                        value={editingLibraryName}
+                        onChange={(event) => setEditingLibraryName(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => {
+                          event.stopPropagation();
+                          if (event.key === "Enter") void saveLibraryName(dir.id);
+                          if (event.key === "Escape") cancelRenamingLibrary();
+                        }}
+                        aria-label={t("settings.scanDirectories.libraryName")}
+                        className="h-8 max-w-sm"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-text-primary font-medium truncate text-sm">
+                          {dir.name}
+                        </span>
+                        {dir.isActive && (
+                          <Badge variant="info">{t("settings.scanDirectories.active")}</Badge>
+                        )}
+                      </div>
+                    )}
+                    <div className="text-xs text-text-muted mt-0.5 truncate" title={dir.path}>
                       {dir.path}
                     </div>
                     <div className="text-xs text-text-muted mt-0.5">
@@ -370,12 +446,55 @@ export default function GeneralSection() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {editingLibraryId === dir.id ? (
+                    <>
+                      <IconButton
+                        size="sm"
+                        variant="primary"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void saveLibraryName(dir.id);
+                        }}
+                        disabled={!editingLibraryName.trim()}
+                        title={t("common.save")}
+                        aria-label={t("common.save")}
+                      >
+                        <Check className="w-4 h-4" />
+                      </IconButton>
+                      <IconButton
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          cancelRenamingLibrary();
+                        }}
+                        title={t("common.cancel")}
+                        aria-label={t("common.cancel")}
+                      >
+                        <X className="w-4 h-4" />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <IconButton
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        startRenamingLibrary(dir.id, dir.name);
+                      }}
+                      title={t("settings.scanDirectories.rename")}
+                      aria-label={t("settings.scanDirectories.rename")}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </IconButton>
+                  )}
                   <IconButton
                     size="sm"
-                    onClick={handleScan}
-                    disabled={isScanning}
-                    title={t("common.refresh")}
-                    aria-label={t("common.refresh")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleActivateLibrary(dir.id, true);
+                    }}
+                    disabled={isScanning || isBatchScraping}
+                    title={t("settings.scanDirectories.scanThisLibrary")}
+                    aria-label={t("settings.scanDirectories.scanThisLibrary")}
                   >
                     <RefreshCw
                       className={clsx("w-4 h-4", isScanning && "animate-spin")}
@@ -384,7 +503,11 @@ export default function GeneralSection() {
                   <IconButton
                     size="sm"
                     variant="danger"
-                    onClick={() => removeScanDirectory(dir.path)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleRemoveLibrary(dir.id);
+                    }}
+                    disabled={isScanning || isBatchScraping}
                     title={t("common.delete")}
                     aria-label={t("common.delete")}
                   >

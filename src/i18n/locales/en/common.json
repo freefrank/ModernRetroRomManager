@@ -11,6 +11,8 @@
     "tools": "Tools",
     "cnTools": "Chinese ROM Tools",
     "searchSystems": "Search systems",
+    "selectLibrary": "Select library",
+    "librarySwitchFailed": "Failed to switch library: {{error}}",
     "noMatchingSystems": "No matching systems",
     "expandPanel": "Expand panel",
     "collapsePanel": "Collapse panel"

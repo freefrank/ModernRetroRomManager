@@ -42,14 +42,22 @@
       }
     },
     "scanDirectories": {
-      "title": "Scan Directories",
-      "description": "Configure ROM directories, software will detect games automatically",
-      "empty": "No scan directories added",
-      "addDirectory": "Add Directory",
-      "fullScan": "Full Scan",
-      "dialogTitle": "Add Scan Directory",
+      "title": "ROM Libraries",
+      "description": "Each scan directory is an independent library. Click an item to make it active.",
+      "empty": "No libraries added",
+      "addDirectory": "Add Library",
+      "fullScan": "Full Scan Active Library",
+      "dialogTitle": "Add Library",
       "metadataFormat": "Metadata format: {{format}}",
-      "addFailed": "Failed to add directory: {{error}}"
+      "addFailed": "Failed to add library: {{error}}",
+      "active": "Active",
+      "libraryName": "Library name",
+      "rename": "Rename library",
+      "renameSuccess": "Library name saved",
+      "renameFailed": "Failed to rename library: {{error}}",
+      "switchFailed": "Failed to switch library: {{error}}",
+      "removeFailed": "Failed to remove library: {{error}}",
+      "scanThisLibrary": "Activate and fully scan this library"
     },
     "storage": {
       "title": "Storage Settings",

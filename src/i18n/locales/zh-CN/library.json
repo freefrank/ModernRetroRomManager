@@ -5,8 +5,8 @@
     "search": "搜索...",
     "empty": {
       "title": "ROM 库为空",
-      "description": "添加扫描目录开始管理你的 ROM 收藏",
-      "addDirectory": "添加目录"
+      "description": "添加 Library 开始管理你的 ROM 收藏",
+      "addDirectory": "添加 Library"
     },
     "viewMode": {
       "cover": "封面视图",
@@ -15,8 +15,8 @@
     },
     "shelf": {
       "systemCount": "{{count}} 个系统",
-      "addCard": "添加目录",
-      "addCardHint": "前往设置添加扫描目录"
+      "addCard": "添加 Library",
+      "addCardHint": "前往设置添加独立 ROM 游戏库"
     },
     "breadcrumb": "面包屑导航",
     "systemNotFound": {
