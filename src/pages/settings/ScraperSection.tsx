@@ -338,7 +338,7 @@ export default function ScraperSection() {
                         <p className="text-xs text-text-muted">
                           {t("settings.apiConfig.screenScraperAuthHint")}
                         </p>
-                        {!credentials.developer_mode && <div>
+                        <div>
                           <label className="block text-sm font-medium text-text-primary mb-2">
                             {t("settings.apiConfig.username")}
                           </label>
@@ -353,8 +353,8 @@ export default function ScraperSection() {
                             }
                             placeholder={t("settings.apiConfig.usernamePlaceholder")}
                           />
-                        </div>}
-                        {!credentials.developer_mode && <div>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-text-primary mb-2">
                             {t("settings.apiConfig.password")}
                           </label>
@@ -369,7 +369,7 @@ export default function ScraperSection() {
                             }
                             placeholder={t("settings.apiConfig.passwordPlaceholder")}
                           />
-                        </div>}
+                        </div>
                         <label className="flex items-center justify-between gap-4 p-3 rounded-[var(--radius-md)] border border-border-default bg-bg-secondary cursor-pointer">
                           <span>
                             <span className="block text-sm font-medium text-text-primary">

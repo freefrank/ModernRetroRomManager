@@ -30,6 +30,7 @@ Version 0.5 treats one configured ROM root as the active library. Its child fold
 - [TheGamesDB](https://thegamesdb.net/)
 
 Provider credentials, rate limits, worker threads, priority, and optional media types can be configured in the application settings.
+ScreenScraper application credentials are bundled with MRRM, so users only need to enter their own ScreenScraper member username and password. Advanced users can override the bundled developer credentials in Settings.
 
 ## Technology
 

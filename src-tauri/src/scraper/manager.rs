@@ -11,7 +11,7 @@ use tokio::sync::RwLock as AsyncRwLock;
 use super::{
     cache,
     matcher::{apply_asset_count_confidence, normalize_game_name, rank_results},
-    screenscraper::ScreenScraperClient,
+    screenscraper::{bundled_developer_credentials, ScreenScraperClient},
     steamgriddb::SteamGridDBClient,
     thegamesdb::TheGamesDbClient,
     GameMetadata, MediaAsset, ProviderCapability, ProviderSearchOutcome, RomHash, ScrapeQuery,
@@ -143,25 +143,24 @@ fn credentials_present(provider_id: &str, config: Option<&ScraperConfig>) -> boo
             .as_deref()
             .is_some_and(|k| !k.trim().is_empty()),
         "screenscraper" => {
-            if config.developer_mode {
-                config
+            let member_credentials_present = config
+                .username
+                .as_deref()
+                .is_some_and(|v| !v.trim().is_empty())
+                && config
+                    .password
+                    .as_deref()
+                    .is_some_and(|v| !v.trim().is_empty());
+            let custom_developer_credentials_present = !config.developer_mode
+                || (config
                     .client_id
                     .as_deref()
                     .is_some_and(|v| !v.trim().is_empty())
                     && config
                         .client_secret
                         .as_deref()
-                        .is_some_and(|v| !v.trim().is_empty())
-            } else {
-                config
-                    .username
-                    .as_deref()
-                    .is_some_and(|v| !v.trim().is_empty())
-                    && config
-                        .password
-                        .as_deref()
-                        .is_some_and(|v| !v.trim().is_empty())
-            }
+                        .is_some_and(|v| !v.trim().is_empty()));
+            member_credentials_present && custom_developer_credentials_present
         }
         _ => false,
     }
@@ -247,13 +246,20 @@ impl ScraperManager {
                     }
                 }
                 "screenscraper" => {
-                    self.register_with_config(
-                        ScreenScraperClient::new(
-                            config.developer_mode,
-                            config.username.clone().unwrap_or_default(),
-                            config.password.clone().unwrap_or_default(),
+                    let (devid, devpassword) = if config.developer_mode {
+                        (
                             config.client_id.clone().unwrap_or_default(),
                             config.client_secret.clone().unwrap_or_default(),
+                        )
+                    } else {
+                        bundled_developer_credentials()
+                    };
+                    self.register_with_config(
+                        ScreenScraperClient::new(
+                            config.username.clone().unwrap_or_default(),
+                            config.password.clone().unwrap_or_default(),
+                            devid,
+                            devpassword,
                             config.rate_limit,
                             config.threads,
                         ),
@@ -901,6 +907,37 @@ mod tests {
         let ss = infos.iter().find(|i| i.id == "screenscraper").unwrap();
         assert!(ss.enabled);
         assert!(!ss.has_credentials);
+    }
+
+    #[test]
+    fn screenscraper_requires_member_credentials_and_only_requires_custom_dev_when_enabled() {
+        let member_only = ScraperConfig {
+            username: Some("member".to_string()),
+            password: Some("member-pass".to_string()),
+            ..Default::default()
+        };
+        assert!(credentials_present("screenscraper", Some(&member_only)));
+
+        let custom_missing = ScraperConfig {
+            developer_mode: true,
+            ..member_only.clone()
+        };
+        assert!(!credentials_present("screenscraper", Some(&custom_missing)));
+
+        let custom_complete = ScraperConfig {
+            client_id: Some("custom-dev".to_string()),
+            client_secret: Some("custom-pass".to_string()),
+            ..custom_missing
+        };
+        assert!(credentials_present("screenscraper", Some(&custom_complete)));
+
+        let member_missing = ScraperConfig {
+            developer_mode: true,
+            client_id: Some("custom-dev".to_string()),
+            client_secret: Some("custom-pass".to_string()),
+            ..Default::default()
+        };
+        assert!(!credentials_present("screenscraper", Some(&member_missing)));
     }
 
     #[test]

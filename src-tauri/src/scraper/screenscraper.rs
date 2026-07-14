@@ -10,9 +10,37 @@ use reqwest::Client;
 use serde::Deserialize;
 
 const PROVIDER_ID: &str = "screenscraper";
+const SOFTNAME: &str = "ModernRetroRomManager";
+
+// ScreenScraper requires application-level developer credentials on every API call.
+// Keep the bundled values out of source/binary string tables as plain text. This is
+// deliberately lightweight obfuscation: a desktop binary cannot make an embedded
+// shared secret truly private, but this avoids accidental disclosure via strings/logs.
+const BUNDLED_DEV_USERNAME: [u8; 9] = [140, 219, 228, 4, 55, 94, 82, 139, 128];
+const BUNDLED_DEV_PASSWORD: [u8; 11] = [218, 228, 194, 85, 18, 107, 81, 191, 217, 164, 133];
+
+fn decode_bundled_credential(encoded: &[u8]) -> String {
+    let mask_source = SOFTNAME.as_bytes();
+    let decoded = encoded
+        .iter()
+        .enumerate()
+        .map(|(index, byte)| {
+            let mask = 0xA7u8.wrapping_add((index as u8).wrapping_mul(31))
+                ^ mask_source[index % mask_source.len()];
+            byte ^ mask
+        })
+        .collect();
+    String::from_utf8(decoded).expect("bundled ScreenScraper credentials must be UTF-8")
+}
+
+pub(crate) fn bundled_developer_credentials() -> (String, String) {
+    (
+        decode_bundled_credential(&BUNDLED_DEV_USERNAME),
+        decode_bundled_credential(&BUNDLED_DEV_PASSWORD),
+    )
+}
 
 pub struct ScreenScraperClient {
-    developer_mode: bool,
     ssid: String,
     sspassword: String,
     devid: String,
@@ -24,7 +52,6 @@ pub struct ScreenScraperClient {
 
 impl ScreenScraperClient {
     pub fn new(
-        developer_mode: bool,
         ssid: String,
         sspassword: String,
         devid: String,
@@ -33,12 +60,11 @@ impl ScreenScraperClient {
         threads: u32,
     ) -> Self {
         Self {
-            developer_mode,
             ssid,
             sspassword,
             devid,
             devpassword,
-            softname: "ModernRetroRomManager".to_string(),
+            softname: SOFTNAME.to_string(),
             client: Client::new(),
             limiter: ProviderRateLimiter::per_second(rate_limit, threads),
         }
@@ -64,14 +90,13 @@ impl ScreenScraperClient {
             "https://api.screenscraper.fr/api2/{}.php?output=json",
             endpoint
         );
-        if self.developer_mode {
-            url.push_str(&format!(
-                "&devid={}&devpassword={}&softname={}",
-                urlencoding::encode(&self.devid),
-                urlencoding::encode(&self.devpassword),
-                urlencoding::encode(&self.softname)
-            ));
-        } else {
+        url.push_str(&format!(
+            "&devid={}&devpassword={}&softname={}",
+            urlencoding::encode(&self.devid),
+            urlencoding::encode(&self.devpassword),
+            urlencoding::encode(&self.softname)
+        ));
+        if !self.ssid.trim().is_empty() && !self.sspassword.trim().is_empty() {
             url.push_str(&format!(
                 "&ssid={}&sspassword={}",
                 urlencoding::encode(&self.ssid),
@@ -156,12 +181,18 @@ impl ScreenScraperClient {
     async fn fetch_game_info(&self, params: Vec<(&str, String)>) -> Result<Option<SSGame>, String> {
         let _permit = self.limiter.acquire().await;
         let url = self.build_url("jeuInfos", params);
-        let resp = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
+        let resp = self.client.get(&url).send().await.map_err(|error| {
+            let kind = if error.is_timeout() {
+                "请求超时"
+            } else if error.is_connect() {
+                "连接失败"
+            } else {
+                "请求失败"
+            };
+            // reqwest errors may include the full request URL. Never surface it
+            // because ScreenScraper credentials are query parameters.
+            format!("ScreenScraper {kind}")
+        })?;
 
         if resp.status() == 404 || resp.status() == 430 {
             return Ok(None);
@@ -181,6 +212,39 @@ impl ScreenScraperClient {
         let ss_resp: SSResponse = serde_json::from_str(&body).map_err(|e| e.to_string())?;
 
         Ok(ss_resp.response.and_then(|r| r.jeu))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_credentials_decode_to_expected_shape() {
+        let (username, password) = bundled_developer_credentials();
+        assert_eq!(username.len(), BUNDLED_DEV_USERNAME.len());
+        assert_eq!(password.len(), BUNDLED_DEV_PASSWORD.len());
+        assert!(username.chars().all(|value| value.is_ascii_alphanumeric()));
+        assert!(password.chars().all(|value| value.is_ascii_alphanumeric()));
+    }
+
+    #[test]
+    fn api_url_combines_application_and_member_credentials() {
+        let client = ScreenScraperClient::new(
+            "member user".into(),
+            "member pass".into(),
+            "developer user".into(),
+            "developer pass".into(),
+            1,
+            1,
+        );
+
+        let url = client.build_url("jeuInfos", vec![("romnom", "Test Game".into())]);
+        assert!(url.contains("devid=developer%20user"));
+        assert!(url.contains("devpassword=developer%20pass"));
+        assert!(url.contains("softname=ModernRetroRomManager"));
+        assert!(url.contains("ssid=member%20user"));
+        assert!(url.contains("sspassword=member%20pass"));
     }
 }
 

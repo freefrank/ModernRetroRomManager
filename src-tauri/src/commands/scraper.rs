@@ -223,6 +223,11 @@ pub async fn configure_scraper_provider(
                 .client_secret
                 .or(current_config.client_secret)
                 .unwrap_or_default();
+            if username.trim().is_empty() || password.trim().is_empty() {
+                return Err("请输入 ScreenScraper 用户名和密码".to_string());
+            }
+            new_config.username = Some(username);
+            new_config.password = Some(password);
             if developer_mode {
                 if client_id.trim().is_empty() || client_secret.trim().is_empty() {
                     return Err(
@@ -232,11 +237,13 @@ pub async fn configure_scraper_provider(
                 new_config.client_id = Some(client_id);
                 new_config.client_secret = Some(client_secret);
             } else {
-                if username.trim().is_empty() || password.trim().is_empty() {
-                    return Err("请输入 ScreenScraper 用户名和密码".to_string());
+                // Keep an existing custom pair so toggling the override off and on again
+                // does not force the user to re-enter it. Bundled credentials are never
+                // persisted to settings.json.
+                if !client_id.trim().is_empty() && !client_secret.trim().is_empty() {
+                    new_config.client_id = Some(client_id);
+                    new_config.client_secret = Some(client_secret);
                 }
-                new_config.username = Some(username);
-                new_config.password = Some(password);
             }
             new_config.developer_mode = developer_mode;
         }
