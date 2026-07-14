@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { Check, Folder, HardDrive, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
-import i18n, { languages } from "@/i18n";
+import { languages } from "@/i18n";
 import { useAppStore } from "@/stores/appStore";
 import { useRomStore } from "@/stores/romStore";
 import type { ViewMode } from "@/types";
@@ -117,7 +117,6 @@ export default function GeneralSection() {
   // 旧存储值 "zh" 兼容为 "zh-CN" 展示
   const languageValue = language === "zh" ? "zh-CN" : language;
   const handleLanguageChange = (code: string) => {
-    i18n.changeLanguage(code);
     setLanguage(code);
   };
 

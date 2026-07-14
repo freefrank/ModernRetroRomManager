@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { isSafeAssetPath, sanitizeCustomCss } from "./appStore";
+import i18n from "@/i18n";
+import {
+  applyInterfaceLanguage,
+  isSafeAssetPath,
+  normalizeInterfaceLanguage,
+  sanitizeCustomCss,
+} from "./appStore";
 
 const mockConvert = (p: string) => `converted://${p}`;
 const DIR = "C:/config/themes/demo";
@@ -50,5 +56,21 @@ describe("sanitizeCustomCss", () => {
       " .a{color:var(--text-primary)}",
     );
     expect(sanitizeCustomCss('.a{}\n@import "http://x.com/a.css"', DIR, mockConvert)).toBe(".a{}\n");
+  });
+});
+
+describe("interface language", () => {
+  it("兼容旧中文值并拒绝未知语言", () => {
+    expect(normalizeInterfaceLanguage("zh")).toBe("zh-CN");
+    expect(normalizeInterfaceLanguage("zh-CN")).toBe("zh-CN");
+    expect(normalizeInterfaceLanguage("unknown")).toBe("zh-CN");
+    expect(normalizeInterfaceLanguage("en")).toBe("en");
+  });
+
+  it("初始化时把保存语言应用到 i18next", async () => {
+    await applyInterfaceLanguage("en");
+    expect(i18n.resolvedLanguage).toBe("en");
+    await applyInterfaceLanguage("zh");
+    expect(i18n.resolvedLanguage).toBe("zh-CN");
   });
 });

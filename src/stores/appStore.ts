@@ -6,6 +6,17 @@ import { DEFAULT_THEME_ID, resolveTheme } from "@/theme/registry";
 import { applyTheme } from "@/theme/apply";
 import { validateManifest } from "@/theme/validate";
 import { isTauri, themeApi } from "@/lib/api";
+import i18n from "@/i18n";
+
+export function normalizeInterfaceLanguage(language: string | undefined): "zh-CN" | "en" {
+  return language === "en" ? "en" : "zh-CN";
+}
+
+export async function applyInterfaceLanguage(language: string | undefined): Promise<"zh-CN" | "en"> {
+  const normalized = normalizeInterfaceLanguage(language);
+  await i18n.changeLanguage(normalized);
+  return normalized;
+}
 
 // 保存设置到后端
 const saveSettingToBackend = async (key: string, value: string) => {
@@ -185,7 +196,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
         ? settings.motion_level
         : defaultMotionLevel();
       const viewMode = (settings.view_mode || "grid") as ViewMode;
-      const language = settings.language || "zh";
+      const language = await applyInterfaceLanguage(settings.language);
 
       applyTheme(theme, motion);
       set({
@@ -265,8 +276,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
   // 语言
   language: "zh",
   setLanguage: (lang) => {
-    set({ language: lang });
-    saveSettingToBackend("language", lang);
+    const language = normalizeInterfaceLanguage(lang);
+    void i18n.changeLanguage(language);
+    set({ language });
+    saveSettingToBackend("language", language);
   },
 
   // 排序
