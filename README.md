@@ -46,7 +46,7 @@ AI metadata translation is configured separately with a custom endpoint, API key
 
 Requirements:
 
-- Node.js 20 or later
+- The latest Node.js LTS
 - pnpm
 - Latest stable Rust toolchain
 - Tauri system prerequisites for your operating system
@@ -64,7 +64,9 @@ Create a production build:
 pnpm tauri build
 ```
 
-Pushing a `v*` tag triggers CI builds for a Windows x64 portable ZIP and a Linux x86_64 AppImage, then publishes both files to the matching GitHub Release.
+Pushing a `v*` tag triggers CI builds for a self-contained Windows x64 portable EXE, a Windows installer, and a Linux x86_64 AppImage. The matching GitHub Release is published automatically rather than left as a draft.
+
+At runtime, an existing `config` folder beside the executable has the highest priority for portable use. If it does not exist, MRRM stores configuration under the current user's application-data directory. Bundled lookup data is embedded in the executable and extracted into the selected configuration directory when needed.
 
 The versioning, changelog, and portable release workflow is documented in [docs/release-process.md](./docs/release-process.md). Run `pnpm release:check` before publishing a release.
 

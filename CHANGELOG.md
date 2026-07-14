@@ -1,218 +1,387 @@
-# 更新日志
+# Changelog / 更新日志
 
-## 0.7.2 (2026-07-14)
+All notable changes to this project are documented here. This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-### ROM 卡片
-- 移除封面视图和卡片视图中无实际运行逻辑的播放按钮，点击 ROM 条目统一打开详情面板
+本文件记录项目的重要变更，遵循 Keep a Changelog，并使用语义化版本。
 
+## [Unreleased]
 
-## 0.7.1 (2026-07-14)
+## [0.7.3] - 2026-07-14
 
-### 桌面交互
-- 在应用根层接管右键事件，不再显示 WebView 默认浏览器菜单，并为后续业务右键菜单保留统一入口
+### English
 
+#### Added
 
-## 0.7.0 (2026-07-14)
+- Added a Windows NSIS installer alongside the self-contained portable EXE; Linux continues to ship as AppImage.
 
-### AI Metadata 翻译
-- 增加自定义 OpenAI-compatible Chat Completions 配置，支持端点、API Key、模型和目标语言；API Key 仅保存在本机且不回显到界面
-- ROM 详情支持单项翻译，平台页支持翻译已选游戏或整个平台，并在批量调用前提示数量及可能产生的 API 费用
-- 翻译结果保存为预览 metadata，保留发行日期、玩家数和评分等非语言字段，确认后可沿用现有导出流程
-- 提示词结合游戏平台、ROM 文件名和现有 metadata 消歧，限制模型不得执行数据中的指令、杜撰资料或生硬翻译专有名词
-- 增加超时、鉴权、限流、无效响应和 JSON 解析错误处理
+#### Changed
 
+- An existing `config` folder beside the executable now has first priority; otherwise configuration falls back to the current user's application-data directory.
+- Bundled ROM matching data and system logos are embedded in the application and extracted into the selected configuration directory when required.
+- Release CI now builds with the latest Node.js LTS and publishes non-draft GitHub Releases containing only the current version's bilingual notes.
+- Converted the complete changelog to Keep a Changelog with English and Simplified Chinese sections for every version.
 
-## 0.6.3 (2026-07-14)
+### 简体中文
 
-### Library 设置导航
-- “添加 Library”入口直接切换到常规设置并定位 Library 管理区域，同时打开添加目录对话框
-- 设置页选项卡改由 URL 参数驱动，修复页面已挂载时跳转参数未能切换目标选项卡的问题
+#### 新增
 
+- 在单文件 Windows portable EXE 之外增加 NSIS 安装程序；Linux 继续使用 AppImage。
 
-## 0.6.2 (2026-07-14)
+#### 变更
 
-### ScreenScraper 稳定性
-- 完整实测账号鉴权、名称搜索和游戏详情接口，增加可重复运行的低请求量 Live smoke test
-- 兼容字符串、数字、布尔、对象、数组及空值等多形态响应；单条异常数据不再导致整个 Provider 失败
-- 增加连接与请求超时，并明确处理鉴权、客户端版本、限流和每日额度错误；错误日志不再回显敏感请求 URL
+- 程序旁已存在的 `config` 文件夹现在拥有最高读取优先级；否则回退到当前用户的 AppData 应用数据目录。
+- ROM 匹配数据和系统 Logo 改为嵌入应用，并在需要时释放到所选配置目录。
+- Release CI 改用最新 Node.js LTS，并直接正式发布 GitHub Release，Release notes 仅包含当前版本的中英文内容。
+- 将完整更新日志转换为 Keep a Changelog，每个版本均包含英文和简体中文部分。
 
-### ROM 封面显示
-- EmulationStation 元数据优先读取真实 `boxart`，并将 `marquee` 作为 Logo 使用；临时抓取元数据缺图时可回退原库资产
-- 横向混合图或截图在 ROM 卡片中完整显示，避免按竖版封面比例严重裁切
+## [0.7.2] - 2026-07-14
 
+### English
 
-## 0.6.1 (2026-07-14)
+#### Removed
 
-### 抓取与导出
-- 批量抓取增加“全量重新抓取”，可忽略已有元数据、资产和搜索缓存，重新请求 Provider 并刷新本地缓存
-- 批量抓取按设置中的 Provider 优先级显示；单个 Provider 失败时继续尝试其他来源，避免整条任务中断
-- 修复 ScreenScraper 凭据保存、连接测试及部分结果缺少游戏 ID 时的解析失败
-- 导出支持选择当前 Library 或整个 Library，并统一处理 Windows 路径格式
+- Removed non-functional play buttons from ROM cover and card views; selecting a ROM now consistently opens its detail panel.
 
-### 界面与文档
-- 修复 Library 管理按钮布局，避免文字换行和操作区域错位
-- Retro 主题内置 Zpix 字体，并统一用于中英文界面
-- 增加 ScreenScraper WebAPI 离线速查文档
-- 增加 GitHub Actions 发布流程，自动构建 Windows x64 portable 与 Linux x86_64 AppImage，并随 tag 发布到 GitHub Release
+### 简体中文
 
+#### 移除
 
-## 0.6.0 (2026-07-13)
+- 移除封面视图和卡片视图中无实际运行逻辑的播放按钮，点击 ROM 条目统一打开详情面板。
 
-### 多游戏库
-- 将每个扫描目录改造为独立 Library，支持稳定 ID、可编辑名称和当前激活状态；旧版目录配置会自动迁移并默认激活第一项
-- 设置页支持点击切换 Library、原地重命名、删除以及对指定 Library 执行全量扫描
-- ROM 侧栏顶部增加 Library 下拉选择器，系统货架标题和平台页包屑同步显示当前 Library 名称
-- 每个 Library 使用独立持久 ROM 索引，切换回已扫描的 Library 时可以复用索引
+## [0.7.1] - 2026-07-14
 
-### 稳定性与文档
-- Library 切换时清空旧平台、ROM 和选择状态，避免不同游戏库中同名平台的数据短暂混合
-- 增加多 Library 状态切换测试，并更新中英文 README 与桌面命令 API 文档
+### English
 
+#### Changed
 
-## 0.5.1 (2026-07-13)
+- Intercepted context-menu events at the application root to suppress the WebView browser menu and reserve a unified entry point for future app menus.
 
-### ScreenScraper 鉴权
-- 内置并轻量混淆应用级 Developer Username/Password，普通用户只需配置自己的 ScreenScraper 会员用户名和密码
-- 按 WebAPI v2 要求同时发送应用开发者凭据和会员凭据，修复仅填写普通会员账号时鉴权不生效的问题
-- 移除自定义 Developer Username/Password 的设置入口和前后端配置字段，统一使用 MRRM 内置应用凭据
-- 网络请求失败时不再输出可能包含鉴权参数的完整 URL，避免开发者和会员凭据进入日志
+### 简体中文
 
-### 文档
-- 更新英文、简体中文 README 和 API 文档，说明 ScreenScraper 内置应用鉴权及用户配置方式
+#### 变更
 
+- 在应用根层接管右键事件，不再显示 WebView 默认浏览器菜单，并为后续业务右键菜单保留统一入口。
 
-## 0.5.0 (2026-07-13)
+## [0.7.0] - 2026-07-14
 
-### 主要更新
-- 建立持久化 ROM 库索引，启动时优先加载系统摘要，并按需加载单个平台 ROM，显著缩短大型游戏库的可交互等待时间
-- 已有游戏库启动后自动执行增量扫描；首次添加游戏库执行全量扫描，设置页提供手动全量刷新入口
-- 扫描过程显示当前系统、完成数量和进度，根目录下的各 Console System 独立校验和更新
-- 增加常驻底部 Console，支持 DEBUG、INFO、WARN、ERROR 分级筛选，记录扫描、抓取和错误信息；可在设置中关闭
-- Console 右侧显示应用版本，降低展开高度，减少对 ROM 列表空间的占用
+### English
 
-### 抓取、缓存与导出
-- 抓取结果和资源建立跨 ROM 库持久缓存，命中后无需再次请求 Provider
-- 完成 EmulationStation 与 Pegasus 元数据和媒体资源导出
-- Scraper 配置和日志显示各 Provider 的匹配、选中与失败统计，便于诊断 TheGamesDB 等来源
-- 修复 Pegasus 含空格资源路径被截断的问题，并可从本地媒体目录恢复旧缓存封面
+#### Added
 
-### 性能与稳定性
-- 修复根目录扫描重复生成虚假系统的问题，14,366 个 ROM 的完整扫描由约 15.6 秒降至约 3 秒，无变化增量校验约 1.1 秒
-- 媒体索引改为单次构建，临时元数据查找由逐项遍历改为哈希索引
-- 完成前后端功能与 UI 接线审计，补齐扫描、缓存、导出和日志链路
+- Added configurable OpenAI-compatible metadata translation with endpoint, API key, model, and target-language settings.
+- Added single-ROM and batch translation with cost warnings, progress feedback, and metadata previews.
 
+#### Changed
 
-## 0.4.6 (2026-07-13)
+- Translation prompts now include platform, ROM filename, and existing metadata for disambiguation while preserving non-language fields and preventing instruction injection or fabricated facts.
 
-### 新增功能
-- 批量抓取支持同时选择多个 Provider，并严格限定搜索、元数据和资产来源
-- 批量与单项抓取默认每类资源选取一份，批量任务至少保存封面和一项其他美术资源
-- 搜索结果增加本地缓存，重复打开 ROM 时直接恢复，手动搜索可强制刷新
-- 平台库增加全选当前结果入口
+#### Fixed
 
-### 优化与修复
-- 资产数量参与重复候选置信度排序，优先选择资源更完整的条目
-- 批量抓取跳过已有元数据和资产的项目，缺少任一部分时继续补全
-- 修复批量抓取停止按钮；停止后不再启动新项目，已开始项目仍完整保存
-- 统一各平台抓取名称解析，修复 GBA 续作名称转换与编号评分
-- 修复启动流程绕过 Store 导致首次统计错误，并增加前后端命令与 UI 按钮接线测试
-- 移除尚未实现的“运行游戏”按钮和未使用的空 Action
+- Added explicit timeout, authentication, rate-limit, malformed-response, and JSON parsing error handling.
 
-## 0.4.5 (2026-07-13)
+### 简体中文
 
-### 新增功能
-- ROM 平台页增加整个平台批量刮削入口，系统货架增加整个 ROM 库批量刮削入口
-- 全库批量任务为每个 ROM 独立传递平台和目录，支持跨平台统一进度
-- 默认 README 改为英文，并提供独立简体中文版本
+#### 新增
 
-### 优化与修复
-- 抓取候选缺少 Boxart 时统一降低置信度，优先显示资源完整的结果
-- 复用已经下载的资产候选缓存，避免应用资源时重复下载
-- 修复已下载 Boxart 未显示在 ROM 库的问题，并兼容恢复旧临时封面
+- 增加可配置端点、API Key、模型和目标语言的 OpenAI-compatible Metadata 翻译。
+- ROM 详情支持单项翻译，平台页支持批量翻译，并提供费用提示、进度反馈和 Metadata 预览。
 
-## 0.4.4 (2026-07-13)
+#### 变更
 
-### 优化与修复
-- 提高 SteamGridDB、TheGamesDB 等来源的平台匹配权重，平台冲突结果自动降权
-- 统一过滤空链接、无效链接和无可用图片的资产候选
-- GBA 单项抓取自动读取 ZIP/ROM Header，以 Game Code 解析标准英文搜索名
-- 修复抓取结果写入错误临时元数据文件，应用后立即刷新封面和元数据
-- Provider 搜索失败时记录具体来源和错误，避免静默丢失结果
+- 翻译提示词结合平台、ROM 文件名和现有 Metadata 消歧，保留非语言字段，并限制指令注入和资料杜撰。
 
-## 0.3.2 (2026-07-12)
+#### 修复
 
-### 修复
-- 复古主题滚动掉帧根治:自绘滚动条 thumb 使用不透明主题色会使 Chromium/WebView2 将滚动降级为主线程全窗口重绘(复古主题 ~80fps → 修复后满帧 144fps,经逐变量消融实测定位);thumb 颜色统一混入 1% 透明度,对任意导入主题包免疫
-- 拖拽遮罩隐藏时其图标动画仍常驻运行的问题
+- 增加超时、鉴权、限流、无效响应和 JSON 解析错误处理。
 
-## 0.3.1 (2026-07-12)
+## [0.6.3] - 2026-07-14
 
-### 修复
-- 移除扫描线叠加层的常驻呼吸动画:全屏图层逐帧合成导致复古/赛博主题帧率显著低于其他主题,改为纯静态纹理并加渲染隔离
+### English
 
-## 0.3.0 (2026-07-12)
+#### Fixed
 
-### 前端全面重构
+- “Add Library” now opens General Settings, focuses the Library section, and opens the directory picker.
+- Settings tabs are driven by URL parameters so navigation also works when the page is already mounted.
 
-- **主题包体系**:主题升级为可导入的 `.rrtheme` 压缩包(清单 + 自定义 CSS + 资源),内置复古游戏厅(默认)/现代极简/赛博霓虹/紫罗兰四套主题;27 项设计令牌(颜色/字体/形状/质感/动效)+ 10 种光效动效目录(扫描线、CRT 闪烁、硬阴影位移、霓虹呼吸等);动效三档开关(尊重系统减弱动效偏好);主题包开发规范见 `docs/theme-pack-guide.md`
-- **界面重设计**:侧边栏重构为 48px 图标 rail + 200px 上下文面板(系统树带搜索过滤,面板可收起);ROM 库改为「系统货架 + 单系统页」双层结构,货架卡片显示真实系统 logo;统一 UI 基件库(按钮/弹窗/输入/Toast 等 12 件,全部消费主题令牌);像素字体本地打包,移除 Google Fonts CDN 依赖
-- **重大修复**:全局 CSS reset 未分层导致全部间距工具类失效(界面拥挤的根因);生产构建缺失 custom-protocol feature 导致白屏;版本号显示为空;Scraper 配置开关不落盘、已存凭证启动时不恢复;启用状态保存后即时生效并接入置信度评分排序
-- **体验完善**:列表视图显示真实文件大小与修改日期;无封面时显示游戏名;状态栏显示真实统计;未实现的导入/导出入口下线并给出指引;原生 alert 全部迁移为应用内 Toast;全部 UI 文本简体中文化
-- **工程质量**:引入 ESLint 9 + Vitest 门禁(前端 48 项测试);Rust 侧 fmt/clippy/test 全量清零(38 项测试);移除 framer-motion 等死代码
+### 简体中文
 
-### 新增功能
-- **GBA Header 名称验证工具**
-  - 支持直接读取 ZIP 内 GBA ROM 的内部标题、Game Code、版本和 Header 校验信息
-  - 支持结合 Libretro/No-Intro DAT 输出当前区域标准名与英文区域候选
-  - 对同一 Serial 的不同游戏映射进行冲突标记，避免直接采用错误结果
-  - 桌面端中文 ROM 工具优先读取 ZIP/ROM Header，并使用内置全球 GBA 发行数据生成抓取名
-- **中文ROM工具双数据源匹配**
-  - 集成 `jy6d-dz` 作为 `cn_repo` 的补充数据源
-  - 自动选择置信度更高的匹配结果
-  - 新增 `jy6d-dz` CSV 读取模块
-  - 系统映射新增 `jy6d_csv_name` 字段支持
+#### 修复
 
-### 优化与修复
-- **中文 ROM 抓取链路**
-  - 单个抓取优先使用中文 ROM 工具匹配出的英文名
-  - 批量抓取为每个 ROM 传递英文查询名，缺失时回退到展示名或文件名
-- **中文ROM工具**
-  - 扫描结果按 `file` 去重，优先保留更完整条目
-  - 统一游戏名提取逻辑为 `extract_game_name`
-  - 匹配时优先使用已生成的 `name` 字段
-  - 匹配英文名时直接读取临时 metadata，减少重复扫描
-  - 修复 metadata 导出时 `file` 字段缺少子文件夹路径的问题
-  - 同步临时 Pegasus 元数据并落盘英文名（`x-mrrm-eng`）
-- **Pegasus 导出**
-  - 统一导出逻辑到 `scraper/pegasus.rs`
-  - 新增 `PegasusExportOptions` 与合并写入能力
-- **交互体验**
-  - 移除中文工具中冗余的确认弹窗和完成提示
+- “添加 Library”现在会打开常规设置、定位 Library 管理区域并打开目录选择器。
+- 设置选项卡改由 URL 参数驱动，修复页面已挂载时无法切换目标选项卡的问题。
 
-## 0.2.0 - 2026-01-18
+## [0.6.2] - 2026-07-14
 
-### 新增功能
-- **中文ROM工具增强**
-  - 置信度可视化显示：背景色渐变（低分红色→高分透明）
-  - 英文名点击编辑功能（Enter确认/ESC取消/失焦自动保存）
-  - 编辑时自动选中全部文字，方便快速替换
-  - 手动编辑实时保存到临时metadata
-  - 用户编辑的英文名自动设置为满分（100分）
-  - 自动去除英文名中的区域标签（如 (USA)、[Europe]）
-  - 按置信度排序：点击列头切换（降序→升序→取消）
-  - 表格列宽拖拽调整：鼠标拖拽列头分隔线调整宽度
+### English
 
-### 修复
-- 修复排序后编辑英文名不保存的bug（索引不匹配问题）
-- 修复 `clean_english_name` 函数类型推断错误
+#### Fixed
 
-## 0.1.0 - 2026-01-17
+- Hardened ScreenScraper authentication, search, and game-detail parsing against polymorphic and malformed fields without failing the whole provider.
+- Added connection/request timeouts and safe handling for authentication, client-version, rate-limit, and daily-quota errors.
+- EmulationStation metadata now prefers real box art, uses marquee images as logos, and avoids severe cropping for landscape artwork.
 
-### 变更
-- 移除 SQLite/Diesel 依赖，改为基于元数据文件的目录扫描
-- 导入/导出流程标记为架构迁移期间暂不可用
-- 设置页展示配置目录与媒体目录
+### 简体中文
 
-### 修复
-- 前端 ROM 列表字段与后端返回结构对齐
-- i18n 文案与目录输入提示统一
+#### 修复
+
+- 强化 ScreenScraper 鉴权、搜索和详情解析，兼容多形态及异常字段，单条坏数据不再拖垮整个 Provider。
+- 增加连接与请求超时，安全处理鉴权、客户端版本、限流和每日额度错误。
+- EmulationStation Metadata 优先使用真实 Boxart，以 Marquee 作为 Logo，并避免横向美术资源被严重裁切。
+
+## [0.6.1] - 2026-07-14
+
+### English
+
+#### Added
+
+- Added full re-scrape mode, current/whole Library export, provider-priority display, Retro Zpix font, offline ScreenScraper notes, and cross-platform build CI.
+
+#### Fixed
+
+- Fixed ScreenScraper credential persistence and result parsing, normalized Windows export paths, and allowed remaining providers to continue after one provider fails.
+
+### 简体中文
+
+#### 新增
+
+- 增加全量重新抓取、当前或整个 Library 导出、Provider 优先级显示、Retro Zpix 字体、ScreenScraper 离线文档和跨平台构建 CI。
+
+#### 修复
+
+- 修复 ScreenScraper 凭据保存与结果解析，统一 Windows 导出路径，并在单个 Provider 失败后继续尝试其他来源。
+
+## [0.6.0] - 2026-07-13
+
+### English
+
+#### Added
+
+- Added multiple independently named and persisted Libraries, active-Library switching, per-Library full scans, and a Library selector in the ROM sidebar.
+
+#### Fixed
+
+- Reset platform, ROM, and selection state when switching Libraries to prevent cross-library data mixing.
+
+### 简体中文
+
+#### 新增
+
+- 增加可独立命名和持久化的多 Library、激活 Library 切换、单库全量扫描及 ROM 侧栏 Library 选择器。
+
+#### 修复
+
+- 切换 Library 时清空平台、ROM 和选择状态，避免不同游戏库的数据混合。
+
+## [0.5.1] - 2026-07-13
+
+### English
+
+#### Changed
+
+- Embedded the application-level ScreenScraper developer credentials so users only configure their member username and password.
+- Removed custom developer credential fields and prevented sensitive query parameters from being logged.
+
+### 简体中文
+
+#### 变更
+
+- 内置应用级 ScreenScraper Developer 凭据，用户只需配置会员用户名和密码。
+- 移除自定义 Developer 凭据字段，并防止敏感查询参数进入日志。
+
+## [0.5.0] - 2026-07-13
+
+### English
+
+#### Added
+
+- Added persistent ROM indexes, incremental/full scans with progress, a level-filtered console, cross-Library scrape caches, EmulationStation/Pegasus export, and provider diagnostics.
+
+#### Changed
+
+- Optimized a 14,366-ROM full scan from about 15.6 seconds to about 3 seconds and an unchanged incremental scan to about 1.1 seconds.
+
+### 简体中文
+
+#### 新增
+
+- 增加持久 ROM 索引、带进度的增量/全量扫描、分级 Console、跨 Library 抓取缓存、EmulationStation/Pegasus 导出和 Provider 诊断。
+
+#### 变更
+
+- 14,366 个 ROM 的全量扫描由约 15.6 秒优化到约 3 秒，无变化增量扫描约 1.1 秒。
+
+## [0.4.6] - 2026-07-13
+
+### English
+
+#### Added
+
+- Added multi-provider batch scraping, default assets per media type, local search-result caching, and select-all for the current platform.
+
+#### Fixed
+
+- Ranked duplicate candidates by asset completeness, skipped complete ROMs, fixed cancellation persistence, improved sequel matching, and removed unimplemented run-game actions.
+
+### 简体中文
+
+#### 新增
+
+- 增加多 Provider 批量抓取、各资源类型默认资产、本地搜索结果缓存和平台全选。
+
+#### 修复
+
+- 按资产完整度排列重复候选，跳过完整 ROM，修复停止后的结果保存和续作匹配，并移除未实现的运行游戏入口。
+
+## [0.4.5] - 2026-07-13
+
+### English
+
+#### Added
+
+- Added platform-wide and whole-library scraping, with the English README as the default and a linked Simplified Chinese edition.
+
+#### Fixed
+
+- Lowered confidence for candidates without box art, reused downloaded assets, and restored box art display in the ROM library.
+
+### 简体中文
+
+#### 新增
+
+- 增加整平台和整个 ROM 库抓取；默认展示英文 README，并链接简体中文版。
+
+#### 修复
+
+- 降低无 Boxart 候选的置信度，复用已下载资产，并修复 ROM 库封面显示。
+
+## [0.4.4] - 2026-07-13
+
+### English
+
+#### Fixed
+
+- Improved platform-confidence weighting, filtered empty assets, used GBA headers/Game Codes for English queries, and corrected applied metadata/asset paths.
+
+### 简体中文
+
+#### 修复
+
+- 改进平台置信度权重，过滤空资产，使用 GBA Header/Game Code 生成英文查询，并修正应用后的 Metadata 与资产路径。
+
+## [0.3.2] - 2026-07-12
+
+### English
+
+#### Fixed
+
+- Fixed Retro-theme scrolling jank caused by opaque custom scrollbar thumbs forcing Chromium/WebView2 main-thread repainting.
+- Stopped a hidden drag-overlay icon animation from running continuously.
+
+### 简体中文
+
+#### 修复
+
+- 修复不透明自绘滚动条导致 Chromium/WebView2 主线程重绘引起的 Retro 主题滚动掉帧。
+- 修复隐藏拖拽遮罩的图标动画持续运行问题。
+
+## [0.3.1] - 2026-07-12
+
+### English
+
+#### Fixed
+
+- Replaced the full-screen animated scanline overlay with an isolated static texture to eliminate Retro/Cyber theme frame drops.
+
+### 简体中文
+
+#### 修复
+
+- 将全屏动态扫描线改为隔离的静态纹理，消除 Retro/Cyber 主题掉帧。
+
+## [0.3.0] - 2026-07-12
+
+### English
+
+#### Added
+
+- Introduced importable theme packs, four built-in themes, a redesigned system-shelf/library UI, a reusable UI component set, and local pixel fonts.
+- Added GBA header validation and dual-source Chinese ROM matching with editable English names and Pegasus metadata support.
+
+#### Fixed
+
+- Fixed production white screens, broken spacing utilities, missing versions, scraper setting persistence, and Chinese-ROM scrape/export paths.
+
+### 简体中文
+
+#### 新增
+
+- 引入可导入主题包、四套内置主题、系统货架与 ROM 库新界面、统一 UI 组件和本地像素字体。
+- 增加 GBA Header 验证、双数据源中文 ROM 匹配、英文名编辑和 Pegasus Metadata 支持。
+
+#### 修复
+
+- 修复生产白屏、间距工具失效、版本号缺失、Scraper 设置不保存以及中文 ROM 抓取/导出路径问题。
+
+## [0.2.0] - 2026-01-18
+
+### English
+
+#### Added
+
+- Added confidence visualization, inline English-name editing, region-tag cleanup, confidence sorting, and resizable columns to the Chinese ROM tool.
+
+#### Fixed
+
+- Fixed saving edited English names after sorting and a type-inference error in name cleanup.
+
+### 简体中文
+
+#### 新增
+
+- 中文 ROM 工具增加置信度可视化、英文名行内编辑、区域标签清理、置信度排序和可调整列宽。
+
+#### 修复
+
+- 修复排序后英文名编辑无法保存及名称清理类型推断错误。
+
+## [0.1.0] - 2026-01-17
+
+### English
+
+#### Changed
+
+- Replaced SQLite/Diesel with metadata-file directory scanning and temporarily disabled legacy import/export during migration.
+
+#### Fixed
+
+- Aligned frontend ROM fields with backend responses and normalized i18n/directory prompts.
+
+### 简体中文
+
+#### 变更
+
+- 移除 SQLite/Diesel，改用 Metadata 文件目录扫描，并在迁移期间暂时停用旧导入/导出流程。
+
+#### 修复
+
+- 对齐前端 ROM 字段与后端返回结构，并统一 i18n 和目录提示。
+
+[Unreleased]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.2...v0.7.3
+[0.7.2]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.6.3...v0.7.0
+[0.6.3]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.4.6...v0.5.0
+[0.4.6]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.4.4...v0.4.5
+[0.4.4]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.3.2...v0.4.4
+[0.3.2]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/freefrank/ModernRetroRomManager/releases/tag/v0.1.0

@@ -859,6 +859,21 @@ pub fn get_system(id: String) -> Result<Option<SystemInfo>, String> {
     Ok(systems.into_iter().find(|s| s.id == id))
 }
 
+#[tauri::command]
+pub fn get_system_logo_path(file_name: String) -> Result<String, String> {
+    let safe_name = std::path::Path::new(&file_name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "无效的系统 Logo 文件名".to_string())?;
+    let path = crate::config::get_embedded_resource_dir()
+        .join("logo")
+        .join(safe_name);
+    if !path.is_file() {
+        return Err("未找到系统 Logo".to_string());
+    }
+    Ok(path.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

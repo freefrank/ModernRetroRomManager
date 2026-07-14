@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod embedded_resources;
 mod ps3;
 pub mod rom_archive;
 mod rom_index;
@@ -20,6 +21,10 @@ pub fn run() {
     println!("[DEBUG] Config directory: {:?}", config::get_config_dir());
     println!("[DEBUG] Settings file: {:?}", config::get_settings_path());
 
+    if let Err(error) = embedded_resources::ensure_embedded_resources() {
+        eprintln!("[ERROR] {error}");
+    }
+
     // 加载应用配置(如果不存在则创建默认配置)。
     // 必须先于 ScraperState 初始化,否则已保存的 Scraper 凭证无法在启动时恢复。
     settings::load_settings().expect("Failed to load settings");
@@ -32,6 +37,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::system::get_systems,
             commands::system::get_system,
+            commands::system::get_system_logo_path,
             commands::rom::get_roms,
             commands::rom::get_rom_library_summary,
             commands::rom::get_library_rom_summary,

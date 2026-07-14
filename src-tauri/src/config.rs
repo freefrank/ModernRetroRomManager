@@ -12,19 +12,59 @@ fn get_exe_dir() -> PathBuf {
 }
 
 /// 获取配置目录路径
-/// 优先级: 环境变量 CONFIG_DIR > exe 所在目录 ./config/
+/// 优先级: 已存在的 exe 同目录 ./config/ > 环境变量 CONFIG_DIR > 用户 AppData/config
 pub fn get_config_dir() -> PathBuf {
     CONFIG_DIR
         .get_or_init(|| {
-            // 1. 检查环境变量
-            if let Ok(env_path) = std::env::var("CONFIG_DIR") {
-                return PathBuf::from(env_path);
-            }
-
-            // 2. 使用 exe 所在目录下的 config/
-            get_exe_dir().join("config")
+            select_config_dir(
+                &get_exe_dir(),
+                std::env::var_os("CONFIG_DIR").map(PathBuf::from),
+                &user_config_base(),
+            )
         })
         .clone()
+}
+
+fn select_config_dir(
+    exe_dir: &std::path::Path,
+    override_dir: Option<PathBuf>,
+    user_base: &std::path::Path,
+) -> PathBuf {
+    let portable = exe_dir.join("config");
+    if portable.is_dir() {
+        portable
+    } else if let Some(path) = override_dir {
+        path
+    } else {
+        user_base.join("ModernRetroRomManager").join("config")
+    }
+}
+
+fn user_config_base() -> PathBuf {
+    #[cfg(target_os = "windows")]
+    if let Some(path) = std::env::var_os("APPDATA") {
+        return PathBuf::from(path);
+    }
+    #[cfg(target_os = "macos")]
+    if let Some(home) = std::env::var_os("HOME") {
+        return PathBuf::from(home)
+            .join("Library")
+            .join("Application Support");
+    }
+    if let Some(path) = std::env::var_os("XDG_CONFIG_HOME") {
+        return PathBuf::from(path);
+    }
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|home| home.join(".config"))
+        .unwrap_or_else(|| get_exe_dir())
+}
+
+/// 单文件发行版首次启动时释放的只读内置资源目录。
+pub fn get_embedded_resource_dir() -> PathBuf {
+    get_data_dir()
+        .join("bundled-resources")
+        .join(env!("CARGO_PKG_VERSION"))
 }
 
 /// 获取媒体资产目录路径
@@ -92,5 +132,30 @@ mod tests {
     fn test_config_paths() {
         let config_dir = get_config_dir();
         assert!(config_dir.ends_with("config"));
+    }
+
+    #[test]
+    fn sidecar_config_wins_and_appdata_is_the_fallback() {
+        let root = std::env::temp_dir().join(format!("mrrm-config-{}", std::process::id()));
+        let exe = root.join("app");
+        let appdata = root.join("appdata");
+        let override_dir = root.join("override");
+        std::fs::create_dir_all(&exe).unwrap();
+
+        assert_eq!(
+            select_config_dir(&exe, None, &appdata),
+            appdata.join("ModernRetroRomManager").join("config")
+        );
+        assert_eq!(
+            select_config_dir(&exe, Some(override_dir.clone()), &appdata),
+            override_dir
+        );
+
+        std::fs::create_dir_all(exe.join("config")).unwrap();
+        assert_eq!(
+            select_config_dir(&exe, Some(root.join("ignored")), &appdata),
+            exe.join("config")
+        );
+        let _ = std::fs::remove_dir_all(root);
     }
 }

@@ -280,6 +280,11 @@ fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
         }
     }
 
+    let embedded = crate::config::get_embedded_resource_dir().join("rom-name-cn");
+    if embedded.exists() && !paths.contains(&embedded) {
+        paths.push(embedded);
+    }
+
     // 2. 用户数据目录作为后备（支持用户自行更新）
     let user_data_path = get_data_dir().join("rom-name-cn");
     if user_data_path.exists() {
@@ -305,7 +310,10 @@ fn get_jy6d_csv_path(app: &AppHandle, csv_name: &str) -> Option<PathBuf> {
             return Some(csv_path);
         }
     }
-    None
+    let embedded = crate::config::get_embedded_resource_dir()
+        .join("cn-mapping")
+        .join(csv_name);
+    embedded.is_file().then_some(embedded)
 }
 
 #[derive(Debug, Serialize)]

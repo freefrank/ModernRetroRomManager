@@ -6,7 +6,7 @@ import { stagedReleaseErrors, validateRelease } from './release-tools.mjs';
 const RELEASE_PROMPT = `本次请求涉及版本、构建或发布。遵循项目发布流程：
 1. 普通功能提交不要改版本号；准备发布时用 pnpm release:bump -- <版本号> 同步全部版本文件。
 2. 根据该版本包含的中文 commit 更新 CHANGELOG.md，删除“待补充”，并检查 README/README.zh-CN/相关 docs 是否需要同步。
-3. 依次运行测试、pnpm release:check、portable 构建；仅在用户明确要求时 push 或打 tag。
+3. 依次运行测试、pnpm release:check、Windows 单文件 portable 与 installer 构建；CHANGELOG 每个版本必须包含英文和简体中文；仅在用户明确要求时 push 或打 tag。
 4. 详细流程见 docs/release-process.md。`;
 
 const DOCUMENTATION_PROMPT = `本次请求涉及项目文档。README.md 默认使用英文，并链接独立的简体中文 README.zh-CN.md；两份 README 的功能、依赖和命令保持一致。普通文档修改不 bump 版本号。用户可见行为发生变化时同步相关 docs；CHANGELOG 只在准备发布时更新。`;

@@ -67,23 +67,28 @@ export function validateRelease(root) {
   }
 
   const changelog = read(root, 'CHANGELOG.md');
-  const firstRelease = changelog.match(/^## ([^\s]+) \(/m)?.[1];
+  const firstRelease = [...changelog.matchAll(/^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}\s*$/gm)]
+    .map((match) => match[1])
+    .find((version) => version !== 'Unreleased');
   if (firstRelease !== expected) {
     errors.push(`CHANGELOG.md 顶部版本为 ${firstRelease ?? '未找到'}，应为 ${expected}`);
   }
   const escapedVersion = (expected ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sectionMatch = changelog.match(
     new RegExp(
-      `^## ${escapedVersion} \\((\\d{4}-\\d{2}-\\d{2})\\)\\s*$([\\s\\S]*?)(?=^## |(?![\\s\\S]))`,
+      `^## \\[${escapedVersion}\\] - (\\d{4}-\\d{2}-\\d{2})\\s*$([\\s\\S]*?)(?=^## |(?![\\s\\S]))`,
       'm',
     ),
   );
 
   if (!sectionMatch) {
-    errors.push(`CHANGELOG.md 缺少“## ${expected} (YYYY-MM-DD)”版本段落`);
+    errors.push(`CHANGELOG.md 缺少“## [${expected}] - YYYY-MM-DD”版本段落`);
   } else {
     const section = sectionMatch[2];
-    if (!/^\s*-\s+\S+/m.test(section) || /待补充|\bTODO\b/i.test(section)) {
+    if (!/^### English\s*$/m.test(section) || !/^### 简体中文\s*$/m.test(section)) {
+      errors.push(`CHANGELOG.md 的 ${expected} 版本说明必须同时包含 English 和简体中文`);
+    }
+    if (!/^\s*-\s+\S+/m.test(section) || /待补充|To be documented|\bTODO\b/i.test(section)) {
       errors.push(`CHANGELOG.md 的 ${expected} 版本说明仍为空或包含待补充内容`);
     }
   }
@@ -147,11 +152,30 @@ export function bumpVersion(root, nextVersion, date = new Date().toISOString().s
   );
 
   const changelog = read(root, 'CHANGELOG.md');
-  if (!new RegExp(`^## ${nextVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(`, 'm').test(changelog)) {
-    const heading = '# 更新日志';
-    const releaseSection = `\n\n## ${nextVersion} (${date})\n\n### 更新内容\n- 待补充\n`;
-    write(root, 'CHANGELOG.md', changelog.replace(heading, `${heading}${releaseSection}`));
+  if (!new RegExp(`^## \\[${nextVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\] - `, 'm').test(changelog)) {
+    const firstRelease = changelog.search(/^## \[(?!Unreleased\])/m);
+    if (firstRelease < 0) throw new Error('CHANGELOG.md 中未找到已发布版本段落');
+    const releaseSection = `## [${nextVersion}] - ${date}\n\n### English\n\n#### Changed\n\n- To be documented\n\n### 简体中文\n\n#### 变更\n\n- 待补充\n\n`;
+    write(
+      root,
+      'CHANGELOG.md',
+      `${changelog.slice(0, firstRelease)}${releaseSection}${changelog.slice(firstRelease)}`,
+    );
   }
+}
+
+export function extractReleaseNotes(changelog, version) {
+  const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = changelog.match(
+    new RegExp(
+      `^## \\[${escapedVersion}\\] - \\d{4}-\\d{2}-\\d{2}\\s*$([\\s\\S]*?)(?=^## |(?![\\s\\S]))`,
+      'm',
+    ),
+  );
+  if (!match) throw new Error(`CHANGELOG.md 中未找到版本 ${version}`);
+  const notes = match[1].trim();
+  if (!notes) throw new Error(`CHANGELOG.md 的 ${version} 版本说明为空`);
+  return `${notes}\n`;
 }
 
 export function git(root, args) {
@@ -200,6 +224,11 @@ async function main() {
     if (!value) throw new Error('用法: pnpm release:bump -- <版本号>');
     bumpVersion(root, value);
     console.log(`版本号已同步为 ${value}；请填写 CHANGELOG.md 后运行 pnpm release:check。`);
+    return;
+  }
+  if (command === 'notes') {
+    if (!value) throw new Error('用法: node scripts/release-tools.mjs notes <版本号>');
+    process.stdout.write(extractReleaseNotes(read(root, 'CHANGELOG.md'), value));
     return;
   }
   throw new Error(`未知命令: ${command}`);

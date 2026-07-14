@@ -198,9 +198,8 @@ function normalizePath(path: string): string {
 export async function resolveSystemLogoUrl(logoFileName: string | undefined): Promise<string | null> {
   if (!logoFileName || !isTauri()) return null;
   try {
-    const { resolveResource } = await import("@tauri-apps/api/path");
     const { convertFileSrc } = await import("@tauri-apps/api/core");
-    const resourcePath = await resolveResource(`logo/${logoFileName}`);
+    const resourcePath = await tauriInvoke<string>("get_system_logo_path", { fileName: logoFileName });
     return convertFileSrc(resourcePath);
   } catch (error) {
     console.error("Failed to resolve system logo:", logoFileName, error);
