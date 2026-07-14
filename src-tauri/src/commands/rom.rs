@@ -244,6 +244,8 @@ pub async fn get_roms_for_single_directory(
     systemId: Option<String>,
 ) -> Result<Vec<SystemRoms>, String> {
     let dir_config = DirectoryConfig {
+        id: String::new(),
+        name: String::new(),
         path,
         metadata_format: metadataFormat,
         is_root_directory: isRoot,

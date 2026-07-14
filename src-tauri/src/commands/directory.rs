@@ -1,5 +1,7 @@
-use crate::rom_index::invalidate_index;
-use crate::settings::{get_settings, update_setting, DirectoryConfig};
+use crate::rom_index::invalidate_library_index;
+use crate::settings::{
+    default_library_name, get_settings, library_id_for_path, update_setting, DirectoryConfig,
+};
 use crate::system_mapping::find_mapping_by_folder;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -41,20 +43,28 @@ pub struct DirectoryScanResult {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DirectoryInfo {
+    pub id: String,
+    pub name: String,
     pub path: String,
     pub is_root_directory: bool,
     pub metadata_format: String,
     pub system_id: Option<String>,
+    pub is_active: bool,
 }
 
-impl From<DirectoryConfig> for DirectoryInfo {
-    fn from(c: DirectoryConfig) -> Self {
+impl DirectoryInfo {
+    fn from_config(c: DirectoryConfig, active_id: Option<&str>) -> Self {
+        let is_active = active_id.is_some_and(|id| id == c.id);
         Self {
+            id: c.id,
+            name: c.name,
             path: c.path,
             is_root_directory: c.is_root_directory,
             metadata_format: c.metadata_format,
             system_id: c.system_id,
+            is_active,
         }
     }
 }
@@ -70,53 +80,129 @@ pub fn add_directory(
 ) -> Result<DirectoryInfo, String> {
     let normalized = normalize_path(&path);
 
-    update_setting(|settings| {
+    let updated = update_setting(|settings| {
         // 使用规范化路径去重
-        if !settings
+        let existing_id = settings
             .directories
             .iter()
-            .any(|d| normalize_path(&d.path) == normalized)
-        {
+            .find(|d| normalize_path(&d.path) == normalized)
+            .map(|item| item.id.clone());
+        let library_id = existing_id.unwrap_or_else(|| {
+            let base_id = library_id_for_path(&normalized);
+            let mut id = base_id.clone();
+            let mut suffix = 2;
+            while settings.directories.iter().any(|item| item.id == id) {
+                id = format!("{base_id}-{suffix}");
+                suffix += 1;
+            }
+            let name = default_library_name(&normalized, settings.directories.len());
             settings.directories.push(DirectoryConfig {
+                id: id.clone(),
+                name,
                 path: normalized.clone(),
                 metadata_format: metadataFormat.clone(),
                 is_root_directory: isRoot,
                 system_id: systemId.clone(),
             });
-        }
+            id
+        });
+        // 新增目录需要立即成为当前 Library，随后的首次扫描才会落到正确目录。
+        settings.active_library_id = Some(library_id);
     })
     .map_err(|e| e.to_string())?;
-    invalidate_index();
-
-    Ok(DirectoryInfo {
-        path: normalized,
-        is_root_directory: isRoot,
-        metadata_format: metadataFormat,
-        system_id: systemId,
-    })
+    let active_id = updated.active_library_id.as_deref();
+    updated
+        .active_library()
+        .cloned()
+        .map(|item| DirectoryInfo::from_config(item, active_id))
+        .ok_or_else(|| "添加 Library 后无法找到激活项".to_string())
 }
 
 /// 从配置移除目录
 #[tauri::command]
-pub fn remove_directory(path: String) -> Result<(), String> {
-    let normalized = normalize_path(&path);
+#[allow(non_snake_case)]
+pub fn remove_directory(libraryId: String) -> Result<(), String> {
+    if !get_settings()
+        .directories
+        .iter()
+        .any(|item| item.id == libraryId)
+    {
+        return Err("Library 不存在".to_string());
+    }
     update_setting(|settings| {
-        settings
-            .directories
-            .retain(|d| normalize_path(&d.path) != normalized);
+        settings.directories.retain(|item| item.id != libraryId);
     })
     .map_err(|e| e.to_string())?;
-    invalidate_index();
+    invalidate_library_index(&libraryId);
 
     Ok(())
 }
 
+/// 切换当前激活的 Library。
 #[tauri::command]
-pub fn get_directories() -> Vec<DirectoryInfo> {
-    get_settings()
+#[allow(non_snake_case)]
+pub fn set_active_library(libraryId: String) -> Result<DirectoryInfo, String> {
+    if !get_settings()
+        .directories
+        .iter()
+        .any(|item| item.id == libraryId)
+    {
+        return Err("Library 不存在".to_string());
+    }
+    let updated = update_setting(|settings| {
+        settings.active_library_id = Some(libraryId.clone());
+    })
+    .map_err(|error| error.to_string())?;
+    let active_id = updated.active_library_id.as_deref();
+    updated
+        .active_library()
+        .cloned()
+        .map(|item| DirectoryInfo::from_config(item, active_id))
+        .ok_or_else(|| "激活 Library 失败".to_string())
+}
+
+/// 修改 Library 展示名称。
+#[tauri::command]
+#[allow(non_snake_case)]
+pub fn rename_library(libraryId: String, name: String) -> Result<DirectoryInfo, String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Library 名称不能为空".to_string());
+    }
+    if !get_settings()
+        .directories
+        .iter()
+        .any(|item| item.id == libraryId)
+    {
+        return Err("Library 不存在".to_string());
+    }
+    let updated = update_setting(|settings| {
+        if let Some(library) = settings
+            .directories
+            .iter_mut()
+            .find(|item| item.id == libraryId)
+        {
+            library.name = name.clone();
+        }
+    })
+    .map_err(|error| error.to_string())?;
+    let active_id = updated.active_library_id.clone();
+    updated
         .directories
         .into_iter()
-        .map(DirectoryInfo::from)
+        .find(|item| item.id == libraryId)
+        .map(|item| DirectoryInfo::from_config(item, active_id.as_deref()))
+        .ok_or_else(|| "重命名 Library 失败".to_string())
+}
+
+#[tauri::command]
+pub fn get_directories() -> Vec<DirectoryInfo> {
+    let settings = get_settings();
+    let active_id = settings.active_library_id.clone();
+    settings
+        .directories
+        .into_iter()
+        .map(|item| DirectoryInfo::from_config(item, active_id.as_deref()))
         .collect()
 }
 

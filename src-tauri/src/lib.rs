@@ -41,6 +41,8 @@ pub fn run() {
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,
+            commands::directory::set_active_library,
+            commands::directory::rename_library,
             commands::directory::scan_directory,
             commands::directory::detect_metadata_files,
             // Config

@@ -1,12 +1,18 @@
 use crate::config;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::RwLock;
 
 /// 目录配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DirectoryConfig {
+    /// 稳定的 Library ID；旧配置加载时根据路径自动补齐。
+    #[serde(default)]
+    pub id: String,
+    /// 用户可编辑的 Library 名称。
+    #[serde(default)]
+    pub name: String,
     /// 目录路径
     pub path: String,
     /// 是否为 ROMs 根目录（包含多个系统子目录）
@@ -96,6 +102,9 @@ pub struct AppSettings {
     /// 目录列表
     #[serde(default)]
     pub directories: Vec<DirectoryConfig>,
+    /// 当前激活的 Library；旧配置默认激活第一条目录。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_library_id: Option<String>,
     /// Scraper API 配置 (key: provider id)
     #[serde(default)]
     pub scrapers: HashMap<String, ScraperConfig>,
@@ -122,6 +131,7 @@ impl Default for AppSettings {
             view_mode: "grid".to_string(),
             motion_level: None,
             directories: Vec::new(),
+            active_library_id: None,
             scrapers: HashMap::new(),
             scraper_stats: HashMap::new(),
             scraper_media_types: default_scraper_media_types(),
@@ -131,13 +141,113 @@ impl Default for AppSettings {
 
 static SETTINGS: RwLock<Option<AppSettings>> = RwLock::new(None);
 
+/// 根据规范化路径生成跨启动稳定的 Library ID。
+pub fn library_id_for_path(path: &str) -> String {
+    let normalized = path
+        .replace('\\', "/")
+        .trim_end_matches('/')
+        .to_ascii_lowercase();
+    let hash = normalized
+        .as_bytes()
+        .iter()
+        .fold(0xcbf29ce484222325_u64, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+        });
+    format!("library-{hash:016x}")
+}
+
+/// 新 Library 默认使用末级目录名；盘符根目录直接显示盘符。
+pub fn default_library_name(path: &str, position: usize) -> String {
+    let normalized = path.replace('\\', "/");
+    normalized
+        .trim_end_matches('/')
+        .rsplit('/')
+        .find(|part| !part.trim().is_empty())
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("Library {}", position + 1))
+}
+
+/// 补齐旧版目录记录，并保证 ID、名称和激活项始终有效。
+fn normalize_library_settings(settings: &mut AppSettings) -> bool {
+    let mut changed = false;
+    let mut used_ids = HashSet::new();
+
+    for (position, library) in settings.directories.iter_mut().enumerate() {
+        let base_id = if library.id.trim().is_empty() {
+            changed = true;
+            library_id_for_path(&library.path)
+        } else {
+            library.id.trim().to_string()
+        };
+        let mut unique_id = base_id.clone();
+        let mut suffix = 2;
+        while used_ids.contains(&unique_id) {
+            unique_id = format!("{base_id}-{suffix}");
+            suffix += 1;
+        }
+        if library.id != unique_id {
+            library.id = unique_id.clone();
+            changed = true;
+        }
+        used_ids.insert(unique_id);
+
+        let trimmed_name = library.name.trim();
+        let normalized_name = if trimmed_name.is_empty() {
+            default_library_name(&library.path, position)
+        } else {
+            trimmed_name.to_string()
+        };
+        if library.name != normalized_name {
+            library.name = normalized_name;
+            changed = true;
+        }
+    }
+
+    let active_is_valid = settings
+        .active_library_id
+        .as_ref()
+        .is_some_and(|active| settings.directories.iter().any(|item| &item.id == active));
+    if !active_is_valid {
+        let fallback = settings.directories.first().map(|item| item.id.clone());
+        if settings.active_library_id != fallback {
+            settings.active_library_id = fallback;
+            changed = true;
+        }
+    }
+
+    changed
+}
+
+impl AppSettings {
+    pub fn active_library(&self) -> Option<&DirectoryConfig> {
+        let active_id = self.active_library_id.as_ref()?;
+        self.directories.iter().find(|item| &item.id == active_id)
+    }
+}
+
+fn write_settings_file(
+    path: &std::path::Path,
+    settings: &AppSettings,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, serde_json::to_string_pretty(settings)?)?;
+    Ok(())
+}
+
 /// 加载配置（如果不存在则创建默认配置）
 pub fn load_settings() -> Result<AppSettings, Box<dyn std::error::Error>> {
     let path = config::get_settings_path();
 
     if path.exists() {
         let content = fs::read_to_string(&path)?;
-        let settings: AppSettings = serde_json::from_str(&content)?;
+        let mut settings: AppSettings = serde_json::from_str(&content)?;
+        if normalize_library_settings(&mut settings) {
+            write_settings_file(&path, &settings)?;
+        }
         *SETTINGS.write().unwrap() = Some(settings.clone());
         Ok(settings)
     } else {
@@ -151,15 +261,10 @@ pub fn load_settings() -> Result<AppSettings, Box<dyn std::error::Error>> {
 /// 保存配置
 pub fn save_settings(settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
     let path = config::get_settings_path();
-
-    // 确保目录存在
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    let content = serde_json::to_string_pretty(settings)?;
-    fs::write(&path, content)?;
-    *SETTINGS.write().unwrap() = Some(settings.clone());
+    let mut normalized = settings.clone();
+    normalize_library_settings(&mut normalized);
+    write_settings_file(&path, &normalized)?;
+    *SETTINGS.write().unwrap() = Some(normalized);
     Ok(())
 }
 
@@ -176,11 +281,9 @@ where
     let mut guard = SETTINGS.write().unwrap();
     let mut settings = guard.clone().unwrap_or_default();
     updater(&mut settings);
+    normalize_library_settings(&mut settings);
     let path = config::get_settings_path();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, serde_json::to_string_pretty(&settings)?)?;
+    write_settings_file(&path, &settings)?;
     *guard = Some(settings.clone());
     Ok(settings)
 }
@@ -203,6 +306,31 @@ mod tests {
         let legacy = r#"{"theme":"dark","language":"zh","view_mode":"grid"}"#;
         let loaded: AppSettings = serde_json::from_str(legacy).unwrap();
         assert!(loaded.motion_level.is_none());
+    }
+
+    #[test]
+    fn legacy_directories_are_migrated_to_libraries() {
+        let legacy = r#"{
+            "theme":"dark",
+            "language":"zh",
+            "view_mode":"grid",
+            "directories":[
+                {"path":"G:/ROMS","is_root_directory":true,"metadata_format":"auto"},
+                {"path":"Y:/3DS","is_root_directory":false,"metadata_format":"none"}
+            ]
+        }"#;
+        let mut loaded: AppSettings = serde_json::from_str(legacy).unwrap();
+
+        assert!(normalize_library_settings(&mut loaded));
+        assert_eq!(loaded.directories[0].name, "ROMS");
+        assert_eq!(loaded.directories[1].name, "3DS");
+        assert!(!loaded.directories[0].id.is_empty());
+        assert_ne!(loaded.directories[0].id, loaded.directories[1].id);
+        assert_eq!(
+            loaded.active_library_id.as_deref(),
+            Some(loaded.directories[0].id.as_str())
+        );
+        assert!(!normalize_library_settings(&mut loaded));
     }
 
     #[test]

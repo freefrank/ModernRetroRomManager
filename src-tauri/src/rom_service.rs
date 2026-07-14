@@ -816,14 +816,14 @@ pub fn get_roms_for_directory_with_progress(
 #[allow(dead_code)]
 pub fn get_all_roms() -> Result<Vec<SystemRoms>, String> {
     let settings = get_settings();
+    let active_directories: Vec<_> = settings.active_library().cloned().into_iter().collect();
 
     println!(
         "[DEBUG] get_all_roms() called, scanning {} directories",
-        settings.directories.len()
+        active_directories.len()
     );
 
-    let all_systems: Vec<SystemRoms> = settings
-        .directories
+    let all_systems: Vec<SystemRoms> = active_directories
         .par_iter()
         .flat_map(get_roms_for_directory)
         .collect();

@@ -11,7 +11,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-const INDEX_VERSION: u32 = 2;
+const INDEX_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScanMode {
@@ -47,14 +47,27 @@ struct ScanCandidate {
     fingerprint_path: PathBuf,
 }
 
-fn index_path() -> PathBuf {
+fn index_path_for(library_id: &str) -> PathBuf {
+    let id_hash = stable_hash(library_id.as_bytes());
     get_config_dir()
         .join("cache")
-        .join("rom-library-index.json")
+        .join(format!("rom-library-index-{id_hash:016x}.json"))
 }
 
 fn directories_signature(directories: &[DirectoryConfig]) -> u64 {
-    let serialized = serde_json::to_vec(directories).unwrap_or_default();
+    // 名称和 ID 不影响扫描内容，重命名 Library 不应使索引失效。
+    let scan_configs: Vec<_> = directories
+        .iter()
+        .map(|item| {
+            (
+                &item.path,
+                item.is_root_directory,
+                &item.metadata_format,
+                &item.system_id,
+            )
+        })
+        .collect();
+    let serialized = serde_json::to_vec(&scan_configs).unwrap_or_default();
     stable_hash(&serialized)
 }
 
@@ -171,6 +184,8 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
                 .to_string();
             candidates.push(ScanCandidate {
                 config: DirectoryConfig {
+                    id: directory.id.clone(),
+                    name: directory.name.clone(),
                     path: system_path.to_string_lossy().into_owned(),
                     is_root_directory: false,
                     metadata_format: detect_metadata_format(&system_path),
@@ -183,12 +198,11 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
     candidates
 }
 
-fn load_index() -> Option<RomLibraryIndex> {
-    let settings = get_settings();
-    let content = fs::read(index_path()).ok()?;
+fn load_index_for(library: &DirectoryConfig) -> Option<RomLibraryIndex> {
+    let content = fs::read(index_path_for(&library.id)).ok()?;
     let index: RomLibraryIndex = serde_json::from_slice(&content).ok()?;
     (index.version == INDEX_VERSION
-        && index.directories_signature == directories_signature(&settings.directories))
+        && index.directories_signature == directories_signature(std::slice::from_ref(library)))
     .then_some(index)
 }
 
@@ -201,14 +215,16 @@ fn flatten_directories(directories: &[IndexedDirectory]) -> Vec<SystemRoms> {
     systems
 }
 
-fn save_index(directories: Vec<IndexedDirectory>) -> Result<Vec<SystemRoms>, String> {
-    let settings = get_settings();
+fn save_index(
+    library: &DirectoryConfig,
+    directories: Vec<IndexedDirectory>,
+) -> Result<Vec<SystemRoms>, String> {
     let index = RomLibraryIndex {
         version: INDEX_VERSION,
-        directories_signature: directories_signature(&settings.directories),
+        directories_signature: directories_signature(std::slice::from_ref(library)),
         directories,
     };
-    let path = index_path();
+    let path = index_path_for(&library.id);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
@@ -221,11 +237,19 @@ fn save_index(directories: Vec<IndexedDirectory>) -> Result<Vec<SystemRoms>, Str
 }
 
 pub fn load_cached_roms() -> Option<Vec<SystemRoms>> {
-    load_index().map(|index| flatten_directories(&index.directories))
+    let settings = get_settings();
+    let library = settings.active_library()?;
+    load_index_for(library).map(|index| flatten_directories(&index.directories))
 }
 
 pub fn invalidate_index() {
-    let _ = fs::remove_file(index_path());
+    if let Some(library) = get_settings().active_library() {
+        invalidate_library_index(&library.id);
+    }
+}
+
+pub fn invalidate_library_index(library_id: &str) {
+    let _ = fs::remove_file(index_path_for(library_id));
 }
 
 pub fn scan_library(
@@ -233,10 +257,13 @@ pub fn scan_library(
     on_progress: impl Fn(ScanUpdate),
 ) -> Result<Vec<SystemRoms>, String> {
     let settings = get_settings();
-    let candidates = discover_candidates(&settings.directories);
+    let Some(library) = settings.active_library().cloned() else {
+        return Ok(Vec::new());
+    };
+    let candidates = discover_candidates(std::slice::from_ref(&library));
     let total = candidates.len();
     let previous: HashMap<String, IndexedDirectory> = if mode == ScanMode::Incremental {
-        load_index()
+        load_index_for(&library)
             .map(|index| {
                 index
                     .directories
@@ -300,7 +327,7 @@ pub fn scan_library(
     }
 
     indexed.sort_by(|left, right| left.path.cmp(&right.path));
-    save_index(indexed)
+    save_index(&library, indexed)
 }
 
 #[cfg(test)]
