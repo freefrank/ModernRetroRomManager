@@ -56,6 +56,10 @@ pub fn run() {
             commands::config::update_app_setting,
             commands::config::get_scraper_configs,
             commands::config::save_scraper_config,
+            // AI metadata translation
+            commands::ai::get_ai_translation_config,
+            commands::ai::save_ai_translation_config,
+            commands::ai::translate_metadata,
             // Scraper (Updated)
             commands::scraper::get_scraper_providers,
             commands::scraper::configure_scraper_provider,

@@ -5,6 +5,7 @@
       "appearance": "外观",
       "general": "通用",
       "scraper": "Scraper 配置",
+      "translation": "AI 翻译",
       "about": "关于"
     },
     "appearance": {
@@ -104,6 +105,20 @@
     "language": {
       "title": "语言",
       "description": "选择界面显示语言"
+    },
+    "aiTranslation": {
+      "title": "AI Metadata 翻译",
+      "description": "通过自定义 OpenAI-compatible Chat Completions 接口翻译游戏标题、描述、厂商和类型。",
+      "endpoint": "API 端点",
+      "apiKey": "API Key",
+      "model": "模型",
+      "targetLanguage": "目标语言",
+      "configured": "API Key 已配置",
+      "savedKey": "API Key 已保存，留空保持不变",
+      "securityHint": "API Key 仅保存在本机配置中，请求由原生后端发出。自定义端点需要兼容 /chat/completions。",
+      "saved": "AI 翻译配置已保存",
+      "loadFailed": "读取 AI 翻译配置失败：{{error}}",
+      "saveFailed": "保存 AI 翻译配置失败：{{error}}"
     },
     "about": {
       "title": "关于",

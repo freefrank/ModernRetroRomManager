@@ -15,6 +15,7 @@ ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM �
 - 聚合多个元数据 Provider，并根据平台匹配度、资源完整度进行置信度排序和故障切换
 - 支持单游戏、已选游戏、整个平台或整个 ROM 库批量刮削，并可选择忽略已有元数据、资产与缓存进行全量重新抓取
 - 可选择需要下载的媒体类型，跨 ROM 库复用持久抓取缓存，并保留备选图片供用户确认
+- 可通过自定义 OpenAI-compatible 接口翻译单个游戏、已选游戏或整个平台的 metadata
 - 可选择当前或指定游戏库，按 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt` 格式导出元数据及相关媒体资源
 - 在支持日志级别筛选的底部 Console 中查看扫描、抓取、Provider 和错误信息
 - 支持导入自定义主题，并提供响应式暗色界面；Retro 主题内置 Zpix，统一显示中英文像素字体
@@ -32,6 +33,8 @@ ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM �
 
 可以在应用设置中配置 Provider 凭据、请求速率、并发线程、优先级和可选媒体类型。
 MRRM 已内置 ScreenScraper 应用开发者凭据，用户只需填写自己的 ScreenScraper 会员用户名和密码。
+
+AI Metadata 翻译可单独配置端点、API Key、模型和目标语言。请求由原生后端发送，译文先保存为预览 metadata，确认后再导出到游戏库。
 
 ## 技术栈
 

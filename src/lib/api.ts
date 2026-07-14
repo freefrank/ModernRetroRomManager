@@ -1,4 +1,4 @@
-import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo } from "@/types";
+import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo, AiTranslationConfig, AiTranslationConfigInput, TranslateMetadataRequest } from "@/types";
 
 declare global {
   interface Window {
@@ -385,6 +385,22 @@ export const scraperApi = {
     if (isTauri()) {
       await tauriInvoke("delete_temp_media", { system, romId, assetType });
     }
+  },
+};
+
+export const aiTranslationApi = {
+  async getConfig(): Promise<AiTranslationConfig> {
+    if (isTauri()) return tauriInvoke<AiTranslationConfig>("get_ai_translation_config");
+    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "简体中文（zh-CN）", has_api_key: false };
+  },
+
+  async saveConfig(input: AiTranslationConfigInput): Promise<void> {
+    if (isTauri()) await tauriInvoke("save_ai_translation_config", { input });
+  },
+
+  async translateMetadata(request: TranslateMetadataRequest): Promise<ScraperGameMetadata> {
+    if (isTauri()) return tauriInvoke<ScraperGameMetadata>("translate_metadata", { request });
+    throw new Error("Not available in web mode");
   },
 };
 

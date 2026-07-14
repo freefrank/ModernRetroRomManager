@@ -5,6 +5,7 @@
       "appearance": "Appearance",
       "general": "General",
       "scraper": "Scraper",
+      "translation": "AI Translation",
       "about": "About"
     },
     "appearance": {
@@ -104,6 +105,20 @@
     "language": {
       "title": "Language",
       "description": "Select interface language"
+    },
+    "aiTranslation": {
+      "title": "AI Metadata Translation",
+      "description": "Translate game titles, descriptions, companies, and genres through a custom OpenAI-compatible Chat Completions endpoint.",
+      "endpoint": "API endpoint",
+      "apiKey": "API key",
+      "model": "Model",
+      "targetLanguage": "Target language",
+      "configured": "API key configured",
+      "savedKey": "API key saved; leave blank to keep it",
+      "securityHint": "The API key is stored locally and requests are sent by the native backend. The custom endpoint must support /chat/completions.",
+      "saved": "AI translation settings saved",
+      "loadFailed": "Failed to load AI translation settings: {{error}}",
+      "saveFailed": "Failed to save AI translation settings: {{error}}"
     },
     "about": {
       "title": "About",

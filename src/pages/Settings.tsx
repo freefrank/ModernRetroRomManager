@@ -5,10 +5,11 @@ import AppearanceSection from "./settings/AppearanceSection";
 import GeneralSection from "./settings/GeneralSection";
 import ScraperSection from "./settings/ScraperSection";
 import AboutSection from "./settings/AboutSection";
+import AiTranslationSection from "./settings/AiTranslationSection";
 
-type SettingsTab = "appearance" | "general" | "scraper" | "about";
+type SettingsTab = "appearance" | "general" | "scraper" | "translation" | "about";
 
-const TAB_VALUES: SettingsTab[] = ["appearance", "general", "scraper", "about"];
+const TAB_VALUES: SettingsTab[] = ["appearance", "general", "scraper", "translation", "about"];
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -47,6 +48,7 @@ export default function Settings() {
           {tab === "appearance" && <AppearanceSection />}
           {tab === "general" && <GeneralSection />}
           {tab === "scraper" && <ScraperSection />}
+          {tab === "translation" && <AiTranslationSection />}
           {tab === "about" && <AboutSection />}
         </div>
       </div>

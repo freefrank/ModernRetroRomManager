@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import {
-  X, Calendar, User, Building2, Globe, Gamepad2, Star,
+  X, Calendar, User, Building2, Globe, Gamepad2, Star, Languages,
   Eye, EyeOff, Save, Download, Edit2, Trash2, LayoutGrid, Info, Check, Wand2
 } from "lucide-react";
-import { resolveMediaUrlAsync, scraperApi, ps3Api } from "@/lib/api";
+import { resolveMediaUrlAsync, scraperApi, ps3Api, aiTranslationApi } from "@/lib/api";
+import { romMetadata } from "@/lib/metadataTranslation";
 import type { Rom } from "@/types";
 import { useRomStore } from "@/stores/romStore";
 import { useTranslation } from "react-i18next";
@@ -48,6 +49,7 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
   const [editForm, setEditForm] = useState<Partial<Rom & { _activeTab: string }>>({});
   const [tempMedia, setTempMedia] = useState<{ asset_type: string, path: string }[]>([]);
   const [isGeneratingBoxart, setIsGeneratingBoxart] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const open = !!rom;
   const [entered, setEntered] = useState(false);
@@ -169,6 +171,25 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
       toast.error(t("romDetail.actions.boxartFailed", { error: String(error) }));
     } finally {
       setIsGeneratingBoxart(false);
+    }
+  };
+
+  const handleTranslate = async () => {
+    if (!rom) return;
+    setIsTranslating(true);
+    try {
+      const translated = await aiTranslationApi.translateMetadata({
+        system: rom.system,
+        file_name: rom.file,
+        metadata: romMetadata(displayData || rom),
+      });
+      await updateTempMetadata(rom.system, rom.directory, rom.file, translated);
+      setIsPreview(true);
+      toast.success(t("romDetail.translation.success"));
+    } catch (error) {
+      toast.error(t("romDetail.translation.failed", { error: String(error) }));
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -311,6 +332,14 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
                     aria-label={t("romDetail.actions.edit")}
                   >
                     <Edit2 className="w-4 h-4" />
+                  </IconButton>
+                  <IconButton
+                    onClick={handleTranslate}
+                    disabled={isTranslating}
+                    title={t("romDetail.actions.translate")}
+                    aria-label={t("romDetail.actions.translate")}
+                  >
+                    {isTranslating ? <Spinner size={16} /> : <Languages className="w-4 h-4" />}
                   </IconButton>
                   {rom.system && rom.system.toLowerCase().includes('ps3') && (
                     <IconButton

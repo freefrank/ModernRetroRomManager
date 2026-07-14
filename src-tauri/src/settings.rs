@@ -72,6 +72,38 @@ impl Default for ScraperConfig {
     }
 }
 
+/// OpenAI-compatible metadata translation configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiTranslationConfig {
+    #[serde(default = "default_ai_endpoint")]
+    pub endpoint: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default = "default_ai_target_language")]
+    pub target_language: String,
+}
+
+fn default_ai_endpoint() -> String {
+    "https://api.openai.com/v1".to_string()
+}
+
+fn default_ai_target_language() -> String {
+    "简体中文（zh-CN）".to_string()
+}
+
+impl Default for AiTranslationConfig {
+    fn default() -> Self {
+        Self {
+            endpoint: default_ai_endpoint(),
+            api_key: String::new(),
+            model: String::new(),
+            target_language: default_ai_target_language(),
+        }
+    }
+}
+
 /// Provider 累计运行统计，便于确认抓取源是否实际参与工作。
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ScraperStats {
@@ -114,6 +146,9 @@ pub struct AppSettings {
     /// 自动抓取和候选缓存允许的媒体类型
     #[serde(default = "default_scraper_media_types")]
     pub scraper_media_types: Vec<String>,
+    /// OpenAI-compatible metadata translation settings.
+    #[serde(default)]
+    pub ai_translation: AiTranslationConfig,
 }
 
 fn default_scraper_media_types() -> Vec<String> {
@@ -135,6 +170,7 @@ impl Default for AppSettings {
             scrapers: HashMap::new(),
             scraper_stats: HashMap::new(),
             scraper_media_types: default_scraper_media_types(),
+            ai_translation: AiTranslationConfig::default(),
         }
     }
 }

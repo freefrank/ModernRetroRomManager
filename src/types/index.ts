@@ -175,6 +175,26 @@ export interface ApplyScrapedDataOptions {
   provider_id?: string;
 }
 
+export interface AiTranslationConfig {
+  endpoint: string;
+  model: string;
+  target_language: string;
+  has_api_key: boolean;
+}
+
+export interface AiTranslationConfigInput {
+  endpoint: string;
+  model: string;
+  target_language: string;
+  api_key?: string;
+}
+
+export interface TranslateMetadataRequest {
+  system: string;
+  file_name: string;
+  metadata: ScraperGameMetadata;
+}
+
 
 // 扫描目录配置
 // 目录配置

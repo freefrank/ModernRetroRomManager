@@ -40,6 +40,15 @@
       "generating": "Generating {{current}}/{{total}}",
       "tooltip": "Generate boxart for all PS3 ROMs",
       "done": "Boxart done: {{success}} succeeded, {{failed}} failed"
+    },
+    "translation": {
+      "selected": "AI Translate",
+      "platform": "Translate Platform",
+      "dialogTitle": "Batch Translate Metadata",
+      "warning": "The configured AI endpoint will be called once for each of {{count}} games and results will be saved as preview metadata. API charges may apply.",
+      "confirm": "Translate {{count}} Items",
+      "progress": "Translating {{current}}/{{total}}",
+      "done": "AI translation finished: {{success}} succeeded, {{failed}} failed"
     }
   },
   "romDetail": {
@@ -78,6 +87,7 @@
       "saveEdit": "Save Changes",
       "cancelEdit": "Cancel",
       "generateBoxart": "Generate PS3 Boxart",
+      "translate": "AI Translate Metadata",
       "boxartFailed": "Boxart generation failed: {{error}}"
     },
     "cover": {
@@ -87,6 +97,10 @@
       "title": "Media Management (Temp)",
       "empty": "No scraped media assets",
       "deleteNote": "Note: Deletion only affects the temp directory. After exporting, existing assets will be overwritten."
+    },
+    "translation": {
+      "success": "Translated metadata saved to preview",
+      "failed": "Metadata translation failed: {{error}}"
     }
   },
   "scrapeDialog": {

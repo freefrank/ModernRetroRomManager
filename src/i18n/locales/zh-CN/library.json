@@ -40,6 +40,15 @@
       "generating": "生成中 {{current}}/{{total}}",
       "tooltip": "为所有 PS3 ROM 生成 Boxart",
       "done": "Boxart 生成完成:成功 {{success}},失败 {{failed}}"
+    },
+    "translation": {
+      "selected": "AI 翻译",
+      "platform": "翻译此平台",
+      "dialogTitle": "批量翻译 Metadata",
+      "warning": "即将逐项调用已配置的 AI 接口翻译 {{count}} 个游戏，并把结果保存为预览 metadata。该操作可能产生 API 费用。",
+      "confirm": "翻译 {{count}} 项",
+      "progress": "翻译中 {{current}}/{{total}}",
+      "done": "AI 翻译完成：成功 {{success}}，失败 {{failed}}"
     }
   },
   "romDetail": {
@@ -78,6 +87,7 @@
       "saveEdit": "保存修改",
       "cancelEdit": "取消修改",
       "generateBoxart": "生成 PS3 Boxart",
+      "translate": "AI 翻译 Metadata",
       "boxartFailed": "Boxart 生成失败：{{error}}"
     },
     "cover": {
@@ -87,6 +97,10 @@
       "title": "媒体管理 (临时目录)",
       "empty": "暂无抓取的媒体文件",
       "deleteNote": "提示: 删除操作仅影响临时目录。导出后，对应类型的旧资产将被新资产覆盖（如果存在）。"
+    },
+    "translation": {
+      "success": "Metadata 翻译已保存到预览",
+      "failed": "Metadata 翻译失败：{{error}}"
     }
   },
   "scrapeDialog": {

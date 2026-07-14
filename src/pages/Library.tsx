@@ -10,6 +10,7 @@ import {
   Wand2,
   ChevronRight,
   SearchX,
+  Languages,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
@@ -17,8 +18,9 @@ import { useAppStore } from "@/stores/appStore";
 import { clsx } from "clsx";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Rom, ViewMode } from "@/types";
-import { ps3Api } from "@/lib/api";
-import { Button, EmptyState, IconButton, Input, toast } from "@/components/ui";
+import { aiTranslationApi, ps3Api, scraperApi } from "@/lib/api";
+import { romMetadata } from "@/lib/metadataTranslation";
+import { Button, Dialog, EmptyState, IconButton, Input, toast } from "@/components/ui";
 
 import RomView from "@/components/rom/RomView";
 import RomDetail from "@/components/rom/RomDetail";
@@ -60,6 +62,10 @@ export default function Library() {
   const [isGeneratingBoxart, setIsGeneratingBoxart] = useState(false);
   const [boxartProgress, setBoxartProgress] = useState({ current: 0, total: 0 });
   const [cardScale, setCardScale] = useState(1);
+  const [translateScope, setTranslateScope] = useState<"selection" | "platform">("selection");
+  const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateProgress, setTranslateProgress] = useState({ current: 0, total: 0 });
 
   const systemData = systemRoms.find((s) => s.system === systemName);
   const romsOfSystem = useMemo(() => systemData?.roms ?? [], [systemData]);
@@ -116,6 +122,43 @@ export default function Library() {
     await fetchRoms();
   };
 
+  const translationRoms = translateScope === "selection"
+    ? romsOfSystem.filter(rom => selectedRomIds.has(rom.file))
+    : romsOfSystem;
+
+  const openTranslation = (scope: "selection" | "platform") => {
+    setTranslateScope(scope);
+    setTranslateProgress({ current: 0, total: 0 });
+    setIsTranslateDialogOpen(true);
+  };
+
+  const handleBatchTranslate = async () => {
+    if (translationRoms.length === 0) return;
+    setIsTranslating(true);
+    setTranslateProgress({ current: 0, total: translationRoms.length });
+    let success = 0;
+    let failed = 0;
+    for (const [index, rom] of translationRoms.entries()) {
+      setTranslateProgress({ current: index + 1, total: translationRoms.length });
+      try {
+        const metadata = await aiTranslationApi.translateMetadata({
+          system: rom.system,
+          file_name: rom.file,
+          metadata: romMetadata(rom),
+        });
+        await scraperApi.saveTempMetadata(rom.system, rom.directory, rom.file, metadata);
+        success += 1;
+      } catch (error) {
+        failed += 1;
+        console.error(`AI metadata translation failed for ${rom.file}:`, error);
+      }
+    }
+    setIsTranslating(false);
+    setIsTranslateDialogOpen(false);
+    await fetchRoms();
+    toast.success(t("library.translation.done", { success, failed }));
+  };
+
   if (!systemData && isLoadingRoms) {
     return (
       <div className="rr-page flex h-full items-center justify-center max-w-[1600px] mx-auto w-full">
@@ -166,6 +209,11 @@ export default function Library() {
           <Button size="sm" onClick={() => { setBatchScope("selection"); setIsBatchDialogOpen(true); }} disabled={isBatchScraping}>
             <Database className="w-4 h-4" />
             {t("library.batch.scrape")}
+          </Button>
+
+          <Button size="sm" variant="ghost" onClick={() => openTranslation("selection")} disabled={isTranslating}>
+            <Languages className="w-4 h-4" />
+            {t("library.translation.selected")}
           </Button>
 
           <Button size="sm" variant="ghost" onClick={clearSelection}>
@@ -232,6 +280,14 @@ export default function Library() {
             disabled={filteredRoms.length === 0}
           >
             {t("library.batch.selectAll")}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => openTranslation("platform")}
+            disabled={isTranslating || romsOfSystem.length === 0}
+          >
+            <Languages className="w-5 h-5" />
+            <span className="hidden md:inline">{t("library.translation.platform")}</span>
           </Button>
           <Button
             variant="ghost"
@@ -341,6 +397,28 @@ export default function Library() {
         onClose={() => setIsBatchDialogOpen(false)}
         scope={batchScope}
       />
+
+      <Dialog
+        open={isTranslateDialogOpen}
+        onClose={() => { if (!isTranslating) setIsTranslateDialogOpen(false); }}
+        title={t("library.translation.dialogTitle")}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsTranslateDialogOpen(false)} disabled={isTranslating}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleBatchTranslate} loading={isTranslating}>
+              {isTranslating
+                ? t("library.translation.progress", translateProgress)
+                : t("library.translation.confirm", { count: translationRoms.length })}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-text-secondary">
+          {t("library.translation.warning", { count: translationRoms.length })}
+        </p>
+      </Dialog>
     </div>
   );
 }
