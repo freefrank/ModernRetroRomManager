@@ -18,10 +18,14 @@ invoke('get_rom_stats'): Promise<RomStats>
 invoke('get_roms_for_single_directory', { path, metadataFormat, isRoot, systemId }): Promise<SystemRoms[]>
 
 invoke('get_directories'): Promise<ScanDirectory[]>
-invoke('add_directory', { path, metadataFormat, isRoot, systemId }): Promise<void>
-invoke('remove_directory', { path }): Promise<void>
+invoke('add_directory', { path, metadataFormat, isRoot, systemId }): Promise<ScanDirectory>
+invoke('remove_directory', { libraryId }): Promise<void>
+invoke('set_active_library', { libraryId }): Promise<ScanDirectory>
+invoke('rename_library', { libraryId, name }): Promise<ScanDirectory>
 invoke('scan_directory', { path }): Promise<DirectoryScanResult>
 ```
+
+`ScanDirectory` 中包含稳定的 `id`、可编辑的 `name` 和 `isActive` 状态。每条目录记录都是一个独立 Library，ROM 列表和持久索引只作用于当前激活项。
 
 ### 中文命名工具
 
