@@ -61,6 +61,14 @@ export default function App() {
     init();
   }, [initFromBackend, fetchLibrarySummary, fetchScanDirectories, initializeScanProgress, scanLibrary]);
 
+  useEffect(() => {
+    // WebView 的原生右键菜单会暴露浏览器式操作，与桌面应用交互不一致。
+    // 在捕获阶段统一接管，后续需要业务右键菜单时可由组件自行渲染。
+    const preventWebViewMenu = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("contextmenu", preventWebViewMenu, { capture: true });
+    return () => document.removeEventListener("contextmenu", preventWebViewMenu, { capture: true });
+  }, []);
+
   // Show nothing while initializing (splash is visible)
   if (!initialized) {
     return null;
