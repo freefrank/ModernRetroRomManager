@@ -8,6 +8,13 @@
   unicode-range: U+0000-00FF;
 }
 
+/* Zpix 的授权不允许未经许可的再分发；Retro 主题优先使用用户本机安装的原版字体。 */
+@font-face {
+  font-family: "Zpix Local";
+  src: local("Zpix");
+  font-display: swap;
+}
+
 @theme {
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);
@@ -50,8 +57,8 @@
   --border-default: #3a3a5c;
   --border-hover: #533483;
   --border-highlight: #e94560;
-  --font-display: 'Press Start 2P', 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  --font-body: -apple-system, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif;
+  --font-display: 'Zpix Local', 'Press Start 2P', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Zpix Local', 'Segoe UI', 'Microsoft YaHei', sans-serif;
   --font-mono: Consolas, 'Courier New', monospace;
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -81,8 +88,8 @@
     box-sizing: border-box;
   }
 
-  /* 标题层统一走 font-display 令牌:retro 主题为像素字体(仅覆盖拉丁字符,中文自动回退),
-     其余主题 font-display 即系统字体,无副作用 */
+  /* 标题层统一走 font-display 令牌:Retro 主题优先使用支持中英文的 Zpix,
+     未安装时回退到现有像素字体和系统字体。 */
   h1, h2 {
     font-family: var(--font-display);
   }
