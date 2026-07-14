@@ -34,6 +34,17 @@ pub trait ScraperProvider: Send + Sync {
     /// 搜索游戏
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String>;
 
+    /// 测试 Provider 凭据与网络连接。
+    async fn test_connection(&self) -> Result<String, String> {
+        let query = ScrapeQuery::new(
+            "Super Mario World".to_string(),
+            "Super Mario World.sfc".to_string(),
+        )
+        .with_system("snes");
+        let results = self.search(&query).await?;
+        Ok(format!("连接正常，返回 {} 个结果", results.len()))
+    }
+
     /// 获取游戏详细元数据
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String>;
 

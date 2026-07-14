@@ -73,6 +73,7 @@
       "apiKey": "API Key",
       "usernamePlaceholder": "Enter username",
       "passwordPlaceholder": "Enter password",
+      "savedPasswordPlaceholder": "Password saved; leave blank to keep it",
       "screenScraperAuthHint": "The app includes ScreenScraper developer credentials; only your username and password are required.",
       "apiKeyPlaceholder": "Enter the provider API key",
       "credentialsHint": "Enter the provider API credentials. Credentials are stored only in the local configuration file.",

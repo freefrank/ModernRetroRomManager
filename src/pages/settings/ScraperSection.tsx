@@ -161,6 +161,7 @@ export default function ScraperSection() {
   const handleEditConfig = (provider: ScraperProviderInfo) => {
     setEditingProvider(provider.id);
     setCredentials({
+      username: provider.configured_username,
       rate_limit: provider.rate_limit,
       threads: provider.threads,
     });
@@ -366,7 +367,11 @@ export default function ScraperSection() {
                                 password: e.target.value,
                               })
                             }
-                            placeholder={t("settings.apiConfig.passwordPlaceholder")}
+                            placeholder={t(
+                              p.has_saved_password
+                                ? "settings.apiConfig.savedPasswordPlaceholder"
+                                : "settings.apiConfig.passwordPlaceholder",
+                            )}
                           />
                         </div>
                       </>

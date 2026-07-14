@@ -73,6 +73,7 @@
       "apiKey": "API Key",
       "usernamePlaceholder": "输入用户名",
       "passwordPlaceholder": "输入密码",
+      "savedPasswordPlaceholder": "密码已保存，留空则保持不变",
       "screenScraperAuthHint": "应用已内置 ScreenScraper 开发者凭据，只需填写你的用户名和密码。",
       "apiKeyPlaceholder": "输入该数据源的 API Key",
       "credentialsHint": "请输入该源的 API 凭据。凭据仅保存在本机配置文件中。",

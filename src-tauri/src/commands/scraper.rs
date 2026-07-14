@@ -189,10 +189,12 @@ pub async fn configure_scraper_provider(
         .unwrap_or(current_config.threads)
         .clamp(1, 32);
 
+    let non_blank =
+        |value: Option<String>| value.and_then(|value| (!value.trim().is_empty()).then_some(value));
+
     match provider_id.as_str() {
         "steamgriddb" | "thegamesdb" => {
-            let api_key = credentials
-                .api_key
+            let api_key = non_blank(credentials.api_key)
                 .or(current_config.api_key)
                 .unwrap_or_default();
             if api_key.trim().is_empty() {
@@ -201,12 +203,10 @@ pub async fn configure_scraper_provider(
             new_config.api_key = Some(api_key);
         }
         "screenscraper" => {
-            let username = credentials
-                .username
+            let username = non_blank(credentials.username)
                 .or(current_config.username)
                 .unwrap_or_default();
-            let password = credentials
-                .password
+            let password = non_blank(credentials.password)
                 .or(current_config.password)
                 .unwrap_or_default();
             if username.trim().is_empty() || password.trim().is_empty() {
@@ -218,7 +218,7 @@ pub async fn configure_scraper_provider(
         _ => return Err(format!("未知的数据源: {}", provider_id)),
     }
 
-    manager.set_credentials(&provider_id, new_config);
+    manager.set_credentials(&provider_id, new_config)?;
     // 凭证保存后重建注册表,新的凭证即时生效
     manager.rebuild_from_settings();
 

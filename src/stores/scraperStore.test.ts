@@ -24,6 +24,7 @@ const makeProvider = (
   priority: 100,
   requires_credentials: true,
   has_credentials: false,
+  has_saved_password: false,
   capabilities: ["search", "media"],
   rate_limit: 1,
   threads: 1,

@@ -194,7 +194,7 @@ impl ScreenScraperClient {
             format!("ScreenScraper {kind}")
         })?;
 
-        if resp.status() == 404 || resp.status() == 430 {
+        if resp.status() == 404 {
             return Ok(None);
         }
 
@@ -212,6 +212,69 @@ impl ScreenScraperClient {
         let ss_resp: SSResponse = serde_json::from_str(&body).map_err(|e| e.to_string())?;
 
         Ok(ss_resp.response.and_then(|r| r.jeu))
+    }
+
+    async fn search_games(&self, query: &str, system_id: &str) -> Result<Vec<SSGame>, String> {
+        let _permit = self.limiter.acquire().await;
+        let url = self.build_url(
+            "jeuRecherche",
+            vec![
+                ("recherche", query.to_string()),
+                ("systemeid", system_id.to_string()),
+            ],
+        );
+        let resp = self.client.get(&url).send().await.map_err(|error| {
+            let kind = if error.is_timeout() {
+                "请求超时"
+            } else if error.is_connect() {
+                "连接失败"
+            } else {
+                "请求失败"
+            };
+            format!("ScreenScraper {kind}")
+        })?;
+        if resp.status() == 404 {
+            return Ok(Vec::new());
+        }
+        if !resp.status().is_success() {
+            return Err(response_error("ScreenScraper", resp).await);
+        }
+        let body = resp.text().await.map_err(|error| error.to_string())?;
+        let response: SSSearchResponse = serde_json::from_str(&body)
+            .map_err(|error| format!("ScreenScraper 搜索结果解析失败: {error}"))?;
+        Ok(response
+            .response
+            .map(|response| response.jeux)
+            .unwrap_or_default())
+    }
+
+    async fn test_member_connection(&self) -> Result<String, String> {
+        let _permit = self.limiter.acquire().await;
+        let url = self.build_url("ssuserInfos", Vec::new());
+        let resp = self.client.get(&url).send().await.map_err(|error| {
+            let kind = if error.is_timeout() {
+                "请求超时"
+            } else if error.is_connect() {
+                "连接失败"
+            } else {
+                "请求失败"
+            };
+            format!("ScreenScraper {kind}")
+        })?;
+        if !resp.status().is_success() {
+            return Err(response_error("ScreenScraper", resp).await);
+        }
+        let body = resp.text().await.map_err(|error| error.to_string())?;
+        let response: SSUserResponse = serde_json::from_str(&body)
+            .map_err(|error| format!("ScreenScraper 账户结果解析失败: {error}"))?;
+        if response
+            .response
+            .and_then(|response| response.ssuser)
+            .is_none()
+        {
+            return Err("ScreenScraper 未返回用户信息".to_string());
+        }
+        Ok("连接正常，ScreenScraper 账号鉴权已通过".to_string())
     }
 }
 
@@ -260,6 +323,27 @@ struct SSResponse {
 #[derive(Deserialize)]
 struct SSResponseData {
     jeu: Option<SSGame>,
+}
+
+#[derive(Deserialize)]
+struct SSSearchResponse {
+    response: Option<SSSearchResponseData>,
+}
+
+#[derive(Deserialize)]
+struct SSSearchResponseData {
+    #[serde(default)]
+    jeux: Vec<SSGame>,
+}
+
+#[derive(Deserialize)]
+struct SSUserResponse {
+    response: Option<SSUserResponseData>,
+}
+
+#[derive(Deserialize)]
+struct SSUserResponseData {
+    ssuser: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -356,31 +440,28 @@ impl ScraperProvider for ScreenScraperClient {
             .with(ProviderCapability::Media)
     }
 
+    async fn test_connection(&self) -> Result<String, String> {
+        self.test_member_connection().await
+    }
+
     async fn search(&self, query: &ScrapeQuery) -> Result<Vec<SearchResult>, String> {
-        // ScreenScraper 使用 romnom 参数搜索
         let system_id = query
             .system
             .as_deref()
             .and_then(Self::system_id)
             .ok_or_else(|| "ScreenScraper 缺少受支持的平台映射".to_string())?;
-        let jeu = self
-            .fetch_game_info(vec![
-                // 中文 ROM 文件名通常不是 ScreenScraper 可识别标题，优先使用
-                // 内部标识或用户输入解析出的标准搜索名称。
-                ("romnom", query.name.clone()),
-                ("systemeid", system_id.to_string()),
-            ])
-            .await?;
-
-        match jeu {
-            Some(game) => {
+        let games = self.search_games(&query.name, system_id).await?;
+        Ok(games
+            .into_iter()
+            .enumerate()
+            .map(|(index, game)| {
                 let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
                 let year = game.dates.first().map(|d| {
                     // 提取年份 (格式可能是 YYYY-MM-DD 或 YYYY)
                     d.date.split('-').next().unwrap_or(&d.date).to_string()
                 });
 
-                Ok(vec![SearchResult {
+                SearchResult {
                     provider: PROVIDER_ID.to_string(),
                     source_id: game.id,
                     name,
@@ -392,11 +473,10 @@ impl ScraperProvider for ScreenScraperClient {
                         .find(|m| m.media_type == "box-2D" || m.media_type == "box-2d")
                         .map(|m| m.url.clone()),
                     asset_count: Some(game.medias.len()),
-                    confidence: 0.9, // 文件名匹配置信度较高
-                }])
-            }
-            None => Ok(vec![]),
-        }
+                    confidence: (0.9_f32 - index as f32 * 0.01).max(0.6),
+                }
+            })
+            .collect())
     }
 
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {

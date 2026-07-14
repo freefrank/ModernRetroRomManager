@@ -103,6 +103,8 @@ export interface ScraperProviderInfo {
   priority: number;
   requires_credentials: boolean;
   has_credentials: boolean;
+  configured_username?: string;
+  has_saved_password: boolean;
   capabilities: string[];
   rate_limit: number;
   threads: number;

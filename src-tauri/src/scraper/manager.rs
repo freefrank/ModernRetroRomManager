@@ -111,6 +111,8 @@ pub struct ProviderInfo {
     pub priority: u32,
     pub requires_credentials: bool,
     pub has_credentials: bool,
+    pub configured_username: Option<String>,
+    pub has_saved_password: bool,
     pub capabilities: Vec<String>,
     pub rate_limit: u32,
     pub threads: u32,
@@ -271,6 +273,13 @@ impl ScraperManager {
                     priority: config.map(|c| c.priority).unwrap_or(100),
                     requires_credentials: descriptor.requires_credentials,
                     has_credentials: credentials_present(descriptor.id, config),
+                    configured_username: (descriptor.id == "screenscraper")
+                        .then(|| config.and_then(|item| item.username.clone()))
+                        .flatten(),
+                    has_saved_password: descriptor.id == "screenscraper"
+                        && config
+                            .and_then(|item| item.password.as_deref())
+                            .is_some_and(|value| !value.trim().is_empty()),
                     capabilities: descriptor
                         .capabilities
                         .iter()
@@ -535,13 +544,7 @@ impl ScraperManager {
             .providers
             .get(provider_id)
             .ok_or_else(|| format!("Provider '{provider_id}' 未配置完整凭证"))?;
-        let query = ScrapeQuery::new(
-            "Super Mario World".to_string(),
-            "Super Mario World.sfc".to_string(),
-        )
-        .with_system("snes");
-        let results = provider.search(&query).await?;
-        Ok(format!("连接正常，返回 {} 个结果", results.len()))
+        provider.test_connection().await
     }
 
     /// 获取媒体 - 指定 provider
@@ -779,21 +782,24 @@ impl ScraperManager {
     }
 
     /// 更新 Provider 的凭证配置
-    pub fn set_credentials(&mut self, provider_id: &str, config: ScraperConfig) {
+    pub fn set_credentials(
+        &mut self,
+        provider_id: &str,
+        config: ScraperConfig,
+    ) -> Result<(), String> {
         let provider_id_owned = provider_id.to_string();
         let config_clone = config.clone();
 
-        // 内存状态先行:持久化失败仅记录日志,不影响本次会话的内存配置
-        if let Err(e) = update_setting(move |settings| {
+        update_setting(move |settings| {
             settings.scrapers.insert(provider_id_owned, config_clone);
-        }) {
-            eprintln!("[ScraperManager] 持久化 provider '{provider_id}' 凭证配置失败: {e}");
-        }
+        })
+        .map_err(|error| format!("保存 {provider_id} 凭据失败: {error}"))?;
 
         // 同时也更新内存中的启用状态
         if let Some(mem_config) = self.configs.get_mut(provider_id) {
             mem_config.enabled = config.enabled;
         }
+        Ok(())
     }
 }
 
