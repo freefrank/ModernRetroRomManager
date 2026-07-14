@@ -7,7 +7,10 @@ use crate::scraper::{
 };
 use async_trait::async_trait;
 use reqwest::Client;
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer};
+use serde_json::Value;
+use std::time::Duration;
 
 const PROVIDER_ID: &str = "screenscraper";
 const SOFTNAME: &str = "ModernRetroRomManager";
@@ -65,7 +68,11 @@ impl ScreenScraperClient {
             devid,
             devpassword,
             softname: SOFTNAME.to_string(),
-            client: Client::new(),
+            client: Client::builder()
+                .connect_timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(30))
+                .build()
+                .unwrap_or_else(|_| Client::new()),
             limiter: ProviderRateLimiter::per_second(rate_limit, threads),
         }
     }
@@ -124,10 +131,7 @@ impl ScreenScraperClient {
             english_name: None, // ScreenScraper API 返回的多语言名称中可能包含英文，这里暂不提取
             description,
             release_date: jeu.dates.first().map(|d| d.date.clone()),
-            developer: match &jeu.developpeur {
-                Some(OptionValue::String(s)) => Some(s.clone()),
-                _ => None,
-            },
+            developer: jeu.developpeur.clone(),
             publisher: jeu.editeur.clone(),
             genres: jeu
                 .genres
@@ -141,7 +145,10 @@ impl ScreenScraperClient {
                 })
                 .collect(),
             players: jeu.joueurs.clone(),
-            rating: jeu.note.as_ref().and_then(|n| n.text.parse::<f64>().ok()),
+            rating: jeu
+                .note
+                .as_deref()
+                .and_then(|note| note.parse::<f64>().ok()),
         }
     }
 
@@ -238,16 +245,8 @@ impl ScreenScraperClient {
             return Err(response_error("ScreenScraper", resp).await);
         }
 
-        let body = resp.text().await.map_err(|e| e.to_string())?;
-        if !body.trim_start().starts_with('{') {
-            return Err(format!(
-                "ScreenScraper API: {}",
-                body.chars().take(200).collect::<String>()
-            ));
-        }
-        let ss_resp: SSResponse = serde_json::from_str(&body).map_err(|e| e.to_string())?;
-
-        Ok(ss_resp.response.and_then(|r| r.jeu))
+        let body = read_response_body(resp).await?;
+        parse_game_response(&body)
     }
 
     async fn search_games(&self, query: &str, system_id: &str) -> Result<Vec<SSGame>, String> {
@@ -275,13 +274,8 @@ impl ScreenScraperClient {
         if !resp.status().is_success() {
             return Err(response_error("ScreenScraper", resp).await);
         }
-        let body = resp.text().await.map_err(|error| error.to_string())?;
-        let response: SSSearchResponse = serde_json::from_str(&body)
-            .map_err(|error| format!("ScreenScraper 搜索结果解析失败: {error}"))?;
-        Ok(response
-            .response
-            .map(|response| response.jeux)
-            .unwrap_or_default())
+        let body = read_response_body(resp).await?;
+        parse_search_response(&body)
     }
 
     async fn test_member_connection(&self) -> Result<String, String> {
@@ -300,14 +294,8 @@ impl ScreenScraperClient {
         if !resp.status().is_success() {
             return Err(response_error("ScreenScraper", resp).await);
         }
-        let body = resp.text().await.map_err(|error| error.to_string())?;
-        let response: SSUserResponse = serde_json::from_str(&body)
-            .map_err(|error| format!("ScreenScraper 账户结果解析失败: {error}"))?;
-        if response
-            .response
-            .and_then(|response| response.ssuser)
-            .is_none()
-        {
+        let body = read_response_body(resp).await?;
+        if !parse_user_response(&body)? {
             return Err("ScreenScraper 未返回用户信息".to_string());
         }
         Ok("连接正常，ScreenScraper 账号鉴权已通过".to_string())
@@ -362,8 +350,7 @@ mod tests {
             }
         }"#;
 
-        let response: SSSearchResponse = serde_json::from_str(body).unwrap();
-        let games = response.response.unwrap().jeux;
+        let games = parse_search_response(body).unwrap();
         let results = ScreenScraperClient::build_search_results(games, Some("gba".into()));
 
         assert_eq!(results.len(), 1);
@@ -372,6 +359,129 @@ mod tests {
         assert_eq!(results[0].year.as_deref(), Some("2001"));
         assert_eq!(results[0].confidence, 0.9);
     }
+
+    #[test]
+    fn search_response_accepts_text_fields_returned_as_objects() {
+        let body = r#"{
+            "response": {
+                "jeux": [{
+                    "id": 42,
+                    "noms": [{ "text": { "text": "Object-shaped name" } }],
+                    "editeur": { "id": "7", "text": "Publisher" },
+                    "developpeur": { "id": "8", "text": "Developer" },
+                    "joueurs": { "text": "1-2" },
+                    "note": { "text": 18 }
+                }]
+            }
+        }"#;
+
+        let mut games = parse_search_response(body).unwrap();
+        let game = games.remove(0);
+        let metadata = ScreenScraperClient::parse_metadata(&game);
+
+        assert_eq!(game.id.as_deref(), Some("42"));
+        assert_eq!(metadata.name, "Object-shaped name");
+        assert_eq!(metadata.publisher.as_deref(), Some("Publisher"));
+        assert_eq!(metadata.developer.as_deref(), Some("Developer"));
+        assert_eq!(metadata.players.as_deref(), Some("1-2"));
+        assert_eq!(metadata.rating, Some(18.0));
+    }
+
+    #[test]
+    fn search_response_skips_malformed_items_and_accepts_single_objects() {
+        let body = r#"{
+            "response": {
+                "jeux": [
+                    "broken item",
+                    {
+                        "id": 42,
+                        "noms": { "text": "Single name" },
+                        "dates": { "text": 2001 },
+                        "medias": [
+                            { "type": "box-2D", "url": { "text": "https://example.test/box.png" } },
+                            123
+                        ],
+                        "genres": null,
+                        "note": 18
+                    }
+                ]
+            }
+        }"#;
+
+        let games = parse_search_response(body).unwrap();
+        assert_eq!(games.len(), 1);
+        let metadata = ScreenScraperClient::parse_metadata(&games[0]);
+        assert_eq!(metadata.name, "Single name");
+        assert_eq!(metadata.release_date.as_deref(), Some("2001"));
+        assert_eq!(metadata.rating, Some(18.0));
+        assert_eq!(ScreenScraperClient::parse_media(&games[0]).len(), 1);
+    }
+
+    #[test]
+    fn response_parsers_catch_invalid_and_error_payloads() {
+        assert!(matches!(
+            parse_search_response("<html>maintenance</html>"),
+            Err(error) if error.contains("非 JSON")
+        ));
+        assert!(matches!(
+            parse_game_response(""),
+            Err(error) if error.contains("空响应")
+        ));
+        assert!(parse_user_response(r#"{"error":"invalid credentials"}"#)
+            .unwrap_err()
+            .contains("invalid credentials"));
+        let redacted = parse_user_response(
+            r#"{"error":"failed https://api.example/?devid=secret&sspassword=secret"}"#,
+        )
+        .unwrap_err();
+        assert!(!redacted.contains("secret"));
+        assert!(!redacted.contains("https://"));
+        assert!(parse_search_response(r#"{"response":{"jeux":null}}"#)
+            .unwrap()
+            .is_empty());
+        assert!(matches!(
+            parse_search_response(r#"{"response":{"jeux":[{}]}}"#),
+            Err(error) if error.contains("结构无法识别")
+        ));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires configured ScreenScraper member credentials and network access"]
+    async fn live_api_smoke_covers_all_used_endpoints() {
+        let username = std::env::var("MRRM_SS_USERNAME")
+            .expect("MRRM_SS_USERNAME must be set for the live test");
+        let password = std::env::var("MRRM_SS_PASSWORD")
+            .expect("MRRM_SS_PASSWORD must be set for the live test");
+        let (devid, devpassword) = bundled_developer_credentials();
+        let client = ScreenScraperClient::new(username, password, devid, devpassword, 1, 1);
+
+        client.test_member_connection().await.unwrap();
+        eprintln!("ScreenScraper live: ssuserInfos OK");
+
+        let games = client
+            .search_games("Super Mario Advance", "12")
+            .await
+            .unwrap();
+        let game_id = games
+            .iter()
+            .find_map(|game| game.id.as_deref())
+            .expect("jeuRecherche should return a game id");
+        eprintln!(
+            "ScreenScraper live: jeuRecherche OK ({} results)",
+            games.len()
+        );
+
+        let game = client
+            .fetch_game_info(vec![("gameid", game_id.to_string())])
+            .await
+            .unwrap()
+            .expect("jeuInfos should return the selected game");
+        assert!(!game.noms.is_empty());
+        eprintln!(
+            "ScreenScraper live: jeuInfos OK ({} media assets)",
+            game.medias.len()
+        );
+    }
 }
 
 // ============================================================================
@@ -379,111 +489,229 @@ mod tests {
 // ============================================================================
 
 #[derive(Deserialize)]
-struct SSResponse {
-    response: Option<SSResponseData>,
-}
-
-#[derive(Deserialize)]
-struct SSResponseData {
-    jeu: Option<SSGame>,
-}
-
-#[derive(Deserialize)]
-struct SSSearchResponse {
-    response: Option<SSSearchResponseData>,
-}
-
-#[derive(Deserialize)]
-struct SSSearchResponseData {
-    #[serde(default)]
-    jeux: Vec<SSGame>,
-}
-
-#[derive(Deserialize)]
-struct SSUserResponse {
-    response: Option<SSUserResponseData>,
-}
-
-#[derive(Deserialize)]
-struct SSUserResponseData {
-    ssuser: Option<serde_json::Value>,
-}
-
-#[derive(Deserialize)]
 struct SSGame {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional_text")]
     id: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_lossy_vec")]
     noms: Vec<SSName>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_lossy_vec")]
     synopsis: Vec<SSSynopsis>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional_text")]
     editeur: Option<String>,
-    #[serde(default)]
-    developpeur: Option<OptionValue>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional_text")]
+    developpeur: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_lossy_vec")]
     dates: Vec<SSDate>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_lossy_vec")]
     medias: Vec<SSMedia>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_lossy_vec")]
     genres: Vec<SSGenre>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_optional_text")]
     joueurs: Option<String>,
-    #[serde(default)]
-    note: Option<SSNote>,
+    #[serde(default, deserialize_with = "deserialize_optional_text")]
+    note: Option<String>,
 }
 
 #[derive(Deserialize)]
 struct SSName {
-    #[serde(rename = "text")]
+    #[serde(rename = "text", default, deserialize_with = "deserialize_text")]
     nom: String,
 }
 
 #[derive(Deserialize)]
 struct SSSynopsis {
-    #[serde(rename = "text")]
+    #[serde(rename = "text", default, deserialize_with = "deserialize_text")]
     texte: String,
+    #[serde(default, deserialize_with = "deserialize_text")]
     langue: String,
 }
 
 #[derive(Deserialize)]
 struct SSDate {
-    #[serde(rename = "text")]
+    #[serde(rename = "text", default, deserialize_with = "deserialize_text")]
     date: String,
 }
 
 #[derive(Deserialize)]
 struct SSMedia {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, deserialize_with = "deserialize_text")]
     media_type: String,
+    #[serde(default, deserialize_with = "deserialize_text")]
     url: String,
 }
 
 #[derive(Deserialize)]
 struct SSGenre {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_lossy_vec")]
     noms: Vec<SSGenreName>,
 }
 
 #[derive(Deserialize)]
 struct SSGenreName {
-    #[serde(rename = "text")]
+    #[serde(rename = "text", default, deserialize_with = "deserialize_text")]
     text: String,
+    #[serde(default, deserialize_with = "deserialize_text")]
     langue: String,
 }
 
-#[derive(Deserialize)]
-struct SSNote {
-    #[serde(rename = "text")]
-    text: String,
+fn json_text(value: Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(value) => Some(value),
+        serde_json::Value::Number(value) => Some(value.to_string()),
+        serde_json::Value::Bool(value) => Some(value.to_string()),
+        serde_json::Value::Object(mut value) => ["text", "nom", "name", "id"]
+            .into_iter()
+            .find_map(|key| value.remove(key).and_then(json_text)),
+        serde_json::Value::Array(value) => value.into_iter().find_map(json_text),
+        serde_json::Value::Null => None,
+    }
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-#[allow(dead_code)]
-enum OptionValue {
-    String(String),
-    Object(serde_json::Value),
+fn values_from_list(value: Value) -> Vec<Value> {
+    match value {
+        Value::Array(values) => values,
+        Value::Null => Vec::new(),
+        Value::Object(values) if values.is_empty() => Vec::new(),
+        value => vec![value],
+    }
+}
+
+fn deserialize_lossy_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: DeserializeOwned,
+{
+    Value::deserialize(deserializer).map(|value| {
+        values_from_list(value)
+            .into_iter()
+            .filter_map(|item| serde_json::from_value(item).ok())
+            .collect()
+    })
+}
+
+fn deserialize_text<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Value::deserialize(deserializer).map(|value| json_text(value).unwrap_or_default())
+}
+
+fn deserialize_optional_text<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<Value>::deserialize(deserializer).map(|value| {
+        value
+            .and_then(json_text)
+            .filter(|text| !text.trim().is_empty())
+    })
+}
+
+async fn read_response_body(response: reqwest::Response) -> Result<String, String> {
+    response
+        .text()
+        .await
+        .map_err(|_| "ScreenScraper 响应读取失败".to_string())
+}
+
+fn parse_json_response(body: &str) -> Result<Value, String> {
+    let body = body.trim();
+    if body.is_empty() {
+        return Err("ScreenScraper 返回空响应".to_string());
+    }
+    serde_json::from_str(body).map_err(|_| "ScreenScraper 返回非 JSON 响应".to_string())
+}
+
+fn api_error_message(value: &Value) -> Option<String> {
+    let object = value.as_object()?;
+    ["error", "erreur", "message"]
+        .into_iter()
+        .find_map(|key| object.get(key).cloned().and_then(json_text))
+        .filter(|message| !message.trim().is_empty())
+        .map(sanitize_api_message)
+}
+
+fn sanitize_api_message(message: String) -> String {
+    let normalized = message.split_whitespace().collect::<Vec<_>>().join(" ");
+    let lowercase = normalized.to_ascii_lowercase();
+    if [
+        "password",
+        "devpassword",
+        "sspassword",
+        "devid=",
+        "ssid=",
+        "http://",
+        "https://",
+    ]
+    .iter()
+    .any(|marker| lowercase.contains(marker))
+    {
+        "服务端返回错误".to_string()
+    } else {
+        normalized.chars().take(200).collect()
+    }
+}
+
+fn game_has_content(game: &SSGame) -> bool {
+    game.id.is_some()
+        || !game.noms.is_empty()
+        || !game.synopsis.is_empty()
+        || !game.dates.is_empty()
+        || !game.medias.is_empty()
+}
+
+fn parse_search_response(body: &str) -> Result<Vec<SSGame>, String> {
+    let root = parse_json_response(body)?;
+    if let Some(message) = api_error_message(&root) {
+        return Err(format!("ScreenScraper API: {message}"));
+    }
+    let games = root
+        .get("response")
+        .and_then(|response| response.get("jeux"))
+        .cloned()
+        .unwrap_or(Value::Null);
+    let raw_games = values_from_list(games);
+    let raw_count = raw_games.len();
+    let parsed: Vec<SSGame> = raw_games
+        .into_iter()
+        .filter_map(|game| serde_json::from_value(game).ok())
+        .filter(game_has_content)
+        .collect();
+    if raw_count > 0 && parsed.is_empty() {
+        return Err("ScreenScraper 搜索结果结构无法识别".to_string());
+    }
+    Ok(parsed)
+}
+
+fn parse_game_response(body: &str) -> Result<Option<SSGame>, String> {
+    let root = parse_json_response(body)?;
+    if let Some(message) = api_error_message(&root) {
+        return Err(format!("ScreenScraper API: {message}"));
+    }
+    let game = root
+        .get("response")
+        .and_then(|response| response.get("jeu"))
+        .cloned();
+    match game {
+        None | Some(Value::Null) => Ok(None),
+        Some(game) => values_from_list(game)
+            .into_iter()
+            .find_map(|item| serde_json::from_value(item).ok())
+            .filter(game_has_content)
+            .map(Some)
+            .ok_or_else(|| "ScreenScraper 游戏详情结构无法识别".to_string()),
+    }
+}
+
+fn parse_user_response(body: &str) -> Result<bool, String> {
+    let root = parse_json_response(body)?;
+    if let Some(message) = api_error_message(&root) {
+        return Err(format!("ScreenScraper API: {message}"));
+    }
+    Ok(root
+        .get("response")
+        .and_then(|response| response.get("ssuser"))
+        .is_some_and(|user| !user.is_null()))
 }
 
 // ============================================================================

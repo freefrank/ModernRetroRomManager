@@ -21,6 +21,12 @@ function getRomCover(rom: Rom): string | undefined {
   return rom.temp_data?.box_front || rom.box_front || rom.gridicon;
 }
 
+// 横向的 ES <image> 往往是 mix/screenshot，而不是竖版 boxart。
+// 这类回退图片应完整显示，避免被 3:4 卡片从中间严重裁切。
+function shouldContainCover(image: HTMLImageElement): boolean {
+  return image.naturalWidth > image.naturalHeight * 1.05;
+}
+
 // 文件大小自适应格式化(KB/MB/GB)
 function formatFileSize(bytes: number | undefined): string {
   if (bytes === undefined || bytes < 0) return "—";
@@ -164,6 +170,7 @@ interface CardProps {
 function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
   const [imgError, setImgError] = useState(false);
+  const [containCover, setContainCover] = useState(false);
 
   return (
     <div
@@ -182,7 +189,11 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
           src={coverUrl}
           alt=""
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-105"
+          className={clsx(
+            "w-full h-full transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-105",
+            containCover ? "object-contain bg-bg-primary" : "object-cover"
+          )}
+          onLoad={(event) => setContainCover(shouldContainCover(event.currentTarget))}
           onError={() => setImgError(true)}
         />
       ) : (
@@ -242,6 +253,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
   const [imgError, setImgError] = useState(false);
+  const [containCover, setContainCover] = useState(false);
 
   return (
     <div
@@ -262,7 +274,11 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
             src={coverUrl}
             alt=""
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-110"
+            className={clsx(
+              "w-full h-full transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-110",
+              containCover ? "object-contain bg-bg-primary" : "object-cover"
+            )}
+            onLoad={(event) => setContainCover(shouldContainCover(event.currentTarget))}
             onError={() => setImgError(true)}
           />
         ) : (

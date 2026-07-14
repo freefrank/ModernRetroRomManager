@@ -42,15 +42,73 @@ pub async fn response_error(provider: &str, response: reqwest::Response) -> Stri
         .and_then(|value| value.to_str().ok())
         .map(str::to_string);
     let body = response.text().await.unwrap_or_default();
-    if status.as_u16() == 429 {
-        format!(
+    format_response_error(provider, status.as_u16(), retry_after.as_deref(), &body)
+}
+
+fn format_response_error(
+    provider: &str,
+    status: u16,
+    retry_after: Option<&str>,
+    body: &str,
+) -> String {
+    match status {
+        401 | 403 => format!("{provider} 鉴权失败，请检查账号或 API 凭据"),
+        426 if provider == "ScreenScraper" => {
+            "ScreenScraper 已拒绝当前客户端版本，请升级应用后重试".to_string()
+        }
+        429 => format!(
             "{provider} 已限流{}",
             retry_after.map_or(String::new(), |value| format!("，{} 秒后重试", value))
-        )
-    } else {
-        format!(
-            "{provider} HTTP {status}: {}",
-            body.chars().take(200).collect::<String>()
-        )
+        ),
+        430 if provider == "ScreenScraper" => "ScreenScraper 当日抓取额度已用尽".to_string(),
+        431 if provider == "ScreenScraper" => {
+            "ScreenScraper 当日未识别 ROM 查询额度已用尽".to_string()
+        }
+        _ => {
+            let normalized = body.split_whitespace().collect::<Vec<_>>().join(" ");
+            let sensitive = [
+                "password",
+                "devpassword",
+                "sspassword",
+                "devid=",
+                "ssid=",
+                "http://",
+                "https://",
+            ]
+            .iter()
+            .any(|marker| normalized.to_ascii_lowercase().contains(marker));
+            let detail = if normalized.is_empty() || sensitive {
+                "服务端拒绝了请求".to_string()
+            } else {
+                normalized.chars().take(200).collect::<String>()
+            };
+            format!("{provider} HTTP {status}: {detail}")
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_response_error;
+
+    #[test]
+    fn screenscraper_status_codes_are_actionable() {
+        assert!(format_response_error("ScreenScraper", 401, None, "").contains("鉴权失败"));
+        assert!(format_response_error("ScreenScraper", 426, None, "").contains("升级应用"));
+        assert!(format_response_error("ScreenScraper", 429, Some("12"), "").contains("12 秒后重试"));
+        assert!(format_response_error("ScreenScraper", 430, None, "").contains("抓取额度"));
+        assert!(format_response_error("ScreenScraper", 431, None, "").contains("未识别 ROM"));
+    }
+
+    #[test]
+    fn error_body_never_echoes_credential_urls() {
+        let error = format_response_error(
+            "ScreenScraper",
+            500,
+            None,
+            "failed https://api.example/?devid=secret&sspassword=secret",
+        );
+        assert!(!error.contains("secret"));
+        assert!(!error.contains("https://"));
     }
 }

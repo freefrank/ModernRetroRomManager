@@ -502,6 +502,11 @@ fn try_load_from_temp_metadata(
     println!("[DEBUG] 发现临时元数据，尝试加载: {:?}", path_to_read);
 
     if let Ok(metadata) = parse_pegasus_file(&path_to_read) {
+        // Temp metadata is authoritative for scraped values, but it may contain
+        // entries without artwork. Keep a lightweight index of the original ES
+        // media so those gaps can still fall back to <boxart>/<marquee> without
+        // rescanning every ROM file on a network library.
+        let source_media = read_emulationstation_media_assets(rom_dir);
         let media_index = build_temp_media_index(&base_dir);
         let roms: Vec<RomInfo> = metadata
             .games
@@ -570,6 +575,24 @@ fn try_load_from_temp_metadata(
                     ..Default::default()
                 };
                 fill_missing_temp_media_from_index(&mut temp_game, &media_index, &rom.file);
+
+                if let Some(source) = source_media.get(&rom.file) {
+                    if temp_game.box_front.is_none() {
+                        temp_game.box_front = source.box_front.clone();
+                    }
+                    if temp_game.logo.is_none() {
+                        temp_game.logo = source.logo.clone();
+                    }
+                    if rom.box_front.is_none() {
+                        rom.box_front = source.box_front.clone();
+                    }
+                    if rom.logo.is_none() {
+                        rom.logo = source.logo.clone();
+                    }
+                    if rom.marquee.is_none() {
+                        rom.marquee = source.logo.clone();
+                    }
+                }
                 rom.temp_data = Some(temp_game);
 
                 Some(rom)
@@ -583,6 +606,62 @@ fn try_load_from_temp_metadata(
     }
 
     None
+}
+
+#[derive(Debug, Default)]
+struct EsMediaAssets {
+    box_front: Option<String>,
+    logo: Option<String>,
+}
+
+fn read_emulationstation_media_assets(
+    dir_path: &Path,
+) -> std::collections::HashMap<String, EsMediaAssets> {
+    use quick_xml::de::from_reader;
+    use std::fs::File;
+    use std::io::BufReader;
+
+    #[derive(Deserialize)]
+    struct EsMediaList {
+        #[serde(rename = "game", default)]
+        games: Vec<EsMediaGame>,
+    }
+
+    #[derive(Deserialize)]
+    struct EsMediaGame {
+        path: String,
+        image: Option<String>,
+        boxart: Option<String>,
+        marquee: Option<String>,
+    }
+
+    let Ok(file) = File::open(dir_path.join("gamelist.xml")) else {
+        return std::collections::HashMap::new();
+    };
+    let Ok(list) = from_reader::<_, EsMediaList>(BufReader::new(file)) else {
+        return std::collections::HashMap::new();
+    };
+
+    list.games
+        .into_iter()
+        .map(|game| {
+            let file = game.path.trim_start_matches("./").to_string();
+            let image = game.image.map(|value| resolve_media_path(dir_path, &value));
+            let boxart = game
+                .boxart
+                .map(|value| resolve_media_path(dir_path, &value));
+            let logo = game
+                .marquee
+                .map(|value| resolve_media_path(dir_path, &value));
+            (
+                file,
+                EsMediaAssets {
+                    box_front: boxart.or(image),
+                    logo,
+                },
+            )
+        })
+        .collect()
 }
 
 /// 获取单个目录的ROM列表
@@ -1060,6 +1139,8 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
         name: Option<String>,
         desc: Option<String>,
         image: Option<String>,
+        boxart: Option<String>,
+        marquee: Option<String>,
         developer: Option<String>,
         publisher: Option<String>,
         genre: Option<String>,
@@ -1105,6 +1186,12 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                     .to_string()
             });
 
+            let image = g.image.map(|image| resolve_media_path(dir_path, &image));
+            let boxart = g.boxart.map(|boxart| resolve_media_path(dir_path, &boxart));
+            let marquee = g
+                .marquee
+                .map(|marquee| resolve_media_path(dir_path, &marquee));
+
             let mut rom = RomInfo {
                 file,
                 name,
@@ -1117,7 +1204,13 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 rating: g.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
                 directory: dir_path.to_string_lossy().to_string(),
                 system: system_name.to_string(),
-                box_front: g.image.map(|image| resolve_media_path(dir_path, &image)),
+                // EmulationStation themes often store a pre-composed horizontal
+                // "mix" in <image>, while <boxart> is the actual portrait cover.
+                // Prefer the real cover for MRRM's 3:4 cards and keep <image> as
+                // a fallback for libraries that only expose the standard field.
+                box_front: boxart.or(image),
+                logo: marquee.clone(),
+                marquee,
                 english_name: g.english_name,
                 ..Default::default()
             };
@@ -1436,6 +1529,52 @@ mod tests {
         // gamelist 路径同样补齐文件元数据
         assert_eq!(roms[0].file_size, Some(3));
         assert!(roms[0].modified_at.is_some());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn emulationstation_prefers_boxart_over_composed_image_and_reads_marquee() {
+        let dir = create_temp_dir();
+        fs::create_dir_all(dir.join("media")).expect("create media directory");
+        fs::write(dir.join("Test.gba"), b"rom").expect("write rom");
+        fs::write(dir.join("media/mix.png"), b"mix").expect("write mix");
+        fs::write(dir.join("media/boxart.png"), b"boxart").expect("write boxart");
+        fs::write(dir.join("media/logo.png"), b"logo").expect("write logo");
+        fs::write(
+            dir.join("gamelist.xml"),
+            r#"<gameList><game>
+  <path>./Test.gba</path>
+  <name>Test Game</name>
+  <image>./media/mix.png</image>
+  <boxart>./media/boxart.png</boxart>
+  <marquee>./media/logo.png</marquee>
+</game></gameList>"#,
+        )
+        .expect("write gamelist");
+
+        let roms = read_emulationstation_roms(&dir, "gba").expect("parse gamelist");
+        assert_eq!(roms.len(), 1);
+        assert_eq!(
+            roms[0].box_front,
+            Some(resolve_media_path(&dir, "./media/boxart.png"))
+        );
+        assert_eq!(
+            roms[0].logo,
+            Some(resolve_media_path(&dir, "./media/logo.png"))
+        );
+        assert_eq!(roms[0].logo, roms[0].marquee);
+
+        let media = read_emulationstation_media_assets(&dir);
+        let source = media.get("Test.gba").expect("source media");
+        assert_eq!(
+            source.box_front,
+            Some(resolve_media_path(&dir, "./media/boxart.png"))
+        );
+        assert_eq!(
+            source.logo,
+            Some(resolve_media_path(&dir, "./media/logo.png"))
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
