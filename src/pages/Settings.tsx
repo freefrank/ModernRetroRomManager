@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tabs } from "@/components/ui";
@@ -15,9 +14,10 @@ export default function Settings() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") as SettingsTab | null;
-  const [tab, setTab] = useState<SettingsTab>(
-    requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "appearance",
-  );
+  // URL 是设置页选项卡的唯一状态源。这样从应用内再次导航到已经挂载的
+  // /settings?tab=general 时，也会立即切换到目标区域。
+  const tab: SettingsTab =
+    requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "appearance";
 
   const items = TAB_VALUES.map((value) => ({
     value,
@@ -36,7 +36,6 @@ export default function Settings() {
           value={tab}
           onChange={(value) => {
             const next = value as SettingsTab;
-            setTab(next);
             setSearchParams(next === "appearance" ? {} : { tab: next });
           }}
         />

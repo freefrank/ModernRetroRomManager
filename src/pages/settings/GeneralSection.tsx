@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
@@ -67,6 +67,7 @@ export default function GeneralSection() {
   const [mediaDir, setMediaDir] = useState<string | null>(null);
   const [editingLibraryId, setEditingLibraryId] = useState<string | null>(null);
   const [editingLibraryName, setEditingLibraryName] = useState("");
+  const librarySectionRef = useRef<HTMLElement>(null);
 
   // 元数据检测状态
   const [detectedMetadata, setDetectedMetadata] = useState<MetadataFileInfo[]>([]);
@@ -84,9 +85,17 @@ export default function GeneralSection() {
   useEffect(() => {
     if (searchParams.get("addDirectory") === "1") {
       setIsAddDialogOpen(true);
-      setSearchParams({ tab: "general" }, { replace: true });
+      setSearchParams({ tab: "general", section: "libraries" }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("section") !== "libraries") return;
+    requestAnimationFrame(() => {
+      librarySectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      librarySectionRef.current?.focus({ preventScroll: true });
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     const loadPaths = async () => {
@@ -307,7 +316,12 @@ export default function GeneralSection() {
       </section>
 
       {/* Library 管理 */}
-      <section>
+      <section
+        ref={librarySectionRef}
+        id="library-settings"
+        tabIndex={-1}
+        className="scroll-mt-4 outline-none"
+      >
         <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-medium text-text-primary">

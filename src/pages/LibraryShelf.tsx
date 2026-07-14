@@ -72,7 +72,7 @@ export default function LibraryShelf() {
             title={t("library.empty.title")}
             description={t("library.empty.description")}
             action={
-              <Button onClick={() => navigate("/settings?tab=general&addDirectory=1")}>
+              <Button onClick={() => navigate("/settings?tab=general&section=libraries&addDirectory=1")}>
                 <Plus className="w-4 h-4" />
                 {t("library.empty.addDirectory")}
               </Button>
@@ -96,11 +96,11 @@ export default function LibraryShelf() {
             <Card
               role="button"
               tabIndex={0}
-              onClick={() => navigate("/settings?tab=general&addDirectory=1")}
+              onClick={() => navigate("/settings?tab=general&section=libraries&addDirectory=1")}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigate("/settings?tab=general&addDirectory=1");
+                  navigate("/settings?tab=general&section=libraries&addDirectory=1");
                 }
               }}
               className="cursor-pointer select-none border-dashed bg-transparent p-6 flex flex-col items-center justify-center gap-2 text-text-muted hover:text-text-primary hover:border-border-hover"
