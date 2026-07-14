@@ -106,7 +106,6 @@ export interface ScraperProviderInfo {
   capabilities: string[];
   rate_limit: number;
   threads: number;
-  developer_mode: boolean;
   matched_count: number;
   selected_count: number;
   cache_hit_count: number;
@@ -116,13 +115,10 @@ export interface ScraperProviderInfo {
 
 export interface ScraperCredentials {
   api_key?: string;
-  client_id?: string;
-  client_secret?: string;
   username?: string;
   password?: string;
   rate_limit?: number;
   threads?: number;
-  developer_mode?: boolean;
 }
 
 export interface RomSystemSummary {

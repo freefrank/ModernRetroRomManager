@@ -117,7 +117,6 @@ GET /api/media?path=...
 - **Endpoint**: `https://api.screenscraper.fr/api2`
 - **应用认证**: 内置并轻量混淆的 `devid` / `devpassword`，`softname=ModernRetroRomManager`
 - **会员认证**: 用户在设置中填写自己的 `ssid` / `sspassword`
-- **高级覆盖**: 可选用自有 Developer ID / Developer Password 覆盖内置应用凭据；会员凭据仍会发送
 - **Rate Limit**: 按账户级别
 - **文档**: https://www.screenscraper.fr/webapi2.php
 

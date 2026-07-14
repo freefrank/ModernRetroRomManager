@@ -163,7 +163,6 @@ export default function ScraperSection() {
     setCredentials({
       rate_limit: provider.rate_limit,
       threads: provider.threads,
-      developer_mode: provider.developer_mode,
     });
   };
 
@@ -370,41 +369,6 @@ export default function ScraperSection() {
                             placeholder={t("settings.apiConfig.passwordPlaceholder")}
                           />
                         </div>
-                        <label className="flex items-center justify-between gap-4 p-3 rounded-[var(--radius-md)] border border-border-default bg-bg-secondary cursor-pointer">
-                          <span>
-                            <span className="block text-sm font-medium text-text-primary">
-                              {t("settings.apiConfig.developerMode")}
-                            </span>
-                            <span className="block text-xs text-text-muted mt-1">
-                              {t("settings.apiConfig.developerModeHint")}
-                            </span>
-                          </span>
-                          <input
-                            type="checkbox"
-                            checked={credentials.developer_mode ?? false}
-                            onChange={(e) => setCredentials({ ...credentials, developer_mode: e.target.checked })}
-                          />
-                        </label>
-                        {credentials.developer_mode && <div>
-                          <label className="block text-sm font-medium text-text-primary mb-2">
-                            {t("settings.apiConfig.developerId")}
-                          </label>
-                          <Input
-                            type="text"
-                            value={credentials.client_id || ""}
-                            onChange={(e) => setCredentials({ ...credentials, client_id: e.target.value })}
-                          />
-                        </div>}
-                        {credentials.developer_mode && <div>
-                          <label className="block text-sm font-medium text-text-primary mb-2">
-                            {t("settings.apiConfig.developerPassword")}
-                          </label>
-                          <Input
-                            type="password"
-                            value={credentials.client_secret || ""}
-                            onChange={(e) => setCredentials({ ...credentials, client_secret: e.target.value })}
-                          />
-                        </div>}
                       </>
                     )}
 

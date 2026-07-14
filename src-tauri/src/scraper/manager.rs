@@ -114,7 +114,6 @@ pub struct ProviderInfo {
     pub capabilities: Vec<String>,
     pub rate_limit: u32,
     pub threads: u32,
-    pub developer_mode: bool,
     pub matched_count: u64,
     pub selected_count: u64,
     pub cache_hit_count: u64,
@@ -143,24 +142,14 @@ fn credentials_present(provider_id: &str, config: Option<&ScraperConfig>) -> boo
             .as_deref()
             .is_some_and(|k| !k.trim().is_empty()),
         "screenscraper" => {
-            let member_credentials_present = config
+            config
                 .username
                 .as_deref()
                 .is_some_and(|v| !v.trim().is_empty())
                 && config
                     .password
                     .as_deref()
-                    .is_some_and(|v| !v.trim().is_empty());
-            let custom_developer_credentials_present = !config.developer_mode
-                || (config
-                    .client_id
-                    .as_deref()
                     .is_some_and(|v| !v.trim().is_empty())
-                    && config
-                        .client_secret
-                        .as_deref()
-                        .is_some_and(|v| !v.trim().is_empty()));
-            member_credentials_present && custom_developer_credentials_present
         }
         _ => false,
     }
@@ -246,14 +235,7 @@ impl ScraperManager {
                     }
                 }
                 "screenscraper" => {
-                    let (devid, devpassword) = if config.developer_mode {
-                        (
-                            config.client_id.clone().unwrap_or_default(),
-                            config.client_secret.clone().unwrap_or_default(),
-                        )
-                    } else {
-                        bundled_developer_credentials()
-                    };
+                    let (devid, devpassword) = bundled_developer_credentials();
                     self.register_with_config(
                         ScreenScraperClient::new(
                             config.username.clone().unwrap_or_default(),
@@ -296,7 +278,6 @@ impl ScraperManager {
                         .collect(),
                     rate_limit: config.map(|c| c.rate_limit).unwrap_or(1),
                     threads: config.map(|c| c.threads).unwrap_or(1),
-                    developer_mode: config.map(|c| c.developer_mode).unwrap_or(false),
                     matched_count: stats.matched_count,
                     selected_count: stats.selected_count,
                     cache_hit_count: stats.cache_hit_count,
@@ -910,34 +891,13 @@ mod tests {
     }
 
     #[test]
-    fn screenscraper_requires_member_credentials_and_only_requires_custom_dev_when_enabled() {
+    fn screenscraper_requires_member_credentials() {
         let member_only = ScraperConfig {
             username: Some("member".to_string()),
             password: Some("member-pass".to_string()),
             ..Default::default()
         };
         assert!(credentials_present("screenscraper", Some(&member_only)));
-
-        let custom_missing = ScraperConfig {
-            developer_mode: true,
-            ..member_only.clone()
-        };
-        assert!(!credentials_present("screenscraper", Some(&custom_missing)));
-
-        let custom_complete = ScraperConfig {
-            client_id: Some("custom-dev".to_string()),
-            client_secret: Some("custom-pass".to_string()),
-            ..custom_missing
-        };
-        assert!(credentials_present("screenscraper", Some(&custom_complete)));
-
-        let member_missing = ScraperConfig {
-            developer_mode: true,
-            client_id: Some("custom-dev".to_string()),
-            client_secret: Some("custom-pass".to_string()),
-            ..Default::default()
-        };
-        assert!(!credentials_present("screenscraper", Some(&member_missing)));
     }
 
     #[test]
@@ -958,8 +918,6 @@ mod tests {
                 ScraperConfig {
                     username: Some("user".to_string()),
                     password: Some("pass".to_string()),
-                    client_id: Some("developer".to_string()),
-                    client_secret: Some("developer-pass".to_string()),
                     ..Default::default()
                 },
             ),

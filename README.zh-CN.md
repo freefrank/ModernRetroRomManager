@@ -30,7 +30,7 @@ ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM �
 - [TheGamesDB](https://thegamesdb.net/)
 
 可以在应用设置中配置 Provider 凭据、请求速率、并发线程、优先级和可选媒体类型。
-MRRM 已内置 ScreenScraper 应用开发者凭据，用户只需填写自己的 ScreenScraper 会员用户名和密码；高级用户仍可在设置中覆盖为自有开发者凭据。
+MRRM 已内置 ScreenScraper 应用开发者凭据，用户只需填写自己的 ScreenScraper 会员用户名和密码。
 
 ## 技术栈
 
