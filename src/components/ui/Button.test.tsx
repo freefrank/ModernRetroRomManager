@@ -10,6 +10,8 @@ describe("Button", () => {
     const { container } = render(<Button>确定</Button>);
     const btn = container.querySelector("button")!;
     expect(btn.classList.contains("rr-button")).toBe(true);
+    expect(btn.className).toContain("whitespace-nowrap");
+    expect(btn.className).toContain("[&>svg]:shrink-0");
     expect(btn.className).toContain("bg-accent-primary");
     expect(btn.textContent).toBe("确定");
   });

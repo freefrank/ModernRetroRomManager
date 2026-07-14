@@ -9,7 +9,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   { variant = "primary", size = "md", loading, className = "", children, disabled, ...rest }, ref) {
-  const base = "rr-button inline-flex items-center justify-center gap-2 font-medium select-none " +
+  const base = "rr-button inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium select-none [&>svg]:shrink-0 " +
     "rounded-[var(--radius-md)] border-[length:var(--border-width)] " +
     "transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)] " +
     "disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none " +

@@ -308,8 +308,8 @@ export default function GeneralSection() {
 
       {/* Library 管理 */}
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-medium text-text-primary">
               {t("settings.scanDirectories.title")}
             </h2>
@@ -317,7 +317,7 @@ export default function GeneralSection() {
               {t("settings.scanDirectories.description")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
             <Button
               variant="ghost"
               size="sm"
