@@ -1,0 +1,99 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "Версия {{version}}"
+  },
+  "nav": {
+    "library": "Библиотека",
+    "scraper": "Scraper",
+    "import": "Импорт/Экспорт",
+    "settings": "Настройки",
+    "tools": "Инструменты",
+    "cnTools": "Китайский ROM Инструменты",
+    "searchSystems": "Поисковые системы",
+    "selectLibrary": "Выбрать библиотеку",
+    "librarySwitchFailed": "Не удалось переключить библиотеку: {{error}}",
+    "noMatchingSystems": "Нет подходящих систем",
+    "expandPanel": "Развернуть панель",
+    "collapsePanel": "Свернуть панель"
+  },
+  "dropOverlay": {
+    "title": "Перетащите, чтобы добавить каталог",
+    "subtitle": "Рекурсивное сканирование игр"
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "Scraped: {{count}}",
+    "storageUsed": "Хранилище: {{size}}"
+  },
+  "console": {
+    "title": "Консоль",
+    "clear": "Очистить журналы",
+    "empty": "Нет журналов"
+  },
+  "scan": {
+    "preparing": "Подготовка",
+    "mode": {
+      "incremental": "Инкрементное сканирование",
+      "full": "Полное сканирование"
+    }
+  },
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "refresh": "Обновить",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успех",
+    "name": "Имя",
+    "system": "Система",
+    "size": "Размер",
+    "date": "Дата",
+    "notAvailable": "Неизвестно",
+    "finish": "Готово"
+  },
+  "splash": {
+    "initializing": "Инициализация...",
+    "loadingSettings": "Загрузка настроек...",
+    "loadingRoms": "Загрузка данных ROM...",
+    "loadingCovers": "Загрузка обложек...",
+    "ready": "Готово"
+  },
+  "metadataDialog": {
+    "title": "Обнаружены файлы метаданных",
+    "subtitle": "Выберите формат метаданных",
+    "description": "Выберите формат:",
+    "skip": "Пропустить"
+  },
+  "ui": {
+    "dialog": {
+      "close": "Закрыть"
+    },
+    "toast": {
+      "dismiss": "Закрыть уведомление"
+    },
+    "empty": {
+      "title": "Здесь пока ничего нет"
+    },
+    "spinner": {
+      "loading": "Загрузка"
+    }
+  },
+  "directoryInput": {
+    "placeholder": "например. C:\\ROMs\\SNES или /home/user/roms",
+    "browse": "Обзор...",
+    "browseTitle": "Выбор каталога",
+    "status": {
+      "validating": "Проверка...",
+      "error": "Ошибка: {{error}}",
+      "missing": "Путь отсутствует",
+      "notDirectory": "Не каталог",
+      "notReadable": "Нет доступа на чтение",
+      "notWritable": "Внимание: нет доступа на запись.",
+      "valid": "Действительный путь ✓"
+    }
+  }
+}

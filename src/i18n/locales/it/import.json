@@ -1,0 +1,24 @@
+{
+  "import": {
+    "title": "Importa/Esporta",
+    "export": {
+      "title": "Esporta i dati scraped",
+      "description": "Seleziona una libreria ed esporta la sua intera raccolta scraped o una piattaforma con risorse correlate.",
+      "library": "Libreria",
+      "scope": "Ambito di esportazione",
+      "noLibraries": "Nessuna libreria aggiunta",
+      "loadingSystems": "Caricamento piattaforme…",
+      "entireLibrary": "Libreria intera ({{systems}} piattaforme / {{roms}} ROMs)",
+      "system": "Piattaforma / directory ROM",
+      "format": "Formato di destinazione",
+      "target": "Directory di esportazione",
+      "targetHint": "Il valore predefinito è la libreria o piattaforma selezionata. Le esportazioni dell'intera libreria preservano le sottodirectory della piattaforma in un'altra destinazione.",
+      "contents": "Include tutti i metadati temporanei e i file correlati nella directory multimediale della piattaforma.",
+      "libraryContents": "Include metadati e contenuti multimediali per ogni piattaforma scraped in questa libreria. Le piattaforme senza dati scraped vengono saltate.",
+      "action": "Esporta metadati e risorse",
+      "libraryAction": "Esporta l'intera libreria",
+      "libraryLoadFailed": "Impossibile caricare la libreria: {{error}}",
+      "failed": "Esportazione non riuscita: {{error}}"
+    }
+  }
+}

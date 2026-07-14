@@ -1,0 +1,99 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "Version {{version}}"
+  },
+  "nav": {
+    "library": "Bibliothèque",
+    "scraper": "Scraper",
+    "import": "Importation/Exportation",
+    "settings": "Paramètres",
+    "tools": "Outils",
+    "cnTools": "Chinois ROM Outils",
+    "searchSystems": "Systèmes de recherche",
+    "selectLibrary": "Sélectionner la bibliothèque",
+    "librarySwitchFailed": "Échec du changement de bibliothèque : {{error}}",
+    "noMatchingSystems": "Aucun système correspondant",
+    "expandPanel": "Agrandir le panneau",
+    "collapsePanel": "Réduire le panneau"
+  },
+  "dropOverlay": {
+    "title": "Supprimer pour ajouter un répertoire",
+    "subtitle": "Rechercher des jeux de manière récursive"
+  },
+  "statusBar": {
+    "romCount": "ROM : {{count}}",
+    "scrapedCount": "Scraped : {{count}}",
+    "storageUsed": "Stockage : {{size}}"
+  },
+  "console": {
+    "title": "Console",
+    "clear": "Effacer les journaux",
+    "empty": "Aucun journal"
+  },
+  "scan": {
+    "preparing": "Préparation",
+    "mode": {
+      "incremental": "Analyse incrémentielle",
+      "full": "Analyse complète"
+    }
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "refresh": "Actualiser",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "name": "Nom",
+    "system": "Système",
+    "size": "Taille",
+    "date": "Date",
+    "notAvailable": "Inconnu",
+    "finish": "Terminer"
+  },
+  "splash": {
+    "initializing": "Initialisation...",
+    "loadingSettings": "Chargement des paramètres...",
+    "loadingRoms": "Chargement des données ROM...",
+    "loadingCovers": "Chargement des couvertures...",
+    "ready": "Prêt"
+  },
+  "metadataDialog": {
+    "title": "Fichiers de métadonnées détectés",
+    "subtitle": "Choisir le format des métadonnées",
+    "description": "Sélectionnez un format :",
+    "skip": "Sauter"
+  },
+  "ui": {
+    "dialog": {
+      "close": "Fermer"
+    },
+    "toast": {
+      "dismiss": "Rejeter la notification"
+    },
+    "empty": {
+      "title": "Rien ici pour l'instant"
+    },
+    "spinner": {
+      "loading": "Chargement"
+    }
+  },
+  "directoryInput": {
+    "placeholder": "par exemple. C:\\ROMs\\SNES ou /home/user/roms",
+    "browse": "Parcourir...",
+    "browseTitle": "Sélectionner le répertoire",
+    "status": {
+      "validating": "Validation...",
+      "error": "Erreur : {{error}}",
+      "missing": "Chemin manquant",
+      "notDirectory": "Pas un répertoire",
+      "notReadable": "Aucun accès en lecture",
+      "notWritable": "Avertissement : aucun accès en écriture",
+      "valid": "Chemin valide ✓"
+    }
+  }
+}

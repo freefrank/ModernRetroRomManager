@@ -1,0 +1,110 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "開始 Scrape",
+    "apiConfig": {
+      "title": "API 配置",
+      "description": "設定 Scraper API 金鑰以取得遊戲元資料和媒體資源",
+      "activeSources": "{{count}} 個活躍源",
+      "credentialsNote": "請輸入該來源的 API 憑證。這些資訊將加密儲存在本地。"
+    },
+    "noCredentials": {
+      "title": "未配置 API 憑證",
+      "description": "Scraper 功能需要設定 API 憑證才能使用。請前往設定頁面配置 ScreenScraper 或 SteamGridDB 的 API 憑證。",
+      "goToSettings": "前往設定頁面"
+    },
+    "status": {
+      "enabledSources": "已啟用來源",
+      "configuredCredentials": "已配置憑證",
+      "authenticated": "已認證",
+      "enabled": "已啟用",
+      "disabled": "已停用",
+      "missingCredentials": "未配置憑證"
+    },
+    "providerList": {
+      "title": "資料來源狀態",
+      "configure": "配置"
+    },
+    "capabilities": {
+      "search": "搜尋",
+      "hash_lookup": "雜湊匹配",
+      "metadata": "元資料",
+      "media": "媒體"
+    },
+    "mediaOptions": {
+      "title": "本次抓取資源類型",
+      "selected": "已選用 {{count}} 項"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Twitch 旗下，數據全面"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "高品質封面/Logo/圖標"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "社群驅動，免費"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "舊遊戲資料豐富"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "需註冊，媒體資源多"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "使用者名稱",
+      "password": "密碼"
+    },
+    "dialog": {
+      "title": "抓取遊戲元數據",
+      "searchPlaceholder": "輸入遊戲名稱搜尋...",
+      "searchButton": "搜尋",
+      "searching": "搜尋中...",
+      "resultsCount": "搜尋結果 ({{count}})",
+      "assetCount": "{{count}} 個資產",
+      "noResults": "暫無搜尋結果",
+      "loadingDetails": "正在載入詳細資料...",
+      "confidence": "置信度",
+      "userRating": "使用者評分",
+      "releaseDate": "發行日期",
+      "developer": "開發商",
+      "publisher": "發行商",
+      "sourceSystem": "來源系統",
+      "description": "遊戲描述",
+      "noDescription": "暫無描述。",
+      "mediaAssets": "選用媒體資產 ({{count}})",
+      "selectedAssets": "已選擇 {{count}} 個資產",
+      "readyToScrape": "準備抓取數據",
+      "readyToScrapeDesc": "在左側搜尋並選擇一個遊戲結果，即可預覽並選擇要抓取的詳細資訊。",
+      "applyNote": "選擇資產後點選右側按鈕套用到該遊戲。",
+      "confirmAndApply": "確認並應用"
+    },
+    "batch": {
+      "title": "批次抓取 (Batch Scrape)",
+      "scraping": "正在抓取資料...",
+      "processed": "{{current}} / {{total}} 個遊戲已處理",
+      "preparing": "準備中...",
+      "completed": "抓取完成!",
+      "completedDesc": "本任務中的遊戲資訊已完成更新。",
+      "stopped": "抓取已停止",
+      "stoppedDesc": "未開始的遊戲不會繼續抓取，已完成的結果會保留。",
+      "pendingTitle": "即將為 {{count}} 個遊戲抓取數據",
+      "pendingDesc": "系統將自動匹配檔案名稱並嘗試取得最佳元資料和封面。",
+      "forceRescrape": "全量重新抓取",
+      "forceRescrapeDesc": "包含已有 metadata 和資產的遊戲，跳過抓取快取並重新向資料來源查詢和更新資源。",
+      "selectSource": "選擇抓取來源",
+      "recommended": "推薦使用 ScreenScraper",
+      "noSourceEnabled": "請先在設定中啟用至少一個抓取來源",
+      "start": "開始抓取"
+    }
+  }
+}

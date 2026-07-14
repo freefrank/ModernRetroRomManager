@@ -1,0 +1,120 @@
+{
+  "library": {
+    "title": "ROM Bibliothek",
+    "gameCount": "{{count}} Spiele",
+    "search": "Suchen...",
+    "empty": {
+      "title": "Bibliothek ist leer",
+      "description": "Fügen Sie eine Bibliothek hinzu, um mit der Verwaltung Ihrer ROM-Sammlung zu beginnen",
+      "addDirectory": "Bibliothek hinzufügen"
+    },
+    "viewMode": {
+      "cover": "Coveransicht",
+      "grid": "Kartenansicht",
+      "list": "Listenansicht"
+    },
+    "shelf": {
+      "systemCount": "{{count}} Systeme",
+      "addCard": "Bibliothek hinzufügen",
+      "addCardHint": "Fügen Sie in den Einstellungen eine unabhängige ROM-Bibliothek hinzu"
+    },
+    "breadcrumb": "Breadcrumb-Navigation",
+    "systemNotFound": {
+      "title": "System nicht gefunden",
+      "description": "System „{{name}}“ existiert nicht oder wurde entfernt",
+      "back": "Zurück zum Regal"
+    },
+    "cardSize": "Kartengröße",
+    "noResults": "Keine passenden Spiele",
+    "noResultsHint": "Versuchen Sie es mit einem anderen Schlüsselwort",
+    "batch": {
+      "selectedCount": "{{count}} ausgewählt",
+      "selectAll": "Wählen Sie Aktuelle Ergebnisse aus",
+      "scrape": "Batch Scrape",
+      "scrapePlatform": "Scrape Diese Plattform",
+      "scrapeLibrary": "Scrape Gesamte ROM Bibliothek",
+      "scraping": "Stapel scraping..."
+    },
+    "boxart": {
+      "generate": "Boxart generieren",
+      "generating": "Generieren von {{current}}/{{total}}",
+      "tooltip": "Boxart für alle PS3-ROMs generieren",
+      "done": "Boxart erledigt: {{success}} erfolgreich, {{failed}} fehlgeschlagen"
+    },
+    "translation": {
+      "selected": "KI-Übersetzung",
+      "platform": "Plattform übersetzen",
+      "dialogTitle": "Batch-Übersetzung von Metadaten",
+      "warning": "Der konfigurierte KI-Endpunkt wird einmal für jedes der {{count}} Spiele aufgerufen und die Ergebnisse werden als Vorschau-Metadaten gespeichert. Es können API-Gebühren anfallen.",
+      "confirm": "Übersetzen Sie {{count}} Elemente",
+      "progress": "Übersetzen {{current}}/{{total}}",
+      "done": "AI-Übersetzung abgeschlossen: {{success}} erfolgreich, {{failed}} fehlgeschlagen"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "Info",
+      "media": "Medien",
+      "files": "Dateien"
+    },
+    "preview": {
+      "mode": "Vorschau der Daten",
+      "raw": "Rohdaten",
+      "active": "Vorschau der Scraped-Daten",
+      "inactive": "Originaldaten anzeigen",
+      "note": "Vorschau der Daten",
+      "noteDesc": "Diese Daten werden in einem temporären Verzeichnis gespeichert. Überprüfen Sie die Beschreibung und die Umschläge und klicken Sie dann auf „In Bibliothek exportieren“, um sie dauerhaft zu übernehmen."
+    },
+    "fields": {
+      "releaseDate": "Erscheinungsdatum",
+      "developer": "Entwickler",
+      "publisher": "Herausgeber",
+      "genre": "Genre",
+      "description": "Beschreibung",
+      "noDescription": "Keine Beschreibung verfügbar.",
+      "filename": "Dateiname",
+      "localPath": "Lokaler Pfad"
+    },
+    "actions": {
+      "scrape": "Scrape",
+      "edit": "Bearbeiten",
+      "remove": "Entfernen",
+      "export": "In die Bibliothek exportieren",
+      "exporting": "Exportieren {{progress}}%",
+      "exportingSimple": "Exportieren",
+      "savePreview": "Vorschau speichern",
+      "saveEdit": "Änderungen speichern",
+      "cancelEdit": "Abbrechen",
+      "generateBoxart": "PS3-Boxart generieren",
+      "translate": "KI-Metadaten übersetzen",
+      "boxartFailed": "Boxart-Generierung fehlgeschlagen: {{error}}"
+    },
+    "cover": {
+      "noImage": "Kein Titelbild"
+    },
+    "media": {
+      "title": "Medienmanagement (Temporär)",
+      "empty": "Keine scraped Medienressourcen",
+      "deleteNote": "Hinweis: Das Löschen betrifft nur das temporäre Verzeichnis. Nach dem Export werden vorhandene Assets überschrieben."
+    },
+    "translation": {
+      "success": "Übersetzte Metadaten zur Vorschau gespeichert",
+      "failed": "Metadatenübersetzung fehlgeschlagen: {{error}}"
+    }
+  },
+  "scrapeDialog": {
+    "videoAsset": "Video",
+    "genericSystem": "Generisch",
+    "coverAlt": "Abdeckung"
+  },
+  "rootDirectoryDialog": {
+    "title": "Spielplattformverzeichnisse erkannt",
+    "subtitle": "{{count}} Plattformverzeichnisse gefunden",
+    "description": "Wählen Sie, wie importiert werden soll: Scannen Sie alle Plattformen als Stammverzeichnis oder wählen Sie eine einzelne Plattform aus",
+    "importAsRoot": "Als Stammverzeichnis importieren",
+    "importAsRootDesc": "Metadaten in allen Unterverzeichnissen automatisch scannen",
+    "withMetadata": "Plattformen mit Metadaten",
+    "withoutMetadata": "Verzeichnisse ohne Metadaten ({{count}})",
+    "andMore": "… und {{count}} mehr"
+  }
+}

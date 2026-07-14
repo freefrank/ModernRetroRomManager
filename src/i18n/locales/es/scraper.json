@@ -1,0 +1,110 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Iniciar Scrape",
+    "apiConfig": {
+      "title": "Configuración API",
+      "description": "Configure Scraper API keys para recuperar metadatos del juego y recursos multimedia.",
+      "activeSources": "{{count}} fuentes activas",
+      "credentialsNote": "Ingrese sus credenciales de API. Se almacenan de forma segura en su máquina."
+    },
+    "noCredentials": {
+      "title": "No hay credenciales API configuradas",
+      "description": "Scraper requiere credenciales API para funcionar. Vaya a Configuración para configurar las credenciales API ScreenScraper o SteamGridDB.",
+      "goToSettings": "Ir a Configuración"
+    },
+    "status": {
+      "enabledSources": "Fuentes habilitadas",
+      "configuredCredentials": "Credenciales configuradas",
+      "authenticated": "Autenticado",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado",
+      "missingCredentials": "Sin credenciales"
+    },
+    "providerList": {
+      "title": "Estado del proveedor",
+      "configure": "Configurar"
+    },
+    "capabilities": {
+      "search": "Buscar",
+      "hash_lookup": "Búsqueda de hash",
+      "metadata": "Metadatos",
+      "media": "Medios"
+    },
+    "mediaOptions": {
+      "title": "Tipos de medios para este scrape",
+      "selected": "{{count}} seleccionado"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Desarrollado por Twitch, datos completos"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "Cubiertas/logotipos/iconos de alta calidad"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "Impulsado por la comunidad, gratuito"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Datos enriquecidos para juegos retro"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Se requiere registro, medios enriquecidos"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "Nombre de usuario",
+      "password": "Contraseña"
+    },
+    "dialog": {
+      "title": "Scrape Metadatos del juego",
+      "searchPlaceholder": "Buscar nombre del juego...",
+      "searchButton": "Buscar",
+      "searching": "Buscando...",
+      "resultsCount": "Resultados ({{count}})",
+      "assetCount": "{{count}} activos",
+      "noResults": "No se encontraron resultados",
+      "loadingDetails": "Cargando detalles...",
+      "confidence": "Confianza",
+      "userRating": "Clasificación",
+      "releaseDate": "Fecha de lanzamiento",
+      "developer": "Desarrollador",
+      "publisher": "Editor",
+      "sourceSystem": "Sistema fuente",
+      "description": "Descripción",
+      "noDescription": "No hay descripción disponible.",
+      "mediaAssets": "Activos multimedia ({{count}})",
+      "selectedAssets": "{{count}} seleccionado",
+      "readyToScrape": "Listo para Scrape",
+      "readyToScrapeDesc": "Seleccione un resultado from a la izquierda para obtener una vista previa de los metadatos y seleccionar recursos.",
+      "applyNote": "Selecciona recursos y haz clic en Aplicar para actualizar la información del juego.",
+      "confirmAndApply": "Confirmar y aplicar"
+    },
+    "batch": {
+      "title": "Lote Scrape",
+      "scraping": "Scraping Datos...",
+      "processed": "{{current}} / {{total}} juegos procesados",
+      "preparing": "Preparando...",
+      "completed": "Scrape ¡Completado!",
+      "completedDesc": "Los juegos de esta tarea se han actualizado.",
+      "stopped": "Scrape Detenido",
+      "stoppedDesc": "Los juegos pendientes no serán scraped; Los resultados completos se conservan.",
+      "pendingTitle": "Scraping {{count}} juegos",
+      "pendingDesc": "El sistema buscará automáticamente nombres de archivos y buscará los mejores metadatos y portadas.",
+      "forceRescrape": "Completo rescrape",
+      "forceRescrapeDesc": "Incluya juegos que ya tengan metadatos y recursos, omita los cachés scraper y vuelva a consultar a los proveedores.",
+      "selectSource": "Seleccionar fuente",
+      "recommended": "ScreenScraper recomendado",
+      "noSourceEnabled": "Primero habilite al menos una fuente en la configuración",
+      "start": "Iniciar Scrape"
+    }
+  }
+}

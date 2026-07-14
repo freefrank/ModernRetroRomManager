@@ -1,0 +1,130 @@
+{
+  "settings": {
+    "title": "設定",
+    "tabs": {
+      "appearance": "外觀",
+      "general": "通用",
+      "scraper": "Scraper 配置",
+      "translation": "AI 翻譯",
+      "about": "關於"
+    },
+    "appearance": {
+      "title": "外觀主題",
+      "themeTitle": "主題",
+      "themeDescription": "選擇內建主題,或匯入 .rrtheme 主題包",
+      "customBadge": "已導入",
+      "importTheme": "導入主題包",
+      "themePackFilter": "主題包",
+      "importSuccess": "主題「{{name}}」導入成功",
+      "importFailed": "主題包導入失敗:{{error}}",
+      "desktopOnly": "主題包導入僅桌面版可用",
+      "deleteTitle": "刪除主題",
+      "deleteConfirm": "確定要刪除主題「{{name}}」嗎?該操作不可恢復。",
+      "deleteSuccess": "主題已刪除",
+      "deleteFailed": "刪除主題失敗:{{error}}",
+      "motionTitle": "動效",
+      "motionDescription": "控制界面動畫與過渡效果的強度",
+      "motion": {
+        "off": "關閉",
+        "low": "簡化",
+        "full": "完整"
+      }
+    },
+    "general": {
+      "viewModeTitle": "預設視圖",
+      "viewModeDescription": "ROM 庫的預設顯示方式",
+      "consoleTitle": "控制台",
+      "consoleDescription": "控制底部日誌控制台是否顯示，掃描進度條不受影響。",
+      "consoleEnabled": "顯示底部控制台",
+      "viewMode": {
+        "grid": "網格",
+        "list": "列表",
+        "cover": "封面"
+      }
+    },
+    "scanDirectories": {
+      "title": "ROM 遊戲庫",
+      "description": "每個掃描目錄都是一個獨立 Library；點擊清單項目可切換目前啟動的 Library",
+      "empty": "暫時未加入 Library",
+      "addDirectory": "新增 Library",
+      "fullScan": "全量掃描目前 Library",
+      "dialogTitle": "新增 Library",
+      "metadataFormat": "元資料格式:{{format}}",
+      "addFailed": "新增 Library 失敗:{{error}}",
+      "active": "目前使用",
+      "libraryName": "Library 名稱",
+      "rename": "重新命名 Library",
+      "renameSuccess": "Library 名稱已儲存",
+      "renameFailed": "重新命名 Library 失敗:{{error}}",
+      "switchFailed": "切換 Library 失敗:{{error}}",
+      "removeFailed": "刪除 Library 失敗:{{error}}",
+      "scanThisLibrary": "啟動並全量掃描此 Library"
+    },
+    "storage": {
+      "title": "儲存設定",
+      "configDirectory": "設定目錄",
+      "mediaDirectory": "媒體資源目錄",
+      "defaultLocation": "預設位置"
+    },
+    "apiConfig": {
+      "title": "API 配置",
+      "editConfig": "編輯配置",
+      "username": "使用者名稱",
+      "password": "密碼",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "輸入使用者名稱",
+      "passwordPlaceholder": "輸入密碼",
+      "savedPasswordPlaceholder": "密碼已儲存，留空則維持不變",
+      "screenScraperAuthHint": "應用程式已內建 ScreenScraper 開發者憑證，只需填寫你的使用者名稱和密碼。",
+      "apiKeyPlaceholder": "輸入該資料來源的 API Key",
+      "credentialsHint": "請輸入該來源的 API 憑證。憑證僅儲存在本機設定檔中。",
+      "authenticated": "已認證",
+      "testConnection": "測試連接",
+      "testFailed": "連線測試失敗：{{error}}",
+      "rateLimit": "每秒請求數",
+      "threads": "並發線程數",
+      "rateLimitHint": "配置僅作用於目前 Provider；請求仍會遵守該服務傳回的限流回應。",
+      "stats": "匹配 {{matched}} · 採用 {{selected}} · 快取 {{cached}} · 錯誤 {{errors}}",
+      "lastError": "最近錯誤：{{error}}",
+      "mediaSelection": "抓取資源類型",
+      "mediaSelectionHint": "只要求並快取勾選的資源；視訊和手冊預設為關閉。每個來源、每種類型最多快取 3 個候選。",
+      "mediaTypes": {
+        "boxfront": "正面封面",
+        "boxback": "背面封面",
+        "box3d": "3D 封面",
+        "logo": "Logo",
+        "screenshot": "遊戲截圖",
+        "titlescreen": "標題畫面",
+        "hero": "背景圖",
+        "banner": "橫幅",
+        "icon": "圖示",
+        "video": "影片（選購）",
+        "manual": "說明書（可選）"
+      }
+    },
+    "language": {
+      "title": "語言",
+      "description": "選擇介面顯示語言"
+    },
+    "aiTranslation": {
+      "title": "AI Metadata 翻譯",
+      "description": "透過自訂 OpenAI-compatible Chat Completions 介面翻譯遊戲標題、說明、廠商和類型。",
+      "endpoint": "API 端點",
+      "apiKey": "API Key",
+      "model": "模型",
+      "targetLanguage": "目標語言",
+      "configured": "API Key 已配置",
+      "savedKey": "API Key 已保存，留空維持不變",
+      "securityHint": "API Key 僅儲存在本機設定中，請求由原生後端發出。自訂端點需要相容 /chat/completions。",
+      "saved": "AI 翻譯配置已儲存",
+      "loadFailed": "讀取 AI 翻譯配置失敗：{{error}}",
+      "saveFailed": "儲存 AI 翻譯配置失敗：{{error}}"
+    },
+    "about": {
+      "title": "關於",
+      "version": "版本 {{version}}",
+      "repository": "GitHub 倉庫",
+      "license": "MIT 許可證"
+    }
+  }
+}

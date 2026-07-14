@@ -1,0 +1,110 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Старт Scrape",
+    "apiConfig": {
+      "title": "Конфигурация API",
+      "description": "Настройте Scraper API keys для получения метаданных игры и мультимедийных ресурсов.",
+      "activeSources": "{{count}} активные источники",
+      "credentialsNote": "Введите свои учетные данные API. Они надежно хранятся на вашем компьютере."
+    },
+    "noCredentials": {
+      "title": "Учетные данные API не настроены",
+      "description": "Scraper для работы требуются учетные данные API. Перейдите в «Настройки», чтобы настроить учетные данные API ScreenScraper или SteamGridDB.",
+      "goToSettings": "Зайдите в настройки"
+    },
+    "status": {
+      "enabledSources": "Включенные источники",
+      "configuredCredentials": "Настроенные учетные данные",
+      "authenticated": "прошел проверку подлинности",
+      "enabled": "Включено",
+      "disabled": "отключено",
+      "missingCredentials": "Нет учетных данных"
+    },
+    "providerList": {
+      "title": "Статус поставщика",
+      "configure": "Настроить"
+    },
+    "capabilities": {
+      "search": "Поиск",
+      "hash_lookup": "Поиск по хешу",
+      "metadata": "Метаданные",
+      "media": "СМИ"
+    },
+    "mediaOptions": {
+      "title": "Типы носителей для этого scrape",
+      "selected": "{{count}} выбрано"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "При поддержке Twitch, полные данные"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "Качественные обложки/логотипы/значки"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "По инициативе сообщества, бесплатно"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Богатые данные для ретро-игр"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Требуется регистрация, мультимедиа"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "Имя пользователя",
+      "password": "Пароль"
+    },
+    "dialog": {
+      "title": "Scrape Метаданные игры",
+      "searchPlaceholder": "Поиск названия игры...",
+      "searchButton": "Поиск",
+      "searching": "Ищем...",
+      "resultsCount": "Результаты ({{count}})",
+      "assetCount": "{{count}} активы",
+      "noResults": "Результатов не найдено",
+      "loadingDetails": "Загрузка деталей...",
+      "confidence": "Уверенность",
+      "userRating": "Рейтинг",
+      "releaseDate": "Дата выпуска",
+      "developer": "Разработчик",
+      "publisher": "Издатель",
+      "sourceSystem": "Исходная система",
+      "description": "Описание",
+      "noDescription": "Описание отсутствует.",
+      "mediaAssets": "Медиа-активы ({{count}})",
+      "selectedAssets": "{{count}} выбрано",
+      "readyToScrape": "Готов к Scrape",
+      "readyToScrapeDesc": "Выберите результат from слева, чтобы просмотреть метаданные и выбрать активы.",
+      "applyNote": "Выберите ресурсы и нажмите «Применить», чтобы обновить информацию об игре.",
+      "confirmAndApply": "Подтвердить и применить"
+    },
+    "batch": {
+      "title": "Пакет Scrape",
+      "scraping": "Scraping Данные...",
+      "processed": "{{current}} / {{total}} игр обработано",
+      "preparing": "Подготовка...",
+      "completed": "Scrape Завершено!",
+      "completedDesc": "Игры в этом задании обновлены.",
+      "stopped": "Scrape Остановлено",
+      "stoppedDesc": "Ожидающих игр не будет scraped; завершенные результаты сохраняются.",
+      "pendingTitle": "Scraping {{count}} игры",
+      "pendingDesc": "Система автоматически сопоставит имена файлов и выберет лучшие метаданные и обложки.",
+      "forceRescrape": "Полный rescrape",
+      "forceRescrapeDesc": "Включите игры, у которых уже есть метаданные и ресурсы, обойдите кэши scraper и снова запросите поставщиков.",
+      "selectSource": "Выбор источника",
+      "recommended": "ScreenScraper рекомендуется",
+      "noSourceEnabled": "Сначала включите хотя бы один источник в настройках",
+      "start": "Старт Scrape"
+    }
+  }
+}

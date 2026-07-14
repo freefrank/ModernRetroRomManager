@@ -1,0 +1,81 @@
+{
+  "cnRomTools": {
+    "title": "Vérification de dénomination CN",
+    "selectPlatform": "Sélectionnez la plate-forme",
+    "selectDirectoryPlaceholder": "Sélectionnez le répertoire ROM pour vérifier...",
+    "browse": "Parcourir...",
+    "refresh": "Actualiser",
+    "archive": {
+      "organize": "Extraire et organiser",
+      "title": "Extraire et organiser les ROM",
+      "description": "Extrayez les ROM RAR/RAR5 et déplacez les archives traitées vers _archives. Le mot de passe saisi est partagé par toutes les archives de ce lot ; laissez-le vide pour les archives non cryptées. Les ROM existants ne sont jamais écrasés. Prend en charge MD, N64 et SFC.",
+      "passwordPlaceholder": "Mot de passe partagé pour ce lot (facultatif)",
+      "cancel": "Annuler",
+      "confirm": "Début"
+    },
+    "about": {
+      "title": "À propos de ce projet",
+      "description": {
+        "part1": "Ce logiciel intègre les données from les\nProjet",
+        "part2": ". Ce projet fournit des mappages de noms chinois-anglais ROM complets couvrant la plupart des plates-formes de jeux rétro grand public. Grâce à des algorithmes de correspondance floue, nous pouvons automatiquement identifier et faire correspondre les noms chinois lorsque les métadonnées scraping."
+      },
+      "dataSource": "Source de données : GitHub (yingw/rom-name-cn)",
+      "visitRepo": "Visiter le référentiel",
+      "updateDatabase": "Mettre à jour la base de données",
+      "updating": "Mise à jour..."
+    },
+    "table": {
+      "fileName": "Nom du fichier",
+      "romName": "ROM Nom (méta)",
+      "extractedCnName": "Nom CN extrait",
+      "matchedEnglishName": "Nom anglais correspondant",
+      "setAsRomName": "Définir comme ROM Nom",
+      "setAsRomNameTitle": "Définir le nom chinois extrait comme nom ROM",
+      "addAsTag": "Ajouter comme balise supplémentaire",
+      "addAsTagTitle": "Ajouter un nom anglais comme balise supplémentaire",
+      "clickToSort": "Cliquez pour trier",
+      "notSet": "Non défini",
+      "notMatched": "Aucune correspondance",
+      "confidenceWithEdit": "Confiance : {{confidence}}% - Cliquez pour modifier",
+      "clickToEdit": "Cliquez pour modifier"
+    },
+    "footer": {
+      "totalFiles": "Total de {{count}} fichiers",
+      "missingEnglishNames": "{{count}} noms anglais manquants",
+      "matchEnglishName": "Correspondre au nom anglais",
+      "exportMetadata": "Exporter les métadonnées"
+    },
+    "export": {
+      "pegasus": "Pegasus (.txt)",
+      "gamelist": "EmulationStation (.xml)",
+      "pegasusFilter": "Pegasus Métadonnées",
+      "gamelistFilter": "EmulationStation Liste de jeux"
+    },
+    "systemPicker": {
+      "title": "Sélectionnez la plateforme de jeu",
+      "searchPlaceholder": "Plateforme de recherche...",
+      "noResults": "Aucune plate-forme correspondante trouvée"
+    },
+    "alerts": {
+      "databaseUpdateSuccess": "Base de données mise à jour avec succès",
+      "updateFailed": "Échec de la mise à jour : {{error}}",
+      "selectPlatformFirst": "Veuillez d'abord sélectionner une plateforme de jeu",
+      "matchComplete": "Correspondance terminée !\nSuccès : {{success}}\nÉchec/ignoré : {{failed}}",
+      "matchFailed": "Échec de la correspondance : {{error}}",
+      "setComplete": "Ensemble terminé !",
+      "setFailed": "Échec de l'ensemble : {{error}}",
+      "addComplete": "Ajout terminé !",
+      "addFailed": "Échec de l'ajout : {{error}}",
+      "exportSuccess": "Exportation réussie !\nFichier enregistré sous : {{path}}",
+      "exportFailed": "Échec de l'exportation : {{error}}",
+      "saveFailed": "Échec de l'enregistrement : {{error}}",
+      "organizeComplete": "Complet : archives {{archives}} trouvées, {{extracted}} extraites, {{skipped}} ignorées, {{archived}} archivées",
+      "organizeFailed": "Échec de l'extraction et de l'organisation : {{error}}"
+    },
+    "confirms": {
+      "autoFixNaming": "Êtes-vous sûr de vouloir faire correspondre les noms anglais ?\nCela analysera tous les ROM du répertoire et fera automatiquement correspondre les noms anglais en fonction de la base de données locale.\nSeules les correspondances avec un niveau de confiance très élevé (>95 %) seront appliquées.\nLes résultats seront enregistrés dans le répertoire temporaire.",
+      "setAsRomName": "Êtes-vous sûr de vouloir définir les noms chinois extraits comme noms ROM ?\nCela écrira les noms chinois extraits des noms de fichiers from dans des métadonnées temporaires.",
+      "addAsTag": "Êtes-vous sûr de vouloir ajouter des noms anglais en tant que balises supplémentaires ?\nCela écrira les noms anglais correspondants sous forme de balises x-mrrm-eng dans les métadonnées temporaires."
+    }
+  }
+}

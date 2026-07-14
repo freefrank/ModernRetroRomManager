@@ -1,0 +1,110 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Start Scrape",
+    "apiConfig": {
+      "title": "API-Konfiguration",
+      "description": "Konfigurieren Sie Scraper API keys, um Spielmetadaten und Medienressourcen abzurufen",
+      "activeSources": "{{count}} aktive Quellen",
+      "credentialsNote": "Bitte geben Sie Ihre API-Anmeldeinformationen ein. Sie werden sicher auf Ihrem Computer gespeichert."
+    },
+    "noCredentials": {
+      "title": "Keine API-Anmeldeinformationen konfiguriert",
+      "description": "Scraper erfordert API-Anmeldeinformationen, um zu funktionieren. Bitte gehen Sie zu „Einstellungen“, um die API-Anmeldeinformationen für ScreenScraper oder SteamGridDB zu konfigurieren.",
+      "goToSettings": "Gehen Sie zu Einstellungen"
+    },
+    "status": {
+      "enabledSources": "Aktivierte Quellen",
+      "configuredCredentials": "Konfigurierte Anmeldeinformationen",
+      "authenticated": "Authentifiziert",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert",
+      "missingCredentials": "Keine Anmeldeinformationen"
+    },
+    "providerList": {
+      "title": "Anbieterstatus",
+      "configure": "Konfigurieren"
+    },
+    "capabilities": {
+      "search": "Suche",
+      "hash_lookup": "Hash-Suche",
+      "metadata": "Metadaten",
+      "media": "Medien"
+    },
+    "mediaOptions": {
+      "title": "Medientypen für dieses scrape",
+      "selected": "{{count}} ausgewählt"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Unterstützt von Twitch, umfassende Daten"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "Hochwertige Cover/Logos/Icons"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "Community-gesteuert, kostenlos"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Umfangreiche Daten für Retro-Spiele"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Registrierung erforderlich, Rich Media"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "Benutzername",
+      "password": "Passwort"
+    },
+    "dialog": {
+      "title": "Scrape Spielmetadaten",
+      "searchPlaceholder": "Nach Spielnamen suchen...",
+      "searchButton": "Suche",
+      "searching": "Suche...",
+      "resultsCount": "Ergebnisse ({{count}})",
+      "assetCount": "{{count}} Vermögenswerte",
+      "noResults": "Keine Ergebnisse gefunden",
+      "loadingDetails": "Details werden geladen...",
+      "confidence": "Vertrauen",
+      "userRating": "Bewertung",
+      "releaseDate": "Erscheinungsdatum",
+      "developer": "Entwickler",
+      "publisher": "Herausgeber",
+      "sourceSystem": "Quellsystem",
+      "description": "Beschreibung",
+      "noDescription": "Keine Beschreibung verfügbar.",
+      "mediaAssets": "Medien-Assets ({{count}})",
+      "selectedAssets": "{{count}} ausgewählt",
+      "readyToScrape": "Bereit für Scrape",
+      "readyToScrapeDesc": "Wählen Sie links ein Ergebnis from aus, um eine Vorschau der Metadaten anzuzeigen und Assets auszuwählen.",
+      "applyNote": "Wählen Sie Assets aus und klicken Sie auf „Übernehmen“, um die Spielinformationen zu aktualisieren.",
+      "confirmAndApply": "Bestätigen und anwenden"
+    },
+    "batch": {
+      "title": "Batch Scrape",
+      "scraping": "Scraping Daten...",
+      "processed": "{{current}} / {{total}} Spiele verarbeitet",
+      "preparing": "Vorbereiten...",
+      "completed": "Scrape Abgeschlossen!",
+      "completedDesc": "Die Spiele in dieser Aufgabe wurden aktualisiert.",
+      "stopped": "Scrape Gestoppt",
+      "stoppedDesc": "Ausstehende Spiele werden nicht scraped; abgeschlossene Ergebnisse bleiben erhalten.",
+      "pendingTitle": "Scraping {{count}} Spiele",
+      "pendingDesc": "Das System gleicht Dateinamen automatisch ab und ruft die besten Metadaten und Cover ab.",
+      "forceRescrape": "Vollständig rescrape",
+      "forceRescrapeDesc": "Spiele einschließen, die bereits über Metadaten und Assets verfügen, scraper-Caches umgehen und Anbieter erneut abfragen.",
+      "selectSource": "Quelle auswählen",
+      "recommended": "ScreenScraper empfohlen",
+      "noSourceEnabled": "Aktivieren Sie zunächst mindestens eine Quelle in den Einstellungen",
+      "start": "Start Scrape"
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "settings": {
+    "title": "Paramètres",
+    "tabs": {
+      "appearance": "Apparence",
+      "general": "Général",
+      "scraper": "Scraper",
+      "translation": "Traduction IA",
+      "about": "À propos"
+    },
+    "appearance": {
+      "title": "Apparence",
+      "themeTitle": "Thème",
+      "themeDescription": "Choisissez un thème intégré ou importez un pack .rrtheme",
+      "customBadge": "Importé",
+      "importTheme": "Pack de thèmes d'importation",
+      "themePackFilter": "Pack thématique",
+      "importSuccess": "Thème \"{{name}}\" importé",
+      "importFailed": "Échec de l'importation du pack de thèmes : {{error}}",
+      "desktopOnly": "L'importation de packs de thèmes est uniquement disponible dans l'application de bureau",
+      "deleteTitle": "Supprimer le thème",
+      "deleteConfirm": "Supprimer le thème \"{{name}}\" ? Cela ne peut pas être annulé.",
+      "deleteSuccess": "Thème supprimé",
+      "deleteFailed": "Échec de la suppression du thème : {{error}}",
+      "motionTitle": "Mouvement",
+      "motionDescription": "Contrôler l'intensité des animations et des transitions de l'interface utilisateur",
+      "motion": {
+        "off": "Désactivé",
+        "low": "Réduit",
+        "full": "Complet"
+      }
+    },
+    "general": {
+      "viewModeTitle": "Vue par défaut",
+      "viewModeDescription": "Mode d'affichage par défaut de la bibliothèque ROM",
+      "consoleTitle": "Console",
+      "consoleDescription": "Afficher ou masquer la console de journal inférieure. La progression de l'analyse reste visible.",
+      "consoleEnabled": "Afficher la console inférieure",
+      "viewMode": {
+        "grid": "Grille",
+        "list": "Liste",
+        "cover": "Couverture"
+      }
+    },
+    "scanDirectories": {
+      "title": "ROM Bibliothèques",
+      "description": "Chaque répertoire d'analyse est une bibliothèque indépendante. Cliquez sur un élément pour le rendre actif.",
+      "empty": "Aucune bibliothèque ajoutée",
+      "addDirectory": "Ajouter une bibliothèque",
+      "fullScan": "Bibliothèque active d'analyse complète",
+      "dialogTitle": "Ajouter une bibliothèque",
+      "metadataFormat": "Format des métadonnées : {{format}}",
+      "addFailed": "Échec de l'ajout de la bibliothèque : {{error}}",
+      "active": "Actif",
+      "libraryName": "Nom de la bibliothèque",
+      "rename": "Renommer la bibliothèque",
+      "renameSuccess": "Nom de la bibliothèque enregistré",
+      "renameFailed": "Échec du renommage de la bibliothèque : {{error}}",
+      "switchFailed": "Échec du changement de bibliothèque : {{error}}",
+      "removeFailed": "Échec de la suppression de la bibliothèque : {{error}}",
+      "scanThisLibrary": "Activer et analyser entièrement cette bibliothèque"
+    },
+    "storage": {
+      "title": "Paramètres de stockage",
+      "configDirectory": "Répertoire de configuration",
+      "mediaDirectory": "Répertoire des médias",
+      "defaultLocation": "Emplacement par défaut"
+    },
+    "apiConfig": {
+      "title": "Configuration de l'API",
+      "editConfig": "Modifier la configuration",
+      "username": "Nom d'utilisateur",
+      "password": "Mot de passe",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Entrez le nom d'utilisateur",
+      "passwordPlaceholder": "Entrez le mot de passe",
+      "savedPasswordPlaceholder": "Mot de passe enregistré ; laisser vide pour le conserver",
+      "screenScraperAuthHint": "L'application comprend les informations d'identification du développeur ScreenScraper ; seuls votre nom d'utilisateur et votre mot de passe sont requis.",
+      "apiKeyPlaceholder": "Entrez le fournisseur API key",
+      "credentialsHint": "Saisissez les informations d'identification de l'API du fournisseur. Les informations d'identification sont stockées uniquement dans le fichier de configuration local.",
+      "authenticated": "Authentifié",
+      "testConnection": "Test de connexion",
+      "testFailed": "Échec du test de connexion : {{error}}",
+      "rateLimit": "Requêtes par seconde",
+      "threads": "Threads simultanés",
+      "rateLimitHint": "Ces limites s'appliquent uniquement à ce fournisseur et respectent toujours les réponses de limitation du serveur.",
+      "stats": "Correspondance {{matched}} · Sélectionné {{selected}} · Mis en cache {{cached}} · Erreurs {{errors}}",
+      "lastError": "Dernière erreur : {{error}}",
+      "mediaSelection": "Types de médias",
+      "mediaSelectionHint": "Seuls les actifs cochés sont demandés et mis en cache. Les vidéos et les manuels sont désactivés par défaut. Jusqu'à 3 candidats par fournisseur et type sont mis en cache.",
+      "mediaTypes": {
+        "boxfront": "Couverture avant",
+        "boxback": "Couverture arrière",
+        "box3d": "Couverture 3D",
+        "logo": "Logo",
+        "screenshot": "Capture d'écran",
+        "titlescreen": "Écran titre",
+        "hero": "Héros",
+        "banner": "Bannière\nIcône",
+        "icon": "",
+        "video": "Vidéo (facultatif)",
+        "manual": "Manuel (facultatif)"
+      }
+    },
+    "language": {
+      "title": "Langue",
+      "description": "Sélectionner la langue de l'interface"
+    },
+    "aiTranslation": {
+      "title": "Traduction des métadonnées IA",
+      "description": "Traduisez les titres de jeux, les descriptions, les sociétés et les genres via un point de terminaison OpenAI-compatible Chat Completions personnalisé.",
+      "endpoint": "Point de terminaison de l'API",
+      "apiKey": "API key",
+      "model": "Modèle",
+      "targetLanguage": "Langue cible",
+      "configured": "API key configuré",
+      "savedKey": "API key enregistré ; laisser vide pour le conserver",
+      "securityHint": "Le API key est stocké localement et les requêtes sont envoyées par le backend natif. Le point de terminaison personnalisé doit prendre en charge /chat/completions.",
+      "saved": "Paramètres de traduction IA enregistrés",
+      "loadFailed": "Échec du chargement des paramètres de traduction AI : {{error}}",
+      "saveFailed": "Échec de l'enregistrement des paramètres de traduction AI : {{error}}"
+    },
+    "about": {
+      "title": "À propos",
+      "version": "Version {{version}}",
+      "repository": "Dépôt GitHub",
+      "license": "Licence MIT"
+    }
+  }
+}

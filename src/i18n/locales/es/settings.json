@@ -1,0 +1,130 @@
+{
+  "settings": {
+    "title": "Configuración",
+    "tabs": {
+      "appearance": "Apariencia",
+      "general": "Generalidades",
+      "scraper": "Scraper",
+      "translation": "Traducción de IA",
+      "about": "Acerca de"
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "themeTitle": "Tema",
+      "themeDescription": "Elija un tema integrado o importe un paquete .rrtheme",
+      "customBadge": "Importado",
+      "importTheme": "Importar paquete de temas",
+      "themePackFilter": "Paquete temático",
+      "importSuccess": "Tema \"{{name}}\" importado",
+      "importFailed": "Error al importar el paquete de temas: {{error}}",
+      "desktopOnly": "La importación del paquete de temas solo está disponible en la aplicación de escritorio",
+      "deleteTitle": "Eliminar tema",
+      "deleteConfirm": "¿Eliminar el tema \"{{name}}\"? Esto no se puede deshacer.",
+      "deleteSuccess": "Tema eliminado",
+      "deleteFailed": "No se pudo eliminar el tema: {{error}}",
+      "motionTitle": "Moción",
+      "motionDescription": "Controlar la intensidad de las animaciones y transiciones de la interfaz de usuario",
+      "motion": {
+        "off": "Desactivado",
+        "low": "Reducido",
+        "full": "Completo"
+      }
+    },
+    "general": {
+      "viewModeTitle": "Vista predeterminada",
+      "viewModeDescription": "Modo de visualización predeterminado de la biblioteca ROM",
+      "consoleTitle": "Consola",
+      "consoleDescription": "Muestra u oculta la consola de registro inferior. El progreso del escaneo permanece visible.",
+      "consoleEnabled": "Mostrar consola inferior",
+      "viewMode": {
+        "grid": "Cuadrícula",
+        "list": "Lista",
+        "cover": "Portada"
+      }
+    },
+    "scanDirectories": {
+      "title": "ROM Bibliotecas",
+      "description": "Cada directorio de escaneo es una biblioteca independiente. Haga clic en un elemento para activarlo.",
+      "empty": "No se agregaron bibliotecas",
+      "addDirectory": "Agregar biblioteca",
+      "fullScan": "Biblioteca activa de escaneo completo",
+      "dialogTitle": "Agregar biblioteca",
+      "metadataFormat": "Formato de metadatos: {{format}}",
+      "addFailed": "Error al agregar la biblioteca: {{error}}",
+      "active": "Activo",
+      "libraryName": "Nombre de la biblioteca",
+      "rename": "Cambiar nombre de biblioteca",
+      "renameSuccess": "Nombre de la biblioteca guardado",
+      "renameFailed": "Error al cambiar el nombre de la biblioteca: {{error}}",
+      "switchFailed": "Error al cambiar de biblioteca: {{error}}",
+      "removeFailed": "No se pudo eliminar la biblioteca: {{error}}",
+      "scanThisLibrary": "Activar y escanear completamente esta biblioteca"
+    },
+    "storage": {
+      "title": "Configuración de almacenamiento",
+      "configDirectory": "Directorio de configuración",
+      "mediaDirectory": "Directorio de medios",
+      "defaultLocation": "Ubicación predeterminada"
+    },
+    "apiConfig": {
+      "title": "Configuración API",
+      "editConfig": "Editar configuración",
+      "username": "Nombre de usuario",
+      "password": "Contraseña",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Introduzca nombre de usuario",
+      "passwordPlaceholder": "Ingrese la contraseña",
+      "savedPasswordPlaceholder": "Contraseña guardada; déjalo en blanco para conservarlo",
+      "screenScraperAuthHint": "La aplicación incluye ScreenScraper credenciales de desarrollador; sólo se requieren su nombre de usuario y contraseña.",
+      "apiKeyPlaceholder": "Ingrese el proveedor API key",
+      "credentialsHint": "Ingrese las credenciales de API del proveedor. Las credenciales se almacenan únicamente en el archivo de configuración local.",
+      "authenticated": "Autenticado",
+      "testConnection": "Conexión de prueba",
+      "testFailed": "Error en la prueba de conexión: {{error}}",
+      "rateLimit": "Solicitudes por segundo",
+      "threads": "Hilos concurrentes",
+      "rateLimitHint": "Estos límites se aplican solo a este proveedor y aún respetan las respuestas de limitación del servidor.",
+      "stats": "Coincidencia {{matched}} · Seleccionado {{selected}} · En caché {{cached}} · Errores {{errors}}",
+      "lastError": "Último error: {{error}}",
+      "mediaSelection": "Tipos de medios",
+      "mediaSelectionHint": "Sólo se solicitan y almacenan en caché los activos verificados. Los vídeos y manuales están desactivados de forma predeterminada. Se almacenan en caché hasta 3 candidatos por proveedor y tipo.",
+      "mediaTypes": {
+        "boxfront": "Portada",
+        "boxback": "Contraportada",
+        "box3d": "Portada 3D",
+        "logo": "Logotipo",
+        "screenshot": "Captura de pantalla",
+        "titlescreen": "Pantalla de título",
+        "hero": "Héroe",
+        "banner": "Pancarta",
+        "icon": "Icono",
+        "video": "Vídeo (opcional)",
+        "manual": "Manual (opcional)"
+      }
+    },
+    "language": {
+      "title": "Idioma",
+      "description": "Seleccionar idioma de interfaz"
+    },
+    "aiTranslation": {
+      "title": "Traducción de metadatos de IA",
+      "description": "Traduce títulos, descripciones, empresas y géneros de juegos a través de un punto final personalizado OpenAI-compatible Chat Completions.",
+      "endpoint": "Punto final API",
+      "apiKey": "API key",
+      "model": "Modelo",
+      "targetLanguage": "Idioma de destino",
+      "configured": "API key configurado",
+      "savedKey": "API key guardado; déjalo en blanco para conservarlo",
+      "securityHint": "API key se almacena localmente y las solicitudes las envía el backend nativo. El punto final personalizado debe admitir /chat/completions.",
+      "saved": "Configuración de traducción de IA guardada",
+      "loadFailed": "Error al cargar la configuración de traducción AI: {{error}}",
+      "saveFailed": "No se pudo guardar la configuración de traducción de IA: {{error}}"
+    },
+    "about": {
+      "title": "Acerca de",
+      "version": "Versión {{version}}",
+      "repository": "Repositorio GitHub",
+      "license": "Licencia MIT"
+    }
+  }
+}

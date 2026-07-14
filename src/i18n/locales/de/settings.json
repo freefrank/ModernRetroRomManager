@@ -1,0 +1,130 @@
+{
+  "settings": {
+    "title": "Einstellungen",
+    "tabs": {
+      "appearance": "Aussehen",
+      "general": "Allgemein",
+      "scraper": "Scraper",
+      "translation": "KI-Übersetzung",
+      "about": "Ungefähr"
+    },
+    "appearance": {
+      "title": "Aussehen",
+      "themeTitle": "Thema",
+      "themeDescription": "Wählen Sie ein integriertes Design oder importieren Sie ein .rrtheme-Paket",
+      "customBadge": "Importiert",
+      "importTheme": "Themenpaket importieren",
+      "themePackFilter": "Themenpaket",
+      "importSuccess": "Theme „{{name}}“ importiert",
+      "importFailed": "Import des Theme-Pakets fehlgeschlagen: {{error}}",
+      "desktopOnly": "Der Import von Theme-Paketen ist nur in der Desktop-App verfügbar",
+      "deleteTitle": "Thema löschen",
+      "deleteConfirm": "Theme „{{name}}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+      "deleteSuccess": "Thema gelöscht",
+      "deleteFailed": "Das Thema konnte nicht gelöscht werden: {{error}}",
+      "motionTitle": "Antrag",
+      "motionDescription": "Steuern Sie die Intensität von UI-Animationen und Übergängen",
+      "motion": {
+        "off": "Aus",
+        "low": "Reduziert",
+        "full": "Voll"
+      }
+    },
+    "general": {
+      "viewModeTitle": "Standardansicht",
+      "viewModeDescription": "Standardanzeigemodus der ROM-Bibliothek",
+      "consoleTitle": "Konsole",
+      "consoleDescription": "Die untere Protokollkonsole anzeigen oder ausblenden. Der Scanfortschritt bleibt sichtbar.",
+      "consoleEnabled": "Untere Konsole anzeigen",
+      "viewMode": {
+        "grid": "Raster",
+        "list": "Liste",
+        "cover": "Abdeckung"
+      }
+    },
+    "scanDirectories": {
+      "title": "ROM Bibliotheken",
+      "description": "Jedes Scanverzeichnis ist eine unabhängige Bibliothek. Klicken Sie auf ein Element, um es zu aktivieren.",
+      "empty": "Keine Bibliotheken hinzugefügt",
+      "addDirectory": "Bibliothek hinzufügen",
+      "fullScan": "Aktive Bibliothek mit vollständigem Scan",
+      "dialogTitle": "Bibliothek hinzufügen",
+      "metadataFormat": "Metadatenformat: {{format}}",
+      "addFailed": "Bibliothek konnte nicht hinzugefügt werden: {{error}}",
+      "active": "Aktiv",
+      "libraryName": "Bibliotheksname",
+      "rename": "Bibliothek umbenennen",
+      "renameSuccess": "Bibliotheksname gespeichert",
+      "renameFailed": "Bibliothek konnte nicht umbenannt werden: {{error}}",
+      "switchFailed": "Fehler beim Wechseln der Bibliothek: {{error}}",
+      "removeFailed": "Fehler beim Entfernen der Bibliothek: {{error}}",
+      "scanThisLibrary": "Aktivieren Sie diese Bibliothek und scannen Sie sie vollständig"
+    },
+    "storage": {
+      "title": "Speichereinstellungen",
+      "configDirectory": "Konfigurationsverzeichnis",
+      "mediaDirectory": "Medienverzeichnis",
+      "defaultLocation": "Standardspeicherort"
+    },
+    "apiConfig": {
+      "title": "API-Konfiguration",
+      "editConfig": "Konfiguration bearbeiten",
+      "username": "Benutzername",
+      "password": "Passwort",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Geben Sie den Benutzernamen ein",
+      "passwordPlaceholder": "Passwort eingeben",
+      "savedPasswordPlaceholder": "Passwort gespeichert; Lassen Sie das Feld leer, um es zu behalten",
+      "screenScraperAuthHint": "Die App enthält ScreenScraper Entwickleranmeldeinformationen; Es sind lediglich Ihr Benutzername und Ihr Passwort erforderlich.",
+      "apiKeyPlaceholder": "Geben Sie den Anbieter API key ein.",
+      "credentialsHint": "Geben Sie die API-Anmeldeinformationen des Anbieters ein. Anmeldeinformationen werden nur in der lokalen Konfigurationsdatei gespeichert.",
+      "authenticated": "Authentifiziert",
+      "testConnection": "Testverbindung",
+      "testFailed": "Verbindungstest fehlgeschlagen: {{error}}",
+      "rateLimit": "Anfragen pro Sekunde",
+      "threads": "Gleichzeitige Threads",
+      "rateLimitHint": "Diese Grenzwerte gelten nur für diesen Anbieter und berücksichtigen weiterhin Server-Drosselungsreaktionen.",
+      "stats": "Übereinstimmung mit {{matched}} · Ausgewählt {{selected}} · Zwischengespeichert {{cached}} · Fehler {{errors}}",
+      "lastError": "Letzter Fehler: {{error}}",
+      "mediaSelection": "Medientypen",
+      "mediaSelectionHint": "Nur geprüfte Assets werden angefordert und zwischengespeichert. Videos und Handbücher sind standardmäßig deaktiviert. Es werden bis zu 3 Kandidaten pro Anbieter und Typ zwischengespeichert.",
+      "mediaTypes": {
+        "boxfront": "Vordere Abdeckung",
+        "boxback": "Rückseite",
+        "box3d": "3D-Cover",
+        "logo": "Logo",
+        "screenshot": "Screenshot",
+        "titlescreen": "Titelbildschirm",
+        "hero": "Held",
+        "banner": "Banner",
+        "icon": "-Symbol",
+        "video": "Video (optional)",
+        "manual": "Handbuch (optional)"
+      }
+    },
+    "language": {
+      "title": "Sprache",
+      "description": "Wählen Sie die Sprache der Benutzeroberfläche aus"
+    },
+    "aiTranslation": {
+      "title": "KI-Metadatenübersetzung",
+      "description": "Übersetzen Sie Spieltitel, Beschreibungen, Unternehmen und Genres über einen benutzerdefinierten OpenAI-compatible Chat Completions Endpunkt.",
+      "endpoint": "API-Endpunkt",
+      "apiKey": "API key",
+      "model": "Modell",
+      "targetLanguage": "Zielsprache",
+      "configured": "API key konfiguriert",
+      "savedKey": "API key gespeichert; Lassen Sie das Feld leer, um es zu behalten",
+      "securityHint": "Der API key wird lokal gespeichert und Anfragen werden vom nativen Backend gesendet. Der benutzerdefinierte Endpunkt muss /chat/completions unterstützen.",
+      "saved": "KI-Übersetzungseinstellungen gespeichert",
+      "loadFailed": "AI-Übersetzungseinstellungen konnten nicht geladen werden: {{error}}",
+      "saveFailed": "KI-Übersetzungseinstellungen konnten nicht gespeichert werden: {{error}}"
+    },
+    "about": {
+      "title": "Ungefähr",
+      "version": "Version {{version}}",
+      "repository": "GitHub-Repository",
+      "license": "MIT-Lizenz"
+    }
+  }
+}

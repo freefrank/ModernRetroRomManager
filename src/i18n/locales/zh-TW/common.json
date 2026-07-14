@@ -1,0 +1,99 @@
+{
+  "app": {
+    "name": "ModernRetroRomManager",
+    "version": "版本 {{version}}"
+  },
+  "nav": {
+    "library": "ROM 庫",
+    "scraper": "Scraper",
+    "import": "導入/匯出",
+    "settings": "設定",
+    "tools": "工具箱",
+    "cnTools": "中文 ROM 工具",
+    "searchSystems": "搜尋系統",
+    "selectLibrary": "選擇 Library",
+    "librarySwitchFailed": "切換 Library 失敗:{{error}}",
+    "noMatchingSystems": "無匹配的系統",
+    "expandPanel": "展開面板",
+    "collapsePanel": "收起面板"
+  },
+  "dropOverlay": {
+    "title": "放開以新增目錄",
+    "subtitle": "將遞歸掃描目錄中的遊戲"
+  },
+  "statusBar": {
+    "romCount": "ROM: {{count}}",
+    "scrapedCount": "已 Scrape: {{count}}",
+    "storageUsed": "儲存: {{size}}"
+  },
+  "console": {
+    "title": "控制台",
+    "clear": "清空日誌",
+    "empty": "暫無日誌"
+  },
+  "scan": {
+    "preparing": "準備中",
+    "mode": {
+      "incremental": "增量掃描",
+      "full": "全量掃描"
+    }
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "確認",
+    "delete": "刪除",
+    "edit": "編輯",
+    "refresh": "刷新",
+    "loading": "載入中...",
+    "error": "錯誤",
+    "success": "成功",
+    "name": "名稱",
+    "system": "系統",
+    "size": "大小",
+    "date": "日期",
+    "notAvailable": "未知",
+    "finish": "完成"
+  },
+  "splash": {
+    "initializing": "初始化中...",
+    "loadingSettings": "載入設定...",
+    "loadingRoms": "讀取 ROM 資料...",
+    "loadingCovers": "載入封面...",
+    "ready": "準備就緒"
+  },
+  "metadataDialog": {
+    "title": "偵測到元資料檔案",
+    "subtitle": "選擇元資料格式",
+    "description": "點選下方選項選擇格式：",
+    "skip": "跳過"
+  },
+  "ui": {
+    "dialog": {
+      "close": "關閉"
+    },
+    "toast": {
+      "dismiss": "關閉通知"
+    },
+    "empty": {
+      "title": "暫無內容"
+    },
+    "spinner": {
+      "loading": "載入中"
+    }
+  },
+  "directoryInput": {
+    "placeholder": "例如: C:\\ROMs\\SNES 或 /home/user/roms",
+    "browse": "瀏覽...",
+    "browseTitle": "選擇目錄",
+    "status": {
+      "validating": "驗證中...",
+      "error": "錯誤: {{error}}",
+      "missing": "路徑不存在",
+      "notDirectory": "不是目錄",
+      "notReadable": "無讀取權限",
+      "notWritable": "警告: 無寫入權限",
+      "valid": "有效路徑 ✓"
+    }
+  }
+}

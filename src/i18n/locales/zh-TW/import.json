@@ -1,0 +1,24 @@
+{
+  "import": {
+    "title": "導入/匯出",
+    "export": {
+      "title": "匯出抓取數據",
+      "description": "選擇 Library，匯出整個庫或其中一個平台的 metadata 與相關資產。",
+      "library": "遊戲庫",
+      "scope": "匯出範圍",
+      "noLibraries": "尚未新增 Library",
+      "loadingSystems": "正在讀取平台…",
+      "entireLibrary": "整個 Library（{{systems}} 個平台 / {{roms}} 個 ROM）",
+      "system": "平台 / ROM 目錄",
+      "format": "目標格式",
+      "target": "匯出目錄",
+      "targetHint": "預設寫回所選 Library/平台目錄。整庫匯出到其他目錄時會保留平台子目錄結構。",
+      "contents": "包含該平台的全部暫存 metadata 以及 media 目錄中的相關資產。",
+      "libraryContents": "包含該 Library 中所有已抓取平台的 metadata 與 media 資產；未抓取平台會自動跳過。",
+      "action": "匯出 Metadata 與資產",
+      "libraryAction": "匯出整個 Library",
+      "libraryLoadFailed": "讀取 Library 失敗：{{error}}",
+      "failed": "匯出失敗：{{error}}"
+    }
+  }
+}

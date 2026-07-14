@@ -1,0 +1,130 @@
+{
+  "settings": {
+    "title": "Impostazioni",
+    "tabs": {
+      "appearance": "Aspetto",
+      "general": "Generale",
+      "scraper": "Scraper",
+      "translation": "Traduzione AI",
+      "about": "Informazioni"
+    },
+    "appearance": {
+      "title": "Aspetto",
+      "themeTitle": "Tema",
+      "themeDescription": "Scegli un tema integrato o importa un pacchetto .rrtheme",
+      "customBadge": "Importato",
+      "importTheme": "Importa pacchetto temi",
+      "themePackFilter": "Pacchetto temi",
+      "importSuccess": "Tema \"{{name}}\" importato",
+      "importFailed": "Impossibile importare il pacchetto di temi: {{error}}",
+      "desktopOnly": "L'importazione dei pacchetti di temi è disponibile solo nell'app desktop",
+      "deleteTitle": "Elimina tema",
+      "deleteConfirm": "Eliminare il tema \"{{name}}\"? Questa operazione non può essere annullata.",
+      "deleteSuccess": "Tema eliminato",
+      "deleteFailed": "Impossibile eliminare il tema: {{error}}",
+      "motionTitle": "Movimento",
+      "motionDescription": "Controlla l'intensità delle animazioni e delle transizioni dell'interfaccia utente",
+      "motion": {
+        "off": "Spento",
+        "low": "Ridotto",
+        "full": "Pieno"
+      }
+    },
+    "general": {
+      "viewModeTitle": "Visualizzazione predefinita",
+      "viewModeDescription": "Modalità di visualizzazione predefinita della libreria ROM",
+      "consoleTitle": "Consolle",
+      "consoleDescription": "Mostra o nascondi la console del registro inferiore. L'avanzamento della scansione rimane visibile.",
+      "consoleEnabled": "Mostra la console inferiore",
+      "viewMode": {
+        "grid": "Griglia",
+        "list": "Elenco",
+        "cover": "Copertina"
+      }
+    },
+    "scanDirectories": {
+      "title": "ROM Librerie",
+      "description": "Ciascuna directory di scansione è una libreria indipendente. Fare clic su un elemento per renderlo attivo.",
+      "empty": "Nessuna libreria aggiunta",
+      "addDirectory": "Aggiungi libreria",
+      "fullScan": "Scansione completa libreria attiva",
+      "dialogTitle": "Aggiungi libreria",
+      "metadataFormat": "Formato dei metadati: {{format}}",
+      "addFailed": "Impossibile aggiungere la libreria: {{error}}",
+      "active": "Attivo",
+      "libraryName": "Nome della libreria",
+      "rename": "Rinomina libreria",
+      "renameSuccess": "Nome della libreria salvato",
+      "renameFailed": "Impossibile rinominare la libreria: {{error}}",
+      "switchFailed": "Impossibile cambiare libreria: {{error}}",
+      "removeFailed": "Impossibile rimuovere la libreria: {{error}}",
+      "scanThisLibrary": "Attiva ed esegui la scansione completa di questa libreria"
+    },
+    "storage": {
+      "title": "Impostazioni di archiviazione",
+      "configDirectory": "Directory di configurazione",
+      "mediaDirectory": "Directory multimediale",
+      "defaultLocation": "Posizione predefinita"
+    },
+    "apiConfig": {
+      "title": "Configurazione API",
+      "editConfig": "Modifica config",
+      "username": "Nome utente",
+      "password": "Password",
+      "apiKey": "API Key",
+      "usernamePlaceholder": "Inserisci il nome utente",
+      "passwordPlaceholder": "Inserisci la password",
+      "savedPasswordPlaceholder": "Password salvata; lasciare vuoto per mantenerlo",
+      "screenScraperAuthHint": "L'app include ScreenScraper credenziali sviluppatore; sono richiesti solo il nome utente e la password.",
+      "apiKeyPlaceholder": "Inserisci il fornitore API key",
+      "credentialsHint": "Inserisci le credenziali API del provider. Le credenziali vengono archiviate solo nel file di configurazione locale.",
+      "authenticated": "Autenticato",
+      "testConnection": "Prova connessione",
+      "testFailed": "Test di connessione fallito: {{error}}",
+      "rateLimit": "Richieste al secondo",
+      "threads": "Thread simultanei",
+      "rateLimitHint": "Questi limiti si applicano solo a questo provider e rispettano comunque le risposte di limitazione del server.",
+      "stats": "Corrispondenza {{matched}} · Selezionato {{selected}} · Memorizzato nella cache {{cached}} · Errori {{errors}}",
+      "lastError": "Ultimo errore: {{error}}",
+      "mediaSelection": "Tipi di supporto",
+      "mediaSelectionHint": "Solo le risorse selezionate vengono richieste e memorizzate nella cache. Video e manuali sono disattivati ​​per impostazione predefinita. Vengono memorizzati nella cache fino a 3 candidati per provider e tipo.",
+      "mediaTypes": {
+        "boxfront": "Copertina anteriore",
+        "boxback": "Copertina posteriore",
+        "box3d": "Copertina 3D",
+        "logo": "Logo",
+        "screenshot": "Schermata",
+        "titlescreen": "Schermata del titolo",
+        "hero": "Eroe",
+        "banner": "Striscione",
+        "icon": "Icona",
+        "video": "Video (opzionale)",
+        "manual": "Manuale (opzionale)"
+      }
+    },
+    "language": {
+      "title": "Lingua",
+      "description": "Seleziona la lingua dell'interfaccia"
+    },
+    "aiTranslation": {
+      "title": "Traduzione dei metadati AI",
+      "description": "Traduci titoli, descrizioni, aziende e generi di giochi tramite un endpoint OpenAI-compatible Chat Completions personalizzato.",
+      "endpoint": "Endpoint API",
+      "apiKey": "API key",
+      "model": "Modello",
+      "targetLanguage": "Lingua di destinazione",
+      "configured": "API key configurato",
+      "savedKey": "API key salvato; lasciare vuoto per mantenerlo",
+      "securityHint": "API key viene archiviato localmente e le richieste vengono inviate dal backend nativo. L'endpoint personalizzato deve supportare /chat/completions.",
+      "saved": "Impostazioni di traduzione AI salvate",
+      "loadFailed": "Impossibile caricare le impostazioni di traduzione AI: {{error}}",
+      "saveFailed": "Impossibile salvare le impostazioni di traduzione AI: {{error}}"
+    },
+    "about": {
+      "title": "Informazioni",
+      "version": "Versione {{version}}",
+      "repository": "Repository GitHub",
+      "license": "Licenza MIT"
+    }
+  }
+}

@@ -6,13 +6,14 @@ import { DEFAULT_THEME_ID, resolveTheme } from "@/theme/registry";
 import { applyTheme } from "@/theme/apply";
 import { validateManifest } from "@/theme/validate";
 import { isTauri, themeApi } from "@/lib/api";
-import i18n from "@/i18n";
+import i18n, { isLanguageCode, type LanguageCode } from "@/i18n";
 
-export function normalizeInterfaceLanguage(language: string | undefined): "zh-CN" | "en" {
-  return language === "en" ? "en" : "zh-CN";
+export function normalizeInterfaceLanguage(language: string | undefined): LanguageCode {
+  if (language === "zh") return "zh-CN";
+  return language && isLanguageCode(language) ? language : "zh-CN";
 }
 
-export async function applyInterfaceLanguage(language: string | undefined): Promise<"zh-CN" | "en"> {
+export async function applyInterfaceLanguage(language: string | undefined): Promise<LanguageCode> {
   const normalized = normalizeInterfaceLanguage(language);
   await i18n.changeLanguage(normalized);
   return normalized;

@@ -1,0 +1,81 @@
+{
+  "cnRomTools": {
+    "title": "中文命名檢查",
+    "selectPlatform": "選擇平台",
+    "selectDirectoryPlaceholder": "選擇要檢查的 ROM 目錄...",
+    "browse": "瀏覽...",
+    "refresh": "刷新",
+    "archive": {
+      "organize": "解壓縮整理",
+      "title": "解壓縮並整理 ROM",
+      "description": "解壓縮目錄中的 RAR/RAR5 ROM，並將已處理的壓縮源移入 _archives。填寫的密碼將用於本次批次解壓縮的所有壓縮包；無密碼請留空。不會覆蓋同名 ROM。目前支援 MD、N64、SFC。",
+      "passwordPlaceholder": "本次批次解壓縮共用密碼（可留空）",
+      "cancel": "取消",
+      "confirm": "開始整理"
+    },
+    "about": {
+      "title": "關於本項目",
+      "description": {
+        "part1": "本軟體整合了",
+        "part2": "項目的資料。此專案提供了極為詳盡的 ROM 中英文名稱對照表，涵蓋了絕大多數主流復古遊戲平台。透過模糊匹配演算法，我們能夠在抓取元資料時自動識別並匹配中文名稱。"
+      },
+      "dataSource": "資料來源: GitHub (yingw/rom-name-cn)",
+      "visitRepo": "訪問倉庫",
+      "updateDatabase": "更新資料庫",
+      "updating": "更新..."
+    },
+    "table": {
+      "fileName": "檔案名稱",
+      "romName": "ROM名 (Meta)",
+      "extractedCnName": "提取中文名",
+      "matchedEnglishName": "符合英文名",
+      "setAsRomName": "設定為ROM名",
+      "setAsRomNameTitle": "將提取的中文名稱設定為 ROM 名",
+      "addAsTag": "新增為額外tag",
+      "addAsTagTitle": "將英文名稱加為額外 tag",
+      "clickToSort": "點選排序",
+      "notSet": "未設定",
+      "notMatched": "未匹配",
+      "confidenceWithEdit": "置信度: {{confidence}}% - 點選編輯",
+      "clickToEdit": "點選編輯"
+    },
+    "footer": {
+      "totalFiles": "共 {{count}} 個文件",
+      "missingEnglishNames": "{{count}} 個未符合英文名",
+      "matchEnglishName": "符合英文名",
+      "exportMetadata": "導出 Metadata"
+    },
+    "export": {
+      "pegasus": "Pegasus (.txt)",
+      "gamelist": "EmulationStation (.xml)",
+      "pegasusFilter": "Pegasus 元數據",
+      "gamelistFilter": "EmulationStation 遊戲列表"
+    },
+    "systemPicker": {
+      "title": "選擇遊戲平台",
+      "searchPlaceholder": "搜尋平台...",
+      "noResults": "沒有找到符合的平台"
+    },
+    "alerts": {
+      "databaseUpdateSuccess": "資料庫更新成功",
+      "updateFailed": "更新失敗: {{error}}",
+      "selectPlatformFirst": "請先選擇遊戲平台",
+      "matchComplete": "配對完成！\n成功: {{success}}\n失敗/跳過: {{failed}}",
+      "matchFailed": "配對失敗: {{error}}",
+      "setComplete": "設定完成！",
+      "setFailed": "設定失敗: {{error}}",
+      "addComplete": "新增完成！",
+      "addFailed": "新增失敗: {{error}}",
+      "exportSuccess": "匯出成功！\n文件已儲存至: {{path}}",
+      "exportFailed": "匯出失敗: {{error}}",
+      "saveFailed": "儲存失敗: {{error}}",
+      "organizeComplete": "整理完成：發現 {{archives}} 個壓縮包，解壓縮 {{extracted}}，跳過 {{skipped}}，歸檔 {{archived}}",
+      "organizeFailed": "解壓縮整理失敗: {{error}}"
+    },
+    "confirms": {
+      "autoFixNaming": "確定要符合英文名嗎？\n這將掃描該目錄下的所有 ROM，並根據本機資料庫自動比對英文名。\n僅置信度極高 (>95%) 的匹配會被應用。\n結果將儲存到暫存目錄。",
+      "setAsRomName": "確定要將提取的中文名稱設定為 ROM 名稱嗎？\n這將把從檔案名稱提取的中文名寫入到臨時 metadata 中。",
+      "addAsTag": "確定要將英文名稱新增為額外 tag 嗎？\n這將把匹配到的英文名作為 x-mrrm-e​​ng tag 寫入臨時 metadata。"
+    }
+  }
+}

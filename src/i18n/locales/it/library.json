@@ -1,0 +1,120 @@
+{
+  "library": {
+    "title": "ROM Libreria",
+    "gameCount": "{{count}} giochi",
+    "search": "Cerca...",
+    "empty": {
+      "title": "La libreria è vuota",
+      "description": "Aggiungi una libreria per iniziare a gestire la tua collezione ROM",
+      "addDirectory": "Aggiungi libreria"
+    },
+    "viewMode": {
+      "cover": "Vista copertina",
+      "grid": "Visualizzazione scheda",
+      "list": "Visualizzazione elenco"
+    },
+    "shelf": {
+      "systemCount": "{{count}} sistemi",
+      "addCard": "Aggiungi libreria",
+      "addCardHint": "Aggiungi una libreria ROM indipendente in Impostazioni"
+    },
+    "breadcrumb": "Percorso di navigazione",
+    "systemNotFound": {
+      "title": "Sistema non trovato",
+      "description": "Il sistema \"{{name}}\" non esiste o è stato rimosso",
+      "back": "Torna allo scaffale"
+    },
+    "cardSize": "Formato della carta",
+    "noResults": "Nessun gioco corrispondente",
+    "noResultsHint": "Prova una parola chiave diversa",
+    "batch": {
+      "selectedCount": "{{count}} selezionato",
+      "selectAll": "Seleziona risultati correnti",
+      "scrape": "Lotto Scrape",
+      "scrapePlatform": "Scrape Questa piattaforma",
+      "scrapeLibrary": "Scrape Intera ROM Libreria",
+      "scraping": "Lotto scraping..."
+    },
+    "boxart": {
+      "generate": "Genera Boxart",
+      "generating": "Generazione {{current}}/{{total}}",
+      "tooltip": "Genera boxart per tutte le PS3 ROM",
+      "done": "Boxart completato: {{success}} riuscito, {{failed}} fallito"
+    },
+    "translation": {
+      "selected": "Traduttore AI",
+      "platform": "Piattaforma di traduzione",
+      "dialogTitle": "Metadati di traduzione batch",
+      "warning": "L'endpoint AI configurato verrà chiamato una volta per ciascuno dei giochi {{count}} e i risultati verranno salvati come metadati di anteprima. Potrebbero essere applicati costi API.",
+      "confirm": "Traduci {{count}} Elementi",
+      "progress": "Traduzione in corso {{current}}/{{total}}",
+      "done": "Traduzione AI completata: {{success}} riuscita, {{failed}} non riuscita"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "Informazioni",
+      "media": "Supporto",
+      "files": "File"
+    },
+    "preview": {
+      "mode": "Anteprima dati",
+      "raw": "Dati grezzi",
+      "active": "Anteprima Scraped Dati",
+      "inactive": "Visualizza dati originali",
+      "note": "Anteprima dati",
+      "noteDesc": "Questi dati vengono memorizzati in una directory temporanea. Controlla la descrizione e le copertine, quindi fai clic su \"Esporta nella libreria\" per applicarle in modo permanente."
+    },
+    "fields": {
+      "releaseDate": "Data di rilascio",
+      "developer": "Sviluppatore",
+      "publisher": "Editore",
+      "genre": "Genere",
+      "description": "Descrizione",
+      "noDescription": "Nessuna descrizione disponibile.",
+      "filename": "Nome file",
+      "localPath": "Percorso locale"
+    },
+    "actions": {
+      "scrape": "Scrape",
+      "edit": "Modifica",
+      "remove": "Rimuovi",
+      "export": "Esporta nella libreria",
+      "exporting": "Esportazione {{progress}}%",
+      "exportingSimple": "Esportazione",
+      "savePreview": "Salva anteprima",
+      "saveEdit": "Salva modifiche",
+      "cancelEdit": "Annulla",
+      "generateBoxart": "Genera Boxart PS3",
+      "translate": "Metadati di traduzione AI",
+      "boxartFailed": "Generazione Boxart fallita: {{error}}"
+    },
+    "cover": {
+      "noImage": "Nessuna immagine di copertina"
+    },
+    "media": {
+      "title": "Gestione multimediale (temporanea)",
+      "empty": "Nessuna risorsa multimediale scraped",
+      "deleteNote": "Nota: l'eliminazione influisce solo sulla directory temporanea. Dopo l'esportazione, le risorse esistenti verranno sovrascritte."
+    },
+    "translation": {
+      "success": "Metadati tradotti salvati nell'anteprima",
+      "failed": "Traduzione dei metadati non riuscita: {{error}}"
+    }
+  },
+  "scrapeDialog": {
+    "videoAsset": "Video",
+    "genericSystem": "Generico",
+    "coverAlt": "Copertina"
+  },
+  "rootDirectoryDialog": {
+    "title": "Directory della piattaforma di gioco rilevate",
+    "subtitle": "Trovate le directory della piattaforma {{count}}",
+    "description": "Scegli come importare: scansiona tutte le piattaforme come directory root o scegli una singola piattaforma",
+    "importAsRoot": "Importa come directory principale",
+    "importAsRootDesc": "Scansiona automaticamente i metadati in tutte le sottodirectory",
+    "withMetadata": "Piattaforme con metadati",
+    "withoutMetadata": "Directory senza metadati ({{count}})",
+    "andMore": "… e {{count}} altro"
+  }
+}

@@ -124,7 +124,7 @@ pub struct ScraperStats {
 pub struct AppSettings {
     /// 界面主题: light, dark, cyberpunk, ocean, forest, sunset, rose, nord
     pub theme: String,
-    /// 界面语言: zh, en
+    /// 界面语言: zh-CN, zh-TW, en, fr, de, it, es, ru（兼容旧值 zh）
     pub language: String,
     /// 视图模式: grid, list
     pub view_mode: String,

@@ -1,0 +1,110 @@
+{
+  "scraper": {
+    "title": "Scraper",
+    "startScrape": "Début Scrape",
+    "apiConfig": {
+      "title": "Configuration de l'API",
+      "description": "Configurez Scraper API keys pour récupérer les métadonnées du jeu et les ressources multimédias",
+      "activeSources": "{{count}} sources actives",
+      "credentialsNote": "Veuillez saisir vos informations d'identification API. Ils sont stockés en toute sécurité sur votre machine."
+    },
+    "noCredentials": {
+      "title": "Aucun identifiant API configuré",
+      "description": "Scraper nécessite des informations d'identification API pour fonctionner. Veuillez accéder aux paramètres pour configurer les informations d'identification de l'API ScreenScraper ou SteamGridDB.",
+      "goToSettings": "Accédez aux paramètres"
+    },
+    "status": {
+      "enabledSources": "Sources activées",
+      "configuredCredentials": "Informations d'identification configurées",
+      "authenticated": "Authentifié",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "missingCredentials": "Aucune information d'identification"
+    },
+    "providerList": {
+      "title": "Statut du fournisseur",
+      "configure": "Configurer"
+    },
+    "capabilities": {
+      "search": "Recherche",
+      "hash_lookup": "Recherche de hachage",
+      "metadata": "Métadonnées",
+      "media": "Médias"
+    },
+    "mediaOptions": {
+      "title": "Types de médias pour ce scrape",
+      "selected": "{{count}} sélectionné"
+    },
+    "providers": {
+      "igdb": {
+        "name": "IGDB",
+        "description": "Propulsé par Twitch, données complètes"
+      },
+      "steamgriddb": {
+        "name": "SteamGridDB",
+        "description": "Couvertures/logos/icônes de haute qualité"
+      },
+      "thegamesdb": {
+        "name": "TheGamesDB",
+        "description": "Piloté par la communauté, gratuit"
+      },
+      "mobygames": {
+        "name": "MobyGames",
+        "description": "Données riches pour les jeux rétro"
+      },
+      "screenscraper": {
+        "name": "ScreenScraper",
+        "description": "Inscription requise, médias riches"
+      }
+    },
+    "fields": {
+      "clientId": "Client ID",
+      "clientSecret": "Client Secret",
+      "apiKey": "API Key",
+      "username": "Nom d'utilisateur",
+      "password": "Mot de passe"
+    },
+    "dialog": {
+      "title": "Scrape Métadonnées du jeu",
+      "searchPlaceholder": "Rechercher le nom du jeu...",
+      "searchButton": "Recherche",
+      "searching": "Recherche...",
+      "resultsCount": "Résultats ({{count}})",
+      "assetCount": "{{count}} actifs",
+      "noResults": "Aucun résultat trouvé",
+      "loadingDetails": "Chargement des détails...",
+      "confidence": "Confiance",
+      "userRating": "Note",
+      "releaseDate": "Date de sortie",
+      "developer": "Développeur",
+      "publisher": "Éditeur",
+      "sourceSystem": "Système source",
+      "description": "Descriptif",
+      "noDescription": "Aucune description disponible.",
+      "mediaAssets": "Actifs multimédias ({{count}})",
+      "selectedAssets": "{{count}} sélectionné",
+      "readyToScrape": "Prêt à Scrape",
+      "readyToScrapeDesc": "Sélectionnez un résultat from à gauche pour prévisualiser les métadonnées et sélectionner les actifs.",
+      "applyNote": "Sélectionnez les ressources et cliquez sur Appliquer pour mettre à jour les informations du jeu.",
+      "confirmAndApply": "Confirmer et appliquer"
+    },
+    "batch": {
+      "title": "Lot Scrape",
+      "scraping": "Scraping Données...",
+      "processed": "{{current}} / {{total}} jeux traités",
+      "preparing": "Préparation...",
+      "completed": "Scrape Terminé !",
+      "completedDesc": "Les jeux de cette tâche ont été mis à jour.",
+      "stopped": "Scrape Arrêté",
+      "stoppedDesc": "Les parties en attente ne seront pas scraped ; les résultats complétés sont conservés.",
+      "pendingTitle": "Scraping {{count}} jeux",
+      "pendingDesc": "Le système fera automatiquement correspondre les noms de fichiers et récupérera les meilleures métadonnées et couvertures.",
+      "forceRescrape": "Complet rescrape",
+      "forceRescrapeDesc": "Incluez les jeux qui contiennent déjà des métadonnées et des actifs, contournez les caches scraper et interrogez à nouveau les fournisseurs.",
+      "selectSource": "Sélectionner la source",
+      "recommended": "ScreenScraper recommandé",
+      "noSourceEnabled": "Activez d'abord au moins une source dans les paramètres",
+      "start": "Début Scrape"
+    }
+  }
+}

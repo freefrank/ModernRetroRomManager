@@ -1,0 +1,24 @@
+{
+  "import": {
+    "title": "Import/Export",
+    "export": {
+      "title": "scraped Daten exportieren",
+      "description": "Wählen Sie eine Bibliothek aus und exportieren Sie deren gesamte scraped-Sammlung oder eine Plattform mit zugehörigen Assets.",
+      "library": "Bibliothek",
+      "scope": "Exportbereich",
+      "noLibraries": "Keine Bibliothek hinzugefügt",
+      "loadingSystems": "Ladeplattformen…",
+      "entireLibrary": "Gesamte Bibliothek ({{systems}} Plattformen / {{roms}} ROMs)",
+      "system": "Plattform / ROM Verzeichnis",
+      "format": "Zielformat",
+      "target": "Exportverzeichnis",
+      "targetHint": "Standardmäßig wird die ausgewählte Bibliothek oder Plattform verwendet. Bei Exporten ganzer Bibliotheken bleiben Plattformunterverzeichnisse an einem anderen Ziel erhalten.",
+      "contents": "Enthält alle temporären Metadaten und zugehörigen Dateien im Medienverzeichnis der Plattform.",
+      "libraryContents": "Enthält Metadaten und Medien für jede scraped-Plattform in dieser Bibliothek. Plattformen ohne scraped-Daten werden übersprungen.",
+      "action": "Metadaten und Assets exportieren",
+      "libraryAction": "Gesamte Bibliothek exportieren",
+      "libraryLoadFailed": "Bibliothek konnte nicht geladen werden: {{error}}",
+      "failed": "Export fehlgeschlagen: {{error}}"
+    }
+  }
+}

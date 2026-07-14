@@ -65,6 +65,12 @@ describe("interface language", () => {
     expect(normalizeInterfaceLanguage("zh-CN")).toBe("zh-CN");
     expect(normalizeInterfaceLanguage("unknown")).toBe("zh-CN");
     expect(normalizeInterfaceLanguage("en")).toBe("en");
+    expect(normalizeInterfaceLanguage("fr")).toBe("fr");
+    expect(normalizeInterfaceLanguage("de")).toBe("de");
+    expect(normalizeInterfaceLanguage("it")).toBe("it");
+    expect(normalizeInterfaceLanguage("es")).toBe("es");
+    expect(normalizeInterfaceLanguage("ru")).toBe("ru");
+    expect(normalizeInterfaceLanguage("zh-TW")).toBe("zh-TW");
   });
 
   it("初始化时把保存语言应用到 i18next", async () => {

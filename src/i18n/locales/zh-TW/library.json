@@ -1,0 +1,120 @@
+{
+  "library": {
+    "title": "ROM 庫",
+    "gameCount": "{{count}} 個遊戲",
+    "search": "搜尋...",
+    "empty": {
+      "title": "ROM 庫為空",
+      "description": "加入 Library 開始管理你的 ROM 收藏",
+      "addDirectory": "新增 Library"
+    },
+    "viewMode": {
+      "cover": "封面視圖",
+      "grid": "卡片視圖",
+      "list": "清單檢視"
+    },
+    "shelf": {
+      "systemCount": "{{count}} 個系統",
+      "addCard": "新增 Library",
+      "addCardHint": "前往設定新增獨立 ROM 遊戲庫"
+    },
+    "breadcrumb": "麵包屑導覽",
+    "systemNotFound": {
+      "title": "找不到該系統",
+      "description": "系統「{{name}}」不存在或已移除",
+      "back": "返回系統貨架"
+    },
+    "cardSize": "卡片尺寸",
+    "noResults": "沒有符合的遊戲",
+    "noResultsHint": "換個關鍵字試試",
+    "batch": {
+      "selectedCount": "已選擇 {{count}} 項",
+      "selectAll": "全選目前結果",
+      "scrape": "批次抓取",
+      "scrapePlatform": "抓取此平台",
+      "scrapeLibrary": "抓取整個 ROM 庫",
+      "scraping": "批次抓取中..."
+    },
+    "boxart": {
+      "generate": "產生 Boxart",
+      "generating": "生成中 {{current}}/{{total}}",
+      "tooltip": "為所有 PS3 ROM 產生 Boxart",
+      "done": "Boxart 產生完成:成功 {{success}},失敗 {{failed}}"
+    },
+    "translation": {
+      "selected": "AI 翻譯",
+      "platform": "翻譯此平台",
+      "dialogTitle": "批次翻譯 Metadata",
+      "warning": "即將逐項呼叫已設定的 AI 介面翻譯 {{count}} 個遊戲，並將結果儲存為預覽 metadata。該操作可能產生 API 費用。",
+      "confirm": "翻譯 {{count}} 項",
+      "progress": "翻譯中 {{current}}/{{total}}",
+      "done": "AI 翻譯完成：成功 {{success}}，失敗 {{failed}}"
+    }
+  },
+  "romDetail": {
+    "tabs": {
+      "info": "基本訊息",
+      "media": "媒體資產",
+      "files": "文件詳情"
+    },
+    "preview": {
+      "mode": "預覽數據",
+      "raw": "原始數據",
+      "active": "正在預覽抓取數據",
+      "inactive": "查看原始數據",
+      "note": "預覽抓取數據",
+      "noteDesc": "這些資料只保存在暫存目錄中。您可以檢查描述和封面，滿意後點擊底部的「匯出到庫」將其永久應用。"
+    },
+    "fields": {
+      "releaseDate": "發行日期",
+      "developer": "開發商",
+      "publisher": "發行商",
+      "genre": "遊戲類型",
+      "description": "遊戲描述",
+      "noDescription": "暫無詳細描述。",
+      "filename": "檔案名稱",
+      "localPath": "本機路徑"
+    },
+    "actions": {
+      "scrape": "抓取元資料",
+      "edit": "手動編輯",
+      "remove": "移除遊戲",
+      "export": "匯出到庫",
+      "exporting": "匯出中 {{progress}}%",
+      "exportingSimple": "匯出中",
+      "savePreview": "儲存到預覽",
+      "saveEdit": "儲存修改",
+      "cancelEdit": "取消修改",
+      "generateBoxart": "產生 PS3 Boxart",
+      "translate": "AI 翻譯 Metadata",
+      "boxartFailed": "Boxart 產生失敗：{{error}}"
+    },
+    "cover": {
+      "noImage": "暫無封面圖"
+    },
+    "media": {
+      "title": "媒體管理 (暫存目錄)",
+      "empty": "暫無抓取的媒體文件",
+      "deleteNote": "提示: 刪除操作只會影響暫存目錄。匯出後，對應類型的舊資產將被新資產覆蓋（如果存在）。"
+    },
+    "translation": {
+      "success": "Metadata 翻譯已儲存至預覽",
+      "failed": "Metadata 翻譯失敗：{{error}}"
+    }
+  },
+  "scrapeDialog": {
+    "videoAsset": "視頻",
+    "genericSystem": "通用",
+    "coverAlt": "封面"
+  },
+  "rootDirectoryDialog": {
+    "title": "偵測到遊戲平台目錄",
+    "subtitle": "發現 {{count}} 個平台目錄",
+    "description": "選擇導入方式：作為根目錄自動掃描所有平台，或單獨選擇某個平台",
+    "importAsRoot": "導入為根目錄",
+    "importAsRootDesc": "自動掃描所有子目錄的 metadata",
+    "withMetadata": "偵測到 Metadata 的平台",
+    "withoutMetadata": "無 Metadata 的目錄 ({{count}} 個)",
+    "andMore": "…… 等 {{count}} 個"
+  }
+}
