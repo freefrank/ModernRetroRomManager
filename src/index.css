@@ -8,11 +8,15 @@
   unicode-range: U+0000-00FF;
 }
 
-/* Zpix 的授权不允许未经许可的再分发；Retro 主题优先使用用户本机安装的原版字体。 */
+/* Retro 主题使用未经转换的 Zpix 原版字体；授权说明见 public/THIRD_PARTY_NOTICES.txt。 */
 @font-face {
-  font-family: "Zpix Local";
-  src: local("Zpix");
+  font-family: "Zpix";
+  src:
+    local("Zpix"),
+    url("./assets/fonts/zpix-v3.1.11.ttf") format("truetype");
   font-display: swap;
+  font-style: normal;
+  font-weight: 400;
 }
 
 @theme {
@@ -57,8 +61,8 @@
   --border-default: #3a3a5c;
   --border-hover: #533483;
   --border-highlight: #e94560;
-  --font-display: 'Zpix Local', 'Press Start 2P', 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  --font-body: 'Zpix Local', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-display: 'Zpix', 'Press Start 2P', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Zpix', 'Segoe UI', 'Microsoft YaHei', sans-serif;
   --font-mono: Consolas, 'Courier New', monospace;
   --radius-sm: 0px;
   --radius-md: 0px;

@@ -1,0 +1,13 @@
+Zpix pixel font
+================
+
+Version: 3.1.11
+Author and copyright owner: SolidZORO
+Source: https://github.com/SolidZORO/zpix-pixel-font
+
+ModernRetroRomManager includes the original, unmodified Zpix.ttf file.
+The font author's published terms state that personal and educational products
+may use the font for free. Commercial or business products require a paid
+license. Modification, decompilation, conversion, splitting, and unauthorized
+distribution are prohibited. Refer to the official project page for the full
+and current terms before redistributing or using this font commercially.
