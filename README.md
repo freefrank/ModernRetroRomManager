@@ -13,11 +13,11 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 - Identify supported cartridge games from ROM headers, serials, and embedded databases
 - Match filename-based platforms and modified ROM sets with normalized game names
 - Search multiple metadata providers, with platform-aware confidence ranking and fallback handling
-- Scrape individual games, selected games, an entire platform, or the complete ROM library
+- Scrape individual games, selected games, an entire platform, or the complete ROM library; optionally force a full rescrape that bypasses existing metadata, assets, and caches
 - Select optional media types, reuse persistent scrape results across libraries, and cache alternative artwork for review
-- Export metadata and related media for EmulationStation `gamelist.xml` and Pegasus `metadata.pegasus.txt`
+- Export the active or a selected library's metadata and related media for EmulationStation `gamelist.xml` and Pegasus `metadata.pegasus.txt`
 - Inspect scan, scrape, provider, and error messages in a level-filtered bottom Console
-- Import custom themes and use the built-in responsive dark interface
+- Import custom themes and use the built-in responsive dark interface; the Retro theme bundles Zpix for consistent English and Chinese pixel text
 - Run on Windows, Linux, and macOS through Tauri 2
 
 ## Library model
@@ -60,6 +60,8 @@ Create a production build:
 ```bash
 pnpm tauri build
 ```
+
+Pushing a `v*` tag triggers CI builds for a Windows x64 portable ZIP and a Linux x86_64 AppImage, then publishes both files to the matching GitHub Release.
 
 The versioning, changelog, and portable release workflow is documented in [docs/release-process.md](./docs/release-process.md). Run `pnpm release:check` before publishing a release.
 

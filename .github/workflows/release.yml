@@ -1,0 +1,116 @@
+name: Build and release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-portable:
+    name: Windows x64 portable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: pnpm install --frozen-lockfile
+      - name: Build portable executable
+        run: pnpm tauri build --no-bundle
+      - name: Assemble portable archive
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $name = "ModernRetroRomManager_${version}_windows_x64_portable"
+          $output = Join-Path artifacts $name
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          Copy-Item src-tauri/target/release/modern-retro-rom-manager.exe "$output/ModernRetroRomManager.exe"
+          Copy-Item src-tauri/resources/rom-name-cn $output -Recurse
+          Copy-Item src-tauri/resources/cn-mapping $output -Recurse
+          Copy-Item src-tauri/resources/logo $output -Recurse
+          Compress-Archive -Path $output -DestinationPath "artifacts/$name.zip" -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-portable
+          path: artifacts/*_windows_x64_portable.zip
+          if-no-files-found: error
+
+  linux-appimage:
+    name: Linux x86_64 AppImage
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: pnpm install --frozen-lockfile
+      - name: Build AppImage
+        run: pnpm tauri build --bundles appimage
+      - name: Collect AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          source_file=$(find src-tauri/target/release/bundle/appimage -maxdepth 1 -type f -name '*.AppImage' -print -quit)
+          test -n "$source_file"
+          mkdir -p artifacts
+          cp "$source_file" "artifacts/ModernRetroRomManager_${version}_linux_x86_64.AppImage"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64-appimage
+          path: artifacts/*_linux_x86_64.AppImage
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - windows-portable
+      - linux-appimage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Extract release notes from CHANGELOG
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          awk -v version="$version" '
+            $0 ~ "^## " version " " { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: release-assets/*
+          fail_on_unmatched_files: true

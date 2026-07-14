@@ -1,5 +1,20 @@
 # 更新日志
 
+## 0.6.1 (2026-07-14)
+
+### 抓取与导出
+- 批量抓取增加“全量重新抓取”，可忽略已有元数据、资产和搜索缓存，重新请求 Provider 并刷新本地缓存
+- 批量抓取按设置中的 Provider 优先级显示；单个 Provider 失败时继续尝试其他来源，避免整条任务中断
+- 修复 ScreenScraper 凭据保存、连接测试及部分结果缺少游戏 ID 时的解析失败
+- 导出支持选择当前 Library 或整个 Library，并统一处理 Windows 路径格式
+
+### 界面与文档
+- 修复 Library 管理按钮布局，避免文字换行和操作区域错位
+- Retro 主题内置 Zpix 字体，并统一用于中英文界面
+- 增加 ScreenScraper WebAPI 离线速查文档
+- 增加 GitHub Actions 发布流程，自动构建 Windows x64 portable 与 Linux x86_64 AppImage，并随 tag 发布到 GitHub Release
+
+
 ## 0.6.0 (2026-07-13)
 
 ### 多游戏库

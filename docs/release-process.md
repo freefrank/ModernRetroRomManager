@@ -19,6 +19,12 @@
 5. 构建 Windows portable，并确认产物目录名、应用内版本号和文件名一致。
 6. 只有用户明确要求后才 push；只有用户明确要求发布时才创建 `v<版本号>` tag。
 
+## 自动构建与 GitHub Release
+
+推送 `v*` tag 后，GitHub Actions 会并行构建 Windows x64 portable ZIP 和 Linux x86_64 AppImage。两项构建均成功后，CI 从 `CHANGELOG.md` 提取对应版本说明，创建 GitHub Release 并上传两个产物。
+
+也可以在 Actions 页面手动运行该 workflow 仅验证和下载构建产物；手动运行不会创建 Release。
+
 ## Agent Hook 的作用
 
 - 当请求提到版本、构建、文档或发布时，向 Agent 注入上述流程。

@@ -13,11 +13,11 @@ ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM �
 - 通过 ROM Header、序列号和内置数据库识别支持的卡带游戏
 - 对文件名型平台和魔改 ROM 集进行名称标准化匹配
 - 聚合多个元数据 Provider，并根据平台匹配度、资源完整度进行置信度排序和故障切换
-- 支持单游戏、已选游戏、整个平台或整个 ROM 库批量刮削
+- 支持单游戏、已选游戏、整个平台或整个 ROM 库批量刮削，并可选择忽略已有元数据、资产与缓存进行全量重新抓取
 - 可选择需要下载的媒体类型，跨 ROM 库复用持久抓取缓存，并保留备选图片供用户确认
-- 按 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt` 格式导出元数据及相关媒体资源
+- 可选择当前或指定游戏库，按 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt` 格式导出元数据及相关媒体资源
 - 在支持日志级别筛选的底部 Console 中查看扫描、抓取、Provider 和错误信息
-- 支持导入自定义主题，并提供响应式暗色界面
+- 支持导入自定义主题，并提供响应式暗色界面；Retro 主题内置 Zpix，统一显示中英文像素字体
 - 基于 Tauri 2 支持 Windows、Linux 和 macOS
 
 ## 游戏库模型
@@ -60,6 +60,8 @@ pnpm tauri dev
 ```bash
 pnpm tauri build
 ```
+
+推送 `v*` tag 后，CI 会构建 Windows x64 portable ZIP 与 Linux x86_64 AppImage，并将两个产物发布到对应的 GitHub Release。
 
 版本号、更新日志和 portable 发布流程见 [docs/release-process.md](./docs/release-process.md)。发布前运行 `pnpm release:check`。
 
