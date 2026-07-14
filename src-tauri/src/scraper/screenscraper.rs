@@ -177,6 +177,42 @@ impl ScreenScraperClient {
             .collect()
     }
 
+    fn build_search_results(games: Vec<SSGame>, system: Option<String>) -> Vec<SearchResult> {
+        games
+            .into_iter()
+            .filter_map(|game| {
+                let source_id = game.id.as_deref()?.trim().to_string();
+                if source_id.is_empty() {
+                    return None;
+                }
+                Some((game, source_id))
+            })
+            .enumerate()
+            .map(|(index, (game, source_id))| {
+                let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
+                let year = game.dates.first().map(|d| {
+                    // 提取年份 (格式可能是 YYYY-MM-DD 或 YYYY)
+                    d.date.split('-').next().unwrap_or(&d.date).to_string()
+                });
+
+                SearchResult {
+                    provider: PROVIDER_ID.to_string(),
+                    source_id,
+                    name,
+                    year,
+                    system: system.clone(),
+                    thumbnail: game
+                        .medias
+                        .iter()
+                        .find(|m| m.media_type == "box-2D" || m.media_type == "box-2d")
+                        .map(|m| m.url.clone()),
+                    asset_count: Some(game.medias.len()),
+                    confidence: (0.9_f32 - index as f32 * 0.01).max(0.6),
+                }
+            })
+            .collect()
+    }
+
     /// 调用 jeuInfos API
     async fn fetch_game_info(&self, params: Vec<(&str, String)>) -> Result<Option<SSGame>, String> {
         let _permit = self.limiter.acquire().await;
@@ -309,6 +345,33 @@ mod tests {
         assert!(url.contains("ssid=member%20user"));
         assert!(url.contains("sspassword=member%20pass"));
     }
+
+    #[test]
+    fn search_response_skips_games_without_an_id() {
+        let body = r#"{
+            "response": {
+                "jeux": [
+                    { "noms": [{ "text": "Incomplete result" }] },
+                    { "id": null, "noms": [{ "text": "Null id" }] },
+                    {
+                        "id": "42",
+                        "noms": [{ "text": "Valid result" }],
+                        "dates": [{ "text": "2001-01-01" }]
+                    }
+                ]
+            }
+        }"#;
+
+        let response: SSSearchResponse = serde_json::from_str(body).unwrap();
+        let games = response.response.unwrap().jeux;
+        let results = ScreenScraperClient::build_search_results(games, Some("gba".into()));
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].source_id, "42");
+        assert_eq!(results[0].name, "Valid result");
+        assert_eq!(results[0].year.as_deref(), Some("2001"));
+        assert_eq!(results[0].confidence, 0.9);
+    }
 }
 
 // ============================================================================
@@ -348,7 +411,8 @@ struct SSUserResponseData {
 
 #[derive(Deserialize)]
 struct SSGame {
-    id: String,
+    #[serde(default)]
+    id: Option<String>,
     #[serde(default)]
     noms: Vec<SSName>,
     #[serde(default)]
@@ -451,32 +515,7 @@ impl ScraperProvider for ScreenScraperClient {
             .and_then(Self::system_id)
             .ok_or_else(|| "ScreenScraper 缺少受支持的平台映射".to_string())?;
         let games = self.search_games(&query.name, system_id).await?;
-        Ok(games
-            .into_iter()
-            .enumerate()
-            .map(|(index, game)| {
-                let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
-                let year = game.dates.first().map(|d| {
-                    // 提取年份 (格式可能是 YYYY-MM-DD 或 YYYY)
-                    d.date.split('-').next().unwrap_or(&d.date).to_string()
-                });
-
-                SearchResult {
-                    provider: PROVIDER_ID.to_string(),
-                    source_id: game.id,
-                    name,
-                    year,
-                    system: query.system.clone(),
-                    thumbnail: game
-                        .medias
-                        .iter()
-                        .find(|m| m.media_type == "box-2D" || m.media_type == "box-2d")
-                        .map(|m| m.url.clone()),
-                    asset_count: Some(game.medias.len()),
-                    confidence: (0.9_f32 - index as f32 * 0.01).max(0.6),
-                }
-            })
-            .collect())
+        Ok(Self::build_search_results(games, query.system.clone()))
     }
 
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {
@@ -530,10 +569,14 @@ impl ScraperProvider for ScreenScraperClient {
 
         match jeu {
             Some(game) => {
+                let source_id = match game.id.as_deref().map(str::trim) {
+                    Some(source_id) if !source_id.is_empty() => source_id.to_string(),
+                    _ => return Ok(None),
+                };
                 let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
                 Ok(Some(SearchResult {
                     provider: PROVIDER_ID.to_string(),
-                    source_id: game.id,
+                    source_id,
                     name,
                     year: game.dates.first().map(|d| d.date.clone()),
                     system: system.map(String::from),
