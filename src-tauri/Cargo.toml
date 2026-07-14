@@ -1,6 +1,6 @@
 [package]
 name = "modern-retro-rom-manager"
-version = "0.5.0"
+version = "0.5.1"
 description = "现代化 Retro ROM 管理软件"
 authors = ["dotSlash"]
 edition = "2021"

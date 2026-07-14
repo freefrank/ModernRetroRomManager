@@ -1,5 +1,17 @@
 # 更新日志
 
+## 0.5.1 (2026-07-13)
+
+### ScreenScraper 鉴权
+- 内置并轻量混淆应用级 Developer Username/Password，普通用户只需配置自己的 ScreenScraper 会员用户名和密码
+- 按 WebAPI v2 要求同时发送应用开发者凭据和会员凭据，修复仅填写普通会员账号时鉴权不生效的问题
+- 移除自定义 Developer Username/Password 的设置入口和前后端配置字段，统一使用 MRRM 内置应用凭据
+- 网络请求失败时不再输出可能包含鉴权参数的完整 URL，避免开发者和会员凭据进入日志
+
+### 文档
+- 更新英文、简体中文 README 和 API 文档，说明 ScreenScraper 内置应用鉴权及用户配置方式
+
+
 ## 0.5.0 (2026-07-13)
 
 ### 主要更新
