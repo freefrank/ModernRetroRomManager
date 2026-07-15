@@ -85,6 +85,12 @@ try {
   <Resources>
     <Resource Language="en-us" />
     <Resource Language="zh-cn" />
+    <Resource Language="zh-tw" />
+    <Resource Language="fr-fr" />
+    <Resource Language="de-de" />
+    <Resource Language="it-it" />
+    <Resource Language="es-es" />
+    <Resource Language="ru-ru" />
   </Resources>
   <Dependencies>
     <TargetDeviceFamily
