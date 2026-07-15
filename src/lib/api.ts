@@ -14,10 +14,18 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 // ============ Media URL Cache ============
 const mediaUrlCache = new Map<string, string>();
+const mediaUrlRequests = new Map<string, Promise<string | null>>();
+let mediaUrlGeneration = 0;
 
 export function getCachedMediaUrl(path: string | undefined): string | null {
   if (!path) return null;
   return mediaUrlCache.get(path) ?? null;
+}
+
+export function clearCachedMediaUrls(): void {
+  mediaUrlGeneration += 1;
+  mediaUrlCache.clear();
+  mediaUrlRequests.clear();
 }
 
 export async function preloadMediaUrls(roms: Rom[], limit = 50): Promise<void> {
@@ -27,12 +35,7 @@ export async function preloadMediaUrls(roms: Rom[], limit = 50): Promise<void> {
     .filter((path): path is string => !!path && !mediaUrlCache.has(path));
 
   await Promise.all(
-    paths.map(async (path) => {
-      const url = await resolveMediaUrlAsync(path);
-      if (url) {
-        mediaUrlCache.set(path, url);
-      }
-    })
+    paths.map((path) => resolveMediaUrlAsync(path))
   );
 }
 
@@ -211,14 +214,39 @@ export async function resolveMediaUrlAsync(path: string | undefined): Promise<st
   if (!path) return null;
   if (path.startsWith("http") || path.startsWith("data:")) return path;
 
+  const cached = mediaUrlCache.get(path);
+  if (cached) return cached;
+  const pending = mediaUrlRequests.get(path);
+  if (pending) return pending;
+
   const normalizedPath = normalizePath(path);
+  const requestGeneration = mediaUrlGeneration;
+  const request = (async () => {
+    if (isTauri()) {
+      const { convertFileSrc } = await import("@tauri-apps/api/core");
+      let displayPath = normalizedPath;
+      try {
+        displayPath = await tauriInvoke<string>("resolve_cached_library_asset", {
+          path: normalizedPath,
+        });
+      } catch (error) {
+        console.warn("Failed to cache library asset, using source path:", error);
+      }
+      const url = convertFileSrc(displayPath);
+      if (requestGeneration === mediaUrlGeneration) mediaUrlCache.set(path, url);
+      return url;
+    }
 
-  if (isTauri()) {
-    const { convertFileSrc } = await import("@tauri-apps/api/core");
-    return convertFileSrc(normalizedPath);
+    const url = `${API_BASE}/media?path=${encodeURIComponent(normalizedPath)}`;
+    if (requestGeneration === mediaUrlGeneration) mediaUrlCache.set(path, url);
+    return url;
+  })();
+  mediaUrlRequests.set(path, request);
+  try {
+    return await request;
+  } finally {
+    if (mediaUrlRequests.get(path) === request) mediaUrlRequests.delete(path);
   }
-
-  return `${API_BASE}/media?path=${encodeURIComponent(normalizedPath)}`;
 }
 
 // ============ Scraper API ============

@@ -55,9 +55,24 @@ fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
         .collect()
 }
 
+async fn load_cached_roms_async() -> Result<Option<Vec<SystemRoms>>, String> {
+    tokio::task::spawn_blocking(load_cached_roms)
+        .await
+        .map_err(|error| format!("ROM 索引读取任务失败: {error}"))
+}
+
+async fn load_library_cached_roms_async(
+    library_id: String,
+) -> Result<Option<Vec<SystemRoms>>, String> {
+    tokio::task::spawn_blocking(move || load_cached_roms_for_library(&library_id))
+        .await
+        .map_err(|error| format!("Library 索引读取任务失败: {error}"))
+}
+
 #[tauri::command]
 pub async fn get_library_rom_summary(library_id: String) -> Result<Vec<RomSystemSummary>, String> {
-    let systems = if let Some(cached) = load_cached_roms_for_library(&library_id) {
+    let cached_library_id = library_id.clone();
+    let systems = if let Some(cached) = load_library_cached_roms_async(cached_library_id).await? {
         cached
     } else {
         tokio::task::spawn_blocking(move || scan_library_by_id(&library_id, ScanMode::Full, |_| {}))
@@ -148,7 +163,7 @@ pub async fn get_roms(
     app: AppHandle,
     filter: Option<RomFilter>,
 ) -> Result<Vec<SystemRoms>, String> {
-    let all_systems = if let Some(cached) = load_cached_roms() {
+    let all_systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
         scan_with_events(app, ScanMode::Full).await?
@@ -194,7 +209,7 @@ pub async fn get_roms(
 
 #[tauri::command]
 pub async fn get_rom_library_summary(app: AppHandle) -> Result<Vec<RomSystemSummary>, String> {
-    let systems = if let Some(cached) = load_cached_roms() {
+    let systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
         scan_with_events(app, ScanMode::Full).await?
@@ -204,7 +219,7 @@ pub async fn get_rom_library_summary(app: AppHandle) -> Result<Vec<RomSystemSumm
 
 #[tauri::command]
 pub async fn get_system_roms(app: AppHandle, system: String) -> Result<SystemRoms, String> {
-    let systems = if let Some(cached) = load_cached_roms() {
+    let systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
         scan_with_events(app, ScanMode::Full).await?
@@ -218,7 +233,7 @@ pub async fn get_system_roms(app: AppHandle, system: String) -> Result<SystemRom
 /// 获取 ROM 统计信息
 #[tauri::command]
 pub async fn get_rom_stats() -> Result<RomStats, String> {
-    let all_systems = if let Some(cached) = load_cached_roms() {
+    let all_systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
         tokio::task::spawn_blocking(|| scan_index(ScanMode::Full, |_| {}))

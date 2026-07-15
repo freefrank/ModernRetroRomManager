@@ -17,6 +17,8 @@ pub struct StorageStats {
     pub cache_dir: String,
     pub total: DirectoryUsage,
     pub cache: DirectoryUsage,
+    pub scraper_cache: DirectoryUsage,
+    pub library_assets: DirectoryUsage,
     pub temporary_work: DirectoryUsage,
     pub data: DirectoryUsage,
     pub media: DirectoryUsage,
@@ -81,6 +83,8 @@ fn storage_stats_for(config_dir: &Path) -> StorageStats {
         cache_dir: cache_dir.to_string_lossy().to_string(),
         total: directory_usage(config_dir),
         cache: directory_usage(&cache_dir),
+        scraper_cache: directory_usage(&cache_dir.join("scraper")),
+        library_assets: directory_usage(&cache_dir.join("library-assets")),
         temporary_work: directory_usage(&temp_dir),
         data: directory_usage(&data_dir),
         media: directory_usage(&media_dir),
@@ -129,12 +133,17 @@ fn cleanup_incomplete_for(config_dir: &Path) -> CleanupResult {
     result
 }
 
-fn clear_cache_for(config_dir: &Path) -> Result<CleanupResult, String> {
+fn clear_rebuildable_cache_for(config_dir: &Path) -> Result<CleanupResult, String> {
     let cache_dir = config_dir.join("cache");
-    let usage = directory_usage(&cache_dir);
-    if cache_dir.exists() {
-        fs::remove_dir_all(&cache_dir)
-            .map_err(|error| format!("Failed to clear cache: {error}"))?;
+    let mut usage = DirectoryUsage::default();
+    for directory in [cache_dir.join("scraper"), cache_dir.join("library-assets")] {
+        let current = directory_usage(&directory);
+        usage.bytes = usage.bytes.saturating_add(current.bytes);
+        usage.files = usage.files.saturating_add(current.files);
+        if directory.exists() {
+            fs::remove_dir_all(&directory)
+                .map_err(|error| format!("Failed to clear cache: {error}"))?;
+        }
     }
     fs::create_dir_all(&cache_dir)
         .map_err(|error| format!("Failed to recreate cache directory: {error}"))?;
@@ -161,9 +170,13 @@ pub async fn cleanup_incomplete_cache() -> Result<CleanupResult, String> {
 }
 
 #[tauri::command]
-pub async fn clear_scraper_cache() -> Result<CleanupResult, String> {
+pub async fn clear_rebuildable_cache() -> Result<CleanupResult, String> {
+    let _asset_io_permits = crate::commands::media_cache::CACHE_IO_LIMIT
+        .acquire_many(crate::commands::media_cache::LIBRARY_ASSET_IO_CONCURRENCY)
+        .await
+        .map_err(|error| format!("Failed to pause library asset cache: {error}"))?;
     let config_dir = config::get_config_dir();
-    tokio::task::spawn_blocking(move || clear_cache_for(&config_dir))
+    tokio::task::spawn_blocking(move || clear_rebuildable_cache_for(&config_dir))
         .await
         .map_err(|error| format!("Failed to clear scraper cache: {error}"))?
 }
@@ -189,19 +202,33 @@ mod tests {
     fn stats_keep_cache_and_work_data_separate() {
         let root = test_root("stats");
         fs::create_dir_all(root.join("cache/scraper/assets")).unwrap();
+        fs::create_dir_all(root.join("cache/library-assets/files")).unwrap();
         fs::create_dir_all(root.join("temp/library/gba")).unwrap();
         fs::write(root.join("cache/scraper/assets/cover.png"), vec![0; 12]).unwrap();
+        fs::write(
+            root.join("cache/library-assets/files/cover.png"),
+            vec![0; 4],
+        )
+        .unwrap();
         fs::write(root.join("temp/library/gba/metadata.txt"), vec![0; 7]).unwrap();
         let stats = storage_stats_for(&root);
         assert_eq!(
             stats.cache,
             DirectoryUsage {
+                bytes: 16,
+                files: 2
+            }
+        );
+        assert_eq!(
+            stats.scraper_cache,
+            DirectoryUsage {
                 bytes: 12,
                 files: 1
             }
         );
+        assert_eq!(stats.library_assets, DirectoryUsage { bytes: 4, files: 1 });
         assert_eq!(stats.temporary_work, DirectoryUsage { bytes: 7, files: 1 });
-        assert_eq!(stats.total.bytes, 19);
+        assert_eq!(stats.total.bytes, 23);
         let _ = fs::remove_dir_all(root);
     }
 
@@ -221,15 +248,19 @@ mod tests {
     }
 
     #[test]
-    fn clear_cache_preserves_temporary_work() {
+    fn clear_cache_preserves_indexes_and_temporary_work() {
         let root = test_root("clear");
-        fs::create_dir_all(root.join("cache")).unwrap();
+        fs::create_dir_all(root.join("cache/scraper")).unwrap();
+        fs::create_dir_all(root.join("cache/library-assets")).unwrap();
         fs::create_dir_all(root.join("temp")).unwrap();
-        fs::write(root.join("cache/item.bin"), vec![0; 9]).unwrap();
+        fs::write(root.join("cache/scraper/item.bin"), vec![0; 9]).unwrap();
+        fs::write(root.join("cache/library-assets/cover.png"), vec![0; 4]).unwrap();
+        fs::write(root.join("cache/rom-library-index.json"), vec![0; 3]).unwrap();
         fs::write(root.join("temp/metadata.txt"), vec![0; 6]).unwrap();
-        let result = clear_cache_for(&root).unwrap();
-        assert_eq!(result.removed_bytes, 9);
+        let result = clear_rebuildable_cache_for(&root).unwrap();
+        assert_eq!(result.removed_bytes, 13);
         assert!(root.join("cache").is_dir());
+        assert!(root.join("cache/rom-library-index.json").exists());
         assert!(root.join("temp/metadata.txt").exists());
         let _ = fs::remove_dir_all(root);
     }

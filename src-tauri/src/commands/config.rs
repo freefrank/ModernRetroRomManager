@@ -20,8 +20,7 @@ pub struct DirectoryEntry {
 }
 
 /// 验证路径是否有效
-#[tauri::command]
-pub fn validate_path(path: String) -> Result<PathValidation, String> {
+fn validate_path_blocking(path: String) -> Result<PathValidation, String> {
     let path_buf = PathBuf::from(&path);
 
     let exists = path_buf.exists();
@@ -57,9 +56,15 @@ pub fn validate_path(path: String) -> Result<PathValidation, String> {
     })
 }
 
-/// 列出目录内容
 #[tauri::command]
-pub fn list_directory(path: String) -> Result<Vec<DirectoryEntry>, String> {
+pub async fn validate_path(path: String) -> Result<PathValidation, String> {
+    tokio::task::spawn_blocking(move || validate_path_blocking(path))
+        .await
+        .map_err(|error| format!("Path validation task failed: {error}"))?
+}
+
+/// 列出目录内容
+fn list_directory_blocking(path: String) -> Result<Vec<DirectoryEntry>, String> {
     let path_buf = PathBuf::from(&path);
 
     if !path_buf.exists() {
@@ -105,6 +110,13 @@ pub fn list_directory(path: String) -> Result<Vec<DirectoryEntry>, String> {
     });
 
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn list_directory(path: String) -> Result<Vec<DirectoryEntry>, String> {
+    tokio::task::spawn_blocking(move || list_directory_blocking(path))
+        .await
+        .map_err(|error| format!("Directory listing task failed: {error}"))?
 }
 
 /// 获取配置目录路径

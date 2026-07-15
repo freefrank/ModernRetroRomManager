@@ -242,8 +242,7 @@ fn detect_metadata_in_dir(dir_path: &Path) -> Vec<MetadataFileInfo> {
     results
 }
 
-#[tauri::command]
-pub fn detect_metadata_files(path: String) -> Result<Vec<MetadataFileInfo>, String> {
+fn detect_metadata_files_blocking(path: String) -> Result<Vec<MetadataFileInfo>, String> {
     let base_path = Path::new(&path);
 
     if !base_path.exists() {
@@ -258,7 +257,13 @@ pub fn detect_metadata_files(path: String) -> Result<Vec<MetadataFileInfo>, Stri
 }
 
 #[tauri::command]
-pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
+pub async fn detect_metadata_files(path: String) -> Result<Vec<MetadataFileInfo>, String> {
+    tokio::task::spawn_blocking(move || detect_metadata_files_blocking(path))
+        .await
+        .map_err(|error| format!("Metadata detection task failed: {error}"))?
+}
+
+fn scan_directory_blocking(path: String) -> Result<DirectoryScanResult, String> {
     println!("[DEBUG] scan_directory 开始, path: {}", path);
     let base_path = Path::new(&path);
 
@@ -340,4 +345,11 @@ pub fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
         metadata_files: Vec::new(),
         sub_directories,
     })
+}
+
+#[tauri::command]
+pub async fn scan_directory(path: String) -> Result<DirectoryScanResult, String> {
+    tokio::task::spawn_blocking(move || scan_directory_blocking(path))
+        .await
+        .map_err(|error| format!("Directory scan task failed: {error}"))?
 }

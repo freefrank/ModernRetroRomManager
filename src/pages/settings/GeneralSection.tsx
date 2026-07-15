@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Check, Folder, FolderOpen, HardDrive, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { languages } from "@/i18n";
+import { clearCachedMediaUrls } from "@/lib/api";
 import { clearCachedSearchResults } from "@/lib/scraperSearchCache";
 import { useAppStore } from "@/stores/appStore";
 import { useRomStore } from "@/stores/romStore";
@@ -52,6 +53,8 @@ interface StorageStats {
   cache_dir: string;
   total: DirectoryUsage;
   cache: DirectoryUsage;
+  scraper_cache: DirectoryUsage;
+  library_assets: DirectoryUsage;
   temporary_work: DirectoryUsage;
   data: DirectoryUsage;
   media: DirectoryUsage;
@@ -91,6 +94,7 @@ export default function GeneralSection() {
   } = useRomStore();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddingLibrary, setIsAddingLibrary] = useState(false);
   const [newDirPath, setNewDirPath] = useState("");
   const [isValidPath, setIsValidPath] = useState(false);
   const [configDir, setConfigDir] = useState<string | null>(null);
@@ -170,7 +174,9 @@ export default function GeneralSection() {
   };
 
   const handleAddDirectory = async () => {
-    if (!isValidPath || !newDirPath.trim()) return;
+    if (!isValidPath || !newDirPath.trim() || isAddingLibrary) return;
+    setIsAddingLibrary(true);
+    setIsAddDialogOpen(false);
     try {
       const scanResult = await invoke<DirectoryScanResult>("scan_directory", {
         path: newDirPath,
@@ -202,6 +208,8 @@ export default function GeneralSection() {
     } catch (error) {
       console.error("Error adding directory:", error);
       toast.error(t("settings.scanDirectories.addFailed", { error: String(error) }));
+    } finally {
+      setIsAddingLibrary(false);
     }
   };
 
@@ -320,8 +328,9 @@ export default function GeneralSection() {
     setIsClearCacheDialogOpen(false);
     setIsStorageLoading(true);
     try {
-      const result = await invoke<CleanupResult>("clear_scraper_cache");
+      const result = await invoke<CleanupResult>("clear_rebuildable_cache");
       clearCachedSearchResults();
+      clearCachedMediaUrls();
       toast.success(t("settings.storage.clearSuccess", {
         count: result.removed_files,
         size: formatBytes(result.removed_bytes),
@@ -431,8 +440,9 @@ export default function GeneralSection() {
             </Button>
             <Button
               size="sm"
+              loading={isAddingLibrary}
               onClick={() => setIsAddDialogOpen(true)}
-              disabled={isScanning || isBatchScraping}
+              disabled={isScanning || isBatchScraping || isAddingLibrary}
             >
               <Plus className="w-4 h-4" />
               {t("settings.scanDirectories.addDirectory")}
@@ -481,6 +491,7 @@ export default function GeneralSection() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsAddDialogOpen(true)}
+                  disabled={isAddingLibrary}
                 >
                   {t("settings.scanDirectories.addDirectory")}
                 </Button>
@@ -645,10 +656,11 @@ export default function GeneralSection() {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
               ["total", storageStats?.total],
-              ["cache", storageStats?.cache],
+              ["scraperCache", storageStats?.scraper_cache],
+              ["libraryAssets", storageStats?.library_assets],
               ["temporaryWork", storageStats?.temporary_work],
               ["incomplete", storageStats?.incomplete],
             ].map(([key, usage]) => {
@@ -757,7 +769,12 @@ export default function GeneralSection() {
             >
               {t("common.cancel")}
             </Button>
-            <Button size="sm" disabled={!isValidPath} onClick={handleAddDirectory}>
+            <Button
+              size="sm"
+              loading={isAddingLibrary}
+              disabled={!isValidPath}
+              onClick={handleAddDirectory}
+            >
               {t("settings.scanDirectories.addDirectory")}
             </Button>
           </>
@@ -765,7 +782,10 @@ export default function GeneralSection() {
       >
         <DirectoryInput
           value={newDirPath}
-          onChange={setNewDirPath}
+          onChange={(value) => {
+            setNewDirPath(value);
+            setIsValidPath(false);
+          }}
           onValidPath={(v) =>
             setIsValidPath(v.exists && v.is_directory && v.readable)
           }

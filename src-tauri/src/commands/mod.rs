@@ -3,6 +3,7 @@ pub mod config;
 pub mod directory;
 pub mod export;
 pub mod import;
+pub mod media_cache;
 pub mod naming_check;
 pub mod ps3;
 pub mod rom;

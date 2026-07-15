@@ -41,6 +41,7 @@ export default function DirectoryInput({
     });
 
     useEffect(() => {
+        let cancelled = false;
         if (!value.trim()) {
             setValidation(null);
             setError(null);
@@ -54,21 +55,26 @@ export default function DirectoryInput({
             setError(null);
             try {
                 const result = await invoke<PathValidation>("validate_path", { path: value });
+                if (cancelled) return;
                 console.debug("DirectoryInput: 验证结果:", result);
                 setValidation(result);
                 if (result.exists && result.is_directory && result.readable) {
                     onValidPathRef.current?.(result);
                 }
             } catch (err) {
+                if (cancelled) return;
                 console.error("DirectoryInput: 验证错误:", err);
                 setError(String(err));
                 setValidation(null);
             } finally {
-                setIsValidating(false);
+                if (!cancelled) setIsValidating(false);
             }
         }, 500);
 
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [value]);
 
     const handleBrowse = async () => {

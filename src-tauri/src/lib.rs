@@ -64,8 +64,9 @@ pub fn run() {
             commands::config::save_scraper_config,
             commands::storage::get_storage_stats,
             commands::storage::cleanup_incomplete_cache,
-            commands::storage::clear_scraper_cache,
+            commands::storage::clear_rebuildable_cache,
             commands::storage::open_cache_directory,
+            commands::media_cache::resolve_cached_library_asset,
             // AI metadata translation
             commands::ai::get_ai_translation_config,
             commands::ai::save_ai_translation_config,
