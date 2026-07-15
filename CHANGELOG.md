@@ -6,6 +6,42 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-07-15
+
+### English
+
+#### Added
+
+- Added atomic settings backups and automatic recovery from the last valid configuration when the primary settings file is damaged.
+
+#### Changed
+
+- Library switching now restores the local index immediately and refreshes slow SD-card or Samba libraries in the background.
+- Incremental scans now use shallow directory fingerprints instead of recursively reading and inspecting every ROM file.
+- Windows library paths are consistently stored and displayed with native backslash separators.
+
+#### Fixed
+
+- Prevented background scans from blocking library and layout switching or applying results to the wrong active library.
+- Isolated test configuration from the real user AppData directory and preserved legacy ROM indexes while migrating path and fingerprint formats.
+
+### 简体中文
+
+#### 新增
+
+- 增加设置文件原子备份，并在主设置文件损坏时自动恢复最后一份有效配置。
+
+#### 变更
+
+- 切换游戏库时立即恢复本地索引，并在后台刷新慢速 SD 卡或 Samba 游戏库。
+- 增量扫描改用浅层目录指纹，不再递归读取并检查每个 ROM 文件。
+- Windows 游戏库路径统一使用原生反斜杠格式存储和显示。
+
+#### 修复
+
+- 修复后台扫描阻塞游戏库及布局切换，或将结果写入错误激活游戏库的问题。
+- 隔离测试配置与真实用户 AppData，并在迁移路径和指纹格式时保留旧 ROM 索引。
+
 ## [0.8.4] - 2026-07-15
 
 ### English

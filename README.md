@@ -8,7 +8,7 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 
 - Scan and organize multi-platform ROM libraries
 - Manage multiple independent libraries, rename them, and switch the active library from Settings or the ROM sidebar
-- Open large libraries quickly with a persistent index, per-system lazy loading, and automatic incremental scans
+- Open large local, SD-card, and Samba libraries quickly with an immediate persistent index, per-system lazy loading, and non-blocking background incremental scans
 - Run a visible full refresh when needed, with current-system progress and structured Console logs
 - Identify supported cartridge games from ROM headers, serials, and embedded databases
 - Match filename-based platforms and modified ROM sets with normalized game names
