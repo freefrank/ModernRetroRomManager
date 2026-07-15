@@ -62,9 +62,30 @@
     },
     "storage": {
       "title": "Impostazioni di archiviazione",
+      "description": "Visualizza e gestisci lo spazio usato dalla cache dello scraper e dai dati di lavoro temporanei",
       "configDirectory": "Directory di configurazione",
       "mediaDirectory": "Directory multimediale",
-      "defaultLocation": "Posizione predefinita"
+      "defaultLocation": "Posizione predefinita",
+      "refresh": "Aggiorna statistiche",
+      "fileCount": "{{count}} file",
+      "stats": {
+        "total": "Configurazione totale",
+        "cache": "Cache dello scraper",
+        "temporaryWork": "Esportazione in sospeso",
+        "incomplete": "Download incompleti"
+      },
+      "temporaryWarning": "Le esportazioni in sospeso contengono metadata e immagini non ancora esportati. La pulizia della cache non li elimina.",
+      "openCache": "Apri cartella cache",
+      "cleanupIncomplete": "Pulisci download incompleti",
+      "clearCache": "Svuota cache dello scraper",
+      "clearConfirmTitle": "Svuota cache dello scraper",
+      "clearConfirm": "Verranno rimossi circa {{size}} di risultati e risorse candidate. Le esportazioni in sospeso restano intatte; i prossimi scraping dovranno riscaricare i file.",
+      "statsFailed": "Impossibile leggere le statistiche: {{error}}",
+      "cleanupSuccess": "Rimossi {{count}} file incompleti e liberati {{size}}",
+      "cleanupFailed": "Pulizia dei file incompleti non riuscita: {{error}}",
+      "clearSuccess": "Rimossi {{count}} file dalla cache e liberati {{size}}",
+      "clearFailed": "Impossibile svuotare la cache: {{error}}",
+      "openFailed": "Impossibile aprire la cartella cache: {{error}}"
     },
     "apiConfig": {
       "title": "Configurazione API",

@@ -62,9 +62,30 @@
     },
     "storage": {
       "title": "Speichereinstellungen",
+      "description": "Speicherbelegung von Scraper-Cache und temporären Arbeitsdaten anzeigen und verwalten",
       "configDirectory": "Konfigurationsverzeichnis",
       "mediaDirectory": "Medienverzeichnis",
-      "defaultLocation": "Standardspeicherort"
+      "defaultLocation": "Standardspeicherort",
+      "refresh": "Statistik aktualisieren",
+      "fileCount": "{{count}} Dateien",
+      "stats": {
+        "total": "Konfiguration gesamt",
+        "cache": "Scraper-Cache",
+        "temporaryWork": "Ausstehender Export",
+        "incomplete": "Unvollständige Downloads"
+      },
+      "temporaryWarning": "Ausstehende Exportdaten enthalten noch nicht exportierte Metadaten und Grafiken und werden bei der Cache-Bereinigung nicht gelöscht.",
+      "openCache": "Cache-Ordner öffnen",
+      "cleanupIncomplete": "Unvollständige Downloads bereinigen",
+      "clearCache": "Scraper-Cache leeren",
+      "clearConfirmTitle": "Scraper-Cache leeren",
+      "clearConfirm": "Etwa {{size}} Provider-Suchergebnisse und Kandidaten werden gelöscht. Ausstehende Exporte bleiben erhalten; späteres Scraping lädt die Dateien erneut.",
+      "statsFailed": "Speicherstatistik konnte nicht gelesen werden: {{error}}",
+      "cleanupSuccess": "{{count}} unvollständige Dateien entfernt, {{size}} freigegeben",
+      "cleanupFailed": "Unvollständige Dateien konnten nicht bereinigt werden: {{error}}",
+      "clearSuccess": "{{count}} Cache-Dateien entfernt, {{size}} freigegeben",
+      "clearFailed": "Scraper-Cache konnte nicht geleert werden: {{error}}",
+      "openFailed": "Cache-Ordner konnte nicht geöffnet werden: {{error}}"
     },
     "apiConfig": {
       "title": "API-Konfiguration",

@@ -62,9 +62,30 @@
     },
     "storage": {
       "title": "Paramètres de stockage",
+      "description": "Consulter et gérer l’espace utilisé par le cache du scraper et les données de travail temporaires",
       "configDirectory": "Répertoire de configuration",
       "mediaDirectory": "Répertoire des médias",
-      "defaultLocation": "Emplacement par défaut"
+      "defaultLocation": "Emplacement par défaut",
+      "refresh": "Actualiser les statistiques",
+      "fileCount": "{{count}} fichiers",
+      "stats": {
+        "total": "Configuration totale",
+        "cache": "Cache du scraper",
+        "temporaryWork": "Export en attente",
+        "incomplete": "Téléchargements incomplets"
+      },
+      "temporaryWarning": "Les exports en attente contiennent des métadonnées et illustrations non exportées. Le nettoyage du cache ne les supprime jamais.",
+      "openCache": "Ouvrir le dossier du cache",
+      "cleanupIncomplete": "Nettoyer les téléchargements incomplets",
+      "clearCache": "Vider le cache du scraper",
+      "clearConfirmTitle": "Vider le cache du scraper",
+      "clearConfirm": "Environ {{size}} de résultats et ressources candidates seront supprimés. Les exports en attente sont conservés ; les prochains scrapings devront retélécharger ces fichiers.",
+      "statsFailed": "Impossible de lire les statistiques : {{error}}",
+      "cleanupSuccess": "{{count}} fichiers incomplets supprimés, {{size}} libérés",
+      "cleanupFailed": "Échec du nettoyage : {{error}}",
+      "clearSuccess": "{{count}} fichiers en cache supprimés, {{size}} libérés",
+      "clearFailed": "Impossible de vider le cache : {{error}}",
+      "openFailed": "Impossible d’ouvrir le dossier du cache : {{error}}"
     },
     "apiConfig": {
       "title": "Configuration de l'API",

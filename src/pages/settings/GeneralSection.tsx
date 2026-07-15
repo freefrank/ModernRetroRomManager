@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { Check, Folder, HardDrive, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, Folder, FolderOpen, HardDrive, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { languages } from "@/i18n";
+import { clearCachedSearchResults } from "@/lib/scraperSearchCache";
 import { useAppStore } from "@/stores/appStore";
 import { useRomStore } from "@/stores/romStore";
 import type { ViewMode } from "@/types";
@@ -41,6 +42,35 @@ interface DirectoryScanResult {
   sub_directories: SubDirectoryInfo[];
 }
 
+interface DirectoryUsage {
+  bytes: number;
+  files: number;
+}
+
+interface StorageStats {
+  config_dir: string;
+  cache_dir: string;
+  total: DirectoryUsage;
+  cache: DirectoryUsage;
+  temporary_work: DirectoryUsage;
+  data: DirectoryUsage;
+  media: DirectoryUsage;
+  incomplete: DirectoryUsage;
+}
+
+interface CleanupResult {
+  removed_bytes: number;
+  removed_files: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** index;
+  return `${value.toFixed(index === 0 || value >= 100 ? 0 : 1)} ${units[index]}`;
+}
+
 const VIEW_MODES: ViewMode[] = ["grid", "list", "cover"];
 
 export default function GeneralSection() {
@@ -65,6 +95,9 @@ export default function GeneralSection() {
   const [isValidPath, setIsValidPath] = useState(false);
   const [configDir, setConfigDir] = useState<string | null>(null);
   const [mediaDir, setMediaDir] = useState<string | null>(null);
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
+  const [isStorageLoading, setIsStorageLoading] = useState(false);
+  const [isClearCacheDialogOpen, setIsClearCacheDialogOpen] = useState(false);
   const [editingLibraryId, setEditingLibraryId] = useState<string | null>(null);
   const [editingLibraryName, setEditingLibraryName] = useState("");
   const librarySectionRef = useRef<HTMLElement>(null);
@@ -113,6 +146,22 @@ export default function GeneralSection() {
 
     loadPaths();
   }, []);
+
+  const loadStorageStats = useCallback(async () => {
+    setIsStorageLoading(true);
+    try {
+      setStorageStats(await invoke<StorageStats>("get_storage_stats"));
+    } catch (error) {
+      console.error("Failed to load storage stats:", error);
+      toast.error(t("settings.storage.statsFailed", { error: String(error) }));
+    } finally {
+      setIsStorageLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadStorageStats();
+  }, [loadStorageStats]);
 
   // 旧存储值 "zh" 兼容为 "zh-CN" 展示
   const languageValue = language === "zh" ? "zh-CN" : language;
@@ -249,6 +298,46 @@ export default function GeneralSection() {
       await removeScanDirectory(id);
     } catch (error) {
       toast.error(t("settings.scanDirectories.removeFailed", { error: String(error) }));
+    }
+  };
+
+  const handleCleanupIncomplete = async () => {
+    setIsStorageLoading(true);
+    try {
+      const result = await invoke<CleanupResult>("cleanup_incomplete_cache");
+      toast.success(t("settings.storage.cleanupSuccess", {
+        count: result.removed_files,
+        size: formatBytes(result.removed_bytes),
+      }));
+      await loadStorageStats();
+    } catch (error) {
+      toast.error(t("settings.storage.cleanupFailed", { error: String(error) }));
+      setIsStorageLoading(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearCacheDialogOpen(false);
+    setIsStorageLoading(true);
+    try {
+      const result = await invoke<CleanupResult>("clear_scraper_cache");
+      clearCachedSearchResults();
+      toast.success(t("settings.storage.clearSuccess", {
+        count: result.removed_files,
+        size: formatBytes(result.removed_bytes),
+      }));
+      await loadStorageStats();
+    } catch (error) {
+      toast.error(t("settings.storage.clearFailed", { error: String(error) }));
+      setIsStorageLoading(false);
+    }
+  };
+
+  const handleOpenCacheDirectory = async () => {
+    try {
+      await invoke("open_cache_directory");
+    } catch (error) {
+      toast.error(t("settings.storage.openFailed", { error: String(error) }));
     }
   };
 
@@ -535,11 +624,80 @@ export default function GeneralSection() {
 
       {/* 存储设置 */}
       <section>
-        <h2 className="text-lg font-medium text-text-primary mb-4">
-          {t("settings.storage.title")}
-        </h2>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-medium text-text-primary">
+              {t("settings.storage.title")}
+            </h2>
+            <p className="text-sm text-text-secondary mt-1">
+              {t("settings.storage.description")}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={isStorageLoading}
+            onClick={() => void loadStorageStats()}
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t("settings.storage.refresh")}
+          </Button>
+        </div>
 
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["total", storageStats?.total],
+              ["cache", storageStats?.cache],
+              ["temporaryWork", storageStats?.temporary_work],
+              ["incomplete", storageStats?.incomplete],
+            ].map(([key, usage]) => {
+              const value = usage as DirectoryUsage | undefined;
+              return (
+                <div key={key as string} className="p-3 bg-bg-secondary border-[length:var(--border-width)] border-border-default rounded-[var(--radius-lg)]">
+                  <div className="text-xs text-text-muted">{t(`settings.storage.stats.${key}`)}</div>
+                  <div className="text-base font-semibold text-text-primary mt-1">
+                    {value ? formatBytes(value.bytes) : "—"}
+                  </div>
+                  <div className="text-xs text-text-muted mt-0.5">
+                    {value ? t("settings.storage.fileCount", { count: value.files }) : "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="p-3 bg-bg-secondary border-[length:var(--border-width)] border-border-default rounded-[var(--radius-lg)]">
+            <p className="text-sm text-text-secondary">
+              {t("settings.storage.temporaryWarning")}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button variant="ghost" size="sm" onClick={() => void handleOpenCacheDirectory()}>
+                <FolderOpen className="w-4 h-4" />
+                {t("settings.storage.openCache")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={isStorageLoading}
+                disabled={!storageStats?.incomplete.files}
+                onClick={() => void handleCleanupIncomplete()}
+              >
+                <Trash2 className="w-4 h-4" />
+                {t("settings.storage.cleanupIncomplete")}
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={isStorageLoading || isScanning || isBatchScraping || !storageStats?.cache.files}
+                onClick={() => setIsClearCacheDialogOpen(true)}
+              >
+                <Trash2 className="w-4 h-4" />
+                {t("settings.storage.clearCache")}
+              </Button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm text-text-secondary mb-1">
               {t("settings.storage.configDirectory")}
@@ -562,6 +720,28 @@ export default function GeneralSection() {
           </div>
         </div>
       </section>
+
+      <Dialog
+        open={isClearCacheDialogOpen}
+        onClose={() => setIsClearCacheDialogOpen(false)}
+        title={t("settings.storage.clearConfirmTitle")}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setIsClearCacheDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="danger" size="sm" onClick={() => void handleClearCache()}>
+              {t("settings.storage.clearCache")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          {t("settings.storage.clearConfirm", {
+            size: formatBytes(storageStats?.cache.bytes ?? 0),
+          })}
+        </p>
+      </Dialog>
 
       {/* 添加目录弹窗 */}
       <Dialog

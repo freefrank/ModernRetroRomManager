@@ -62,9 +62,30 @@
     },
     "storage": {
       "title": "儲存設定",
+      "description": "查看並管理抓取快取和暫存工作資料的磁碟用量",
       "configDirectory": "設定目錄",
       "mediaDirectory": "媒體資源目錄",
-      "defaultLocation": "預設位置"
+      "defaultLocation": "預設位置",
+      "refresh": "重新整理統計",
+      "fileCount": "{{count}} 個檔案",
+      "stats": {
+        "total": "設定總計",
+        "cache": "抓取快取",
+        "temporaryWork": "待匯出資料",
+        "incomplete": "中斷下載"
+      },
+      "temporaryWarning": "待匯出資料包含尚未匯出的 Metadata 和美術資源，不會被快取清理功能刪除。",
+      "openCache": "開啟快取目錄",
+      "cleanupIncomplete": "清理中斷下載",
+      "clearCache": "清空抓取快取",
+      "clearConfirmTitle": "清空抓取快取",
+      "clearConfirm": "將刪除約 {{size}} 的 Provider 搜尋結果和候選資源。待匯出資料不受影響，之後抓取需重新下載。",
+      "statsFailed": "讀取快取統計失敗：{{error}}",
+      "cleanupSuccess": "已清理 {{count}} 個中斷檔案，釋放 {{size}}",
+      "cleanupFailed": "清理中斷檔案失敗：{{error}}",
+      "clearSuccess": "已刪除 {{count}} 個快取檔案，釋放 {{size}}",
+      "clearFailed": "清空抓取快取失敗：{{error}}",
+      "openFailed": "開啟快取目錄失敗：{{error}}"
     },
     "apiConfig": {
       "title": "API 配置",

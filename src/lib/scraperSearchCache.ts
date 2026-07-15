@@ -55,3 +55,8 @@ export function cacheSearchResults(
     .slice(0, MAX_ENTRIES);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)));
 }
+
+export function clearCachedSearchResults(): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
+}

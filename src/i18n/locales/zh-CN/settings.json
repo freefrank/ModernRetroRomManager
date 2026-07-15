@@ -62,9 +62,30 @@
     },
     "storage": {
       "title": "存储设置",
+      "description": "查看并管理抓取缓存和临时工作数据的磁盘占用",
       "configDirectory": "配置目录",
       "mediaDirectory": "媒体资源目录",
-      "defaultLocation": "默认位置"
+      "defaultLocation": "默认位置",
+      "refresh": "刷新统计",
+      "fileCount": "{{count}} 个文件",
+      "stats": {
+        "total": "配置总计",
+        "cache": "抓取缓存",
+        "temporaryWork": "待导出数据",
+        "incomplete": "中断下载"
+      },
+      "temporaryWarning": "待导出数据包含尚未导出的 Metadata 和美术资源，不会被缓存清理功能删除。",
+      "openCache": "打开缓存目录",
+      "cleanupIncomplete": "清理中断下载",
+      "clearCache": "清空抓取缓存",
+      "clearConfirmTitle": "清空抓取缓存",
+      "clearConfirm": "将删除约 {{size}} 的 Provider 搜索结果和候选资源。待导出数据不会受影响，下次抓取时需要重新下载。",
+      "statsFailed": "读取缓存统计失败：{{error}}",
+      "cleanupSuccess": "已清理 {{count}} 个中断文件，释放 {{size}}",
+      "cleanupFailed": "清理中断文件失败：{{error}}",
+      "clearSuccess": "已删除 {{count}} 个缓存文件，释放 {{size}}",
+      "clearFailed": "清空抓取缓存失败：{{error}}",
+      "openFailed": "打开缓存目录失败：{{error}}"
     },
     "apiConfig": {
       "title": "API 配置",

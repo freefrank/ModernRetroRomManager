@@ -7,6 +7,7 @@ pub mod naming_check;
 pub mod ps3;
 pub mod rom;
 pub mod scraper;
+pub mod storage;
 pub mod system;
 pub mod theme;
 pub mod tools;

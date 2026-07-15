@@ -62,9 +62,30 @@
     },
     "storage": {
       "title": "Configuración de almacenamiento",
+      "description": "Consulta y administra el espacio usado por la caché del scraper y los datos temporales",
       "configDirectory": "Directorio de configuración",
       "mediaDirectory": "Directorio de medios",
-      "defaultLocation": "Ubicación predeterminada"
+      "defaultLocation": "Ubicación predeterminada",
+      "refresh": "Actualizar estadísticas",
+      "fileCount": "{{count}} archivos",
+      "stats": {
+        "total": "Configuración total",
+        "cache": "Caché del scraper",
+        "temporaryWork": "Exportación pendiente",
+        "incomplete": "Descargas incompletas"
+      },
+      "temporaryWarning": "Las exportaciones pendientes contienen metadatos y arte no exportados. La limpieza de caché nunca los elimina.",
+      "openCache": "Abrir carpeta de caché",
+      "cleanupIncomplete": "Limpiar descargas incompletas",
+      "clearCache": "Vaciar caché del scraper",
+      "clearConfirmTitle": "Vaciar caché del scraper",
+      "clearConfirm": "Se eliminarán unos {{size}} de resultados y recursos candidatos. Las exportaciones pendientes se conservan; los próximos scrapeos volverán a descargarlos.",
+      "statsFailed": "No se pudieron leer las estadísticas: {{error}}",
+      "cleanupSuccess": "Se eliminaron {{count}} archivos incompletos y se liberaron {{size}}",
+      "cleanupFailed": "No se pudieron limpiar los archivos incompletos: {{error}}",
+      "clearSuccess": "Se eliminaron {{count}} archivos de caché y se liberaron {{size}}",
+      "clearFailed": "No se pudo vaciar la caché: {{error}}",
+      "openFailed": "No se pudo abrir la carpeta de caché: {{error}}"
     },
     "apiConfig": {
       "title": "Configuración API",

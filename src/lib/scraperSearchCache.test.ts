@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { cacheSearchResults, getCachedSearchResults } from "./scraperSearchCache";
+import {
+  cacheSearchResults,
+  clearCachedSearchResults,
+  getCachedSearchResults,
+} from "./scraperSearchCache";
 import type { ScraperSearchResult } from "@/types";
 
 const context = {
@@ -40,5 +44,11 @@ describe("scraperSearchCache", () => {
   it("does not reuse results for another query", () => {
     cacheSearchResults(context, [result]);
     expect(getCachedSearchResults({ ...context, query: "CT Special Forces" })).toBeNull();
+  });
+
+  it("clears all cached search results", () => {
+    cacheSearchResults(context, [result]);
+    clearCachedSearchResults();
+    expect(getCachedSearchResults(context)).toBeNull();
   });
 });
