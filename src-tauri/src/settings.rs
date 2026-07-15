@@ -192,6 +192,18 @@ pub fn library_id_for_path(path: &str) -> String {
     format!("library-{hash:016x}")
 }
 
+/// 对外展示和持久化使用当前平台的原生路径分隔符。
+pub fn native_path(path: &str) -> String {
+    #[cfg(windows)]
+    {
+        path.replace('/', "\\")
+    }
+    #[cfg(not(windows))]
+    {
+        path.replace('\\', "/")
+    }
+}
+
 /// 新 Library 默认使用末级目录名；盘符根目录直接显示盘符。
 pub fn default_library_name(path: &str, position: usize) -> String {
     let normalized = path.replace('\\', "/");
@@ -211,6 +223,11 @@ fn normalize_library_settings(settings: &mut AppSettings) -> bool {
     let mut used_ids = HashSet::new();
 
     for (position, library) in settings.directories.iter_mut().enumerate() {
+        let normalized_path = native_path(&library.path);
+        if library.path != normalized_path {
+            library.path = normalized_path;
+            changed = true;
+        }
         let base_id = if library.id.trim().is_empty() {
             changed = true;
             library_id_for_path(&library.path)

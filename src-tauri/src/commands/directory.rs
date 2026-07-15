@@ -1,6 +1,7 @@
 use crate::rom_index::invalidate_library_index;
 use crate::settings::{
-    default_library_name, get_settings, library_id_for_path, update_setting, DirectoryConfig,
+    default_library_name, get_settings, library_id_for_path, native_path, update_setting,
+    DirectoryConfig,
 };
 use crate::system_mapping::find_mapping_by_folder;
 use serde::{Deserialize, Serialize};
@@ -79,6 +80,7 @@ pub fn add_directory(
     systemId: Option<String>,
 ) -> Result<DirectoryInfo, String> {
     let normalized = normalize_path(&path);
+    let stored_path = native_path(&path);
 
     let updated = update_setting(|settings| {
         // 使用规范化路径去重
@@ -88,18 +90,18 @@ pub fn add_directory(
             .find(|d| normalize_path(&d.path) == normalized)
             .map(|item| item.id.clone());
         let library_id = existing_id.unwrap_or_else(|| {
-            let base_id = library_id_for_path(&normalized);
+            let base_id = library_id_for_path(&stored_path);
             let mut id = base_id.clone();
             let mut suffix = 2;
             while settings.directories.iter().any(|item| item.id == id) {
                 id = format!("{base_id}-{suffix}");
                 suffix += 1;
             }
-            let name = default_library_name(&normalized, settings.directories.len());
+            let name = default_library_name(&stored_path, settings.directories.len());
             settings.directories.push(DirectoryConfig {
                 id: id.clone(),
                 name,
-                path: normalized.clone(),
+                path: stored_path.clone(),
                 metadata_format: metadataFormat.clone(),
                 is_root_directory: isRoot,
                 system_id: systemId.clone(),

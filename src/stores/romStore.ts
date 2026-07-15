@@ -11,6 +11,7 @@ interface ScanProgress {
   message: string;
   finished: boolean;
   changed: boolean;
+  libraryId?: string;
 }
 
 interface BatchProgress {
@@ -33,6 +34,7 @@ export type BatchScrapeScope = "selection" | "platform" | "library";
 
 let scanProgressListenerInstalled = false;
 let systemRequestSequence = 0;
+let libraryRequestSequence = 0;
 
 function computeSummaryStats(summaries: RomSystemSummary[]) {
   return {
@@ -273,6 +275,8 @@ export const useRomStore = create<RomState>((set, get) => ({
     scanProgressListenerInstalled = true;
     const { listen } = await import("@tauri-apps/api/event");
     await listen<ScanProgress>("rom-scan-progress", ({ payload }) => {
+      const activeLibraryId = get().scanDirectories.find(item => item.isActive)?.id;
+      if (payload.libraryId && payload.libraryId !== activeLibraryId) return;
       set({
         isScanning: !payload.finished,
         scanProgress: payload,
@@ -287,9 +291,12 @@ export const useRomStore = create<RomState>((set, get) => ({
 
   scanLibrary: async (full = false) => {
     await get().initializeScanProgress();
+    const libraryId = get().scanDirectories.find(item => item.isActive)?.id;
     set({ isScanning: true });
     try {
-      const summaries = await api.scanRomLibrary(full);
+      const summaries = await api.scanRomLibrary(full, libraryId);
+      const currentLibraryId = get().scanDirectories.find(item => item.isActive)?.id;
+      if (libraryId && currentLibraryId !== libraryId) return;
       const { selectedSystem } = get();
       const selectedStillExists = selectedSystem
         ? summaries.some((entry) => entry.system === selectedSystem)
@@ -460,6 +467,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   activateLibrary: async (id: string, fullScan = false) => {
     const current = get().scanDirectories.find(item => item.isActive);
     if (current?.id === id && !fullScan) return;
+    const requestId = ++libraryRequestSequence;
     try {
       if (current?.id !== id) await api.setActiveLibrary(id);
       systemRequestSequence++;
@@ -473,7 +481,38 @@ export const useRomStore = create<RomState>((set, get) => ({
         isLoadingRoms: true,
       });
       await get().fetchScanDirectories();
-      await get().scanLibrary(fullScan);
+
+      // 先从本地索引恢复平台列表，不等待慢速盘完成校验。
+      const cached = await api.getLibraryRomSummary(id);
+      if (requestId !== libraryRequestSequence) return;
+      set({
+        availableSystems: mapSummaries(cached),
+        stats: computeSummaryStats(cached),
+        isLoadingRoms: false,
+      });
+
+      if (fullScan) {
+        await get().scanLibrary(true);
+        return;
+      }
+
+      // 增量扫描在后台刷新；只允许当前切库请求把结果写回界面。
+      await get().initializeScanProgress();
+      set({ isScanning: true });
+      void api.scanRomLibrary(false, id).then(async (summaries) => {
+        if (requestId !== libraryRequestSequence) return;
+        set({
+          availableSystems: mapSummaries(summaries),
+          stats: computeSummaryStats(summaries),
+          isScanning: false,
+          isLoadingRoms: false,
+        });
+      }).catch((error) => {
+        console.error("Failed to refresh activated library:", error);
+        if (requestId === libraryRequestSequence) {
+          set({ isScanning: false, isLoadingRoms: false });
+        }
+      });
     } catch (error) {
       console.error("Failed to activate library:", error);
       throw error;

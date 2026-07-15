@@ -3,7 +3,7 @@ use crate::rom_index::{
     ScanMode,
 };
 use crate::rom_service::{get_roms_for_directory, SystemRoms};
-use crate::settings::DirectoryConfig;
+use crate::settings::{native_path, DirectoryConfig};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -37,7 +37,7 @@ fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
         .iter()
         .map(|entry| RomSystemSummary {
             system: entry.system.clone(),
-            path: entry.path.replace('\\', "/"),
+            path: native_path(&entry.path),
             rom_count: entry.roms.len(),
             scraped_count: entry
                 .roms
@@ -71,14 +71,11 @@ async fn load_library_cached_roms_async(
 
 #[tauri::command]
 pub async fn get_library_rom_summary(library_id: String) -> Result<Vec<RomSystemSummary>, String> {
-    let cached_library_id = library_id.clone();
-    let systems = if let Some(cached) = load_library_cached_roms_async(cached_library_id).await? {
-        cached
-    } else {
-        tokio::task::spawn_blocking(move || scan_library_by_id(&library_id, ScanMode::Full, |_| {}))
-            .await
-            .map_err(|error| format!("ROM 扫描任务失败: {error}"))??
-    };
+    // 本命令用于切库时即时恢复 UI，不能在缓存缺失时偷偷执行全量扫描。
+    // 首次扫描和后台刷新由显式 scan_rom_library 命令负责并报告进度。
+    let systems = load_library_cached_roms_async(library_id)
+        .await?
+        .unwrap_or_default();
     Ok(summarize(&systems))
 }
 
@@ -92,9 +89,14 @@ pub struct RomScanProgress {
     pub message: String,
     pub finished: bool,
     pub changed: bool,
+    pub library_id: Option<String>,
 }
 
-async fn scan_with_events(app: AppHandle, mode: ScanMode) -> Result<Vec<SystemRoms>, String> {
+async fn scan_with_events(
+    app: AppHandle,
+    mode: ScanMode,
+    library_id: Option<String>,
+) -> Result<Vec<SystemRoms>, String> {
     let mode_name = match mode {
         ScanMode::Full => "full",
         ScanMode::Incremental => "incremental",
@@ -106,6 +108,7 @@ async fn scan_with_events(app: AppHandle, mode: ScanMode) -> Result<Vec<SystemRo
     let event_mode = mode_name.clone();
     let event_current = Arc::clone(&current);
     let event_total = Arc::clone(&total);
+    let scan_library_id = library_id.clone();
 
     let _ = app.emit(
         "rom-scan-progress",
@@ -117,11 +120,12 @@ async fn scan_with_events(app: AppHandle, mode: ScanMode) -> Result<Vec<SystemRo
             message: "正在准备 ROM 扫描".to_string(),
             finished: false,
             changed: false,
+            library_id: library_id.clone(),
         },
     );
 
     let systems = tokio::task::spawn_blocking(move || {
-        scan_index(mode, |update| {
+        let on_progress = |update: crate::rom_index::ScanUpdate| {
             event_current.store(update.current, Ordering::Release);
             event_total.store(update.total, Ordering::Release);
             let action = if update.changed { "扫描" } else { "检查" };
@@ -135,9 +139,15 @@ async fn scan_with_events(app: AppHandle, mode: ScanMode) -> Result<Vec<SystemRo
                     message: format!("正在{action}: {}", update.system),
                     finished: false,
                     changed: update.changed,
+                    library_id: scan_library_id.clone(),
                 },
             );
-        })
+        };
+        if let Some(library_id) = scan_library_id.as_deref() {
+            scan_library_by_id(library_id, mode, on_progress)
+        } else {
+            scan_index(mode, on_progress)
+        }
     })
     .await
     .map_err(|error| format!("ROM 扫描任务失败: {error}"))??;
@@ -152,6 +162,7 @@ async fn scan_with_events(app: AppHandle, mode: ScanMode) -> Result<Vec<SystemRo
             message: "ROM 扫描完成".to_string(),
             finished: true,
             changed: false,
+            library_id,
         },
     );
     Ok(systems)
@@ -166,7 +177,7 @@ pub async fn get_roms(
     let all_systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
-        scan_with_events(app, ScanMode::Full).await?
+        scan_with_events(app, ScanMode::Full, None).await?
     };
 
     if let Some(f) = filter {
@@ -212,7 +223,7 @@ pub async fn get_rom_library_summary(app: AppHandle) -> Result<Vec<RomSystemSumm
     let systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
-        scan_with_events(app, ScanMode::Full).await?
+        scan_with_events(app, ScanMode::Full, None).await?
     };
     Ok(summarize(&systems))
 }
@@ -222,7 +233,7 @@ pub async fn get_system_roms(app: AppHandle, system: String) -> Result<SystemRom
     let systems = if let Some(cached) = load_cached_roms_async().await? {
         cached
     } else {
-        scan_with_events(app, ScanMode::Full).await?
+        scan_with_events(app, ScanMode::Full, None).await?
     };
     systems
         .into_iter()
@@ -251,7 +262,11 @@ pub async fn get_rom_stats() -> Result<RomStats, String> {
 }
 
 #[tauri::command]
-pub async fn scan_rom_library(app: AppHandle, full: bool) -> Result<Vec<RomSystemSummary>, String> {
+pub async fn scan_rom_library(
+    app: AppHandle,
+    full: bool,
+    library_id: Option<String>,
+) -> Result<Vec<RomSystemSummary>, String> {
     let systems = scan_with_events(
         app,
         if full {
@@ -259,6 +274,7 @@ pub async fn scan_rom_library(app: AppHandle, full: bool) -> Result<Vec<RomSyste
         } else {
             ScanMode::Incremental
         },
+        library_id,
     )
     .await?;
     Ok(summarize(&systems))

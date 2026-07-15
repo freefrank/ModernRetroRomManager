@@ -40,7 +40,6 @@ function LibraryPanel() {
     availableSystems,
     scanDirectories,
     activateLibrary,
-    isScanning,
     isBatchScraping,
   } = useRomStore();
   const [query, setQuery] = useState("");
@@ -69,7 +68,7 @@ function LibraryPanel() {
         <Select
           value={activeLibrary?.id ?? ""}
           onChange={(event) => void handleLibraryChange(event.target.value)}
-          disabled={scanDirectories.length === 0 || isScanning || isBatchScraping}
+          disabled={scanDirectories.length === 0 || isBatchScraping}
           aria-label={t("nav.selectLibrary")}
           title={activeLibrary?.path}
           className="h-8 px-2 font-semibold"

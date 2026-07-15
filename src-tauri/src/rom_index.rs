@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 const INDEX_VERSION: u32 = 3;
+const FINGERPRINT_VERSION: u8 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScanMode {
@@ -31,6 +32,8 @@ pub struct ScanUpdate {
 struct IndexedDirectory {
     path: String,
     fingerprint: u64,
+    #[serde(default)]
+    fingerprint_version: u8,
     systems: Vec<SystemRoms>,
 }
 
@@ -54,21 +57,38 @@ fn index_path_for(library_id: &str) -> PathBuf {
         .join(format!("rom-library-index-{id_hash:016x}.json"))
 }
 
-fn directories_signature(directories: &[DirectoryConfig]) -> u64 {
+fn directories_signature_with_path(
+    directories: &[DirectoryConfig],
+    map_path: impl Fn(&str) -> String,
+) -> u64 {
     // 名称和 ID 不影响扫描内容，重命名 Library 不应使索引失效。
     let scan_configs: Vec<_> = directories
         .iter()
         .map(|item| {
             (
-                &item.path,
+                map_path(&item.path),
                 item.is_root_directory,
-                &item.metadata_format,
-                &item.system_id,
+                item.metadata_format.clone(),
+                item.system_id.clone(),
             )
         })
         .collect();
     let serialized = serde_json::to_vec(&scan_configs).unwrap_or_default();
     stable_hash(&serialized)
+}
+
+fn directories_signature(directories: &[DirectoryConfig]) -> u64 {
+    directories_signature_with_path(directories, |path| normalized_path(Path::new(path)))
+}
+
+fn compatible_directories_signatures(directories: &[DirectoryConfig]) -> [u64; 3] {
+    // 0.8.4 及更早版本会把原始路径字符串写入签名；兼容两种分隔符，
+    // 避免 Windows 路径统一为反斜杠后无意义地丢弃已有索引。
+    [
+        directories_signature(directories),
+        directories_signature_with_path(directories, |path| path.replace('\\', "/")),
+        directories_signature_with_path(directories, |path| path.replace('/', "\\")),
+    ]
 }
 
 fn stable_hash(bytes: &[u8]) -> u64 {
@@ -84,32 +104,37 @@ fn normalized_path(path: &Path) -> String {
         .to_ascii_lowercase()
 }
 
-fn hash_directory(path: &Path, state: &mut impl Hasher) {
+fn hash_directory_shallow(path: &Path, state: &mut impl Hasher) {
+    // 增量扫描只观察当前目录的成员。旧实现会递归读取并 stat 每个 ROM，
+    // 在 SD 卡和 Samba 上一次“校验”实际等同于完整扫描，会让切库长时间无响应。
     let Ok(entries) = fs::read_dir(path) else {
         return;
     };
     let mut entries: Vec<_> = entries.filter_map(Result::ok).collect();
     entries.sort_by_key(|entry| entry.file_name().to_string_lossy().to_ascii_lowercase());
     for entry in entries {
-        let entry_path = entry.path();
-        entry
-            .file_name()
-            .to_string_lossy()
-            .to_ascii_lowercase()
-            .hash(state);
-        let Ok(metadata) = entry.metadata() else {
-            continue;
-        };
-        metadata.is_dir().hash(state);
-        metadata.len().hash(state);
-        metadata
-            .modified()
-            .ok()
-            .and_then(|value| value.duration_since(UNIX_EPOCH).ok())
-            .map(|value| value.as_nanos())
-            .hash(state);
-        if metadata.is_dir() {
-            hash_directory(&entry_path, state);
+        let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+        name.hash(state);
+        let is_dir = entry.file_type().ok().is_some_and(|kind| kind.is_dir());
+        is_dir.hash(state);
+
+        // 目录时间戳可以低成本发现其直属成员变化；元数据清单则需要发现内容更新。
+        // 普通 ROM 原地改写由用户触发“全量扫描”处理，避免常规切库读取每个文件。
+        let is_metadata_file = matches!(
+            name.as_str(),
+            "gamelist.xml" | "metadata.pegasus.txt" | "metadata.txt"
+        );
+        if is_dir || is_metadata_file {
+            let Ok(metadata) = entry.metadata() else {
+                continue;
+            };
+            metadata.len().hash(state);
+            metadata
+                .modified()
+                .ok()
+                .and_then(|value| value.duration_since(UNIX_EPOCH).ok())
+                .map(|value| value.as_nanos())
+                .hash(state);
         }
     }
 }
@@ -117,7 +142,7 @@ fn hash_directory(path: &Path, state: &mut impl Hasher) {
 fn directory_fingerprint(path: &Path) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     normalized_path(path).hash(&mut hasher);
-    hash_directory(path, &mut hasher);
+    hash_directory_shallow(path, &mut hasher);
     hasher.finish()
 }
 
@@ -201,9 +226,9 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
 fn load_index_for(library: &DirectoryConfig) -> Option<RomLibraryIndex> {
     let content = fs::read(index_path_for(&library.id)).ok()?;
     let index: RomLibraryIndex = serde_json::from_slice(&content).ok()?;
-    (index.version == INDEX_VERSION
-        && index.directories_signature == directories_signature(std::slice::from_ref(library)))
-    .then_some(index)
+    let signatures = compatible_directories_signatures(std::slice::from_ref(library));
+    (index.version == INDEX_VERSION && signatures.contains(&index.directories_signature))
+        .then_some(index)
 }
 
 fn flatten_directories(directories: &[IndexedDirectory]) -> Vec<SystemRoms> {
@@ -327,7 +352,7 @@ fn scan_library_config(
         let key = normalized_path(&candidate.fingerprint_path);
         if let Some(cached) = previous
             .get(&key)
-            .filter(|item| item.fingerprint == fingerprint)
+            .filter(|item| item.fingerprint_version == 0 || item.fingerprint == fingerprint)
         {
             on_progress(ScanUpdate {
                 current,
@@ -335,7 +360,10 @@ fn scan_library_config(
                 system,
                 changed: false,
             });
-            indexed.push(cached.clone());
+            let mut migrated = cached.clone();
+            migrated.fingerprint = fingerprint;
+            migrated.fingerprint_version = FINGERPRINT_VERSION;
+            indexed.push(migrated);
             continue;
         }
 
@@ -353,6 +381,7 @@ fn scan_library_config(
         indexed.push(IndexedDirectory {
             path,
             fingerprint,
+            fingerprint_version: FINGERPRINT_VERSION,
             systems,
         });
     }
@@ -367,12 +396,25 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
-    fn fingerprint_changes_when_file_changes() {
+    fn fingerprint_changes_when_directory_entries_change() {
         let directory = std::env::temp_dir().join(format!("mrrm_index_{}", Uuid::new_v4()));
         fs::create_dir_all(&directory).unwrap();
         fs::write(directory.join("game.gba"), b"one").unwrap();
         let first = directory_fingerprint(&directory);
-        fs::write(directory.join("game.gba"), b"changed-size").unwrap();
+        fs::write(directory.join("another.gba"), b"two").unwrap();
+        let second = directory_fingerprint(&directory);
+        assert_ne!(first, second);
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn fingerprint_tracks_metadata_file_changes() {
+        let directory = std::env::temp_dir().join(format!("mrrm_index_{}", Uuid::new_v4()));
+        fs::create_dir_all(&directory).unwrap();
+        let metadata = directory.join("metadata.pegasus.txt");
+        fs::write(&metadata, b"one").unwrap();
+        let first = directory_fingerprint(&directory);
+        fs::write(&metadata, b"changed-size").unwrap();
         let second = directory_fingerprint(&directory);
         assert_ne!(first, second);
         fs::remove_dir_all(directory).unwrap();

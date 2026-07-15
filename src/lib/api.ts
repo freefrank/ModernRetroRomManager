@@ -94,9 +94,9 @@ export const api = {
     return found;
   },
 
-  async scanRomLibrary(full: boolean): Promise<RomSystemSummary[]> {
+  async scanRomLibrary(full: boolean, libraryId?: string): Promise<RomSystemSummary[]> {
     if (isTauri()) {
-      return tauriInvoke<RomSystemSummary[]>("scan_rom_library", { full });
+      return tauriInvoke<RomSystemSummary[]>("scan_rom_library", { full, libraryId });
     }
     return this.getRomLibrarySummary();
   },

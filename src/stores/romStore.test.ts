@@ -62,6 +62,13 @@ describe("multi-library store", () => {
       { ...firstLibrary, isActive: false },
       secondLibrary,
     ]);
+    vi.spyOn(api, "getLibraryRomSummary").mockResolvedValue([{
+      system: "nds",
+      path: "Y:/Handhelds/nds",
+      romCount: 2,
+      scrapedCount: 1,
+      totalSize: 200,
+    }]);
     vi.spyOn(api, "scanRomLibrary").mockResolvedValue([{
       system: "nds",
       path: "Y:/Handhelds/nds",
@@ -71,8 +78,10 @@ describe("multi-library store", () => {
     }]);
 
     await useRomStore.getState().activateLibrary("library-two");
+    await vi.waitFor(() => expect(useRomStore.getState().stats.totalRoms).toBe(3));
 
     expect(api.setActiveLibrary).toHaveBeenCalledWith("library-two");
+    expect(api.scanRomLibrary).toHaveBeenCalledWith(false, "library-two");
     expect(useRomStore.getState()).toMatchObject({
       roms: [],
       systemRoms: [],
