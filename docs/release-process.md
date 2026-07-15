@@ -16,12 +16,14 @@
 2. 根据上一个版本之后的中文 commits 填写 `CHANGELOG.md`，每个版本同时包含 `English` 与 `简体中文`，并删除自动生成的占位内容。
 3. 检查用户可见行为、安装方式、支持平台或配置是否变化；如有变化，同步更新英文 `README.md`、中文 `README.zh-CN.md` 和相关 `docs/` 文档。
 4. 运行前端测试、Rust 测试和 `pnpm release:check`。
-5. 使用最新 Node.js LTS 构建单文件 Windows portable EXE 和 NSIS installer，并确认应用内版本号和文件名一致；Linux AppImage 的打包方式保持不变。
+5. 使用最新 Node.js LTS 构建单文件 Windows portable EXE、NSIS installer 和 Microsoft Store MSIX，并确认应用内版本号和文件名一致；Linux AppImage 的打包方式保持不变。
 6. 只有用户明确要求后才 push；只有用户明确要求发布时才创建 `v<版本号>` tag。
 
 ## 自动构建与 GitHub Release
 
-推送 `v*` tag 后，GitHub Actions 会并行构建单文件 Windows x64 portable EXE、Windows x64 installer 和 Linux x86_64 AppImage。构建成功后，CI 仅提取 `CHANGELOG.md` 中当前版本的中英文说明，直接正式发布 GitHub Release 并上传三个产物，不创建 Draft。
+推送 `v*` tag 后，GitHub Actions 会并行构建单文件 Windows x64 portable EXE、Windows x64 installer、Windows x64 Store MSIX 和 Linux x86_64 AppImage。构建成功后，CI 仅提取 `CHANGELOG.md` 中当前版本的中英文说明，直接正式发布 GitHub Release 并上传四个产物，不创建 Draft。
+
+正式提交 Microsoft Store 前，在 GitHub 仓库的 Actions Variables 中配置 Partner Center 为应用分配的 `MS_STORE_IDENTITY_NAME`、`MS_STORE_PUBLISHER` 和 `MS_STORE_PUBLISHER_DISPLAY_NAME`。未配置时 CI 使用本地测试值，能够生成和检查 MSIX，但不能替代 Partner Center 分配的正式身份。
 
 Windows portable 会将程序所需的内置匹配数据嵌入 EXE。运行时优先使用程序旁已经存在的 `config` 目录；若不存在，则回退到当前用户的 AppData 配置目录。
 

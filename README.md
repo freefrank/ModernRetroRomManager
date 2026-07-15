@@ -65,7 +65,7 @@ Create a production build:
 pnpm tauri build
 ```
 
-Pushing a `v*` tag triggers CI builds for a self-contained Windows x64 portable EXE, a Windows installer, and a Linux x86_64 AppImage. The matching GitHub Release is published automatically rather than left as a draft.
+Pushing a `v*` tag triggers CI builds for a self-contained Windows x64 portable EXE, a Windows installer, a Microsoft Store MSIX, and a Linux x86_64 AppImage. The matching GitHub Release is published automatically rather than left as a draft.
 
 At runtime, an existing `config` folder beside the executable has the highest priority for portable use. If it does not exist, MRRM stores configuration under the current user's application-data directory. Bundled lookup data is embedded in the executable and extracted into the selected configuration directory when needed.
 

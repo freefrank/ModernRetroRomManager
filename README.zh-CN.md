@@ -65,7 +65,7 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-推送 `v*` tag 后，CI 会构建单文件 Windows x64 portable EXE、Windows 安装程序和 Linux x86_64 AppImage，并自动正式发布对应的 GitHub Release，不保留为 Draft。
+推送 `v*` tag 后，CI 会构建单文件 Windows x64 portable EXE、Windows 安装程序、Microsoft Store MSIX 和 Linux x86_64 AppImage，并自动正式发布对应的 GitHub Release，不保留为 Draft。
 
 运行时，若程序旁边已经存在 `config` 文件夹，会优先作为 portable 配置目录；否则回退到当前用户的 AppData 应用数据目录。内置匹配数据会打进可执行文件，并在需要时释放到所选配置目录。
 
