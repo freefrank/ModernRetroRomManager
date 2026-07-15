@@ -12,12 +12,12 @@ All notable changes to this project are documented here. This file follows [Keep
 
 #### Added
 
-- Added a Microsoft Store MSIX build to the Windows release workflow, with configurable Partner Center identity and publisher values.
+- Added a Microsoft Store MSIX build to the Windows release workflow using the Partner Center identity assigned to MRRM.
 - Added a bilingual English and Simplified Chinese privacy policy covering local data, third-party scraper credentials, AI endpoints, retention, and deletion.
 
 #### Fixed
 
-- Corrected the default MSIX publisher display name to `dotSlashZ` so packages match the Partner Center account identity.
+- Corrected the complete MSIX package identity, publisher, publisher display name, and reserved Store display name to match the MRRM product in Partner Center.
 
 #### Changed
 
@@ -27,12 +27,12 @@ All notable changes to this project are documented here. This file follows [Keep
 
 #### 新增
 
-- Windows 发布流程新增 Microsoft Store MSIX 构建，并支持配置 Partner Center 分配的应用身份和发布者信息。
+- Windows 发布流程新增 Microsoft Store MSIX 构建，并使用 Partner Center 为 MRRM 分配的正式应用身份。
 - 新增英文与简体中文双语隐私政策，说明本地数据、第三方抓取凭据、AI 端点、数据保留和删除方式。
 
 #### 修复
 
-- 将 MSIX 默认发布者显示名称修正为 `dotSlashZ`，确保程序包与 Partner Center 账户身份一致。
+- 修正完整的 MSIX 程序包标识、发布者、发布者显示名称和 Store 保留显示名称，使其与 Partner Center 中的 MRRM 产品一致。
 
 #### 变更
 

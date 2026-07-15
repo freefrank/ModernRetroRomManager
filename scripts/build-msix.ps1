@@ -8,9 +8,10 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Version,
 
-    [string]$IdentityName = "ModernRetroRomManager",
-    [string]$Publisher = "CN=dotSlash",
-    [string]$PublisherDisplayName = "dotSlashZ"
+    [string]$IdentityName = "dotSlashZ.MRRM",
+    [string]$Publisher = "CN=175EBAB6-5A58-4E85-84CA-602CD5A1C63D",
+    [string]$PublisherDisplayName = "dotSlashZ",
+    [string]$StoreDisplayName = "MRRM"
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,6 +63,7 @@ try {
     $escapedIdentity = [System.Security.SecurityElement]::Escape($IdentityName)
     $escapedPublisher = [System.Security.SecurityElement]::Escape($Publisher)
     $escapedPublisherDisplayName = [System.Security.SecurityElement]::Escape($PublisherDisplayName)
+    $escapedStoreDisplayName = [System.Security.SecurityElement]::Escape($StoreDisplayName)
 
     $manifest = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -76,7 +78,7 @@ try {
     Version="$msixVersion"
     ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>ModernRetroRomManager</DisplayName>
+    <DisplayName>$escapedStoreDisplayName</DisplayName>
     <PublisherDisplayName>$escapedPublisherDisplayName</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -96,7 +98,7 @@ try {
       Executable="ModernRetroRomManager.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="ModernRetroRomManager"
+        DisplayName="$escapedStoreDisplayName"
         Description="ROM library and metadata manager"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
