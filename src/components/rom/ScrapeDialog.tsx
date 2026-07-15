@@ -106,8 +106,16 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
     setIsLoadingDetails(true);
     setSelectedMediaUrls(new Set());
     try {
+      const provider = providers.find(candidate => candidate.id === result.provider);
+      const metadataRequest = provider?.capabilities.includes("metadata")
+        ? scraperApi.getMetadata(result.provider, result.source_id)
+        : Promise.resolve<ScraperGameMetadata>({
+            // SteamGridDB 等纯媒体 Provider 只能补充资产，不能用搜索结果覆盖 ROM 元数据。
+            name: rom.name,
+            genres: [],
+          });
       const [metaResult, mediaResults] = await Promise.all([
-        scraperApi.getMetadata(result.provider, result.source_id),
+        metadataRequest,
         scraperApi.getMedia(result.provider, result.source_id, {
           romDirectory: rom.directory,
           system: rom.system,

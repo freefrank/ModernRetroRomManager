@@ -204,9 +204,9 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
     let query_name = normalize_game_name(&query.name);
     let result_name = normalize_game_name(&result.name);
 
-    // 名称仍是主要信号，但为平台一致性预留更高权重。
+    // 名称仍是主要信号，但主机平台是排除同名移植版和无关媒体条目的强信号。
     let name_similarity = jaro_winkler_similarity(&query_name, &result_name);
-    let mut score = name_similarity * 0.65;
+    let mut score = name_similarity * 0.55;
 
     // 完全匹配奖励
     if query_name.to_lowercase() == result_name.to_lowercase() {
@@ -228,12 +228,12 @@ pub fn calculate_confidence(query: &ScrapeQuery, result: &SearchResult) -> f32 {
         _ => {}
     }
 
-    // 平台一致奖励 20%；明确冲突则扣 25%，避免同名跨平台移植版排在前面。
+    // 平台一致奖励 30%；明确冲突则扣 40%，让已确认的当前主机平台显著优先。
     if let (Some(query_sys), Some(result_sys)) = (&query.system, &result.system) {
         if canonical_system(query_sys) == canonical_system(result_sys) {
-            score += 0.2;
+            score += 0.3;
         } else {
-            score -= 0.25;
+            score -= 0.4;
         }
     }
 
@@ -331,7 +331,7 @@ mod tests {
         assert_eq!(ranked[0].name, "Super Mario World");
         assert_eq!(ranked[2].name, "Zelda");
         // 置信度已重算且降序排列
-        assert!(ranked[0].confidence >= 0.64);
+        assert!(ranked[0].confidence >= 0.54);
         assert!(ranked[0].confidence >= ranked[1].confidence);
         assert!(ranked[1].confidence >= ranked[2].confidence);
     }
@@ -356,7 +356,7 @@ mod tests {
 
         let confidence = calculate_confidence(&query, &result);
         // 无平台和封面信息时保守降权，避免盖过信息完整的结果。
-        assert!((confidence - 0.65).abs() < 0.001);
+        assert!((confidence - 0.55).abs() < 0.001);
     }
 
     #[test]
@@ -374,8 +374,8 @@ mod tests {
         };
         assert!((calculate_confidence(&query, &result(Some("18"))) - 0.85).abs() < 0.001);
         assert!((calculate_confidence(&query, &result(Some("Genesis"))) - 0.85).abs() < 0.001);
-        assert!(calculate_confidence(&query, &result(Some("SNES"))) < 0.6);
-        assert!(calculate_confidence(&query, &result(None)) < 0.9);
+        assert!(calculate_confidence(&query, &result(Some("SNES"))) < 0.2);
+        assert!(calculate_confidence(&query, &result(None)) < 0.7);
     }
 
     #[test]
@@ -449,7 +449,7 @@ mod tests {
             confidence: 0.0,
         };
         let expected_without_sequel_penalty =
-            jaro_winkler_similarity("Luigis Mansion: Dark Moon", "Luigis Mansion 2") * 0.65 + 0.2;
+            jaro_winkler_similarity("Luigis Mansion: Dark Moon", "Luigis Mansion 2") * 0.55 + 0.3;
         assert!(
             (calculate_confidence(&query, &result) - expected_without_sequel_penalty).abs() < 0.001
         );
