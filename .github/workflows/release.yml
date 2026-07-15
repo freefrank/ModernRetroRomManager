@@ -73,7 +73,7 @@ jobs:
           $version = (Get-Content package.json | ConvertFrom-Json).version
           $identityName = if ($env:MS_STORE_IDENTITY_NAME) { $env:MS_STORE_IDENTITY_NAME } else { "ModernRetroRomManager" }
           $publisher = if ($env:MS_STORE_PUBLISHER) { $env:MS_STORE_PUBLISHER } else { "CN=dotSlash" }
-          $publisherDisplayName = if ($env:MS_STORE_PUBLISHER_DISPLAY_NAME) { $env:MS_STORE_PUBLISHER_DISPLAY_NAME } else { "dotSlash" }
+          $publisherDisplayName = if ($env:MS_STORE_PUBLISHER_DISPLAY_NAME) { $env:MS_STORE_PUBLISHER_DISPLAY_NAME } else { "dotSlashZ" }
           ./scripts/build-msix.ps1 `
             -AppExecutable "src-tauri/target/release/modern-retro-rom-manager.exe" `
             -OutputPath "artifacts/ModernRetroRomManager_${version}_windows_x64_store.msix" `

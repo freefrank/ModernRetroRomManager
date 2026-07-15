@@ -10,7 +10,7 @@ param(
 
     [string]$IdentityName = "ModernRetroRomManager",
     [string]$Publisher = "CN=dotSlash",
-    [string]$PublisherDisplayName = "dotSlash"
+    [string]$PublisherDisplayName = "dotSlashZ"
 )
 
 $ErrorActionPreference = "Stop"
