@@ -40,6 +40,7 @@ fn select_config_dir(
     }
 }
 
+#[cfg(not(test))]
 fn user_config_base() -> PathBuf {
     #[cfg(target_os = "windows")]
     if let Some(path) = std::env::var_os("APPDATA") {
@@ -58,6 +59,12 @@ fn user_config_base() -> PathBuf {
         .map(PathBuf::from)
         .map(|home| home.join(".config"))
         .unwrap_or_else(|| get_exe_dir())
+}
+
+#[cfg(test)]
+fn user_config_base() -> PathBuf {
+    // 单元测试可能通过 settings::update_setting 写配置，必须与真实用户 AppData 隔离。
+    std::env::temp_dir().join(format!("mrrm-tests-{}", std::process::id()))
 }
 
 /// 单文件发行版首次启动时释放的只读内置资源目录。
@@ -132,6 +139,7 @@ mod tests {
     fn test_config_paths() {
         let config_dir = get_config_dir();
         assert!(config_dir.ends_with("config"));
+        assert!(config_dir.starts_with(std::env::temp_dir()));
     }
 
     #[test]

@@ -270,17 +270,52 @@ fn write_settings_file(
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(path, serde_json::to_string_pretty(settings)?)?;
+    let serialized = serde_json::to_string_pretty(settings)?;
+    let temporary = path.with_extension("json.part");
+    let backup = path.with_extension("json.bak");
+    fs::write(&temporary, serialized)?;
+
+    // 每次替换前保留最后一份完整配置，升级或异常写入后仍可人工恢复。
+    if path.is_file() {
+        fs::copy(path, &backup)?;
+        fs::remove_file(path)?;
+    }
+    fs::rename(&temporary, path)?;
     Ok(())
+}
+
+fn read_settings_file_with_backup(
+    path: &std::path::Path,
+) -> Result<AppSettings, Box<dyn std::error::Error>> {
+    let parse = |candidate: &std::path::Path| -> Result<AppSettings, Box<dyn std::error::Error>> {
+        Ok(serde_json::from_str(&fs::read_to_string(candidate)?)?)
+    };
+
+    match parse(path) {
+        Ok(settings) => Ok(settings),
+        Err(primary_error) => {
+            let backup = path.with_extension("json.bak");
+            if !backup.is_file() {
+                return Err(primary_error);
+            }
+            let settings = parse(&backup)?;
+            if path.is_file() {
+                fs::copy(path, path.with_extension("json.corrupt"))?;
+                fs::remove_file(path)?;
+            }
+            // 主文件损坏或丢失时恢复最后一份完整备份，不覆盖 .bak。
+            write_settings_file(path, &settings)?;
+            Ok(settings)
+        }
+    }
 }
 
 /// 加载配置（如果不存在则创建默认配置）
 pub fn load_settings() -> Result<AppSettings, Box<dyn std::error::Error>> {
     let path = config::get_settings_path();
 
-    if path.exists() {
-        let content = fs::read_to_string(&path)?;
-        let mut settings: AppSettings = serde_json::from_str(&content)?;
+    if path.exists() || path.with_extension("json.bak").exists() {
+        let mut settings = read_settings_file_with_backup(&path)?;
         if normalize_library_settings(&mut settings) {
             write_settings_file(&path, &settings)?;
         }
@@ -367,6 +402,70 @@ mod tests {
             Some(loaded.directories[0].id.as_str())
         );
         assert!(!normalize_library_settings(&mut loaded));
+    }
+
+    #[test]
+    fn settings_writes_are_atomic_and_keep_previous_backup() {
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-settings-backup-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let path = root.join("settings.json");
+        let _ = fs::remove_dir_all(&root);
+
+        let first = AppSettings::default();
+        write_settings_file(&path, &first).unwrap();
+        let mut second = first.clone();
+        second.theme = "retro-arcade".into();
+        write_settings_file(&path, &second).unwrap();
+
+        let saved: AppSettings = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        let backup: AppSettings =
+            serde_json::from_str(&fs::read_to_string(path.with_extension("json.bak")).unwrap())
+                .unwrap();
+        assert_eq!(saved.theme, "retro-arcade");
+        assert_eq!(backup.theme, first.theme);
+        assert!(!path.with_extension("json.part").exists());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn invalid_settings_restore_the_last_valid_backup() {
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-settings-recovery-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let path = root.join("settings.json");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&path, "{invalid").unwrap();
+        let expected = AppSettings {
+            theme: "retro-arcade".into(),
+            ..Default::default()
+        };
+        fs::write(
+            path.with_extension("json.bak"),
+            serde_json::to_string_pretty(&expected).unwrap(),
+        )
+        .unwrap();
+
+        let recovered = read_settings_file_with_backup(&path).unwrap();
+        assert_eq!(recovered.theme, expected.theme);
+        assert!(path.with_extension("json.corrupt").is_file());
+        assert_eq!(
+            serde_json::from_str::<AppSettings>(&fs::read_to_string(&path).unwrap())
+                .unwrap()
+                .theme,
+            expected.theme
+        );
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
