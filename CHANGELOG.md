@@ -6,6 +6,38 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-07-14
+
+### English
+
+#### Added
+
+- Added a Microsoft Store MSIX build to the Windows release workflow, with configurable Partner Center identity and publisher values.
+- Added a bilingual English and Simplified Chinese privacy policy covering local data, third-party scraper credentials, AI endpoints, retention, and deletion.
+
+#### Fixed
+
+- Corrected the default MSIX publisher display name to `dotSlashZ` so packages match the Partner Center account identity.
+
+#### Changed
+
+- Upgraded every JavaScript-based GitHub Action in the release workflow to a Node.js 24 runtime, removing Node.js 20 deprecation warnings.
+
+### 简体中文
+
+#### 新增
+
+- Windows 发布流程新增 Microsoft Store MSIX 构建，并支持配置 Partner Center 分配的应用身份和发布者信息。
+- 新增英文与简体中文双语隐私政策，说明本地数据、第三方抓取凭据、AI 端点、数据保留和删除方式。
+
+#### 修复
+
+- 将 MSIX 默认发布者显示名称修正为 `dotSlashZ`，确保程序包与 Partner Center 账户身份一致。
+
+#### 变更
+
+- 将发布流程中所有 JavaScript GitHub Action 升级到 Node.js 24 runtime，消除 Node.js 20 弃用警告。
+
 ## [0.8.0] - 2026-07-14
 
 ### English
