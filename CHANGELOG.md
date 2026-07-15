@@ -6,6 +6,38 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-14
+
+### English
+
+#### Added
+
+- Added complete French, German, Italian, Spanish, Russian, and Traditional Chinese interface translations, expanding the application to eight languages.
+- Added automated locale parity tests covering all 400 translation keys and interpolation placeholders in every language.
+
+#### Fixed
+
+- Restored the saved interface language during startup instead of reverting to Simplified Chinese until the user changed it again.
+
+#### Changed
+
+- Release CI now rejects tags that do not match the application version before starting platform builds.
+
+### 简体中文
+
+#### 新增
+
+- 增加完整的法语、德语、意大利语、西班牙语、俄语和繁体中文界面翻译，应用现支持八种语言。
+- 增加多语言一致性自动测试，覆盖每种语言的全部 400 个翻译键和插值占位符。
+
+#### 修复
+
+- 修复启动时未恢复已保存界面语言、必须再次手动切换才能生效的问题。
+
+#### 变更
+
+- Release CI 在开始各平台构建前校验 tag 与应用版本一致，阻止错误版本发布。
+
 ## [0.7.3] - 2026-07-14
 
 ### English
@@ -366,7 +398,8 @@ All notable changes to this project are documented here. This file follows [Keep
 
 - 对齐前端 ROM 字段与后端返回结构，并统一 i18n 和目录提示。
 
-[Unreleased]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/freefrank/ModernRetroRomManager/compare/v0.7.0...v0.7.1

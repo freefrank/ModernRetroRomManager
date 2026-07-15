@@ -19,6 +19,7 @@ ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM �
 - 可选择当前或指定游戏库，按 EmulationStation `gamelist.xml` 与 Pegasus `metadata.pegasus.txt` 格式导出元数据及相关媒体资源
 - 在支持日志级别筛选的底部 Console 中查看扫描、抓取、Provider 和错误信息
 - 支持导入自定义主题，并提供响应式暗色界面；Retro 主题内置 Zpix，统一显示中英文像素字体
+- 界面支持简体中文、繁体中文、英语、法语、德语、意大利语、西班牙语和俄语
 - 基于 Tauri 2 支持 Windows、Linux 和 macOS
 
 ## 游戏库模型

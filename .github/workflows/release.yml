@@ -10,8 +10,32 @@ permissions:
   contents: write
 
 jobs:
+  verify:
+    name: Verify release metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          check-latest: true
+      - name: Check versions and changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/release-tools.mjs check
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            package_version=$(node -p "require('./package.json').version")
+            tag_version="${GITHUB_REF_NAME#v}"
+            test "$tag_version" = "$package_version" || {
+              echo "Tag $GITHUB_REF_NAME does not match package version $package_version" >&2
+              exit 1
+            }
+          fi
+
   windows:
     name: Windows x64 portable and installer
+    needs: verify
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +71,7 @@ jobs:
 
   linux-appimage:
     name: Linux x86_64 AppImage
+    needs: verify
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
