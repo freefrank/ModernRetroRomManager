@@ -9,6 +9,8 @@ export function romMetadata(rom: Rom): ScraperGameMetadata {
   const rating = typeof source.rating === "string" ? Number.parseFloat(source.rating) : source.rating;
   return {
     name: source.name || rom.name,
+    english_name: source.english_name,
+    chinese_name: source.chinese_name,
     description: source.description || source.summary,
     release_date: source.release,
     developer: source.developer,

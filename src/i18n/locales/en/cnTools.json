@@ -29,8 +29,8 @@
       "romName": "ROM Name (Meta)",
       "extractedCnName": "Extracted CN Name",
       "matchedEnglishName": "Matched English Name",
-      "setAsRomName": "Set as ROM Name",
-      "setAsRomNameTitle": "Set extracted Chinese name as ROM name",
+      "setAsRomName": "Save Chinese Name",
+      "setAsRomNameTitle": "Save the extracted name in the Chinese-name field",
       "addAsTag": "Add as Extra Tag",
       "addAsTagTitle": "Add English name as extra tag",
       "clickToSort": "Click to sort",
@@ -74,7 +74,7 @@
     },
     "confirms": {
       "autoFixNaming": "Are you sure you want to match English names?\nThis will scan all ROMs in the directory and automatically match English names based on the local database.\nOnly matches with very high confidence (>95%) will be applied.\nResults will be saved to the temporary directory.",
-      "setAsRomName": "Are you sure you want to set extracted Chinese names as ROM names?\nThis will write the Chinese names extracted from filenames to temporary metadata.",
+      "setAsRomName": "Save the extracted Chinese names to their dedicated metadata field?\nOriginal ROM names will be preserved.",
       "addAsTag": "Are you sure you want to add English names as extra tags?\nThis will write matched English names as x-mrrm-eng tags to temporary metadata."
     }
   }

@@ -236,8 +236,46 @@ fn flatten_directories(directories: &[IndexedDirectory]) -> Vec<SystemRoms> {
         .iter()
         .flat_map(|directory| directory.systems.iter().cloned())
         .collect();
+    migrate_legacy_chinese_names(&mut systems);
     systems.sort_by(|left, right| left.system.cmp(&right.system));
     systems
+}
+
+fn contains_han(value: &str) -> bool {
+    value
+        .chars()
+        .any(|character| matches!(character as u32, 0x3400..=0x4dbf | 0x4e00..=0x9fff))
+}
+
+fn migrate_legacy_chinese_names(systems: &mut [SystemRoms]) {
+    for system in systems {
+        for rom in &mut system.roms {
+            if rom.chinese_name.is_none() && contains_han(&rom.name) {
+                if let Some(original) = rom
+                    .english_name
+                    .as_ref()
+                    .filter(|name| !contains_han(name) && *name != &rom.name)
+                    .cloned()
+                {
+                    rom.chinese_name = Some(rom.name.clone());
+                    rom.name = original;
+                }
+            }
+            if let Some(preview) = rom.temp_data.as_mut() {
+                if preview.chinese_name.is_none() && contains_han(&preview.name) {
+                    let original = preview
+                        .extra
+                        .get("x-mrrm-eng")
+                        .cloned()
+                        .or_else(|| rom.english_name.clone());
+                    if let Some(original) = original.filter(|name| !contains_han(name)) {
+                        preview.chinese_name = Some(preview.name.clone());
+                        preview.name = original;
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn save_index(
@@ -418,5 +456,22 @@ mod tests {
         let second = directory_fingerprint(&directory);
         assert_ne!(first, second);
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn cached_legacy_names_are_split_without_rescanning() {
+        let mut systems = vec![SystemRoms {
+            system: "gba".into(),
+            path: "Y:/gba".into(),
+            roms: vec![crate::rom_service::RomInfo {
+                file: "game.gba".into(),
+                name: "实况足球".into(),
+                english_name: Some("Winning Eleven".into()),
+                ..Default::default()
+            }],
+        }];
+        migrate_legacy_chinese_names(&mut systems);
+        assert_eq!(systems[0].roms[0].name, "Winning Eleven");
+        assert_eq!(systems[0].roms[0].chinese_name.as_deref(), Some("实况足球"));
     }
 }

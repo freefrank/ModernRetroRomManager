@@ -1664,7 +1664,7 @@ pub fn get_naming_check_results(path: String) -> Result<Vec<NamingCheckResult>, 
     Ok(results)
 }
 
-/// 将提取的中文名设置为 ROM 名 (写入临时 metadata)
+/// 将提取的中文名写入独立 chinese_name 条目（保留 ROM 原名）。
 #[tauri::command]
 pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult, String> {
     let dir_path = Path::new(&directory);
@@ -1690,7 +1690,6 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
             continue;
         };
 
-        entry.name = Some(cn_name.clone());
         success_count += 1;
 
         let entry_basename = Path::new(&entry.file)
@@ -1712,7 +1711,13 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
                 .and_then(|n| n.to_str())
                 .is_some_and(|bn| bn == entry_basename)
         }) {
-            game.name = cn_name;
+            // 兼容旧数据：此前中文名直接占用了 game，英文原名在 x-mrrm-eng。
+            if game.name == cn_name {
+                if let Some(original) = game.extra.get("x-mrrm-eng").cloned() {
+                    game.name = original;
+                }
+            }
+            game.chinese_name = Some(cn_name);
 
             // 如果 pegasus 里还是纯文件名，顺便升级成完整相对路径
             if let Some(ref gf) = game.file {
@@ -1724,8 +1729,13 @@ pub async fn set_extracted_cn_as_name(directory: String) -> Result<AutoFixResult
             pegasus_metadata
                 .games
                 .push(crate::scraper::pegasus::PegasusGame {
-                    name: cn_name,
+                    name: entry
+                        .english_name
+                        .clone()
+                        .or_else(|| entry.name.clone())
+                        .unwrap_or_else(|| entry.file.clone()),
                     file: Some(entry.file.clone()),
+                    chinese_name: Some(cn_name),
                     ..Default::default()
                 });
         }

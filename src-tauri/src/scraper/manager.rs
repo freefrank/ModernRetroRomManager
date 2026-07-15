@@ -651,6 +651,9 @@ impl ScraperManager {
                 if merged.english_name.is_none() && metadata.english_name.is_some() {
                     merged.english_name = metadata.english_name;
                 }
+                if merged.chinese_name.is_none() && metadata.chinese_name.is_some() {
+                    merged.chinese_name = metadata.chinese_name;
+                }
                 if merged.description.is_none() && metadata.description.is_some() {
                     merged.description = metadata.description;
                 }

@@ -66,6 +66,8 @@
       "noteDesc": "這些資料只保存在暫存目錄中。您可以檢查描述和封面，滿意後點擊底部的「匯出到庫」將其永久應用。"
     },
     "fields": {
+      "chineseName": "中文名",
+      "englishName": "英文名",
       "releaseDate": "發行日期",
       "developer": "開發商",
       "publisher": "發行商",

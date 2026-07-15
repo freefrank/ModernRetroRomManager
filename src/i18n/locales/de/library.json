@@ -66,6 +66,8 @@
       "noteDesc": "Diese Daten werden in einem temporären Verzeichnis gespeichert. Überprüfen Sie die Beschreibung und die Umschläge und klicken Sie dann auf „In Bibliothek exportieren“, um sie dauerhaft zu übernehmen."
     },
     "fields": {
+      "chineseName": "Chinesischer Name",
+      "englishName": "Englischer Name",
       "releaseDate": "Erscheinungsdatum",
       "developer": "Entwickler",
       "publisher": "Herausgeber",

@@ -29,8 +29,8 @@
       "romName": "ROM Nombre (Meta)",
       "extractedCnName": "Nombre CN extraído",
       "matchedEnglishName": "Nombre en inglés coincidente",
-      "setAsRomName": "Establecer como ROM Nombre",
-      "setAsRomNameTitle": "Establecer el nombre chino extraído como nombre ROM",
+      "setAsRomName": "Guardar nombre chino",
+      "setAsRomNameTitle": "Guardar el nombre extraído en el campo de nombre chino",
       "addAsTag": "Agregar como etiqueta adicional",
       "addAsTagTitle": "Agregar nombre en inglés como etiqueta adicional",
       "clickToSort": "Haga clic para ordenar",
@@ -74,7 +74,7 @@
     },
     "confirms": {
       "autoFixNaming": "¿Está seguro de que desea hacer coincidir los nombres en inglés?\nEsto escaneará todos los ROMs en el directorio y hará coincidir automáticamente los nombres en inglés según la base de datos local.\nSólo se aplicarán coincidencias con una confianza muy alta (>95%).\nLos resultados se guardarán en el directorio temporal.",
-      "setAsRomName": "¿Está seguro de que desea configurar los nombres chinos extraídos como nombres ROM?\nEsto escribirá los nombres chinos extraídos de los nombres de archivo from en metadatos temporales.",
+      "setAsRomName": "¿Guardar los nombres chinos extraídos en su campo de metadatos?\nSe conservarán los nombres ROM originales.",
       "addAsTag": "¿Está seguro de que desea agregar nombres en inglés como etiquetas adicionales?\nEsto escribirá nombres en inglés coincidentes como etiquetas x-mrrm-eng en metadatos temporales."
     }
   }

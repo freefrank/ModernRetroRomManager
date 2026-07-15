@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { resolveMediaUrlAsync, getCachedMediaUrl } from "@/lib/api";
 import type { Rom, ViewMode } from "@/types";
 import { clsx } from "clsx";
+import { getRomDisplayName } from "@/lib/romName";
 
 interface RomViewProps {
   roms: Rom[];
@@ -164,11 +165,13 @@ interface CardProps {
   isSelected: boolean;
   onRomClick: (rom: Rom) => void;
   onToggleSelect: (id: string) => void;
+  language?: string;
 }
 
 // Cover Card - Compact, image-focused
-function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
+function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
+  const displayName = getRomDisplayName(rom, language);
   const [imgError, setImgError] = useState(false);
   const [containCover, setContainCover] = useState(false);
 
@@ -200,7 +203,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
         <div className="w-full h-full bg-gradient-to-br from-bg-tertiary to-bg-secondary flex flex-col items-center justify-center gap-2 px-2 py-3">
           <Gamepad2 className="w-10 h-10 shrink-0 text-text-muted/20 group-hover:text-accent-primary/30 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
           <span className="w-full text-center text-xs font-medium text-text-secondary line-clamp-3 break-all">
-            {rom.name}
+            {displayName}
           </span>
         </div>
       )}
@@ -208,7 +211,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
       {/* Hover overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/90 via-bg-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-normal)] ease-[var(--motion-easing)] flex flex-col justify-end p-3">
         <h3 className="text-sm font-semibold text-text-primary truncate transform translate-y-2 group-hover:translate-y-0 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)]">
-          {rom.name}
+          {displayName}
         </h3>
         <span className="text-[10px] text-text-secondary uppercase tracking-wider">
           {rom.system}
@@ -242,8 +245,9 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 }
 
 // Grid Card - Larger with metadata
-function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
+function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
+  const displayName = getRomDisplayName(rom, language);
   const [imgError, setImgError] = useState(false);
   const [containCover, setContainCover] = useState(false);
 
@@ -311,9 +315,9 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
       <div className="p-4">
         <h3
           className="font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
-          title={rom.name}
+          title={displayName}
         >
-          {rom.name}
+          {displayName}
         </h3>
         <div className="flex items-center justify-between text-xs text-text-secondary">
           <div className="flex items-center gap-1"></div>
@@ -330,8 +334,9 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 }
 
 // List Row - Compact table-like row
-function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
+function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
+  const displayName = getRomDisplayName(rom, language);
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -375,7 +380,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] truncate">
-            {rom.name}
+            {displayName}
           </div>
           <div className="text-xs text-text-muted truncate">
             {rom.directory}
@@ -406,7 +411,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect }: CardProps) {
 // ============ Main Component ============
 
 export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
   const columns = useColumnCount(viewMode, cardScale);
   const config = VIEW_CONFIG[viewMode];
@@ -509,6 +514,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                   isSelected={selectedIds.has(rowRoms[0].file)}
                   onRomClick={onRomClick}
                   onToggleSelect={onToggleSelect}
+                  language={i18n.resolvedLanguage}
                 />
               ) : (
                 // Grid/Cover view - multiple items per row
@@ -532,6 +538,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                         isSelected={isSelected}
                         onRomClick={onRomClick}
                         onToggleSelect={onToggleSelect}
+                        language={i18n.resolvedLanguage}
                       />
                     ) : (
                       <GridCard
@@ -540,6 +547,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                         isSelected={isSelected}
                         onRomClick={onRomClick}
                         onToggleSelect={onToggleSelect}
+                        language={i18n.resolvedLanguage}
                       />
                     );
                   })}

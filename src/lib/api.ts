@@ -375,9 +375,10 @@ export const scraperApi = {
     directory: string,
     format = "auto",
     targetDirectory?: string,
+    nameMode?: "original" | "chinese",
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_scraped_data", { system, directory, format, targetDirectory });
+      await tauriInvoke("export_scraped_data", { system, directory, format, targetDirectory, nameMode });
     }
   },
 
@@ -386,9 +387,10 @@ export const scraperApi = {
     libraryId: string,
     format = "auto",
     targetDirectory?: string,
+    nameMode?: "original" | "chinese",
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory });
+      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode });
     }
   },
 

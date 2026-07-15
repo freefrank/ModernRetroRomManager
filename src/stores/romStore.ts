@@ -118,8 +118,8 @@ interface RomState {
   isExporting: boolean;
   exportProgress: { current: number; total: number; message: string; finished: boolean } | null;
   
-  exportData: (system: string, directory: string, format?: string, targetDirectory?: string) => Promise<void>;
-  exportLibraryData: (libraryId: string, format?: string, targetDirectory?: string) => Promise<void>;
+  exportData: (system: string, directory: string, format?: string, targetDirectory?: string, nameMode?: "original" | "chinese") => Promise<void>;
+  exportLibraryData: (libraryId: string, format?: string, targetDirectory?: string, nameMode?: "original" | "chinese") => Promise<void>;
 }
 
 export const useRomStore = create<RomState>((set, get) => ({
@@ -321,7 +321,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     await scraperApi.cancelBatchScrape();
   },
 
-  exportData: async (system: string, directory: string, format = "auto", targetDirectory?: string) => {
+  exportData: async (system: string, directory: string, format = "auto", targetDirectory?: string, nameMode = "original") => {
     set({ isExporting: true, exportProgress: null });
     let unlisten: (() => void) | undefined;
     try {
@@ -337,7 +337,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      await scraperApi.exportScrapedData(system, directory, format, targetDirectory);
+      await scraperApi.exportScrapedData(system, directory, format, targetDirectory, nameMode);
     } catch (error) {
       unlisten?.();
       console.error("Failed to export data:", error);
@@ -439,7 +439,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     }
   },
 
-  exportLibraryData: async (libraryId: string, format = "auto", targetDirectory?: string) => {
+  exportLibraryData: async (libraryId: string, format = "auto", targetDirectory?: string, nameMode = "original") => {
     set({ isExporting: true, exportProgress: null });
     let unlisten: (() => void) | undefined;
     try {
@@ -455,7 +455,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         }
       });
 
-      await scraperApi.exportLibraryScrapedData(libraryId, format, targetDirectory);
+      await scraperApi.exportLibraryScrapedData(libraryId, format, targetDirectory, nameMode);
     } catch (error) {
       unlisten?.();
       console.error("Failed to export library data:", error);

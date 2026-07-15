@@ -29,8 +29,8 @@
       "romName": "ROM名 (Meta)",
       "extractedCnName": "提取中文名",
       "matchedEnglishName": "符合英文名",
-      "setAsRomName": "設定為ROM名",
-      "setAsRomNameTitle": "將提取的中文名稱設定為 ROM 名",
+      "setAsRomName": "儲存中文名",
+      "setAsRomNameTitle": "將提取名稱儲存到獨立中文名欄位",
       "addAsTag": "新增為額外tag",
       "addAsTagTitle": "將英文名稱加為額外 tag",
       "clickToSort": "點選排序",
@@ -74,7 +74,7 @@
     },
     "confirms": {
       "autoFixNaming": "確定要符合英文名嗎？\n這將掃描該目錄下的所有 ROM，並根據本機資料庫自動比對英文名。\n僅置信度極高 (>95%) 的匹配會被應用。\n結果將儲存到暫存目錄。",
-      "setAsRomName": "確定要將提取的中文名稱設定為 ROM 名稱嗎？\n這將把從檔案名稱提取的中文名寫入到臨時 metadata 中。",
+      "setAsRomName": "確定將提取的中文名儲存到獨立 metadata 欄位嗎？\nROM 原名將會保留。",
       "addAsTag": "確定要將英文名稱新增為額外 tag 嗎？\n這將把匹配到的英文名作為 x-mrrm-e​​ng tag 寫入臨時 metadata。"
     }
   }

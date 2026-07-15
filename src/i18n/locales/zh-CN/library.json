@@ -66,6 +66,8 @@
       "noteDesc": "这些数据仅保存在临时目录中。您可以检查描述和封面，满意后点击底部的“导出到库”将其永久应用。"
     },
     "fields": {
+      "chineseName": "中文名",
+      "englishName": "英文名",
       "releaseDate": "发行日期",
       "developer": "开发商",
       "publisher": "发行商",

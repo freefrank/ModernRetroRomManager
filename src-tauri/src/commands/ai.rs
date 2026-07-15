@@ -137,9 +137,18 @@ fn strip_json_fence(content: &str) -> &str {
         .trim()
 }
 
-fn merge_translation(mut source: GameMetadata, translated: TranslatedFields) -> GameMetadata {
+fn merge_translation(
+    mut source: GameMetadata,
+    translated: TranslatedFields,
+    target_language: &str,
+) -> GameMetadata {
     if let Some(value) = translated.name.filter(|value| !value.trim().is_empty()) {
-        source.name = value;
+        let target = target_language.to_ascii_lowercase();
+        if target.contains("zh") || target_language.contains("中文") {
+            source.chinese_name = Some(value);
+        } else {
+            source.name = value;
+        }
     }
     if translated.description.is_some() {
         source.description = translated.description;
@@ -203,7 +212,11 @@ pub async fn translate_metadata(request: TranslateMetadataRequest) -> Result<Gam
         response_content(&value).ok_or_else(|| "AI 翻译接口未返回文本内容".to_string())?;
     let translated: TranslatedFields = serde_json::from_str(strip_json_fence(&content))
         .map_err(|_| "AI 翻译结果不是有效的 metadata JSON".to_string())?;
-    Ok(merge_translation(request.metadata, translated))
+    Ok(merge_translation(
+        request.metadata,
+        translated,
+        &config.target_language,
+    ))
 }
 
 #[cfg(test)]
@@ -239,8 +252,10 @@ mod tests {
                 publisher: None,
                 genres: Some(vec!["动作".into()]),
             },
+            "简体中文（zh-CN）",
         );
-        assert_eq!(merged.name, "译名");
+        assert_eq!(merged.name, "Original");
+        assert_eq!(merged.chinese_name.as_deref(), Some("译名"));
         assert_eq!(merged.release_date.as_deref(), Some("2001-01-01"));
         assert_eq!(merged.rating, Some(8.5));
     }

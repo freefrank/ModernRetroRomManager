@@ -66,6 +66,8 @@
       "noteDesc": "Estos datos se almacenan en un directorio temporal. Verifique la descripción y las portadas, luego haga clic en \"Exportar a la biblioteca\" para aplicarlas de forma permanente."
     },
     "fields": {
+      "chineseName": "Nombre chino",
+      "englishName": "Nombre en inglés",
       "releaseDate": "Fecha de lanzamiento",
       "developer": "Desarrollador",
       "publisher": "Editor",

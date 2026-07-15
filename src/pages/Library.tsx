@@ -83,7 +83,10 @@ export default function Library() {
   const filteredRoms = useMemo(() => {
     if (!debouncedSearch) return romsOfSystem;
     const lowerQuery = debouncedSearch.toLowerCase();
-    return romsOfSystem.filter((r) => r.name.toLowerCase().includes(lowerQuery));
+    return romsOfSystem.filter((r) =>
+      [r.name, r.chinese_name, r.english_name]
+        .some((name) => name?.toLowerCase().includes(lowerQuery)),
+    );
   }, [romsOfSystem, debouncedSearch]);
 
   const isPs3 = systemName.toLowerCase().includes("ps3");

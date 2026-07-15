@@ -8,6 +8,7 @@ import { useRomStore } from "@/stores/romStore";
 import type { RomSystemSummary, ScanDirectory } from "@/types";
 
 type ExportFormat = "pegasus" | "emulationstation";
+type ExportNameMode = "original" | "chinese";
 
 const ALL_SYSTEMS = "__all__";
 const normalizePath = (path: string) => path.replace(/\\/g, "/");
@@ -20,6 +21,7 @@ export default function Import() {
   const [systems, setSystems] = useState<RomSystemSummary[]>([]);
   const [scope, setScope] = useState(ALL_SYSTEMS);
   const [format, setFormat] = useState<ExportFormat>("pegasus");
+  const [nameMode, setNameMode] = useState<ExportNameMode>("original");
   const [targetDirectory, setTargetDirectory] = useState("");
   const [isLoadingSystems, setIsLoadingSystems] = useState(false);
 
@@ -86,13 +88,14 @@ export default function Import() {
     if (!selectedLibrary || !targetDirectory.trim()) return;
     try {
       if (scope === ALL_SYSTEMS) {
-        await exportLibraryData(selectedLibrary.id, format, targetDirectory.trim());
+        await exportLibraryData(selectedLibrary.id, format, targetDirectory.trim(), nameMode);
       } else if (selectedSystem) {
         await exportData(
           selectedSystem.system,
           selectedSystem.path,
           format,
           targetDirectory.trim(),
+          nameMode,
         );
       }
     } catch (error) {
@@ -164,6 +167,15 @@ export default function Import() {
                 <option value="pegasus">Pegasus — metadata.pegasus.txt</option>
                 <option value="emulationstation">EmulationStation — gamelist.xml</option>
               </Select>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium">{t("import.export.nameMode")}</span>
+              <Select value={nameMode} onChange={(event) => setNameMode(event.target.value as ExportNameMode)}>
+                <option value="original">{t("import.export.nameOriginal")}</option>
+                <option value="chinese">{t("import.export.nameChinese")}</option>
+              </Select>
+              <p className="mt-2 text-xs text-text-muted">{t("import.export.nameModeHint")}</p>
             </label>
 
             <div>

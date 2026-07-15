@@ -63,6 +63,8 @@ pub fn save_metadata_emulationstation(
         rating: Option<f32>,
         #[serde(rename = "english-name")]
         english_name: Option<String>,
+        #[serde(rename = "chinese-name")]
+        chinese_name: Option<String>,
     }
 
     let mut list: EsGameList = from_str(&content).map_err(|e| format!("XML Parse error: {}", e))?;
@@ -87,6 +89,9 @@ pub fn save_metadata_emulationstation(
             if let Some(en) = &metadata.english_name {
                 game.english_name = Some(en.clone());
             }
+            if let Some(cn) = &metadata.chinese_name {
+                game.chinese_name = Some(cn.clone());
+            }
             found = true;
             break;
         }
@@ -105,6 +110,7 @@ pub fn save_metadata_emulationstation(
             releasedate: metadata.release_date.clone(),
             rating: metadata.rating.map(|r| r as f32),
             english_name: metadata.english_name.clone(),
+            chinese_name: metadata.chinese_name.clone(),
         });
     }
 
@@ -216,6 +222,9 @@ pub fn save_metadata_pegasus_with_media(
     // 添加英文名到 extra 字段
     if let Some(ref en) = metadata.english_name {
         game.extra.insert("x-english-name".to_string(), en.clone());
+    }
+    if let Some(ref cn) = metadata.chinese_name {
+        game.chinese_name = Some(cn.clone());
     }
 
     let metadata_dir = metadata_path.parent().unwrap_or_else(|| Path::new(""));

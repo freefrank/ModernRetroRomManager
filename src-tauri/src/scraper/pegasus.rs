@@ -41,6 +41,7 @@ pub struct PegasusGame {
     pub release: Option<String>,
     pub rating: Option<String>,
     pub sort_title: Option<String>,
+    pub chinese_name: Option<String>,
     // Media assets
     pub box_front: Option<String>,
     pub box_back: Option<String>,
@@ -63,14 +64,29 @@ pub struct PegasusGame {
 
 impl From<PegasusGame> for crate::scraper::GameMetadata {
     fn from(game: PegasusGame) -> crate::scraper::GameMetadata {
+        let english_name = game
+            .extra
+            .get("x-mrrm-eng")
+            .or_else(|| game.extra.get("x-english-name"))
+            .cloned();
+        let explicit_chinese_name = game
+            .chinese_name
+            .clone()
+            .or_else(|| game.extra.get("x-mrrm-cn").cloned());
+        let legacy_chinese_name = explicit_chinese_name
+            .is_none()
+            .then(|| game.extra.get("x-mrrm-eng").map(|_| game.name.clone()))
+            .flatten();
+        let name = if explicit_chinese_name.is_none() && legacy_chinese_name.is_some() {
+            english_name.clone().unwrap_or_else(|| game.name.clone())
+        } else {
+            game.name.clone()
+        };
         crate::scraper::GameMetadata {
-            name: game.name,
+            name,
             // 优先读取 x-mrrm-eng (CN ROM Tool 写入的)，其次读取 x-english-name
-            english_name: game
-                .extra
-                .get("x-mrrm-eng")
-                .or_else(|| game.extra.get("x-english-name"))
-                .cloned(),
+            english_name,
+            chinese_name: explicit_chinese_name.or(legacy_chinese_name),
             description: game.description,
             release_date: game.release,
             developer: game.developer,
@@ -274,6 +290,7 @@ fn apply_key_value(
             "release" => g.release = Some(value.to_string()),
             "rating" => g.rating = Some(value.to_string()),
             "sort_title" | "sort_name" | "sort-by" => g.sort_title = Some(value.to_string()),
+            "x-mrrm-cn" => g.chinese_name = Some(value.to_string()),
 
             "assets.boxfront" | "assets.box_front" | "assets.boxart2d" | "boxart" | "cover" => {
                 g.box_front = asset_value();
@@ -396,6 +413,10 @@ pub fn export_to_pegasus(games: &[PegasusGame], options: &PegasusExportOptions) 
             }
         }
 
+        if let Some(ref chinese_name) = game.chinese_name {
+            output.push_str(&format!("x-mrrm-cn: {}\n", chinese_name));
+        }
+
         // File(s)
         if let Some(ref file) = game.file {
             output.push_str(&format!("file: {}\n", file));
@@ -464,8 +485,10 @@ pub fn export_to_pegasus(games: &[PegasusGame], options: &PegasusExportOptions) 
         let mut extra_keys: Vec<_> = game.extra.keys().collect();
         extra_keys.sort();
         for k in extra_keys {
-            if let Some(v) = game.extra.get(k) {
-                output.push_str(&format!("{}: {}\n", k, v));
+            if k.as_str() != "x-mrrm-cn" {
+                if let Some(v) = game.extra.get(k) {
+                    output.push_str(&format!("{}: {}\n", k, v));
+                }
             }
         }
 
@@ -582,6 +605,9 @@ pub fn write_pegasus_file(
                         }
                         if new_game.sort_title.is_some() {
                             existing_game.sort_title = new_game.sort_title.clone();
+                        }
+                        if new_game.chinese_name.is_some() {
+                            existing_game.chinese_name = new_game.chinese_name.clone();
                         }
                         // Merge extra fields
                         for (k, v) in &new_game.extra {

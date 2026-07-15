@@ -81,6 +81,7 @@ impl TheGamesDbClient {
         GameMetadata {
             name: game.game_title.clone(),
             english_name: Some(game.game_title.clone()),
+            chinese_name: None,
             description: game.overview.clone(),
             release_date: game.release_date.clone(),
             developer: None,

@@ -63,6 +63,55 @@ fn normalize_game_paths(game: &mut PegasusGame) {
     normalize_optional_path(&mut game.video);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExportNameMode {
+    Original,
+    Chinese,
+}
+
+impl ExportNameMode {
+    fn parse(value: Option<&str>) -> Result<Self, String> {
+        match value.unwrap_or("original").to_ascii_lowercase().as_str() {
+            "original" => Ok(Self::Original),
+            "chinese" => Ok(Self::Chinese),
+            other => Err(format!("不支持的导出名称模式: {other}")),
+        }
+    }
+}
+
+fn prepare_export_names(games: &mut [PegasusGame], mode: ExportNameMode) {
+    for game in games {
+        let explicit_chinese = game
+            .chinese_name
+            .clone()
+            .or_else(|| game.extra.get("x-mrrm-cn").cloned());
+        let legacy_chinese = explicit_chinese
+            .is_none()
+            .then(|| game.extra.get("x-mrrm-eng").map(|_| game.name.clone()))
+            .flatten();
+        let chinese = explicit_chinese.or(legacy_chinese);
+        let original = if game.chinese_name.is_none()
+            && game.extra.get("x-mrrm-cn").is_none()
+            && chinese.is_some()
+        {
+            game.extra
+                .get("x-mrrm-eng")
+                .cloned()
+                .unwrap_or_else(|| game.name.clone())
+        } else {
+            game.name.clone()
+        };
+        if let Some(chinese) = chinese {
+            game.chinese_name = Some(chinese.clone());
+            if mode == ExportNameMode::Chinese {
+                game.name = chinese;
+                continue;
+            }
+        }
+        game.name = original;
+    }
+}
+
 fn find_temp_metadata(source_directory: &Path, system: &str) -> Result<PathBuf, String> {
     let library = source_directory.parent().unwrap_or(source_directory);
     let temp_dir = get_temp_dir_for_library(library, system);
@@ -114,12 +163,18 @@ fn copy_media(
     Ok(files.len())
 }
 
-fn export_pegasus(target: &Path, system: &str, games: &[PegasusGame]) -> Result<PathBuf, String> {
+fn export_pegasus(
+    target: &Path,
+    system: &str,
+    games: &[PegasusGame],
+    name_mode: ExportNameMode,
+) -> Result<PathBuf, String> {
     let path = target.join("metadata.pegasus.txt");
     let mut normalized_games = games.to_vec();
     for game in &mut normalized_games {
         normalize_game_paths(game);
     }
+    prepare_export_names(&mut normalized_games, name_mode);
     let options = PegasusExportOptions {
         include_collection: true,
         collection_name: Some(system.to_string()),
@@ -134,6 +189,8 @@ fn export_pegasus(target: &Path, system: &str, games: &[PegasusGame]) -> Result<
 struct EsGame {
     path: String,
     name: Option<String>,
+    #[serde(rename = "chinese-name", skip_serializing_if = "Option::is_none")]
+    chinese_name: Option<String>,
     desc: Option<String>,
     image: Option<String>,
     thumbnail: Option<String>,
@@ -174,6 +231,10 @@ fn pegasus_to_es(game: &PegasusGame) -> Option<EsGame> {
             format!("./{file}")
         },
         name: Some(game.name.clone()),
+        chinese_name: game
+            .chinese_name
+            .clone()
+            .or_else(|| game.extra.get("x-mrrm-cn").cloned()),
         desc: game.description.clone().or_else(|| game.summary.clone()),
         image: local_asset(&game.box_front).or_else(|| local_asset(&game.screenshot)),
         thumbnail: local_asset(&game.screenshot),
@@ -195,7 +256,11 @@ fn pegasus_to_es(game: &PegasusGame) -> Option<EsGame> {
     })
 }
 
-fn export_emulationstation(target: &Path, games: &[PegasusGame]) -> Result<PathBuf, String> {
+fn export_emulationstation(
+    target: &Path,
+    games: &[PegasusGame],
+    name_mode: ExportNameMode,
+) -> Result<PathBuf, String> {
     let path = target.join("gamelist.xml");
     let mut list = if path.exists() {
         quick_xml::de::from_str::<EsGameList>(
@@ -206,7 +271,9 @@ fn export_emulationstation(target: &Path, games: &[PegasusGame]) -> Result<PathB
         EsGameList::default()
     };
 
-    for game in games.iter().filter_map(pegasus_to_es) {
+    let mut named_games = games.to_vec();
+    prepare_export_names(&mut named_games, name_mode);
+    for game in named_games.iter().filter_map(pegasus_to_es) {
         if let Some(existing) = list.games.iter_mut().find(|entry| entry.path == game.path) {
             *existing = game;
         } else {
@@ -233,6 +300,7 @@ fn export_system_data(
     directory: String,
     format: Option<String>,
     target_directory: Option<String>,
+    name_mode: Option<String>,
     progress: &dyn Fn(usize, String),
 ) -> Result<ExportOutcome, String> {
     let source_directory = PathBuf::from(&directory);
@@ -251,6 +319,7 @@ fn export_system_data(
     for game in &mut metadata.games {
         normalize_game_paths(game);
     }
+    let name_mode = ExportNameMode::parse(name_mode.as_deref())?;
 
     let format = format
         .unwrap_or_else(|| "auto".to_string())
@@ -267,9 +336,9 @@ fn export_system_data(
     progress(10, "写入元数据...".to_string());
     let output = match resolved_format {
         "emulationstation" | "es" | "gamelist" => {
-            export_emulationstation(&target, &metadata.games)?
+            export_emulationstation(&target, &metadata.games, name_mode)?
         }
-        "pegasus" => export_pegasus(&target, &system, &metadata.games)?,
+        "pegasus" => export_pegasus(&target, &system, &metadata.games, name_mode)?,
         other => return Err(format!("不支持的导出格式: {other}")),
     };
 
@@ -293,12 +362,14 @@ pub async fn export_scraped_data(
     directory: String,
     format: Option<String>,
     target_directory: Option<String>,
+    name_mode: Option<String>,
 ) -> Result<(), String> {
     let outcome = export_system_data(
         system,
         directory,
         format,
         target_directory,
+        name_mode,
         &|current, message| {
             emit_progress(&app, current, message, false);
         },
@@ -344,6 +415,7 @@ pub async fn export_library_scraped_data(
     library_id: String,
     format: Option<String>,
     target_directory: Option<String>,
+    name_mode: Option<String>,
 ) -> Result<(), String> {
     let library = get_settings()
         .directories
@@ -382,6 +454,7 @@ pub async fn export_library_scraped_data(
             system.path,
             format.clone(),
             Some(display_path(&target)),
+            name_mode.clone(),
             &|current, message| {
                 emit_progress(
                     &app,
@@ -452,7 +525,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("mrrm-export-es-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
-        let path = export_emulationstation(&root, &[game()]).unwrap();
+        let path = export_emulationstation(&root, &[game()], ExportNameMode::Original).unwrap();
         let xml = fs::read_to_string(path).unwrap();
         assert!(xml.contains("<path>./game.gba</path>"));
         assert!(xml.contains("<image>./media/game/boxfront.png</image>"));
@@ -466,7 +539,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("mrrm-export-pg-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
-        let path = export_pegasus(&root, "GBA", &[game()]).unwrap();
+        let path = export_pegasus(&root, "GBA", &[game()], ExportNameMode::Original).unwrap();
         let content = fs::read_to_string(path).unwrap();
         assert!(content.contains("assets.boxFront: media/game/boxfront.png"));
         fs::remove_dir_all(root).unwrap();
@@ -481,15 +554,38 @@ mod tests {
         mixed.file = Some("folder\\game.gba".into());
         mixed.box_front = Some("media\\game\\boxfront.png".into());
 
-        let pegasus = export_pegasus(&root, "GBA", &[mixed.clone()]).unwrap();
+        let pegasus =
+            export_pegasus(&root, "GBA", &[mixed.clone()], ExportNameMode::Original).unwrap();
         let pegasus_content = fs::read_to_string(pegasus).unwrap();
         assert!(pegasus_content.contains("file: folder/game.gba"));
         assert!(pegasus_content.contains("assets.boxFront: media/game/boxfront.png"));
 
-        let es = export_emulationstation(&root, &[mixed]).unwrap();
+        let es = export_emulationstation(&root, &[mixed], ExportNameMode::Original).unwrap();
         let es_content = fs::read_to_string(es).unwrap();
         assert!(es_content.contains("<path>./folder/game.gba</path>"));
         assert!(es_content.contains("<image>./media/game/boxfront.png</image>"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn export_name_mode_selects_original_or_chinese_name() {
+        let root = std::env::temp_dir().join(format!("mrrm-export-names-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let mut named = game();
+        named.name = "Original Game".into();
+        named.extra.insert("x-mrrm-cn".into(), "中文游戏".into());
+
+        let original =
+            export_pegasus(&root, "GBA", &[named.clone()], ExportNameMode::Original).unwrap();
+        let content = fs::read_to_string(original).unwrap();
+        assert!(content.contains("game: Original Game"));
+        assert!(content.contains("x-mrrm-cn: 中文游戏"));
+
+        let chinese = export_emulationstation(&root, &[named], ExportNameMode::Chinese).unwrap();
+        let content = fs::read_to_string(chinese).unwrap();
+        assert!(content.contains("<name>中文游戏</name>"));
+        assert!(content.contains("<chinese-name>中文游戏</chinese-name>"));
         fs::remove_dir_all(root).unwrap();
     }
 

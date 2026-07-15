@@ -41,6 +41,7 @@ pub struct RomInfo {
     pub titlescreen: Option<String>,
     pub video: Option<String>,
     pub english_name: Option<String>,
+    pub chinese_name: Option<String>,
     /// ROM 文件大小(bytes,文件夹型 ROM 为 None,读取失败为 None)
     pub file_size: Option<u64>,
     /// ROM 文件修改时间(unix 秒,读取失败为 None)
@@ -79,9 +80,28 @@ pub struct SystemRoms {
 
 impl From<PegasusGame> for RomInfo {
     fn from(game: PegasusGame) -> Self {
+        let english_name = game
+            .extra
+            .get("x-mrrm-eng")
+            .or_else(|| game.extra.get("x-english-name"))
+            .cloned();
+        let explicit_chinese_name = game
+            .chinese_name
+            .clone()
+            .or_else(|| game.extra.get("x-mrrm-cn").cloned());
+        // 旧 CN ROM Tool 把中文名写进 game，同时把英文名写入 x-mrrm-eng。
+        let legacy_chinese_name = explicit_chinese_name
+            .is_none()
+            .then(|| game.extra.get("x-mrrm-eng").map(|_| game.name.clone()))
+            .flatten();
+        let name = if explicit_chinese_name.is_none() && legacy_chinese_name.is_some() {
+            english_name.clone().unwrap_or_else(|| game.name.clone())
+        } else {
+            game.name.clone()
+        };
         Self {
             file: game.file.unwrap_or_default(),
-            name: game.name,
+            name,
             description: game.description,
             summary: game.summary,
             developer: game.developer,
@@ -107,11 +127,8 @@ impl From<PegasusGame> for RomInfo {
             screenshot: game.screenshot,
             titlescreen: game.titlescreen,
             video: game.video,
-            english_name: game
-                .extra
-                .get("x-mrrm-eng")
-                .or_else(|| game.extra.get("x-english-name"))
-                .cloned(),
+            english_name,
+            chinese_name: explicit_chinese_name.or(legacy_chinese_name),
             file_size: None,
             modified_at: None,
             temp_data: None,
@@ -1149,6 +1166,8 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
         rating: Option<f32>,
         #[serde(rename = "eng", alias = "english-name")]
         english_name: Option<String>,
+        #[serde(rename = "chinese-name", alias = "x-mrrm-cn")]
+        chinese_name: Option<String>,
     }
 
     let gamelist_path = dir_path.join("gamelist.xml");
@@ -1212,6 +1231,7 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 logo: marquee.clone(),
                 marquee,
                 english_name: g.english_name,
+                chinese_name: g.chinese_name,
                 ..Default::default()
             };
             if !rom.file.is_empty() {
@@ -1623,6 +1643,22 @@ mod tests {
         assert_eq!(roms[0].file, "测试游戏");
         assert_eq!(roms[0].name, "测试游戏");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn legacy_cn_tool_metadata_migrates_to_chinese_name() {
+        let mut game = PegasusGame {
+            name: "实况足球".into(),
+            file: Some("game.gba".into()),
+            ..Default::default()
+        };
+        game.extra
+            .insert("x-mrrm-eng".into(), "Winning Eleven".into());
+
+        let rom: RomInfo = game.into();
+        assert_eq!(rom.name, "Winning Eleven");
+        assert_eq!(rom.english_name.as_deref(), Some("Winning Eleven"));
+        assert_eq!(rom.chinese_name.as_deref(), Some("实况足球"));
     }
 
     #[test]

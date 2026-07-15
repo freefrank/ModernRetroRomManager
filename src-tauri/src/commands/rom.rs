@@ -197,7 +197,12 @@ pub async fn get_roms(
                 system_roms
                     .roms
                     .into_iter()
-                    .filter(|r| r.name.to_lowercase().contains(&lower_query))
+                    .filter(|r| {
+                        r.name.to_lowercase().contains(&lower_query)
+                            || r.chinese_name
+                                .as_ref()
+                                .is_some_and(|name| name.to_lowercase().contains(&lower_query))
+                    })
                     .collect()
             } else {
                 system_roms.roms

@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import ScrapeDialog from "./ScrapeDialog";
 import { Button, IconButton, Input, EmptyState, Spinner, Tabs, useToast } from "@/components/ui";
 import { clsx } from "clsx";
+import { getRomDisplayName } from "@/lib/romName";
 
 interface RomDetailProps {
   rom: Rom | null;
@@ -30,7 +31,7 @@ function useMediaUrl(path: string | undefined): string | null {
 }
 
 export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const toast = useToast();
   const { exportData, updateTempMetadata, deleteTempMedia, isExporting, exportProgress } = useRomStore();
   const rom = useRomStore(state => {
@@ -83,6 +84,8 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
   const displayData = isPreview && rom?.temp_data ? {
     ...rom,
     name: rom.temp_data.name || rom.name,
+    chinese_name: rom.temp_data.chinese_name || rom.chinese_name,
+    english_name: rom.temp_data.english_name || rom.english_name,
     description: rom.temp_data.description || rom.description,
     developer: rom.temp_data.developer || rom.developer,
     publisher: rom.temp_data.publisher || rom.publisher,
@@ -97,6 +100,9 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
   } : rom;
 
   const currentData = isEditing ? { ...displayData, ...editForm } : displayData;
+  const displayName = currentData
+    ? getRomDisplayName(currentData as Rom, i18n.resolvedLanguage)
+    : "";
 
   const heroSource = currentData?.background || currentData?.screenshot || currentData?.box_front;
   const heroUrl = useMediaUrl(heroSource);
@@ -123,6 +129,8 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
     try {
       await updateTempMetadata(rom.system, rom.directory, rom.file, {
         name: editForm.name || "",
+        english_name: editForm.english_name,
+        chinese_name: editForm.chinese_name,
         description: editForm.description,
         developer: editForm.developer,
         publisher: editForm.publisher,
@@ -263,7 +271,7 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
 
           <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent">
             {logoUrl ? (
-              <img src={logoUrl} alt={currentData?.name} className="h-12 mb-2 object-contain" />
+              <img src={logoUrl} alt={displayName} className="h-12 mb-2 object-contain" />
             ) : (
               <div className="mb-2">
                 {isEditing ? (
@@ -274,7 +282,7 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
                   />
                 ) : (
                   <h2 className="text-3xl font-bold text-text-primary leading-tight">
-                    {currentData?.name}
+                    {displayName}
                   </h2>
                 )}
               </div>
@@ -427,6 +435,8 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
               <div className="grid grid-cols-2 gap-6">
                 {isEditing ? (
                   <>
+                    <EditItem label={t("romDetail.fields.chineseName")} value={editForm.chinese_name} onChange={v => setEditForm({...editForm, chinese_name: v})} />
+                    <EditItem label={t("romDetail.fields.englishName")} value={editForm.english_name} onChange={v => setEditForm({...editForm, english_name: v})} />
                     <EditItem label={t("romDetail.fields.releaseDate")} value={editForm.release} onChange={v => setEditForm({...editForm, release: v})} />
                     <EditItem label={t("romDetail.fields.developer")} value={editForm.developer} onChange={v => setEditForm({...editForm, developer: v})} />
                     <EditItem label={t("romDetail.fields.publisher")} value={editForm.publisher} onChange={v => setEditForm({...editForm, publisher: v})} />
@@ -434,6 +444,8 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
                   </>
                 ) : (
                   <>
+                    <InfoItem icon={<Languages />} label={t("romDetail.fields.chineseName")} value={currentData?.chinese_name} />
+                    <InfoItem icon={<Languages />} label={t("romDetail.fields.englishName")} value={currentData?.english_name} />
                     <InfoItem icon={<Calendar />} label={t("romDetail.fields.releaseDate")} value={currentData?.release} />
                     <InfoItem icon={<Building2 />} label={t("romDetail.fields.developer")} value={currentData?.developer} />
                     <InfoItem icon={<Globe />} label={t("romDetail.fields.publisher")} value={currentData?.publisher} />

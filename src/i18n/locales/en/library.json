@@ -66,6 +66,8 @@
       "noteDesc": "These data are stored in a temporary directory. Check description and covers, then click 'Export to Library' to apply them permanently."
     },
     "fields": {
+      "chineseName": "Chinese Name",
+      "englishName": "English Name",
       "releaseDate": "Release Date",
       "developer": "Developer",
       "publisher": "Publisher",
