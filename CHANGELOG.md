@@ -6,6 +6,30 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-07-15
+
+### English
+
+#### Added
+
+- Added storage statistics for the configuration directory, scraper cache, pending export data, and incomplete downloads.
+- Added settings actions to refresh storage usage, open the cache folder, remove interrupted `.part` downloads, and clear provider search and candidate-asset caches while preserving pending metadata and artwork.
+
+#### Fixed
+
+- Declared the `Microsoft.VCLibs.140.00.UWPDesktop` framework dependency in the Store MSIX so Microsoft Store installs the Visual C++ runtime required for `MSVCP140.dll`.
+
+### 简体中文
+
+#### 新增
+
+- 增加配置目录、抓取缓存、待导出数据和中断下载的存储占用统计。
+- 设置页增加刷新统计、打开缓存目录、清理中断 `.part` 下载和清空 Provider 搜索及候选资源缓存功能，并保留待导出的 Metadata 与美术资源。
+
+#### 修复
+
+- Store MSIX 增加 `Microsoft.VCLibs.140.00.UWPDesktop` framework dependency 声明，使 Microsoft Store 自动安装 `MSVCP140.dll` 所需的 Visual C++ 运行库。
+
 ## [0.8.2] - 2026-07-15
 
 ### English
