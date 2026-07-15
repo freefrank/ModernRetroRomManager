@@ -6,6 +6,38 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-07-15
+
+### English
+
+#### Added
+
+- Added a local library-artwork cache so covers and other images remain responsive when ROM libraries are stored on slow SD cards or network shares.
+
+#### Changed
+
+- Moved path validation, directory browsing, metadata detection, ROM scanning, storage statistics, and library-artwork reads off the asynchronous runtime's main worker threads.
+- Increased confirmed console-platform matching weight from 20% to 30% and the penalty for conflicting platforms from 25% to 40%.
+
+#### Fixed
+
+- Prevented media-only providers such as SteamGridDB from overwriting game titles and metadata when applying selected artwork.
+
+### 简体中文
+
+#### 新增
+
+- 增加本地游戏库美术资源缓存，使 ROM 库位于慢速 SD 卡或网络共享时，封面及其他图片仍能流畅显示。
+
+#### 变更
+
+- 将路径校验、目录浏览、Metadata 检测、ROM 扫描、存储统计和游戏库美术资源读取移出异步运行时的主工作线程。
+- 将已确认主机平台的匹配权重从 20% 提高到 30%，跨平台冲突惩罚从 25% 提高到 40%。
+
+#### 修复
+
+- 修复 SteamGridDB 等纯媒体 Provider 在应用所选美术资源时错误覆盖游戏标题和 Metadata 的问题。
+
 ## [0.8.3] - 2026-07-15
 
 ### English
