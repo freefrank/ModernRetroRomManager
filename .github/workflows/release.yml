@@ -14,7 +14,7 @@ jobs:
     name: Verify release metadata
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
@@ -38,8 +38,8 @@ jobs:
     needs: verify
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 10
       - uses: actions/setup-node@v6
@@ -81,7 +81,7 @@ jobs:
             -IdentityName $identityName `
             -Publisher $publisher `
             -PublisherDisplayName $publisherDisplayName
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-x64
           path: artifacts/*_windows_x64_*
@@ -92,12 +92,12 @@ jobs:
     needs: verify
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Tauri Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10
       - uses: actions/setup-node@v6
@@ -121,7 +121,7 @@ jobs:
           test -n "$source_file"
           mkdir -p artifacts
           cp "$source_file" "artifacts/ModernRetroRomManager_${version}_linux_x86_64.AppImage"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-x86_64-appimage
           path: artifacts/*_linux_x86_64.AppImage
@@ -135,12 +135,12 @@ jobs:
       - linux-appimage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
           check-latest: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
@@ -151,7 +151,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           node scripts/release-tools.mjs notes "$version" > release-notes.md
           test -s release-notes.md
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           body_path: release-notes.md
           files: release-assets/*
