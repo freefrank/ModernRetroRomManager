@@ -23,7 +23,7 @@
 
 推送 `v*` tag 后，GitHub Actions 会并行构建单文件 Windows x64 portable EXE、Windows x64 installer、Windows x64 Store MSIX 和 Linux x86_64 AppImage。构建成功后，CI 仅提取 `CHANGELOG.md` 中当前版本的中英文说明，直接正式发布 GitHub Release 并上传四个产物，不创建 Draft。
 
-MSIX manifest 固定使用 Partner Center 为本应用分配的正式身份：Identity Name `dotSlashZ.MRRM`、Publisher `CN=175EBAB6-5A58-4E85-84CA-602CD5A1C63D`、Publisher Display Name `dotSlashZ` 和 Store Display Name `MRRM`。如在 Partner Center 创建新的独立产品，需要同步修改 `scripts/build-msix.ps1`。
+MSIX manifest 固定使用 Partner Center 为本应用分配的正式身份：Identity Name `dotSlashZ.MRRM`、Publisher `CN=175EBAB6-5A58-4E85-84CA-602CD5A1C63D`、Publisher Display Name `dotSlashZ` 和 Store Display Name `MRRM`。清单同时声明 `Microsoft.VCLibs.140.00.UWPDesktop` framework dependency，由 Microsoft Store 自动安装应用所需的 Visual C++ 运行库（包括 `MSVCP140.dll`）。如在 Partner Center 创建新的独立产品，需要同步修改 `scripts/build-msix.ps1`。
 
 Windows portable 会将程序所需的内置匹配数据嵌入 EXE。运行时优先使用程序旁已经存在的 `config` 目录；若不存在，则回退到当前用户的 AppData 配置目录。
 
