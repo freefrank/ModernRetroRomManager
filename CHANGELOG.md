@@ -6,6 +6,20 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-07-15
+
+### English
+
+#### Fixed
+
+- Synchronized the MSIX manifest language declarations with all eight interface locales, allowing Microsoft Store to detect English, Simplified Chinese, Traditional Chinese, French, German, Italian, Spanish, and Russian support.
+
+### 简体中文
+
+#### 修复
+
+- 将 MSIX manifest 的语言声明与全部八种界面语言同步，使 Microsoft Store 能正确识别英语、简体中文、繁体中文、法语、德语、意大利语、西班牙语和俄语支持。
+
 ## [0.8.1] - 2026-07-14
 
 ### English
