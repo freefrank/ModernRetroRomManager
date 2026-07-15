@@ -1,6 +1,6 @@
 # ModernRetroRomManager
 
-简体中文 | [English](./README.md)
+简体中文 | [English](./README.md) | [隐私政策 / Privacy Policy](./PRIVACY.md)
 
 ModernRetroRomManager（MRRM）是一款现代化、跨平台、开源的 ROM 游戏库管理器。项目采用 React 界面和原生 Rust/Tauri 后端，目标是提供比 ARRM、Skraper 等传统工具更轻量、易用的管理体验。
 

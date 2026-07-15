@@ -1,6 +1,6 @@
 # ModernRetroRomManager
 
-[简体中文](./README.zh-CN.md) | English
+[简体中文](./README.zh-CN.md) | English | [Privacy Policy / 隐私政策](./PRIVACY.md)
 
 ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM library manager. It is designed as a lightweight alternative to tools such as ARRM and Skraper, with a React interface and a native Rust/Tauri backend.
 
