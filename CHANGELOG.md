@@ -22,6 +22,7 @@ All notable changes to this project are documented here. This file follows [Keep
 
 - Added regular JSON and SSE response handling for OpenAI-compatible metadata translation endpoints, including providers that default to streaming responses.
 - Release CI now explicitly publishes the generated GitHub Release and marks it as latest instead of relying only on the release action's draft setting.
+- Windows NSIS upgrades and same-version reinstalls now replace the existing application in place without asking users whether to uninstall it first.
 
 ### 简体中文
 
@@ -37,6 +38,7 @@ All notable changes to this project are documented here. This file follows [Keep
 
 - AI Metadata 翻译兼容 OpenAI Compatible 接口的普通 JSON 和 SSE 响应，包括默认返回流式内容的 Provider。
 - Release CI 在生成 GitHub Release 后显式取消草稿并设为最新版本，不再只依赖 Release Action 的 draft 参数。
+- Windows NSIS 升级及同版本重装改为直接覆盖现有程序，不再询问用户是否先卸载。
 
 ## [0.8.5] - 2026-07-15
 
