@@ -11,6 +11,7 @@ import {
   ChevronRight,
   SearchX,
   Languages,
+  Save,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
@@ -71,6 +72,8 @@ export default function Library() {
     systemRoms,
     setSelectedSystem,
     scanDirectories,
+    exportData,
+    isExporting,
   } = useRomStore();
   const activeLibrary = scanDirectories.find(item => item.isActive);
   const { viewMode, setViewMode, searchQuery, setSearchQuery } = useAppStore();
@@ -110,6 +113,17 @@ export default function Library() {
   }, [romsOfSystem, debouncedSearch]);
 
   const isPs3 = systemName.toLowerCase().includes("ps3");
+  const hasPendingData = romsOfSystem.some((rom) => rom.has_temp_metadata);
+
+  const handleSaveToRomDirectory = async () => {
+    if (!systemData || !hasPendingData) return;
+    try {
+      await exportData(systemData.system, systemData.path, "auto", systemData.path, "original");
+      toast.success(t("library.actions.saveSuccess"));
+    } catch (error) {
+      toast.error(t("library.actions.saveFailed", { error: String(error) }));
+    }
+  };
 
   const handleBatchGenerateBoxart = async () => {
     if (!isPs3 || romsOfSystem.length === 0) return;
@@ -401,7 +415,7 @@ export default function Library() {
             onClick={() => selectAllRoms(filteredRoms.map(rom => rom.file))}
             disabled={filteredRoms.length === 0}
           >
-            {t("library.batch.selectAll")}
+            {t("library.actions.selectAll")}
           </Button>
           <Button
             variant="ghost"
@@ -409,7 +423,7 @@ export default function Library() {
             disabled={isTranslating || romsOfSystem.length === 0}
           >
             <Languages className="w-5 h-5" />
-            <span className="hidden md:inline">{t("library.translation.platform")}</span>
+            <span>{t("library.actions.translate")}</span>
           </Button>
           <Button
             variant="ghost"
@@ -417,7 +431,17 @@ export default function Library() {
             disabled={isBatchScraping || romsOfSystem.length === 0}
           >
             <Database className="w-5 h-5" />
-            <span className="hidden md:inline">{t("library.batch.scrapePlatform")}</span>
+            <span>{t("library.actions.scrape")}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => void handleSaveToRomDirectory()}
+            disabled={isExporting || !hasPendingData}
+            loading={isExporting}
+            title={t("library.actions.saveHint")}
+          >
+            {!isExporting && <Save className="w-5 h-5" />}
+            <span>{t("library.actions.save")}</span>
           </Button>
 
           {/* PS3 Boxart Generation Button */}

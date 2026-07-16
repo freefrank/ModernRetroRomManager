@@ -52,6 +52,7 @@ pub struct DirectoryInfo {
     pub is_root_directory: bool,
     pub metadata_format: String,
     pub system_id: Option<String>,
+    pub indexed_folders: Option<Vec<String>>,
     pub is_active: bool,
 }
 
@@ -65,6 +66,7 @@ impl DirectoryInfo {
             is_root_directory: c.is_root_directory,
             metadata_format: c.metadata_format,
             system_id: c.system_id,
+            indexed_folders: c.indexed_folders,
             is_active,
         }
     }
@@ -105,6 +107,7 @@ pub fn add_directory(
                 metadata_format: metadataFormat.clone(),
                 is_root_directory: isRoot,
                 system_id: systemId.clone(),
+                indexed_folders: None,
             });
             id
         });
@@ -206,6 +209,91 @@ pub fn get_directories() -> Vec<DirectoryInfo> {
         .into_iter()
         .map(|item| DirectoryInfo::from_config(item, active_id.as_deref()))
         .collect()
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryFolderInfo {
+    pub name: String,
+    pub path: String,
+}
+
+fn list_library_folders_blocking(library_id: String) -> Result<Vec<LibraryFolderInfo>, String> {
+    let library = get_settings()
+        .directories
+        .into_iter()
+        .find(|item| item.id == library_id)
+        .ok_or_else(|| "Library 不存在".to_string())?;
+    let root = Path::new(&library.path);
+    if !root.is_dir() {
+        return Err("Library 目录不存在或无法访问".to_string());
+    }
+    if !library.is_root_directory {
+        return Ok(vec![LibraryFolderInfo {
+            name: root
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or(&library.name)
+                .to_string(),
+            path: root.to_string_lossy().into_owned(),
+        }]);
+    }
+    let mut folders: Vec<_> = std::fs::read_dir(root)
+        .map_err(|error| error.to_string())?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .map(|entry| LibraryFolderInfo {
+            name: entry.file_name().to_string_lossy().into_owned(),
+            path: entry.path().to_string_lossy().into_owned(),
+        })
+        .collect();
+    folders.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
+    Ok(folders)
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn get_library_folders(libraryId: String) -> Result<Vec<LibraryFolderInfo>, String> {
+    tokio::task::spawn_blocking(move || list_library_folders_blocking(libraryId))
+        .await
+        .map_err(|error| format!("读取 Library 子目录失败: {error}"))?
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub fn set_library_indexed_folders(
+    libraryId: String,
+    indexedFolders: Option<Vec<String>>,
+) -> Result<DirectoryInfo, String> {
+    let normalized = indexedFolders.map(|folders| {
+        let mut folders: Vec<_> = folders
+            .into_iter()
+            .map(|folder| folder.trim().to_string())
+            .filter(|folder| !folder.is_empty())
+            .collect();
+        folders.sort_by_key(|folder| folder.to_lowercase());
+        folders.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
+        folders
+    });
+    let updated = update_setting(|settings| {
+        if let Some(library) = settings
+            .directories
+            .iter_mut()
+            .find(|item| item.id == libraryId)
+        {
+            library.indexed_folders = normalized.clone();
+        }
+    })
+    .map_err(|error| error.to_string())?;
+    let active_id = updated.active_library_id.clone();
+    let result = updated
+        .directories
+        .into_iter()
+        .find(|item| item.id == libraryId)
+        .map(|item| DirectoryInfo::from_config(item, active_id.as_deref()))
+        .ok_or_else(|| "Library 不存在".to_string())?;
+    invalidate_library_index(&libraryId);
+    Ok(result)
 }
 
 fn detect_metadata_in_dir(dir_path: &Path) -> Vec<MetadataFileInfo> {

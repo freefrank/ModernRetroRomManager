@@ -2,8 +2,8 @@
   "import": {
     "title": "Import/Export",
     "export": {
-      "title": "Export scraped data",
-      "description": "Select a library and export its entire scraped collection or one platform with related assets.",
+      "title": "Export ROM library",
+      "description": "Choose a library and destination to copy ROMs and existing files, then write preview metadata and assets.",
       "library": "Library",
       "scope": "Export scope",
       "noLibraries": "No library added",
@@ -16,9 +16,9 @@
       "nameChinese": "Chinese name when available",
       "nameModeHint": "Only the exported display title changes; the separate Chinese-name entry is preserved.",
       "target": "Export directory",
-      "targetHint": "Defaults to the selected library or platform. Whole-library exports preserve platform subdirectories in another destination.",
-      "contents": "Includes all temporary metadata and related files under the platform media directory.",
-      "libraryContents": "Includes metadata and media for every scraped platform in this library. Platforms without scraped data are skipped.",
+      "targetHint": "Choose a destination outside the source library. Whole-library exports preserve platform subdirectories.",
+      "contents": "Copies the platform ROMs and existing files, then writes preview metadata and assets.",
+      "libraryContents": "Copies every indexed platform, ROM, and existing asset. Platforms with preview data also receive updated metadata and assets.",
       "action": "Export metadata and assets",
       "libraryAction": "Export entire library",
       "libraryLoadFailed": "Failed to load library: {{error}}",

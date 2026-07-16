@@ -58,7 +58,10 @@
       "renameFailed": "Impossibile rinominare la libreria: {{error}}",
       "switchFailed": "Impossibile cambiare libreria: {{error}}",
       "removeFailed": "Impossibile rimuovere la libreria: {{error}}",
-      "scanThisLibrary": "Attiva ed esegui la scansione completa di questa libreria"
+      "scanThisLibrary": "Attiva ed esegui la scansione completa di questa libreria",
+      "config": "Configura cartelle indicizzate", "configTitle": "Configura {{name}}", "configDescription": "Scegli le cartelle figlie immediate da indicizzare.",
+      "selectAll": "Tutte", "selectNone": "Nessuna", "noFolders": "Nessuna cartella disponibile",
+      "folderLoadFailed": "Impossibile leggere le cartelle: {{error}}", "configSaved": "Configurazione indice salvata", "configSaveFailed": "Impossibile salvare: {{error}}"
     },
     "storage": {
       "title": "Impostazioni di archiviazione",

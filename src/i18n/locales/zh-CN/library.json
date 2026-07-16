@@ -27,6 +27,7 @@
     "cardSize": "卡片尺寸",
     "noResults": "没有匹配的游戏",
     "noResultsHint": "换个关键词试试",
+    "actions": { "selectAll": "全选", "translate": "翻译", "scrape": "抓取", "save": "保存", "saveHint": "把预览 Metadata 和美术资源保存到 ROM 目录", "saveSuccess": "Metadata 和资源已保存到 ROM 目录", "saveFailed": "保存失败：{{error}}" },
     "batch": {
       "selectedCount": "已选择 {{count}} 项",
       "selectAll": "全选当前结果",

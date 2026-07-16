@@ -27,6 +27,7 @@
     "cardSize": "卡片尺寸",
     "noResults": "沒有符合的遊戲",
     "noResultsHint": "換個關鍵字試試",
+    "actions": { "selectAll": "全選", "translate": "翻譯", "scrape": "抓取", "save": "儲存", "saveHint": "將預覽 Metadata 和美術資源儲存到 ROM 目錄", "saveSuccess": "Metadata 和資源已儲存", "saveFailed": "儲存失敗：{{error}}" },
     "batch": {
       "selectedCount": "已選擇 {{count}} 項",
       "selectAll": "全選目前結果",

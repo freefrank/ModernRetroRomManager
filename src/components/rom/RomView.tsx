@@ -116,7 +116,7 @@ const VIEW_CONFIG = {
       const totalGap = gap * (columns - 1);
       const cardWidth = (containerWidth - totalGap) / columns;
       const imageHeight = cardWidth * (4 / 3);
-      const textAreaHeight = 72; // p-4 padding + title + rating
+      const textAreaHeight = 80; // padding + title + optional rating + border safety
       return Math.ceil(imageHeight + textAreaHeight);
     },
     gap: 24,
@@ -134,28 +134,6 @@ const VIEW_CONFIG = {
 function applyCardScale(base: number, viewMode: ViewMode, cardScale: number) {
   if (viewMode === "list") return base;
   return Math.max(1, Math.round(base / cardScale));
-}
-
-// Hook for responsive column count based on view mode
-function useColumnCount(viewMode: ViewMode, cardScale: number) {
-  const [columns, setColumns] = useState(() =>
-    applyCardScale(
-      VIEW_CONFIG[viewMode].getColumns(typeof window !== "undefined" ? window.innerWidth : 1280),
-      viewMode,
-      cardScale
-    )
-  );
-
-  useEffect(() => {
-    const updateColumns = () => {
-      setColumns(applyCardScale(VIEW_CONFIG[viewMode].getColumns(window.innerWidth), viewMode, cardScale));
-    };
-    updateColumns();
-    window.addEventListener("resize", updateColumns);
-    return () => window.removeEventListener("resize", updateColumns);
-  }, [viewMode, cardScale]);
-
-  return columns;
 }
 
 // ============ Card Components ============
@@ -413,26 +391,30 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language }: Card
 export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
   const { t, i18n } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
-  const columns = useColumnCount(viewMode, cardScale);
   const config = VIEW_CONFIG[viewMode];
   const [containerWidth, setContainerWidth] = useState(1200);
+  const contentPadding = viewMode === "list" ? 0 : 16;
+  const contentWidth = Math.max(1, containerWidth - contentPadding * 2);
+  const columns = useMemo(
+    () => applyCardScale(config.getColumns(contentWidth), viewMode, cardScale),
+    [cardScale, config, contentWidth, viewMode],
+  );
 
   // Track container width for dynamic row height calculation
   useEffect(() => {
-    const updateWidth = () => {
-      if (parentRef.current) {
-        setContainerWidth(parentRef.current.clientWidth);
-      }
-    };
+    const element = parentRef.current;
+    if (!element) return;
+    const updateWidth = () => setContainerWidth(element.clientWidth);
     updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
 
   // Calculate dynamic row height based on container width
   const rowHeight = useMemo(() => {
-    return config.getRowHeight(containerWidth, columns, config.gap);
-  }, [config, containerWidth, columns]);
+    return config.getRowHeight(contentWidth, columns, config.gap);
+  }, [config, contentWidth, columns]);
 
   // Group roms into rows (for grid/cover modes)
   const rows = useMemo(() => {
@@ -486,7 +468,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
       <div
         className="transition-opacity duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
         style={{
-          height: `${virtualizer.getTotalSize()}px`,
+          height: `${virtualizer.getTotalSize() + contentPadding * 2}px`,
           width: "100%",
           position: "relative",
         }}
@@ -501,10 +483,10 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
               style={{
                 position: "absolute",
                 top: 0,
-                left: 0,
-                width: "100%",
+                left: `${contentPadding}px`,
+                width: `calc(100% - ${contentPadding * 2}px)`,
                 height: `${virtualRow.size}px`,
-                transform: `translateY(${virtualRow.start}px)`,
+                transform: `translateY(${virtualRow.start + contentPadding}px)`,
               }}
             >
               {viewMode === "list" ? (
@@ -519,7 +501,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
               ) : (
                 // Grid/Cover view - multiple items per row
                 <div
-                  className="grid transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
+                  className="grid min-w-0 transition-all duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
                   style={{
                     gridTemplateColumns: `repeat(${columns}, 1fr)`,
                     gap: `${config.gap}px`,

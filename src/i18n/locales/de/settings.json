@@ -58,7 +58,10 @@
       "renameFailed": "Bibliothek konnte nicht umbenannt werden: {{error}}",
       "switchFailed": "Fehler beim Wechseln der Bibliothek: {{error}}",
       "removeFailed": "Fehler beim Entfernen der Bibliothek: {{error}}",
-      "scanThisLibrary": "Aktivieren Sie diese Bibliothek und scannen Sie sie vollständig"
+      "scanThisLibrary": "Aktivieren Sie diese Bibliothek und scannen Sie sie vollständig",
+      "config": "Indexordner konfigurieren", "configTitle": "{{name}} konfigurieren", "configDescription": "Wählen Sie die direkt untergeordneten Ordner für den Index aus.",
+      "selectAll": "Alle", "selectNone": "Keine", "noFolders": "Keine Ordner verfügbar",
+      "folderLoadFailed": "Ordner konnten nicht gelesen werden: {{error}}", "configSaved": "Indexkonfiguration gespeichert", "configSaveFailed": "Speichern fehlgeschlagen: {{error}}"
     },
     "storage": {
       "title": "Speichereinstellungen",

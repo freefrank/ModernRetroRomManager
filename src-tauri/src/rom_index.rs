@@ -11,7 +11,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-const INDEX_VERSION: u32 = 3;
+const INDEX_VERSION: u32 = 4;
 const FINGERPRINT_VERSION: u8 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,6 +70,7 @@ fn directories_signature_with_path(
                 item.is_root_directory,
                 item.metadata_format.clone(),
                 item.system_id.clone(),
+                item.indexed_folders.clone(),
             )
         })
         .collect();
@@ -171,6 +172,13 @@ fn root_has_direct_games(path: &Path) -> bool {
 fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
     let mut candidates = Vec::new();
     for directory in directories {
+        if directory
+            .indexed_folders
+            .as_ref()
+            .is_some_and(Vec::is_empty)
+        {
+            continue;
+        }
         let path = Path::new(&directory.path);
         if !path.is_dir() {
             continue;
@@ -184,7 +192,7 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
         }
 
         // 根目录直属游戏（文件或 PS3 文件夹）较少见；存在时保守回退为该根目录全量扫描。
-        if root_has_direct_games(path) {
+        if directory.indexed_folders.is_none() && root_has_direct_games(path) {
             candidates.push(ScanCandidate {
                 config: directory.clone(),
                 fingerprint_path: path.to_path_buf(),
@@ -207,6 +215,13 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
                 .and_then(|value| value.to_str())
                 .unwrap_or("Unknown")
                 .to_string();
+            if directory.indexed_folders.as_ref().is_some_and(|folders| {
+                !folders
+                    .iter()
+                    .any(|folder| folder.eq_ignore_ascii_case(&system))
+            }) {
+                continue;
+            }
             candidates.push(ScanCandidate {
                 config: DirectoryConfig {
                     id: directory.id.clone(),
@@ -215,6 +230,7 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
                     is_root_directory: false,
                     metadata_format: detect_metadata_format(&system_path),
                     system_id: Some(system),
+                    indexed_folders: None,
                 },
                 fingerprint_path: system_path,
             });

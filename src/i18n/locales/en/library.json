@@ -27,6 +27,7 @@
     "cardSize": "Card size",
     "noResults": "No matching games",
     "noResultsHint": "Try a different keyword",
+    "actions": { "selectAll": "Select All", "translate": "Translate", "scrape": "Scrape", "save": "Save", "saveHint": "Save preview metadata and artwork into the ROM directory", "saveSuccess": "Metadata and assets saved to the ROM directory", "saveFailed": "Save failed: {{error}}" },
     "batch": {
       "selectedCount": "{{count}} selected",
       "selectAll": "Select Current Results",

@@ -1,4 +1,4 @@
-import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo, AiTranslationConfig, AiTranslationConfigInput, TranslateMetadataRequest, BatchTranslationResult } from "@/types";
+import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, LibraryFolderInfo, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo, AiTranslationConfig, AiTranslationConfigInput, TranslateMetadataRequest, BatchTranslationResult } from "@/types";
 
 declare global {
   interface Window {
@@ -138,6 +138,20 @@ export const api = {
   async renameLibrary(libraryId: string, name: string): Promise<ScanDirectory | null> {
     if (isTauri()) {
       return tauriInvoke<ScanDirectory>("rename_library", { libraryId, name });
+    }
+    return null;
+  },
+
+  async getLibraryFolders(libraryId: string): Promise<LibraryFolderInfo[]> {
+    if (isTauri()) {
+      return tauriInvoke<LibraryFolderInfo[]>("get_library_folders", { libraryId });
+    }
+    return [];
+  },
+
+  async setLibraryIndexedFolders(libraryId: string, indexedFolders: string[] | null): Promise<ScanDirectory | null> {
+    if (isTauri()) {
+      return tauriInvoke<ScanDirectory>("set_library_indexed_folders", { libraryId, indexedFolders });
     }
     return null;
   },

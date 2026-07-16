@@ -301,6 +301,7 @@ pub async fn get_roms_for_single_directory(
         metadata_format: metadataFormat,
         is_root_directory: isRoot,
         system_id: systemId,
+        indexed_folders: None,
     };
 
     let systems = tokio::task::spawn_blocking(move || get_roms_for_directory(&dir_config))

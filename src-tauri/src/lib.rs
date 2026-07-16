@@ -50,6 +50,8 @@ pub fn run() {
             commands::directory::remove_directory,
             commands::directory::set_active_library,
             commands::directory::rename_library,
+            commands::directory::get_library_folders,
+            commands::directory::set_library_indexed_folders,
             commands::directory::scan_directory,
             commands::directory::detect_metadata_files,
             // Config

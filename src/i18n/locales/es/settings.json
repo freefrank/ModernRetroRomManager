@@ -58,7 +58,10 @@
       "renameFailed": "Error al cambiar el nombre de la biblioteca: {{error}}",
       "switchFailed": "Error al cambiar de biblioteca: {{error}}",
       "removeFailed": "No se pudo eliminar la biblioteca: {{error}}",
-      "scanThisLibrary": "Activar y escanear completamente esta biblioteca"
+      "scanThisLibrary": "Activar y escanear completamente esta biblioteca",
+      "config": "Configurar carpetas indexadas", "configTitle": "Configurar {{name}}", "configDescription": "Elige las carpetas secundarias inmediatas que se indexarán.",
+      "selectAll": "Todas", "selectNone": "Ninguna", "noFolders": "No hay carpetas disponibles",
+      "folderLoadFailed": "No se pudieron leer las carpetas: {{error}}", "configSaved": "Configuración del índice guardada", "configSaveFailed": "No se pudo guardar: {{error}}"
     },
     "storage": {
       "title": "Configuración de almacenamiento",

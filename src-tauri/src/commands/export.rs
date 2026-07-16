@@ -35,6 +35,49 @@ fn display_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
+fn paths_equal(left: &Path, right: &Path) -> bool {
+    display_path(left)
+        .trim_end_matches('/')
+        .eq_ignore_ascii_case(display_path(right).trim_end_matches('/'))
+}
+
+fn copy_directory_contents(source: &Path, target: &Path) -> Result<usize, String> {
+    if paths_equal(source, target) {
+        return Ok(0);
+    }
+    let source_text = display_path(source)
+        .trim_end_matches('/')
+        .to_ascii_lowercase();
+    let target_text = display_path(target)
+        .trim_end_matches('/')
+        .to_ascii_lowercase();
+    if target_text.starts_with(&format!("{source_text}/")) {
+        return Err("导出目录不能位于源 ROM 目录内部".to_string());
+    }
+    fs::create_dir_all(target).map_err(|error| error.to_string())?;
+    let mut copied = 0;
+    for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let source_path = entry.path();
+        let target_path = target.join(entry.file_name());
+        if entry
+            .file_type()
+            .map_err(|error| error.to_string())?
+            .is_dir()
+        {
+            copied += copy_directory_contents(&source_path, &target_path)?;
+        } else {
+            if let Some(parent) = target_path.parent() {
+                fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+            }
+            fs::copy(&source_path, &target_path)
+                .map_err(|error| format!("复制 {} 失败: {error}", display_path(&source_path)))?;
+            copied += 1;
+        }
+    }
+    Ok(copied)
+}
+
 fn normalize_optional_path(value: &mut Option<String>) {
     if let Some(path) = value {
         *path = path.replace('\\', "/");
@@ -304,12 +347,29 @@ fn export_system_data(
     progress: &dyn Fn(usize, String),
 ) -> Result<ExportOutcome, String> {
     let source_directory = PathBuf::from(&directory);
-    let metadata_path = find_temp_metadata(&source_directory, &system)?;
+    let target = PathBuf::from(target_directory.as_deref().unwrap_or(&directory));
+    fs::create_dir_all(&target).map_err(|error| error.to_string())?;
+
+    let copies_library = !paths_equal(&source_directory, &target);
+    if copies_library {
+        progress(0, "复制 ROM 与现有 Library 文件...".to_string());
+        copy_directory_contents(&source_directory, &target)?;
+    }
+
+    let metadata_path = match find_temp_metadata(&source_directory, &system) {
+        Ok(path) => path,
+        Err(_) if copies_library => {
+            return Ok(ExportOutcome {
+                games: 0,
+                media: 0,
+                output: target,
+            });
+        }
+        Err(error) => return Err(error),
+    };
     let temp_directory = metadata_path
         .parent()
         .ok_or_else(|| "临时元数据目录无效".to_string())?;
-    let target = PathBuf::from(target_directory.as_deref().unwrap_or(&directory));
-    fs::create_dir_all(&target).map_err(|error| error.to_string())?;
 
     progress(0, "读取临时抓取数据...".to_string());
     let mut metadata = parse_pegasus_file(&metadata_path)?;
@@ -364,27 +424,32 @@ pub async fn export_scraped_data(
     target_directory: Option<String>,
     name_mode: Option<String>,
 ) -> Result<(), String> {
-    let outcome = export_system_data(
-        system,
-        directory,
-        format,
-        target_directory,
-        name_mode,
-        &|current, message| {
-            emit_progress(&app, current, message, false);
-        },
-    )?;
-    emit_progress(
-        &app,
-        100,
+    let progress_app = app.clone();
+    let outcome = tokio::task::spawn_blocking(move || {
+        export_system_data(
+            system,
+            directory,
+            format,
+            target_directory,
+            name_mode,
+            &|current, message| {
+                emit_progress(&progress_app, current, message, false);
+            },
+        )
+    })
+    .await
+    .map_err(|error| format!("导出任务失败: {error}"))??;
+    let message = if outcome.games == 0 && outcome.media == 0 {
+        format!("ROM 平台目录导出完成 -> {}", display_path(&outcome.output))
+    } else {
         format!(
             "导出完成: {} 个游戏、{} 个媒体文件 -> {}",
             outcome.games,
             outcome.media,
             display_path(&outcome.output)
-        ),
-        true,
-    );
+        )
+    };
+    emit_progress(&app, 100, message, true);
     Ok(())
 }
 
@@ -431,47 +496,72 @@ pub async fn export_library_scraped_data(
             .map_err(|error| format!("ROM 扫描任务失败: {error}"))??
     };
 
-    let exportable: Vec<_> = systems
-        .into_iter()
-        .filter(|system| find_temp_metadata(Path::new(&system.path), &system.system).is_ok())
-        .collect();
-    if exportable.is_empty() {
-        return Err(format!("Library“{}”中没有可导出的抓取数据", library.name));
+    let target_directory = target_directory
+        .filter(|path| !path.trim().is_empty())
+        .ok_or_else(|| "请选择 Library 导出目标目录".to_string())?;
+    let library_root_text = display_path(Path::new(&library.path))
+        .trim_end_matches('/')
+        .to_ascii_lowercase();
+    let target_root_text = display_path(Path::new(&target_directory))
+        .trim_end_matches('/')
+        .to_ascii_lowercase();
+    if target_root_text == library_root_text
+        || target_root_text.starts_with(&format!("{library_root_text}/"))
+    {
+        return Err("Library 导出目标不能是源目录或其子目录".to_string());
+    }
+    if systems.is_empty() {
+        return Err(format!("Library“{}”中没有可导出的 ROM", library.name));
     }
 
-    let total_systems = exportable.len();
-    let mut total_games = 0;
-    let mut total_media = 0;
-    for (index, system) in exportable.into_iter().enumerate() {
-        let source = PathBuf::from(&system.path);
-        let target = library_system_target(&library, &source, target_directory.as_deref());
-        let base = index * 100 / total_systems;
-        let next = (index + 1) * 100 / total_systems;
-        let span = next.saturating_sub(base);
-        let system_name = system.system.clone();
-        let outcome = export_system_data(
-            system.system,
-            system.path,
-            format.clone(),
-            Some(display_path(&target)),
-            name_mode.clone(),
-            &|current, message| {
+    let total_systems = systems.len();
+    let progress_app = app.clone();
+    let target_for_task = target_directory.clone();
+    let (total_games, total_media) = tokio::task::spawn_blocking(move || {
+        let mut total_games = 0;
+        let mut total_media = 0;
+        for (index, system) in systems.into_iter().enumerate() {
+            let source = PathBuf::from(&system.path);
+            let target = library_system_target(&library, &source, Some(&target_for_task));
+            let base = index * 100 / total_systems;
+            let next = (index + 1) * 100 / total_systems;
+            let span = next.saturating_sub(base);
+            let system_name = system.system.clone();
+            if find_temp_metadata(&source, &system.system).is_ok() {
+                let outcome = export_system_data(
+                    system.system,
+                    system.path,
+                    format.clone(),
+                    Some(display_path(&target)),
+                    name_mode.clone(),
+                    &|current, message| {
+                        emit_progress(
+                            &progress_app,
+                            base + current * span / 100,
+                            format!("[{system_name}] {message}"),
+                            false,
+                        )
+                    },
+                )?;
+                total_games += outcome.games;
+                total_media += outcome.media;
+            } else {
                 emit_progress(
-                    &app,
-                    base + current * span / 100,
-                    format!("[{system_name}] {message}"),
+                    &progress_app,
+                    base,
+                    format!("[{system_name}] 复制 ROM 与现有资源..."),
                     false,
                 );
-            },
-        )?;
-        total_games += outcome.games;
-        total_media += outcome.media;
-    }
+                copy_directory_contents(&source, &target)?;
+                total_games += system.roms.len();
+            }
+        }
+        Ok::<_, String>((total_games, total_media))
+    })
+    .await
+    .map_err(|error| format!("Library 导出任务失败: {error}"))??;
 
-    let destination = target_directory
-        .as_deref()
-        .map(|path| display_path(Path::new(path)))
-        .unwrap_or_else(|| "各 ROM 平台目录".to_string());
+    let destination = display_path(Path::new(&target_directory));
     emit_progress(
         &app,
         100,
@@ -598,6 +688,7 @@ mod tests {
             is_root_directory: true,
             metadata_format: "auto".into(),
             system_id: None,
+            indexed_folders: None,
         };
         assert_eq!(
             library_system_target(&library, Path::new("D:/Retro/Roms/DC"), Some("E:/Export")),
@@ -607,5 +698,25 @@ mod tests {
             library_system_target(&library, Path::new("D:/Retro/Roms"), Some("E:/Export")),
             PathBuf::from("E:/Export")
         );
+    }
+
+    #[test]
+    fn library_copy_preserves_nested_rom_files_and_rejects_recursive_target() {
+        let root = std::env::temp_dir().join(format!("mrrm-library-copy-{}", std::process::id()));
+        let source = root.join("source");
+        let target = root.join("target");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(source.join("hacks")).unwrap();
+        fs::write(source.join("game.gba"), b"rom").unwrap();
+        fs::write(source.join("hacks").join("hack.gba"), b"hack").unwrap();
+
+        assert_eq!(copy_directory_contents(&source, &target).unwrap(), 2);
+        assert_eq!(fs::read(target.join("game.gba")).unwrap(), b"rom");
+        assert_eq!(
+            fs::read(target.join("hacks").join("hack.gba")).unwrap(),
+            b"hack"
+        );
+        assert!(copy_directory_contents(&source, &source.join("export")).is_err());
+        let _ = fs::remove_dir_all(&root);
     }
 }

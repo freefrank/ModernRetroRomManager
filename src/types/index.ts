@@ -221,7 +221,14 @@ export interface DirectoryConfig {
   isRootDirectory: boolean;
   metadataFormat: string;
   systemId?: string;
+  /** null/undefined = all, [] = none, otherwise immediate child folder names */
+  indexedFolders?: string[] | null;
   isActive: boolean;
+}
+
+export interface LibraryFolderInfo {
+  name: string;
+  path: string;
 }
 
 // 兼容别名

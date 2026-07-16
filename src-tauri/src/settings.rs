@@ -26,6 +26,9 @@ pub struct DirectoryConfig {
     /// 系统 ID (可选，仅用于单系统目录)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_id: Option<String>,
+    /// Root Library 中允许索引的直属子目录。None 表示全部，空数组表示不索引。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub indexed_folders: Option<Vec<String>>,
 }
 
 /// Scraper API 配置

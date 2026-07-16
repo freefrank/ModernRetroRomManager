@@ -58,7 +58,10 @@
       "renameFailed": "Failed to rename library: {{error}}",
       "switchFailed": "Failed to switch library: {{error}}",
       "removeFailed": "Failed to remove library: {{error}}",
-      "scanThisLibrary": "Activate and fully scan this library"
+      "scanThisLibrary": "Activate and fully scan this library",
+      "config": "Configure indexed folders", "configTitle": "Configure {{name}}", "configDescription": "Choose the immediate folders indexed by this library. Saving fully rescans the active library.",
+      "selectAll": "All", "selectNone": "None", "noFolders": "No folders available",
+      "folderLoadFailed": "Failed to read folders: {{error}}", "configSaved": "Library index configuration saved", "configSaveFailed": "Failed to save index configuration: {{error}}"
     },
     "storage": {
       "title": "Storage Settings",

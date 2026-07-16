@@ -2,8 +2,8 @@
   "import": {
     "title": "导入/导出",
     "export": {
-      "title": "导出抓取数据",
-      "description": "选择 Library，导出整个库或其中一个平台的 metadata 与相关资产。",
+      "title": "导出 ROM 库",
+      "description": "选择 Library 和目标目录，复制 ROM、现有文件，并写入预览 metadata 与相关资产。",
       "library": "Library",
       "scope": "导出范围",
       "noLibraries": "尚未添加 Library",
@@ -16,9 +16,9 @@
       "nameChinese": "有中文名时导出为中文名",
       "nameModeHint": "只改变导出的显示名称，独立的中文名条目仍会保留。",
       "target": "导出目录",
-      "targetHint": "默认写回所选 Library/平台目录。整库导出到其他目录时会保留平台子目录结构。",
-      "contents": "包含该平台的全部临时 metadata 以及 media 目录中的相关资产。",
-      "libraryContents": "包含该 Library 中所有已抓取平台的 metadata 与 media 资产；未抓取平台会自动跳过。",
+      "targetHint": "必须选择不同于源 Library 的目标目录；整库导出会保留平台子目录结构。",
+      "contents": "复制该平台的 ROM 和现有文件，并写入预览 metadata 与资源。",
+      "libraryContents": "复制整个 Library 的所有已索引平台、ROM 和现有资源；有预览数据的平台会同时写入新 metadata 与资源。",
       "action": "导出 Metadata 与资产",
       "libraryAction": "导出整个 Library",
       "libraryLoadFailed": "读取 Library 失败：{{error}}",

@@ -6,6 +6,44 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-07-15
+
+### English
+
+#### Added
+
+- Added a platform toolbar Save action that writes preview metadata and artwork directly into the ROM directory.
+- Added per-library indexed-folder configuration with All, None, and individual immediate-folder selection.
+
+#### Changed
+
+- Renamed the platform toolbar actions to Select All, Translate, Scrape, and Save.
+- Library export now copies the complete indexed ROM library to a user-selected destination while preserving platform folders, existing files, metadata, and artwork.
+- Slow folder enumeration and export copying now run on background workers to keep the interface responsive on SD cards and network shares.
+
+#### Fixed
+
+- Fixed cover and card layouts using window width instead of the actual library viewport, which could cause cards to overlap after resizing or changing the card scale.
+- Added stable content padding and row-height allowance across ROM library display modes.
+
+### 简体中文
+
+#### 新增
+
+- 平台工具栏增加“保存”，可将预览 Metadata 和美术资源直接写入 ROM 目录。
+- 每个 Library 增加索引文件夹配置，支持全选、None 及逐个选择直属文件夹。
+
+#### 变更
+
+- 平台工具栏操作精简为“全选、翻译、抓取、保存”。
+- Library 导出改为将完整的已索引 ROM 库复制到用户选择的目标目录，并保留平台目录、现有文件、Metadata 和美术资源。
+- 慢速目录枚举及导出复制改到后台工作线程，减少 SD 卡和网络共享上的界面阻塞。
+
+#### 修复
+
+- 修复封面及卡片布局按窗口宽度而非 ROM 库实际内容宽度计算，导致缩放窗口或调整卡片尺寸后卡片互相覆盖的问题。
+- 为 ROM 库各展示模式补充稳定的内容间距和行高余量。
+
 ## [0.8.7] - 2026-07-16
 
 ### English

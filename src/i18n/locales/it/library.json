@@ -27,6 +27,7 @@
     "cardSize": "Formato della carta",
     "noResults": "Nessun gioco corrispondente",
     "noResultsHint": "Prova una parola chiave diversa",
+    "actions": { "selectAll": "Tutto", "translate": "Traduci", "scrape": "Scrape", "save": "Salva", "saveHint": "Salva metadati e immagini nella cartella ROM", "saveSuccess": "Metadati e risorse salvati", "saveFailed": "Salvataggio non riuscito: {{error}}" },
     "batch": {
       "selectedCount": "{{count}} selezionato",
       "selectAll": "Seleziona risultati correnti",

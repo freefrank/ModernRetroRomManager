@@ -2,14 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { Check, Folder, FolderOpen, HardDrive, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, Folder, FolderOpen, HardDrive, Pencil, Plus, RefreshCw, Settings2, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { languages } from "@/i18n";
-import { clearCachedMediaUrls } from "@/lib/api";
+import { api, clearCachedMediaUrls } from "@/lib/api";
 import { clearCachedSearchResults } from "@/lib/scraperSearchCache";
 import { useAppStore } from "@/stores/appStore";
 import { useRomStore } from "@/stores/romStore";
-import type { ViewMode } from "@/types";
+import type { LibraryFolderInfo, ScanDirectory, ViewMode } from "@/types";
 import DirectoryInput from "@/components/common/DirectoryInput";
 import MetadataImportDialog from "@/components/common/MetadataImportDialog";
 import RootDirectoryDialog from "@/components/common/RootDirectoryDialog";
@@ -104,6 +104,10 @@ export default function GeneralSection() {
   const [isClearCacheDialogOpen, setIsClearCacheDialogOpen] = useState(false);
   const [editingLibraryId, setEditingLibraryId] = useState<string | null>(null);
   const [editingLibraryName, setEditingLibraryName] = useState("");
+  const [configLibrary, setConfigLibrary] = useState<ScanDirectory | null>(null);
+  const [libraryFolders, setLibraryFolders] = useState<LibraryFolderInfo[]>([]);
+  const [indexedFolders, setIndexedFolders] = useState<string[] | null>(null);
+  const [isFolderConfigLoading, setIsFolderConfigLoading] = useState(false);
   const librarySectionRef = useRef<HTMLElement>(null);
 
   // 元数据检测状态
@@ -306,6 +310,48 @@ export default function GeneralSection() {
       await removeScanDirectory(id);
     } catch (error) {
       toast.error(t("settings.scanDirectories.removeFailed", { error: String(error) }));
+    }
+  };
+
+  const openLibraryConfig = async (library: ScanDirectory) => {
+    setConfigLibrary(library);
+    setIndexedFolders(library.indexedFolders ?? null);
+    setLibraryFolders([]);
+    setIsFolderConfigLoading(true);
+    try {
+      setLibraryFolders(await api.getLibraryFolders(library.id));
+    } catch (error) {
+      toast.error(t("settings.scanDirectories.folderLoadFailed", { error: String(error) }));
+      setConfigLibrary(null);
+    } finally {
+      setIsFolderConfigLoading(false);
+    }
+  };
+
+  const toggleIndexedFolder = (name: string) => {
+    setIndexedFolders((current) => {
+      const selected = current === null ? libraryFolders.map((folder) => folder.name) : [...current];
+      const index = selected.findIndex((folder) => folder.toLowerCase() === name.toLowerCase());
+      if (index >= 0) selected.splice(index, 1);
+      else selected.push(name);
+      return selected;
+    });
+  };
+
+  const saveLibraryConfig = async () => {
+    if (!configLibrary) return;
+    setIsFolderConfigLoading(true);
+    try {
+      await api.setLibraryIndexedFolders(configLibrary.id, indexedFolders);
+      await fetchScanDirectories();
+      toast.success(t("settings.scanDirectories.configSaved"));
+      const rescanActiveLibrary = configLibrary.isActive;
+      setConfigLibrary(null);
+      if (rescanActiveLibrary) await scanLibrary(true);
+    } catch (error) {
+      toast.error(t("settings.scanDirectories.configSaveFailed", { error: String(error) }));
+    } finally {
+      setIsFolderConfigLoading(false);
     }
   };
 
@@ -603,6 +649,18 @@ export default function GeneralSection() {
                     size="sm"
                     onClick={(event) => {
                       event.stopPropagation();
+                      void openLibraryConfig(dir);
+                    }}
+                    disabled={isScanning || isBatchScraping}
+                    title={t("settings.scanDirectories.config")}
+                    aria-label={t("settings.scanDirectories.config")}
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </IconButton>
+                  <IconButton
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
                       void handleActivateLibrary(dir.id, true);
                     }}
                     disabled={isScanning || isBatchScraping}
@@ -732,6 +790,48 @@ export default function GeneralSection() {
           </div>
         </div>
       </section>
+
+      <Dialog
+        open={Boolean(configLibrary)}
+        onClose={() => !isFolderConfigLoading && setConfigLibrary(null)}
+        title={t("settings.scanDirectories.configTitle", { name: configLibrary?.name ?? "" })}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" disabled={isFolderConfigLoading} onClick={() => setConfigLibrary(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button size="sm" loading={isFolderConfigLoading} onClick={() => void saveLibraryConfig()}>
+              {t("common.save")}
+            </Button>
+          </>
+        }
+      >
+        <p className="mb-3 text-sm text-text-secondary">
+          {t("settings.scanDirectories.configDescription")}
+        </p>
+        <div className="mb-3 flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setIndexedFolders(null)}>
+            {t("settings.scanDirectories.selectAll")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setIndexedFolders([])}>
+            {t("settings.scanDirectories.selectNone")}
+          </Button>
+        </div>
+        <div className="max-h-72 space-y-1 overflow-auto rounded-[var(--radius-md)] border border-border-default p-2">
+          {libraryFolders.map((folder) => {
+            const checked = indexedFolders === null || indexedFolders.some((name) => name.toLowerCase() === folder.name.toLowerCase());
+            return (
+              <label key={folder.path} className="flex cursor-pointer items-center gap-3 rounded-[var(--radius-sm)] px-2 py-2 hover:bg-bg-tertiary">
+                <input type="checkbox" checked={checked} onChange={() => toggleIndexedFolder(folder.name)} className="h-4 w-4 accent-[var(--accent-primary)]" />
+                <span className="min-w-0 truncate text-sm text-text-primary" title={folder.path}>{folder.name}</span>
+              </label>
+            );
+          })}
+          {!isFolderConfigLoading && libraryFolders.length === 0 && (
+            <p className="p-3 text-center text-sm text-text-muted">{t("settings.scanDirectories.noFolders")}</p>
+          )}
+        </div>
+      </Dialog>
 
       <Dialog
         open={isClearCacheDialogOpen}

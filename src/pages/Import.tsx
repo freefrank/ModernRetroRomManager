@@ -80,9 +80,8 @@ export default function Import() {
   );
 
   useEffect(() => {
-    const path = scope === ALL_SYSTEMS ? selectedLibrary?.path : selectedSystem?.path;
-    setTargetDirectory(path ? normalizePath(path) : "");
-  }, [scope, selectedLibrary?.path, selectedSystem?.path]);
+    setTargetDirectory("");
+  }, [libraryId, scope]);
 
   const handleExport = async () => {
     if (!selectedLibrary || !targetDirectory.trim()) return;

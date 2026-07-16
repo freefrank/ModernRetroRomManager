@@ -27,6 +27,7 @@
     "cardSize": "Taille de la carte",
     "noResults": "Aucun jeu correspondant",
     "noResultsHint": "Essayez un autre mot clé",
+    "actions": { "selectAll": "Tout", "translate": "Traduire", "scrape": "Scraper", "save": "Enregistrer", "saveHint": "Enregistrer les métadonnées et images dans le dossier ROM", "saveSuccess": "Métadonnées et ressources enregistrées", "saveFailed": "Échec : {{error}}" },
     "batch": {
       "selectedCount": "{{count}} sélectionné",
       "selectAll": "Sélectionner les résultats actuels",

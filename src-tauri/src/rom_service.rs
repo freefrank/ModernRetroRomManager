@@ -693,6 +693,13 @@ pub fn get_roms_for_directory_with_progress(
     on_system: &dyn Fn(&str),
 ) -> Vec<SystemRoms> {
     let mut systems = Vec::new();
+    if dir_config
+        .indexed_folders
+        .as_ref()
+        .is_some_and(Vec::is_empty)
+    {
+        return systems;
+    }
     let dir_path = Path::new(&dir_config.path);
 
     println!(
@@ -713,6 +720,18 @@ pub fn get_roms_for_directory_with_progress(
             for entry in entries.filter_map(|e| e.ok()) {
                 let sub_path = entry.path();
                 if sub_path.is_dir() {
+                    let system_name = sub_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+                    if dir_config.indexed_folders.as_ref().is_some_and(|folders| {
+                        !folders
+                            .iter()
+                            .any(|folder| folder.eq_ignore_ascii_case(&system_name))
+                    }) {
+                        continue;
+                    }
                     // 检查是否是PS3游戏文件夹
                     let ps3_game_dir = sub_path.join("PS3_GAME");
                     if ps3_game_dir.exists() && ps3_game_dir.is_dir() {
@@ -720,11 +739,6 @@ pub fn get_roms_for_directory_with_progress(
                         continue;
                     }
 
-                    let system_name = sub_path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("Unknown")
-                        .to_string();
                     on_system(&system_name);
 
                     // 尝试加载临时元数据
@@ -786,7 +800,9 @@ pub fn get_roms_for_directory_with_progress(
         }
 
         let format = detect_metadata_format(dir_path);
-        let root_scan = if format == "none" {
+        let root_scan = if dir_config.indexed_folders.is_some() {
+            Ok(Vec::new())
+        } else if format == "none" {
             // 根目录模式的子目录已经作为独立系统处理，这里只读取直属文件，
             // 避免把所有平台递归复制成一个额外的根目录系统。
             scan_rom_files_internal(dir_path, &root_system_name, false)
