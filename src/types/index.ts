@@ -164,6 +164,7 @@ export interface ScraperMediaAsset {
   asset_type: string;
   width?: number;
   height?: number;
+  cached_path?: string;
 }
 
 export interface ScrapeResult {

@@ -3,7 +3,6 @@
 //! 前端调用的 Scraper 相关命令
 
 use crate::config::{get_cache_dir_for_library, get_temp_dir, get_temp_dir_for_library};
-use crate::rom_index::invalidate_index;
 use crate::rom_service::RomInfo;
 use crate::scraper::{
     cartridge_header::identify_cartridge_rom,
@@ -305,7 +304,7 @@ pub async fn scraper_get_media(
     media_types: Option<Vec<String>>,
 ) -> Result<Vec<MediaAsset>, String> {
     let manager = state.manager.read().await;
-    let media = manager
+    let mut media = manager
         .get_media(&provider_id, &source_id, media_types.as_deref())
         .await?;
     if let (Some(directory), Some(system), Some(rom_id)) = (rom_directory, system, rom_id) {
@@ -318,6 +317,10 @@ pub async fn scraper_get_media(
             false,
         )
         .await?;
+        for asset in &mut media {
+            asset.cached_path = find_cached_asset(&directory, &system, &rom_id, asset)
+                .map(|path| path.to_string_lossy().into_owned());
+        }
     }
     Ok(media)
 }
@@ -400,7 +403,10 @@ async fn cache_media_candidates(
             asset_cache_key(&asset.url),
             extension
         ));
-        if target.exists() && !force_refresh {
+        let legacy_marker = format!("-{:016x}.", legacy_asset_cache_key(&asset.url));
+        if !force_refresh
+            && (target.exists() || find_asset_with_marker(&directory, &legacy_marker).is_some())
+        {
             continue;
         }
         let Ok(response) = client.get(&asset.url).send().await else {
@@ -426,7 +432,40 @@ async fn cache_media_candidates(
     Ok(())
 }
 
+fn asset_cache_identity(url: &str) -> String {
+    const CREDENTIAL_PARAMS: &[&str] = &["devid", "devpassword", "softname", "ssid", "sspassword"];
+    let Ok(mut parsed) = reqwest::Url::parse(url) else {
+        return url.to_string();
+    };
+    let mut query: Vec<(String, String)> = parsed
+        .query_pairs()
+        .filter(|(key, _)| {
+            !CREDENTIAL_PARAMS
+                .iter()
+                .any(|credential| key.eq_ignore_ascii_case(credential))
+        })
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect();
+    query.sort();
+    parsed.set_query(None);
+    if !query.is_empty() {
+        parsed
+            .query_pairs_mut()
+            .extend_pairs(query.iter().map(|(key, value)| (key, value)));
+    }
+    parsed.to_string()
+}
+
 fn asset_cache_key(url: &str) -> u64 {
+    asset_cache_identity(url)
+        .as_bytes()
+        .iter()
+        .fold(0xcbf29ce484222325, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+        })
+}
+
+fn legacy_asset_cache_key(url: &str) -> u64 {
     url.as_bytes()
         .iter()
         .fold(0xcbf29ce484222325, |hash, byte| {
@@ -447,6 +486,10 @@ fn find_cached_asset(
     if let Some(path) = find_asset_with_marker(&global_directory, &marker) {
         return Some(path);
     }
+    let legacy_marker = format!("-{:016x}.", legacy_asset_cache_key(&asset.url));
+    if let Some(path) = find_asset_with_marker(&global_directory, &legacy_marker) {
+        return Some(path);
+    }
 
     // 向后兼容 0.4.x 按库保存的候选缓存。
     let rom_dir = Path::new(rom_directory);
@@ -460,6 +503,7 @@ fn find_cached_asset(
         .join(&asset.provider)
         .join(asset.asset_type.as_str());
     find_asset_with_marker(&directory, &marker)
+        .or_else(|| find_asset_with_marker(&directory, &legacy_marker))
 }
 
 fn find_asset_with_marker(directory: &Path, marker: &str) -> Option<PathBuf> {
@@ -598,7 +642,6 @@ pub async fn apply_scraped_data(
 
     // 3. 元数据和已选媒体路径一次写入，ROM 库刷新后即可显示封面。
     save_metadata_pegasus_with_media(&rom, &options.metadata, &materialized, true)?;
-    invalidate_index();
     if let Some(provider) = options.provider_id.as_deref() {
         record_selected(provider);
     }
@@ -901,8 +944,6 @@ pub async fn batch_scrape(
             })
             .await;
 
-        invalidate_index();
-
         let was_cancelled = batch_cancelled.load(Ordering::Acquire);
         let current = completed.load(Ordering::Relaxed);
         batch_running.store(false, Ordering::Release);
@@ -946,6 +987,7 @@ mod batch_tests {
             asset_type,
             width: None,
             height: None,
+            cached_path: None,
         }
     }
 
@@ -1000,6 +1042,17 @@ mod batch_tests {
         assert_eq!(level, "warn");
         assert!(message.contains("已由其他来源补充"));
     }
+
+    #[test]
+    fn asset_cache_key_ignores_credentials_but_keeps_asset_identity() {
+        let first =
+            "https://api.example/media.php?devid=one&devpassword=secret&jeuid=2374&media=box-2D";
+        let second =
+            "https://api.example/media.php?media=box-2D&jeuid=2374&devid=two&devpassword=changed";
+        let other = "https://api.example/media.php?jeuid=2375&media=box-2D";
+        assert_eq!(asset_cache_key(first), asset_cache_key(second));
+        assert_ne!(asset_cache_key(first), asset_cache_key(other));
+    }
 }
 
 #[tauri::command]
@@ -1018,7 +1071,6 @@ pub async fn save_temp_metadata(
     };
 
     save_metadata_pegasus(&rom, &metadata, true)?;
-    invalidate_index();
     Ok(())
 }
 
@@ -1052,7 +1104,6 @@ pub async fn delete_temp_media(
         }
     }
 
-    invalidate_index();
     Ok(())
 }
 

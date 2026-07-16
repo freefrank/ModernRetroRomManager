@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Image as ImageIcon, Check, Gamepad2, Play, Activity, Globe, Info, Star, Calendar, User, LayoutGrid } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { scraperApi } from "@/lib/api";
+import { resolveMediaUrlAsync, scraperApi } from "@/lib/api";
 import { useScraperStore } from "@/stores/scraperStore";
 import { useRomStore } from "@/stores/romStore";
 import type { Rom, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset } from "@/types";
@@ -15,6 +15,27 @@ interface ScrapeDialogProps {
   rom: Rom;
   isOpen: boolean;
   onClose: () => void;
+}
+
+function CachedAssetPreview({ asset }: { asset: ScraperMediaAsset }) {
+  const source = asset.cached_path || asset.url;
+  const [url, setUrl] = useState(asset.cached_path ? "" : asset.url);
+
+  useEffect(() => {
+    let active = true;
+    resolveMediaUrlAsync(source).then((resolved) => {
+      if (active) setUrl(resolved || asset.url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [asset.url, source]);
+
+  return url ? (
+    <img src={url} alt="" className="w-full h-full object-cover transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-110" />
+  ) : (
+    <div className="w-full h-full bg-bg-tertiary animate-pulse" />
+  );
 }
 
 function confidenceVariant(confidence: number): "success" | "warning" | "error" {
@@ -428,7 +449,7 @@ export default function ScrapeDialog({ rom, isOpen, onClose }: ScrapeDialogProps
                             <span className="text-[10px] text-accent-primary font-bold mt-2 tracking-widest uppercase">{t("scrapeDialog.videoAsset")}</span>
                           </div>
                         ) : (
-                          <img src={m.url} alt="" className="w-full h-full object-cover transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)] group-hover:scale-110" />
+                          <CachedAssetPreview asset={m} />
                         )}
 
                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-bg-primary/80 to-transparent p-2.5 translate-y-2 group-hover:translate-y-0 transition-transform duration-[var(--motion-fast)] ease-[var(--motion-easing)] text-left">

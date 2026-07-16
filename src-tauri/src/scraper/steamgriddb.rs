@@ -216,6 +216,7 @@ impl ScraperProvider for SteamGridDBClient {
                         asset_type: media_type,
                         width: Some(img.width as u32),
                         height: Some(img.height as u32),
+                        cached_path: None,
                     });
                 }
             }

@@ -916,6 +916,7 @@ mod tests {
             asset_type: crate::scraper::MediaType::BoxFront,
             width: None,
             height: None,
+            cached_path: None,
         };
         assert!(!usable_asset(&asset("")));
         assert!(!usable_asset(&asset("   ")));
@@ -1129,6 +1130,7 @@ mod tests {
                     asset_type: crate::scraper::MediaType::BoxFront,
                     width: None,
                     height: None,
+                    cached_path: None,
                 })
                 .collect())
         }
@@ -1183,6 +1185,7 @@ mod tests {
                 asset_type: crate::scraper::MediaType::BoxFront,
                 width: None,
                 height: None,
+                cached_path: None,
             }])
         }
     }

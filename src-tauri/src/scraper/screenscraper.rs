@@ -270,6 +270,7 @@ impl ScreenScraperClient {
                     asset_type: media_type,
                     width: None,
                     height: None,
+                    cached_path: None,
                 })
             })
             .collect()

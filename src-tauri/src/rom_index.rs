@@ -357,9 +357,6 @@ pub fn load_cached_roms_for_library(library_id: &str) -> Option<Vec<SystemRoms>>
     })
 }
 
-/// 临时 Metadata 在读取缓存索引时动态叠加，不再通过删除整库索引刷新。
-pub fn invalidate_index() {}
-
 fn overlay_temp_metadata(library: &DirectoryConfig, systems: &mut [SystemRoms]) {
     let library_root = Path::new(&library.path);
     for system in systems {

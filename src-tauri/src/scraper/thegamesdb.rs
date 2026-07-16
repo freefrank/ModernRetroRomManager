@@ -124,6 +124,7 @@ impl TheGamesDbClient {
             asset_type,
             width,
             height,
+            cached_path: None,
         })
     }
 }
@@ -218,6 +219,7 @@ impl ScraperProvider for TheGamesDbClient {
                     asset_type: MediaType::Video,
                     width: None,
                     height: None,
+                    cached_path: None,
                 });
             }
         }

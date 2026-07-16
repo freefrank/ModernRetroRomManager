@@ -170,6 +170,9 @@ pub struct MediaAsset {
     pub width: Option<u32>,
     /// 高度
     pub height: Option<u32>,
+    /// 已下载候选资源的本地缓存路径，仅用于 UI 预览。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cached_path: Option<String>,
 }
 
 // ============================================================================
