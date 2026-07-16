@@ -78,16 +78,104 @@ impl ScreenScraperClient {
     }
 
     fn system_id(system: &str) -> Option<&'static str> {
-        match system.to_ascii_lowercase().as_str() {
-            "md" | "genesis" | "megadrive" => Some("1"),
-            "nes" | "fc" | "famicom" => Some("3"),
-            "sfc" | "snes" | "superfamicom" => Some("4"),
-            "gb" | "gameboy" => Some("9"),
-            "gbc" | "gameboycolor" => Some("10"),
-            "gba" | "gameboyadvance" => Some("12"),
+        let normalized = system
+            .chars()
+            .filter(|character| character.is_ascii_alphanumeric())
+            .map(|character| character.to_ascii_lowercase())
+            .collect::<String>();
+
+        match normalized.as_str() {
+            // Nintendo
+            "nes"
+            | "fc"
+            | "famicom"
+            | "famicomnes"
+            | "nintendoentertainmentsystem"
+            | "fchack"
+            | "fchd" => Some("3"),
+            "fds" | "famicomdisksystem" => Some("106"),
+            "sfc"
+            | "snes"
+            | "superfamicom"
+            | "supernintendo"
+            | "supernintendoentertainmentsystem"
+            | "sfchack" => Some("4"),
+            "sfcmsu1" | "snesmsu1" | "supernintendomsu1" => Some("210"),
+            "gb" | "gameboy" | "nintendogameboy" => Some("9"),
+            "gbc" | "gameboycolor" | "nintendogameboycolor" => Some("10"),
+            "gba" | "gameboyadvance" | "nintendogameboyadvance" => Some("12"),
+            "virtualboy" | "vb" | "nintendovirtualboy" => Some("11"),
             "n64" | "nintendo64" => Some("14"),
-            "nds" | "nintendods" => Some("15"),
+            "gc" | "ngc" | "gamecube" | "nintendogamecube" => Some("13"),
+            "nds" | "ds" | "nintendods" => Some("15"),
             "3ds" | "nintendo3ds" => Some("17"),
+            "wii" | "nintendowii" | "wiiware" => Some("16"),
+            "wiiu" | "nintendowiiu" => Some("18"),
+            "gamewatch" | "gw" | "nintendogamewatch" => Some("52"),
+            "pokemini" | "pokemonmini" | "nintendopokemonmini" => Some("211"),
+            "switch" | "nintendoswitch" => Some("225"),
+
+            // Sega
+            "sms" | "ms" | "mastersystem" | "segamastersystem" | "markiii" | "segamarkiii" => {
+                Some("2")
+            }
+            "md" | "genesis" | "megadrive" | "segagenesis" | "segamegadrive" | "mdhack"
+            | "mdhackpicodrive" => Some("1"),
+            "32x" | "md32x" | "sega32x" => Some("19"),
+            "megacd" | "segacd" | "segamegacd" => Some("20"),
+            "gg" | "gamegear" | "segagamegear" => Some("21"),
+            "ss" | "saturn" | "segasaturn" => Some("22"),
+            "dc" | "dreamcast" | "segadreamcast" | "dchack" => Some("23"),
+            "sg1000" | "segasg1000" => Some("109"),
+            "naomi" | "seganaomi" => Some("56"),
+            "model2" | "segamodel2" => Some("54"),
+            "model3" | "segamodel3" => Some("55"),
+
+            // Sony
+            "ps" | "ps1" | "psx" | "playstation" | "sonyplaystation" | "ps1hack" => Some("57"),
+            "ps2" | "playstation2" | "sonyplaystation2" => Some("58"),
+            "ps3" | "playstation3" | "sonyplaystation3" => Some("59"),
+            "ps4" | "playstation4" | "sonyplaystation4" => Some("60"),
+            "ps5" | "playstation5" | "sonyplaystation5" => Some("284"),
+            "psp" | "playstationportable" | "sonyplaystationportable" => Some("61"),
+            "psv" | "psvita" | "playstationvita" | "sonyplaystationvita" => Some("62"),
+
+            // NEC / SNK / Bandai
+            "pce" | "pcengine" | "turbografx16" | "pcengineturbografx16" => Some("31"),
+            "pcecd" | "pcenginecd" | "pcenginecdrom" | "turbografxcd" => Some("114"),
+            "supergrafx" | "pcenginesupergrafx" => Some("105"),
+            "pcfx" | "necpcfx" => Some("72"),
+            "neogeo" | "snkneogeo" => Some("142"),
+            "mvs" | "neogeomvs" | "snkneogeomvs" => Some("68"),
+            "neogeocd" | "snkneogeocd" => Some("70"),
+            "ngp" | "neogeopocket" => Some("25"),
+            "ngpc" | "neogeopocketcolor" => Some("82"),
+            "ws" | "wonderswan" | "bandaiwonderswan" => Some("45"),
+            "wsc" | "wonderswancolor" | "bandaiwonderswancolor" => Some("46"),
+
+            // Atari and other consoles
+            "atari" | "atari2600" | "a2600" => Some("26"),
+            "atari5200" | "a5200" => Some("40"),
+            "atari7800" | "a7800" => Some("41"),
+            "jaguar" | "atarijaguar" => Some("27"),
+            "jaguarcd" | "atarijaguarcd" => Some("171"),
+            "lynx" | "atarilynx" => Some("28"),
+            "3do" | "panasonic3do" | "3dointeractivemultiplayer" => Some("29"),
+            "coleco" | "colecovision" => Some("48"),
+            "vectrex" => Some("102"),
+            "xbox" | "microsoftxbox" => Some("32"),
+            "xbox360" | "microsoftxbox360" => Some("33"),
+            "xboxone" | "microsoftxboxone" => Some("34"),
+
+            // Arcade and computer platforms currently exposed by MRRM
+            "arcade" | "mame" | "mameact" | "mamestg" | "mameftg" | "mamefly" | "mamerac"
+            | "mamespo" | "mameetc" | "fbneo" | "fbneoact" | "fbneostg" | "fbneoftg"
+            | "fbneofly" | "fbneorac" | "fbneospo" | "fbneoetc" | "lightgun" => Some("75"),
+            "pgm" | "polygamemaster" | "igs" => Some("176"),
+            "openbor" => Some("214"),
+            "pico8" => Some("234"),
+            "dos" | "pcdos" | "msdos" => Some("135"),
+            "pc" | "windows" | "pcwindows" => Some("138"),
             _ => None,
         }
     }
@@ -335,6 +423,48 @@ mod tests {
         assert!(url.contains("softname=ModernRetroRomManager"));
         assert!(url.contains("ssid=member%20user"));
         assert!(url.contains("sspassword=member%20pass"));
+    }
+
+    #[test]
+    fn maps_supported_platform_names_and_folder_aliases() {
+        let cases = [
+            ("PSP", "61"),
+            ("PlayStation Portable", "61"),
+            ("Sony PlayStation Portable", "61"),
+            ("NGC", "13"),
+            ("Nintendo GameCube", "13"),
+            ("WII Ware", "16"),
+            ("GAME WATCH", "52"),
+            ("MD hack(picodrive)", "1"),
+            ("MD-32X", "19"),
+            ("DC hack", "23"),
+            ("MODEL2", "54"),
+            ("MODEL3", "55"),
+            ("PCE-CD", "114"),
+            ("PC-FX", "72"),
+            ("NEOGEO-CD", "70"),
+            ("WonderSwan Color", "46"),
+            ("Atari 7800", "41"),
+            ("FBNEO STG", "75"),
+            ("OPENBOR", "214"),
+            ("PICO-8", "234"),
+            ("PC", "138"),
+            ("Nintendo Switch", "225"),
+        ];
+
+        for (platform, expected_id) in cases {
+            assert_eq!(
+                ScreenScraperClient::system_id(platform),
+                Some(expected_id),
+                "unexpected ScreenScraper system id for {platform}"
+            );
+        }
+    }
+
+    #[test]
+    fn does_not_map_folder_only_engines_as_console_systems() {
+        assert_eq!(ScreenScraperClient::system_id("EasyRPG"), None);
+        assert_eq!(ScreenScraperClient::system_id("Ports"), None);
     }
 
     #[test]
@@ -832,7 +962,12 @@ impl ScraperProvider for ScreenScraperClient {
             .system
             .as_deref()
             .and_then(Self::system_id)
-            .ok_or_else(|| "ScreenScraper 缺少受支持的平台映射".to_string())?;
+            .ok_or_else(|| {
+                format!(
+                    "ScreenScraper 缺少受支持的平台映射: {}",
+                    query.system.as_deref().unwrap_or("未指定")
+                )
+            })?;
         for candidate in search_query_variants(&query.name) {
             let games = self.search_games(&candidate, system_id).await?;
             if !games.is_empty() {
