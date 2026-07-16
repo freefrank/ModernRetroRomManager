@@ -160,7 +160,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(2006),
             extensions: vec![".iso".to_string(), ".wbfs".to_string()],
-            logo: Some("Wii.png".to_string()),
+            logo: Some("WII.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -170,7 +170,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: None,
             extensions: vec![".wad".to_string()],
-            logo: Some("Wii.png".to_string()),
+            logo: Some("WII Ware.png".to_string()),
             rom_type: RomType::File,
         },
         // Nintendo - 掌机系列
@@ -399,7 +399,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: None,
             extensions: vec![".cdi".to_string(), ".gdi".to_string()],
-            logo: Some("DC hack.png".to_string()),
+            logo: Some("DC.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -450,7 +450,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sony".to_string()),
             release_year: None,
             extensions: vec![".iso".to_string(), ".bin".to_string(), ".cue".to_string()],
-            logo: Some("PS1 hack.png".to_string()),
+            logo: Some("PS1.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -512,7 +512,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("SNK".to_string()),
             release_year: Some(1999),
             extensions: vec![".ngc".to_string(), ".ngp".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("NGPC.png".to_string()),
             rom_type: RomType::File,
         },
         // Bandai
@@ -523,7 +523,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Bandai".to_string()),
             release_year: Some(1999),
             extensions: vec![".ws".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("WS.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -544,7 +544,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1977),
             extensions: vec![".a26".to_string(), ".bin".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("ATARI.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -554,7 +554,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1982),
             extensions: vec![".a52".to_string(), ".bin".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("ATARI.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -564,7 +564,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Atari".to_string()),
             release_year: Some(1986),
             extensions: vec![".a78".to_string(), ".bin".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("ATARI.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -605,7 +605,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("格斗街机.png".to_string()),
+            logo: Some("对战街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -615,7 +615,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("飞行街机.png".to_string()),
+            logo: Some("飞机街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -625,7 +625,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("竞速街机.png".to_string()),
+            logo: Some("赛车街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -635,7 +635,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("体育街机.png".to_string()),
+            logo: Some("运动街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -645,7 +645,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("其他街机.png".to_string()),
+            logo: Some("休闲街机.png".to_string()),
             rom_type: RomType::File,
         },
         // Arcade - MAME 分类
@@ -676,7 +676,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("格斗街机.png".to_string()),
+            logo: Some("对战街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -686,7 +686,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("飞行街机.png".to_string()),
+            logo: Some("飞机街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -696,7 +696,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("竞速街机.png".to_string()),
+            logo: Some("赛车街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -706,7 +706,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("体育街机.png".to_string()),
+            logo: Some("运动街机.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -716,7 +716,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: Some("其他街机.png".to_string()),
+            logo: Some("休闲街机.png".to_string()),
             rom_type: RomType::File,
         },
         // Arcade - 其他
@@ -727,7 +727,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: None,
             release_year: None,
             extensions: vec![".zip".to_string()],
-            logo: None,
+            logo: Some("全部游戏.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -748,7 +748,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Sega".to_string()),
             release_year: Some(1985),
             extensions: vec![".sms".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("SMS.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -758,7 +758,7 @@ pub(crate) fn get_preset_systems_data() -> Vec<SystemInfo> {
             manufacturer: Some("Nintendo".to_string()),
             release_year: Some(1980),
             extensions: vec![".mgw".to_string(), ".zip".to_string()],
-            logo: None,
+            logo: Some("GAME WATCH.png".to_string()),
             rom_type: RomType::File,
         },
         SystemInfo {
@@ -859,6 +859,29 @@ pub fn get_system(id: String) -> Result<Option<SystemInfo>, String> {
     Ok(systems.into_iter().find(|s| s.id == id))
 }
 
+/// 返回目录名/系统别名到内置 Logo 文件名的映射，供 ROM 货架直接匹配目录。
+#[tauri::command]
+pub fn get_system_logo_map() -> Result<std::collections::BTreeMap<String, String>, String> {
+    let mut logos = std::collections::BTreeMap::new();
+
+    for system in fill_missing_logos(get_preset_systems_data()) {
+        let Some(logo) = system.logo else {
+            continue;
+        };
+        for alias in [system.id, system.name, system.short_name] {
+            logos.insert(alias.trim().to_lowercase(), logo.clone());
+        }
+    }
+
+    for mapping in crate::system_mapping::get_system_mappings() {
+        if let Some(logo) = mapping.logo_name {
+            logos.insert(mapping.folder_name.trim().to_lowercase(), logo.to_string());
+        }
+    }
+
+    Ok(logos)
+}
+
 #[tauri::command]
 pub fn get_system_logo_path(file_name: String) -> Result<String, String> {
     let safe_name = std::path::Path::new(&file_name)
@@ -925,5 +948,24 @@ mod tests {
         // 预置数据里已有 logo 的系统不被 mapping 覆盖(合并语义:只补缺)
         let nes = systems.iter().find(|s| s.id == "nes").unwrap();
         assert_eq!(nes.logo.as_deref(), Some("FC.png"));
+    }
+
+    #[test]
+    fn system_logo_map_includes_mapping_only_platforms_and_existing_files() {
+        let logos = get_system_logo_map().unwrap();
+        assert_eq!(logos.get("pce-cd").map(String::as_str), Some("PCE-CD.png"));
+        assert_eq!(logos.get("model2").map(String::as_str), Some("MODEL2.png"));
+        assert_eq!(
+            logos.get("fbneo ftg").map(String::as_str),
+            Some("对战街机.png")
+        );
+
+        let logo_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/logo");
+        for (alias, file_name) in logos {
+            assert!(
+                logo_dir.join(&file_name).is_file(),
+                "系统别名 {alias} 引用了不存在的 Logo: {file_name}"
+            );
+        }
     }
 }

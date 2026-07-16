@@ -38,6 +38,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::system::get_systems,
             commands::system::get_system,
+            commands::system::get_system_logo_map,
             commands::system::get_system_logo_path,
             commands::rom::get_roms,
             commands::rom::get_rom_library_summary,

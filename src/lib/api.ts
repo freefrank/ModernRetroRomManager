@@ -153,6 +153,13 @@ export const api = {
     return [];
   },
 
+  async getSystemLogoMap(): Promise<Record<string, string>> {
+    if (isTauri()) {
+      return tauriInvoke<Record<string, string>>("get_system_logo_map");
+    }
+    return {};
+  },
+
   async setLibraryIndexedFolders(libraryId: string, indexedFolders: string[] | null): Promise<ScanDirectory | null> {
     if (isTauri()) {
       return tauriInvoke<ScanDirectory>("set_library_indexed_folders", { libraryId, indexedFolders });

@@ -6,14 +6,20 @@ import { useRomStore } from "@/stores/romStore";
 import { Button, Card, EmptyState } from "@/components/ui";
 import SystemCard from "@/components/rom/SystemCard";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
+import { api } from "@/lib/api";
 import type { GameSystem } from "@/types";
 
 const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
 
-/** 用 ROM 目录名匹配预置系统(get_systems),取其 logo 文件名 */
-function findSystemLogo(systems: GameSystem[], folderName: string): string | undefined {
+/** 用 ROM 目录名优先匹配完整目录映射，再回退预置系统。 */
+function findSystemLogo(
+  systems: GameSystem[],
+  folderName: string,
+  mappedLogos: Record<string, string>
+): string | undefined {
   const target = norm(folderName);
   if (!target) return undefined;
+  if (mappedLogos[target]) return mappedLogos[target];
   const hit = systems.find(
     (s) => norm(s.id) === target || norm(s.shortName) === target || norm(s.name) === target
   );
@@ -26,6 +32,7 @@ export default function LibraryShelf() {
   const navigate = useNavigate();
   const { availableSystems, stats, systems, fetchSystems, scanDirectories } = useRomStore();
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [mappedLogos, setMappedLogos] = useState<Record<string, string>>({});
   const activeLibrary = scanDirectories.find(item => item.isActive);
 
   // 装载预置系统列表以解析各系统 logo
@@ -35,13 +42,27 @@ export default function LibraryShelf() {
     }
   }, [systems.length, fetchSystems]);
 
+  useEffect(() => {
+    let mounted = true;
+    api.getSystemLogoMap()
+      .then((logos) => {
+        if (mounted) setMappedLogos(logos);
+      })
+      .catch((error) => {
+        console.error("Failed to load system logo map:", error);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const logoByName = useMemo(() => {
     const map = new Map<string, string | undefined>();
     for (const sys of availableSystems) {
-      map.set(sys.name, findSystemLogo(systems, sys.name));
+      map.set(sys.name, findSystemLogo(systems, sys.name, mappedLogos));
     }
     return map;
-  }, [availableSystems, systems]);
+  }, [availableSystems, mappedLogos, systems]);
 
   return (
     <div className="rr-page flex flex-col h-full max-w-[1600px] mx-auto w-full">
