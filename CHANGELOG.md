@@ -6,6 +6,40 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-16
+
+### English
+
+#### Added
+
+- Added multi-select export scopes and persistence for the last selected metadata format and game-name mode.
+
+#### Changed
+
+- Saving from the ROM list now writes both Pegasus metadata and EmulationStation `gamelist.xml`, while copying selected artwork only once.
+- ROM metadata/media edits and Library indexed-folder changes now preserve the existing index and use incremental refreshes instead of triggering a full-library scan.
+- Scraper asset previews and application now reuse the persistent downloaded candidate cache, including legacy cache files and assets whose credential-bearing URLs have changed.
+
+#### Fixed
+
+- Added a ScreenScraper alias fallback so `Ys 4` on Super Nintendo resolves the `Ys 4 - Mask Of The Sun` entry.
+
+### 简体中文
+
+#### 新增
+
+- 导出范围支持多选，并记住上次选择的 Metadata 格式与游戏名称模式。
+
+#### 变更
+
+- ROM 列表中的“保存”现在会同时写入 Pegasus Metadata 与 EmulationStation `gamelist.xml`，所选美术资源只复制一次。
+- 编辑 ROM Metadata/媒体以及修改 Library 索引文件夹时会保留已有索引并执行增量刷新，不再触发整库全量扫描。
+- 抓取资源预览与应用会复用持久化的候选资源缓存，同时兼容旧缓存文件以及凭据参数变化后的资源 URL。
+
+#### 修复
+
+- 为 ScreenScraper 增加别名回退，使 Super Nintendo 平台的 `Ys 4` 能匹配 `Ys 4 - Mask Of The Sun` 条目。
+
 ## [1.0.2] - 2026-07-16
 
 ### English
