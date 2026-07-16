@@ -6,6 +6,30 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-07-16
+
+### English
+
+#### Added
+
+- Added diagnostic Console entries for manual scraping, including the effective query, platform, file, Provider result count, and leading candidates.
+
+#### Fixed
+
+- ScreenScraper now retries subtitle-only variants for titles with separators and unseparated trailing subtitles, allowing searches such as `Front Mission - Gun Hazard` and `Front Mission Gun Hazard` to resolve correctly.
+- Manual scraping now preserves the user's search text instead of silently replacing it with a ROM header or DAT identification result; automatic and batch scraping retain header-based identification.
+
+### 简体中文
+
+#### 新增
+
+- 为单独抓取增加 Console 诊断信息，记录实际查询词、平台、文件、Provider 结果数量和主要候选。
+
+#### 修复
+
+- ScreenScraper 现在会对带分隔符的副标题以及未分隔的末尾副标题执行回退搜索，使 `Front Mission - Gun Hazard` 和 `Front Mission Gun Hazard` 等关键词能够正确匹配。
+- 单独抓取不再用 ROM 头或 DAT 识别结果悄悄覆盖用户输入的搜索词；自动与批量抓取仍保留基于 ROM 头的识别。
+
 ## [1.0.3] - 2026-07-16
 
 ### English
