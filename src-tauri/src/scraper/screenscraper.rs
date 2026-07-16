@@ -604,6 +604,13 @@ mod tests {
         assert!(variants.iter().any(|value| value == "Mask of the Sun"));
     }
 
+    #[test]
+    fn search_variants_include_unseparated_trailing_subtitle() {
+        let variants = search_query_variants("Front Mission Gun Hazard");
+        assert_eq!(variants[0], "Front Mission Gun Hazard");
+        assert!(variants.iter().any(|value| value == "Gun Hazard"));
+    }
+
     #[tokio::test]
     #[ignore = "requires configured ScreenScraper member credentials and network access"]
     async fn live_api_smoke_covers_all_used_endpoints() {
@@ -906,6 +913,17 @@ fn search_query_variants(query: &str) -> Vec<String> {
                 push_unique(&mut variants, title.to_string());
                 push_unique(&mut variants, subtitle.to_string());
             }
+        }
+    }
+    let has_explicit_subtitle = [" - ", ": ", " – ", " — "]
+        .iter()
+        .any(|separator| query.contains(separator));
+    if !has_explicit_subtitle {
+        let words: Vec<_> = query.split_whitespace().collect();
+        if words.len() >= 3 {
+            // jeuRecherche 对省略标题分隔符的完整名称经常返回空结果，但能按
+            // 最后的副标题命中，例如 "Front Mission Gun Hazard" -> "Gun Hazard"。
+            push_unique(&mut variants, words[words.len() - 2..].join(" "));
         }
     }
     for value in variants.clone() {

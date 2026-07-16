@@ -247,17 +247,53 @@ pub async fn scraper_search(
     system: Option<String>,
     directory: Option<String>,
 ) -> Result<Vec<SearchResult>, String> {
-    let resolved_name = match (system.as_deref(), directory.as_deref()) {
-        (Some(system), Some(directory)) => resolve_scrape_name(name, &file_name, system, directory),
-        _ => name,
-    };
-    let mut query = ScrapeQuery::new(resolved_name, file_name);
+    // 单独抓取是用户主动搜索，必须尊重输入框中的关键词。ROM 头/DAT 识别仅用于
+    // 自动和批量抓取，否则错误的头信息会悄悄覆盖用户手工修正后的查询词。
+    let mut query = ScrapeQuery::new(name, file_name);
     if let Some(sys) = system {
         query = query.with_system(sys);
     }
 
+    let _ = app.emit(
+        "app-log",
+        AppLog {
+            level: "debug",
+            source: "scraper".to_string(),
+            message: format!(
+                "手工搜索：查询={}，平台={}，目录={}，文件={}",
+                query.name,
+                query.system.as_deref().unwrap_or("未指定"),
+                directory.as_deref().unwrap_or("未指定"),
+                query.file_name
+            ),
+        },
+    );
+
     let report = state.manager.read().await.search_fresh_report(&query).await;
     emit_provider_outcomes(&app, &report.outcomes);
+    let preview = report
+        .results
+        .iter()
+        .take(5)
+        .map(|result| format!("{}:{}", result.provider, result.name))
+        .collect::<Vec<_>>()
+        .join("；");
+    let _ = app.emit(
+        "app-log",
+        AppLog {
+            level: if report.results.is_empty() {
+                "warn"
+            } else {
+                "debug"
+            },
+            source: "scraper".to_string(),
+            message: if preview.is_empty() {
+                "手工搜索未返回候选".to_string()
+            } else {
+                format!("手工搜索返回 {} 个候选：{preview}", report.results.len())
+            },
+        },
+    );
     if report.outcomes.is_empty() {
         return Err(
             "没有可用的抓取 Provider；请先在设置中配置凭据并启用至少一个 Provider".to_string(),
