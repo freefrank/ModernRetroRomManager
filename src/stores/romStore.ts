@@ -422,8 +422,9 @@ export const useRomStore = create<RomState>((set, get) => ({
       });
       await get().fetchScanDirectories();
 
-      // 新 ROM 库第一次加入时建立完整持久索引。
-      await get().scanLibrary(true);
+      // 统一走增量扫描；新 Library 没有旧索引时仍会完整建立索引，
+      // 之后添加或删除索引文件夹只处理变化的平台。
+      await get().scanLibrary(false);
     } catch (error) {
       console.error("Failed to add directory:", error);
       throw error;

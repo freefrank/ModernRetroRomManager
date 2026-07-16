@@ -1,4 +1,4 @@
-use crate::rom_index::invalidate_library_index;
+use crate::rom_index::{invalidate_library_index, rebind_library_index};
 use crate::settings::{
     default_library_name, get_settings, library_id_for_path, native_path, update_setting,
     DirectoryConfig,
@@ -285,7 +285,7 @@ pub fn set_library_indexed_folders(
         .find(|item| item.id == libraryId)
         .map(|item| DirectoryInfo::from_config(item, active_id.as_deref()))
         .ok_or_else(|| "Library 不存在".to_string())?;
-    invalidate_library_index(&libraryId);
+    rebind_library_index(&libraryId);
     Ok(result)
 }
 

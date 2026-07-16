@@ -361,7 +361,7 @@ export default function GeneralSection() {
       toast.success(t("settings.scanDirectories.configSaved"));
       const rescanActiveLibrary = configLibrary.isActive;
       setConfigLibrary(null);
-      if (rescanActiveLibrary) await scanLibrary(true);
+      if (rescanActiveLibrary) await scanLibrary(false);
     } catch (error) {
       toast.error(t("settings.scanDirectories.configSaveFailed", { error: String(error) }));
     } finally {

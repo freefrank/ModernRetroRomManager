@@ -1,7 +1,7 @@
 use crate::config::get_config_dir;
 use crate::rom_service::{
-    detect_metadata_format, get_roms_for_directory, get_roms_for_directory_with_progress,
-    SystemRoms,
+    apply_temp_metadata, detect_metadata_format, get_roms_for_directory,
+    get_roms_for_directory_with_progress, SystemRoms,
 };
 use crate::settings::{get_settings, DirectoryConfig};
 use serde::{Deserialize, Serialize};
@@ -329,13 +329,19 @@ fn save_index(
         serde_json::to_vec(&index).map_err(|error| error.to_string())?,
     )
     .map_err(|error| error.to_string())?;
-    Ok(flatten_directories(&index.directories))
+    let mut systems = flatten_directories(&index.directories);
+    overlay_temp_metadata(library, &mut systems);
+    Ok(systems)
 }
 
 pub fn load_cached_roms() -> Option<Vec<SystemRoms>> {
     let settings = get_settings();
     let library = settings.active_library()?;
-    load_index_for(library).map(|index| flatten_directories(&index.directories))
+    load_index_for(library).map(|index| {
+        let mut systems = flatten_directories(&index.directories);
+        overlay_temp_metadata(library, &mut systems);
+        systems
+    })
 }
 
 pub fn load_cached_roms_for_library(library_id: &str) -> Option<Vec<SystemRoms>> {
@@ -344,17 +350,70 @@ pub fn load_cached_roms_for_library(library_id: &str) -> Option<Vec<SystemRoms>>
         .directories
         .iter()
         .find(|library| library.id == library_id)?;
-    load_index_for(library).map(|index| flatten_directories(&index.directories))
+    load_index_for(library).map(|index| {
+        let mut systems = flatten_directories(&index.directories);
+        overlay_temp_metadata(library, &mut systems);
+        systems
+    })
 }
 
-pub fn invalidate_index() {
-    if let Some(library) = get_settings().active_library() {
-        invalidate_library_index(&library.id);
+/// 临时 Metadata 在读取缓存索引时动态叠加，不再通过删除整库索引刷新。
+pub fn invalidate_index() {}
+
+fn overlay_temp_metadata(library: &DirectoryConfig, systems: &mut [SystemRoms]) {
+    let library_root = Path::new(&library.path);
+    for system in systems {
+        for rom in &mut system.roms {
+            rom.temp_data = None;
+            rom.has_temp_metadata = false;
+        }
+        let system_path = Path::new(&system.path);
+        let temp_library_path = if library.is_root_directory
+            && normalized_path(system_path) != normalized_path(library_root)
+        {
+            library_root
+        } else {
+            system_path.parent().unwrap_or(system_path)
+        };
+        apply_temp_metadata(&mut system.roms, temp_library_path, &system.system);
     }
 }
 
 pub fn invalidate_library_index(library_id: &str) {
     let _ = fs::remove_file(index_path_for(library_id));
+}
+
+/// 仅更新索引的目录配置签名，保留现有平台数据供下一次增量扫描复用。
+pub fn rebind_library_index(library_id: &str) {
+    let settings = get_settings();
+    let Some(library) = settings
+        .directories
+        .iter()
+        .find(|library| library.id == library_id)
+    else {
+        return;
+    };
+    let path = index_path_for(library_id);
+    let Ok(content) = fs::read(&path) else {
+        return;
+    };
+    let Ok(mut index) = serde_json::from_slice::<RomLibraryIndex>(&content) else {
+        return;
+    };
+    if index.version != INDEX_VERSION {
+        return;
+    }
+    index.directories_signature = directories_signature(std::slice::from_ref(library));
+    let Ok(bytes) = serde_json::to_vec(&index) else {
+        return;
+    };
+    let temporary = path.with_extension("json.part");
+    if fs::write(&temporary, bytes).is_ok() {
+        if path.exists() {
+            let _ = fs::remove_file(&path);
+        }
+        let _ = fs::rename(temporary, path);
+    }
 }
 
 pub fn scan_library(

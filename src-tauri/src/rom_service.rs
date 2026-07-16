@@ -354,7 +354,7 @@ pub fn update_rom_media_in_metadata(
 }
 
 /// 尝试加载并应用临时元数据
-fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) {
+pub(crate) fn apply_temp_metadata(roms: &mut [RomInfo], library_path: &Path, system: &str) {
     // 使用新的目录结构: temp/{library}/{system}/metadata.pegasus.txt
     let temp_dir = get_temp_dir_for_library(library_path, system);
     let temp_metadata_path = temp_dir.join("metadata.pegasus.txt");
