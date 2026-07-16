@@ -149,7 +149,8 @@ impl ScreenScraperClient {
             rating: jeu
                 .note
                 .as_deref()
-                .and_then(|note| note.parse::<f64>().ok()),
+                .and_then(|note| note.parse::<f64>().ok())
+                .map(|rating| (rating / 20.0).clamp(0.0, 1.0)),
             translated_languages: Vec::new(),
         }
     }
@@ -386,7 +387,7 @@ mod tests {
         assert_eq!(metadata.publisher.as_deref(), Some("Publisher"));
         assert_eq!(metadata.developer.as_deref(), Some("Developer"));
         assert_eq!(metadata.players.as_deref(), Some("1-2"));
-        assert_eq!(metadata.rating, Some(18.0));
+        assert_eq!(metadata.rating, Some(0.9));
     }
 
     #[test]
@@ -415,7 +416,7 @@ mod tests {
         let metadata = ScreenScraperClient::parse_metadata(&games[0]);
         assert_eq!(metadata.name, "Single name");
         assert_eq!(metadata.release_date.as_deref(), Some("2001"));
-        assert_eq!(metadata.rating, Some(18.0));
+        assert_eq!(metadata.rating, Some(0.9));
         assert_eq!(ScreenScraperClient::parse_media(&games[0]).len(), 1);
     }
 

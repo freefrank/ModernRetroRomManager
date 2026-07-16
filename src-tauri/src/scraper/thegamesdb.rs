@@ -88,7 +88,11 @@ impl TheGamesDbClient {
             publisher: None,
             genres: Vec::new(),
             players: game.players.map(|value| value.to_string()),
-            rating: game.rating.as_deref().and_then(|value| value.parse().ok()),
+            rating: game
+                .rating
+                .as_deref()
+                .and_then(|value| value.parse::<f64>().ok())
+                .map(|rating| (rating / 10.0).clamp(0.0, 1.0)),
             translated_languages: Vec::new(),
         }
     }

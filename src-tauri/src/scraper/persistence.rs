@@ -60,6 +60,7 @@ pub fn save_metadata_emulationstation(
         genre: Option<String>,
         players: Option<String>,
         releasedate: Option<String>,
+        #[serde(default, deserialize_with = "crate::rating::deserialize_optional_f32")]
         rating: Option<f32>,
         #[serde(rename = "english-name")]
         english_name: Option<String>,
@@ -92,6 +93,9 @@ pub fn save_metadata_emulationstation(
             if let Some(cn) = &metadata.chinese_name {
                 game.chinese_name = Some(cn.clone());
             }
+            if let Some(rating) = metadata.rating.and_then(crate::rating::normalize_rating) {
+                game.rating = Some(rating as f32);
+            }
             found = true;
             break;
         }
@@ -108,7 +112,10 @@ pub fn save_metadata_emulationstation(
             genre: metadata.genres.first().cloned(),
             players: metadata.players.clone(),
             releasedate: metadata.release_date.clone(),
-            rating: metadata.rating.map(|r| r as f32),
+            rating: metadata
+                .rating
+                .and_then(crate::rating::normalize_rating)
+                .map(|r| r as f32),
             english_name: metadata.english_name.clone(),
             chinese_name: metadata.chinese_name.clone(),
         });
@@ -215,7 +222,10 @@ pub fn save_metadata_pegasus_with_media(
         players: metadata.players.clone(),
         description: metadata.description.clone(),
         release: metadata.release_date.clone(),
-        rating: metadata.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
+        rating: metadata
+            .rating
+            .and_then(crate::rating::normalize_rating)
+            .map(|r| format!("{}%", (r * 100.0).round() as i32)),
         translated_languages: metadata.translated_languages.clone(),
         ..Default::default()
     };
@@ -292,6 +302,36 @@ mod tests {
 
         let content = fs::read_to_string(root.join("metadata.txt")).unwrap();
         assert!(content.contains("assets.boxFront: media/game/boxfront.png"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn saved_pegasus_metadata_normalizes_legacy_provider_rating() {
+        let root =
+            std::env::temp_dir().join(format!("mrrm-rating-metadata-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let rom = RomInfo {
+            file: "game.zip".into(),
+            name: "Game".into(),
+            directory: root.to_string_lossy().into_owned(),
+            system: "gba".into(),
+            ..Default::default()
+        };
+
+        save_metadata_pegasus(
+            &rom,
+            &GameMetadata {
+                name: "Game".into(),
+                rating: Some(18.0),
+                ..Default::default()
+            },
+            false,
+        )
+        .unwrap();
+
+        let content = fs::read_to_string(root.join("metadata.txt")).unwrap();
+        assert!(content.contains("rating: 90%"));
         fs::remove_dir_all(root).unwrap();
     }
 }

@@ -1181,6 +1181,7 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
         genre: Option<String>,
         players: Option<String>,
         releasedate: Option<String>,
+        #[serde(default, deserialize_with = "crate::rating::deserialize_optional_f32")]
         rating: Option<f32>,
         #[serde(rename = "eng", alias = "english-name")]
         english_name: Option<String>,
@@ -1238,7 +1239,10 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                 genre: g.genre,
                 players: g.players,
                 release: g.releasedate,
-                rating: g.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
+                rating: g
+                    .rating
+                    .and_then(|r| crate::rating::normalize_rating(r as f64))
+                    .map(|r| format!("{}%", (r * 100.0).round() as i32)),
                 directory: dir_path.to_string_lossy().to_string(),
                 system: system_name.to_string(),
                 // EmulationStation themes often store a pre-composed horizontal
@@ -1546,7 +1550,7 @@ mod tests {
     <genre>Platform</genre>
     <players>2</players>
     <releasedate>1990</releasedate>
-    <rating>0.95</rating>
+    <rating>1600</rating>
     <eng>Super Mario World (English)</eng>
   </game>
 </gameList>
@@ -1560,6 +1564,7 @@ mod tests {
         assert_eq!(roms[0].file, "Super Mario World.sfc");
         assert_eq!(roms[0].name, "Super Mario World");
         assert_eq!(roms[0].system, "snes");
+        assert_eq!(roms[0].rating.as_deref(), Some("80%"));
         assert_eq!(
             roms[0].english_name.as_deref(),
             Some("Super Mario World (English)")

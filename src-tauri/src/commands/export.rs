@@ -470,6 +470,7 @@ struct EsGame {
     genre: Option<String>,
     players: Option<String>,
     releasedate: Option<String>,
+    #[serde(default, deserialize_with = "crate::rating::deserialize_optional_f64")]
     rating: Option<f64>,
 }
 
@@ -514,14 +515,7 @@ fn pegasus_to_es(game: &PegasusGame) -> Option<EsGame> {
         genre: game.genre.clone(),
         players: game.players.clone(),
         releasedate: game.release.clone(),
-        rating: game.rating.as_ref().and_then(|rating| {
-            let value = rating.trim_end_matches('%').parse::<f64>().ok()?;
-            Some(if rating.contains('%') {
-                value / 100.0
-            } else {
-                value
-            })
-        }),
+        rating: game.rating.as_deref().and_then(crate::rating::parse_rating),
     })
 }
 
@@ -929,6 +923,35 @@ mod tests {
         assert!(xml.contains("<image>./media/game/boxfront.png</image>"));
         assert!(xml.contains("<thumbnail>./media/game/screenshot.png</thumbnail>"));
         assert!(xml.contains("<marquee>./media/game/logo.png</marquee>"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn emulationstation_export_accepts_empty_and_malformed_existing_ratings() {
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-export-es-empty-rating-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("gamelist.xml"),
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<gameList>
+  <game><path>./empty.gba</path><name>Empty</name><rating/></game>
+  <game><path>./blank.gba</path><name>Blank</name><rating></rating></game>
+  <game><path>./invalid.gba</path><name>Invalid</name><rating>unknown</rating></game>
+  <game><path>./legacy.gba</path><name>Legacy</name><rating>1600</rating></game>
+  <game><path>./amplified.gba</path><name>Amplified</name><rating>800000</rating></game>
+</gameList>"#,
+        )
+        .unwrap();
+
+        let path = export_emulationstation(&root, &[game()], ExportNameMode::Original).unwrap();
+        let xml = fs::read_to_string(path).unwrap();
+        assert!(xml.contains("<path>./empty.gba</path>"));
+        assert!(xml.contains("<path>./game.gba</path>"));
+        assert_eq!(xml.matches("<rating>0.8</rating>").count(), 2);
         fs::remove_dir_all(root).unwrap();
     }
 

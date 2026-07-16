@@ -94,18 +94,7 @@ impl From<PegasusGame> for crate::scraper::GameMetadata {
             publisher: game.publisher,
             genres: game.genre.map(|g| vec![g]).unwrap_or_default(),
             players: game.players,
-            rating: game.rating.and_then(|r| {
-                if let Ok(val) = r.trim_end_matches('%').parse::<f64>() {
-                    // 如果是百分比，转换为 0-1
-                    if r.contains('%') {
-                        Some(val / 100.0)
-                    } else {
-                        Some(val)
-                    }
-                } else {
-                    None
-                }
-            }),
+            rating: game.rating.as_deref().and_then(crate::rating::parse_rating),
             translated_languages: game.translated_languages,
         }
     }
