@@ -6,9 +6,9 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::OnceLock;
 
-const MD_SERIAL_CSV: &str = include_str!("../../resources/md-serial.csv");
-const N64_SERIAL_CSV: &str = include_str!("../../resources/n64-serial.csv");
-const SFC_SERIAL_CSV: &str = include_str!("../../resources/sfc-serial.csv");
+const MD_SERIAL_CSV: &str = "md-serial.csv";
+const N64_SERIAL_CSV: &str = "n64-serial.csv";
+const SFC_SERIAL_CSV: &str = "sfc-serial.csv";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CartridgeIdentification {
@@ -37,7 +37,8 @@ fn index(system: &str) -> &'static [SerialEntry] {
         _ => (&SFC_INDEX, SFC_SERIAL_CSV),
     };
     lock.get_or_init(|| {
-        let mut reader = csv::Reader::from_reader(data.as_bytes());
+        let data = crate::embedded_resources::read_database(data).unwrap_or_default();
+        let mut reader = csv::Reader::from_reader(data.as_slice());
         reader
             .records()
             .flatten()

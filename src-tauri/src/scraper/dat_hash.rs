@@ -4,13 +4,9 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::OnceLock;
 
-const GB_DAT: &str =
-    include_str!("../../resources/rom-name-cn/Dats/Nintendo - Game Boy (20250316-082450).dat");
-const GBC_DAT: &str = include_str!(
-    "../../resources/rom-name-cn/Dats/Nintendo - Game Boy Color (20250314-124712).dat"
-);
-const GG_DAT: &str =
-    include_str!("../../resources/rom-name-cn/Dats/Sega - Game Gear (20241203-185356).dat");
+const GB_DAT: &str = "rom-name-cn/Dats/Nintendo - Game Boy (20250316-082450).dat";
+const GBC_DAT: &str = "rom-name-cn/Dats/Nintendo - Game Boy Color (20250314-124712).dat";
+const GG_DAT: &str = "rom-name-cn/Dats/Sega - Game Gear (20241203-185356).dat";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DatIdentification {
@@ -51,10 +47,15 @@ fn build_index(data: &str) -> HashMap<String, Vec<String>> {
 }
 
 fn index(system: &str) -> Option<&'static HashMap<String, Vec<String>>> {
+    let load = |path| {
+        crate::embedded_resources::read_database_text(path)
+            .map(|data| build_index(&data))
+            .unwrap_or_default()
+    };
     match system {
-        "GB" => Some(GB_INDEX.get_or_init(|| build_index(GB_DAT))),
-        "GBC" => Some(GBC_INDEX.get_or_init(|| build_index(GBC_DAT))),
-        "GG" => Some(GG_INDEX.get_or_init(|| build_index(GG_DAT))),
+        "GB" => Some(GB_INDEX.get_or_init(|| load(GB_DAT))),
+        "GBC" => Some(GBC_INDEX.get_or_init(|| load(GBC_DAT))),
+        "GG" => Some(GG_INDEX.get_or_init(|| load(GG_DAT))),
         _ => None,
     }
 }

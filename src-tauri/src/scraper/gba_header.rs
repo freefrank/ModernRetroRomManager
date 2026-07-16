@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 
 use super::matcher::jaro_winkler_similarity;
 
-const GBA_SERIAL_CSV: &str = include_str!("../../resources/gba-serial.csv");
+const GBA_SERIAL_CSV: &str = "gba-serial.csv";
 
 #[derive(Debug, Clone)]
 struct SerialEntry {
@@ -51,7 +51,8 @@ fn serial_index() -> &'static SerialIndex {
     SERIAL_INDEX.get_or_init(|| {
         let mut by_serial: HashMap<String, Vec<SerialEntry>> = HashMap::new();
         let mut by_prefix: HashMap<String, Vec<(String, SerialEntry)>> = HashMap::new();
-        let mut reader = csv::Reader::from_reader(GBA_SERIAL_CSV.as_bytes());
+        let data = crate::embedded_resources::read_database(GBA_SERIAL_CSV).unwrap_or_default();
+        let mut reader = csv::Reader::from_reader(data.as_slice());
 
         for record in reader.records().flatten() {
             let Some(serial) = record.get(0).filter(|value| value.len() == 4) else {

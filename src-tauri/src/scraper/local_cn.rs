@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use crate::config::get_data_dir;
-use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
+use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, read_embedded_csv, CnRomEntry};
 use crate::scraper::matcher::jaro_winkler_similarity;
 use crate::scraper::{
     Capabilities, GameMetadata, MediaAsset, ProviderCapability, ScrapeQuery, ScraperProvider,
@@ -362,6 +362,19 @@ impl LocalCnProvider {
             } else {
                 eprintln!("[LocalCnProvider] No CSV found for system: {}", system);
             }
+        }
+
+        if let Ok(entries) = read_embedded_csv(system) {
+            cache.insert(system.to_string(), entries);
+            return cache
+                .get(system)
+                .unwrap()
+                .iter()
+                .map(|entry| CnRomEntry {
+                    english_name: entry.english_name.clone(),
+                    chinese_name: entry.chinese_name.clone(),
+                })
+                .collect();
         }
 
         eprintln!("[LocalCnProvider] No entries found after checking all paths");

@@ -5,10 +5,10 @@
 use crate::config::{get_data_dir, get_temp_dir, get_temp_dir_for_library};
 use crate::rom_service::{detect_metadata_format, get_roms_from_directory, RomInfo};
 use crate::scraper::cartridge_header::identify_cartridge_rom;
-use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, CnRomEntry};
+use crate::scraper::cn_repo::{find_csv_in_dir, read_csv, read_embedded_csv, CnRomEntry};
 use crate::scraper::dat_hash::identify_dat_rom;
 use crate::scraper::gba_header::identify_gba_rom;
-use crate::scraper::jy6d_dz::{load_jy6d_csv, Jy6dDzEntry};
+use crate::scraper::jy6d_dz::{load_embedded_jy6d_csv, load_jy6d_csv, Jy6dDzEntry};
 use crate::scraper::local_cn::{smart_cn_similarity, to_pinyin_initials};
 use crate::scraper::pegasus::parse_pegasus_file;
 use crate::scraper::platform_header::{
@@ -280,11 +280,6 @@ fn get_cn_repo_paths(app: &AppHandle) -> Vec<PathBuf> {
         }
     }
 
-    let embedded = crate::config::get_embedded_resource_dir().join("rom-name-cn");
-    if embedded.exists() && !paths.contains(&embedded) {
-        paths.push(embedded);
-    }
-
     // 2. 用户数据目录作为后备（支持用户自行更新）
     let user_data_path = get_data_dir().join("rom-name-cn");
     if user_data_path.exists() {
@@ -310,10 +305,7 @@ fn get_jy6d_csv_path(app: &AppHandle, csv_name: &str) -> Option<PathBuf> {
             return Some(csv_path);
         }
     }
-    let embedded = crate::config::get_embedded_resource_dir()
-        .join("cn-mapping")
-        .join(csv_name);
-    embedded.is_file().then_some(embedded)
+    None
 }
 
 #[derive(Debug, Serialize)]
@@ -1264,6 +1256,11 @@ pub async fn auto_fix_naming(
                 }
             }
         }
+        if csv_data.is_empty() {
+            if let Ok(loaded) = read_embedded_csv(&system_name) {
+                csv_data = loaded;
+            }
+        }
         csv_data
     };
 
@@ -1277,6 +1274,8 @@ pub async fn auto_fix_naming(
                     if let Ok(loaded) = load_jy6d_csv(&csv_path) {
                         jy6d_data = loaded;
                     }
+                } else if let Ok(loaded) = load_embedded_jy6d_csv(jy6d_csv_name) {
+                    jy6d_data = loaded;
                 }
             }
         }

@@ -5,6 +5,7 @@
 use crate::config::get_data_dir;
 use crate::system_mapping::find_csv_name_by_folder;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -98,11 +99,22 @@ pub fn find_csv_for_system(system: &str) -> Option<PathBuf> {
 
 /// 读取 CSV 内容
 pub fn read_csv(path: &PathBuf) -> Result<Vec<CnRomEntry>, String> {
+    let file = fs::File::open(path).map_err(|error| error.to_string())?;
+    read_csv_reader(file)
+}
+
+pub fn read_embedded_csv(system: &str) -> Result<Vec<CnRomEntry>, String> {
+    let csv_name =
+        find_csv_name_by_folder(system).ok_or_else(|| format!("未配置平台中文数据库: {system}"))?;
+    let bytes = crate::embedded_resources::read_database(&format!("rom-name-cn/{csv_name}"))?;
+    read_csv_reader(bytes.as_slice())
+}
+
+fn read_csv_reader(reader: impl Read) -> Result<Vec<CnRomEntry>, String> {
     let mut entries = Vec::new();
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(true) // CSV 文件有 header: Name EN,Name CN
-        .from_path(path)
-        .map_err(|e| e.to_string())?;
+        .from_reader(reader);
 
     for record in rdr.records().flatten() {
         if record.len() >= 2 {
@@ -119,4 +131,14 @@ pub fn read_csv(path: &PathBuf) -> Result<Vec<CnRomEntry>, String> {
         }
     }
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_embedded_csv_without_extracting_it() {
+        assert!(read_embedded_csv("GBA").unwrap().len() > 1_000);
+    }
 }

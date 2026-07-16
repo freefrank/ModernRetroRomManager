@@ -6,7 +6,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::OnceLock;
 
-const TITLE_CSV: &str = include_str!("../../resources/3ds-title-id.csv");
+const TITLE_CSV: &str = "3ds-title-id.csv";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ThreeDsIdentification {
@@ -29,7 +29,8 @@ static TITLE_INDEX: OnceLock<Vec<TitleEntry>> = OnceLock::new();
 
 fn title_index() -> &'static [TitleEntry] {
     TITLE_INDEX.get_or_init(|| {
-        let mut reader = csv::Reader::from_reader(TITLE_CSV.as_bytes());
+        let data = crate::embedded_resources::read_database(TITLE_CSV).unwrap_or_default();
+        let mut reader = csv::Reader::from_reader(data.as_slice());
         reader
             .records()
             .flatten()

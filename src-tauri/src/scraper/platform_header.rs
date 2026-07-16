@@ -4,9 +4,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::OnceLock;
 
-const NDS_DAT: &str = include_str!(
-    "../../resources/rom-name-cn/Dats/Nintendo - Nintendo DS (Decrypted) (20250304-133524).dat"
-);
+const NDS_DAT: &str = "rom-name-cn/Dats/Nintendo - Nintendo DS (Decrypted) (20250304-133524).dat";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlatformIdentification {
@@ -37,10 +35,11 @@ fn clean_release_name(name: &str) -> String {
 
 fn nds_serials() -> &'static HashMap<String, Vec<String>> {
     NDS_SERIALS.get_or_init(|| {
+        let data = crate::embedded_resources::read_database_text(NDS_DAT).unwrap_or_default();
         let game_re = regex::Regex::new(r#"(?s)<game name="([^"]+)"[^>]*>(.*?)</game>"#).unwrap();
         let serial_re = regex::Regex::new(r#"serial="([A-Za-z0-9]{4})""#).unwrap();
         let mut values: HashMap<String, HashSet<String>> = HashMap::new();
-        for game in game_re.captures_iter(NDS_DAT) {
+        for game in game_re.captures_iter(&data) {
             let name = xml_unescape(&game[1]);
             for serial in serial_re.captures_iter(&game[2]) {
                 values

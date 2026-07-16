@@ -23,7 +23,15 @@ pub fn load_jy6d_csv(csv_path: &Path) -> Result<Vec<Jy6dDzEntry>, String> {
     let file = File::open(csv_path)
         .map_err(|e| format!("Failed to open jy6d CSV {}: {}", csv_path.display(), e))?;
 
-    let reader = BufReader::new(file);
+    load_jy6d_reader(BufReader::new(file))
+}
+
+pub fn load_embedded_jy6d_csv(csv_name: &str) -> Result<Vec<Jy6dDzEntry>, String> {
+    let bytes = crate::embedded_resources::read_database(&format!("cn-mapping/{csv_name}"))?;
+    load_jy6d_reader(BufReader::new(bytes.as_slice()))
+}
+
+fn load_jy6d_reader(reader: impl BufRead) -> Result<Vec<Jy6dDzEntry>, String> {
     let mut entries = Vec::new();
     let mut is_first_line = true;
 
@@ -140,5 +148,10 @@ mod tests {
         assert_eq!(fields[1], "你好世界");
         assert_eq!(fields[2], "with,comma");
         assert_eq!(fields[3], r#"with "quotes""#);
+    }
+
+    #[test]
+    fn reads_embedded_mapping_without_extracting_it() {
+        assert!(!load_embedded_jy6d_csv("gba.csv").unwrap().is_empty());
     }
 }
