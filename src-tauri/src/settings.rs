@@ -180,6 +180,20 @@ pub struct AppSettings {
     /// OpenAI-compatible metadata translation settings.
     #[serde(default)]
     pub ai_translation: AiTranslationConfig,
+    /// 导出页面上次选择的目标 metadata 格式。
+    #[serde(default = "default_export_format")]
+    pub export_format: String,
+    /// 导出页面上次选择的游戏名称模式。
+    #[serde(default = "default_export_name_mode")]
+    pub export_name_mode: String,
+}
+
+fn default_export_format() -> String {
+    "pegasus".to_string()
+}
+
+fn default_export_name_mode() -> String {
+    "original".to_string()
 }
 
 fn default_scraper_media_types() -> Vec<String> {
@@ -202,6 +216,8 @@ impl Default for AppSettings {
             scraper_stats: HashMap::new(),
             scraper_media_types: default_scraper_media_types(),
             ai_translation: AiTranslationConfig::default(),
+            export_format: default_export_format(),
+            export_name_mode: default_export_name_mode(),
         }
     }
 }
@@ -425,6 +441,8 @@ mod tests {
         let legacy = r#"{"theme":"dark","language":"zh","view_mode":"grid"}"#;
         let loaded: AppSettings = serde_json::from_str(legacy).unwrap();
         assert!(loaded.motion_level.is_none());
+        assert_eq!(loaded.export_format, "pegasus");
+        assert_eq!(loaded.export_name_mode, "original");
     }
 
     #[test]

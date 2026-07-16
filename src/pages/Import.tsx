@@ -10,16 +10,20 @@ import type { RomSystemSummary, ScanDirectory } from "@/types";
 type ExportFormat = "pegasus" | "emulationstation";
 type ExportNameMode = "original" | "chinese";
 
-const ALL_SYSTEMS = "__all__";
 const normalizePath = (path: string) => path.replace(/\\/g, "/");
+
+interface ExportSettings {
+  export_format?: string;
+  export_name_mode?: string;
+}
 
 export default function Import() {
   const { t } = useTranslation();
-  const { exportData, exportLibraryData, cancelExport, isExporting, exportProgress } = useRomStore();
+  const { exportLibraryData, cancelExport, isExporting, exportProgress } = useRomStore();
   const [libraries, setLibraries] = useState<ScanDirectory[]>([]);
   const [libraryId, setLibraryId] = useState("");
   const [systems, setSystems] = useState<RomSystemSummary[]>([]);
-  const [scope, setScope] = useState(ALL_SYSTEMS);
+  const [selectedSystemPaths, setSelectedSystemPaths] = useState<string[]>([]);
   const [format, setFormat] = useState<ExportFormat>("pegasus");
   const [nameMode, setNameMode] = useState<ExportNameMode>("original");
   const [romAssetsOnly, setRomAssetsOnly] = useState(false);
@@ -42,16 +46,37 @@ export default function Import() {
   }, [t]);
 
   useEffect(() => {
+    let cancelled = false;
+    api.getAppSettings<ExportSettings>()
+      .then((settings) => {
+        if (cancelled) return;
+        if (settings.export_format === "pegasus" || settings.export_format === "emulationstation") {
+          setFormat(settings.export_format);
+        }
+        if (settings.export_name_mode === "original" || settings.export_name_mode === "chinese") {
+          setNameMode(settings.export_name_mode);
+        }
+      })
+      .catch((error) => console.error("Failed to load export preferences:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!libraryId) {
       setSystems([]);
       return;
     }
     let cancelled = false;
     setIsLoadingSystems(true);
-    setScope(ALL_SYSTEMS);
+    setSelectedSystemPaths([]);
     api.getLibraryRomSummary(libraryId)
       .then((items) => {
-        if (!cancelled) setSystems(items);
+        if (!cancelled) {
+          setSystems(items);
+          setSelectedSystemPaths(items.map((system) => system.path));
+        }
       })
       .catch((error) => {
         if (!cancelled) {
@@ -71,34 +96,42 @@ export default function Import() {
     () => libraries.find((library) => library.id === libraryId),
     [libraries, libraryId],
   );
-  const selectedSystem = useMemo(
-    () => systems.find((system) => system.system === scope),
-    [systems, scope],
-  );
-  const totalRoms = useMemo(
-    () => systems.reduce((total, system) => total + system.romCount, 0),
-    [systems],
-  );
-
   useEffect(() => {
     setTargetDirectory("");
-  }, [libraryId, scope]);
+  }, [libraryId]);
+
+  const allSystemsSelected = systems.length > 0 && selectedSystemPaths.length === systems.length;
+  const toggleSystem = (path: string) => {
+    setSelectedSystemPaths((current) => (
+      current.includes(path)
+        ? current.filter((item) => item !== path)
+        : [...current, path]
+    ));
+  };
+
+  const handleFormatChange = (value: ExportFormat) => {
+    setFormat(value);
+    void api.updateAppSetting("export_format", value)
+      .catch((error) => console.error("Failed to save export format:", error));
+  };
+
+  const handleNameModeChange = (value: ExportNameMode) => {
+    setNameMode(value);
+    void api.updateAppSetting("export_name_mode", value)
+      .catch((error) => console.error("Failed to save export name mode:", error));
+  };
 
   const handleExport = async () => {
     if (!selectedLibrary || !targetDirectory.trim()) return;
     try {
-      if (scope === ALL_SYSTEMS) {
-        await exportLibraryData(selectedLibrary.id, format, targetDirectory.trim(), nameMode, romAssetsOnly);
-      } else if (selectedSystem) {
-        await exportData(
-          selectedSystem.system,
-          selectedSystem.path,
-          format,
-          targetDirectory.trim(),
-          nameMode,
-          romAssetsOnly,
-        );
-      }
+      await exportLibraryData(
+        selectedLibrary.id,
+        format,
+        targetDirectory.trim(),
+        nameMode,
+        romAssetsOnly,
+        allSystemsSelected ? undefined : selectedSystemPaths,
+      );
     } catch (error) {
       toast.error(t("import.export.failed", { error: String(error) }));
     }
@@ -108,7 +141,7 @@ export default function Import() {
     selectedLibrary
       && targetDirectory.trim()
       && !isLoadingSystems
-      && (scope === ALL_SYSTEMS ? systems.length > 0 : selectedSystem),
+      && selectedSystemPaths.length > 0,
   );
 
   return (
@@ -143,29 +176,41 @@ export default function Import() {
               </Select>
             </label>
 
-            <label className="block">
+            <div>
               <span className="mb-2 block text-sm font-medium">{t("import.export.scope")}</span>
-              <Select
-                value={scope}
-                disabled={!selectedLibrary || isLoadingSystems}
-                onChange={(event) => setScope(event.target.value)}
-              >
-                <option value={ALL_SYSTEMS}>
-                  {isLoadingSystems
-                    ? t("import.export.loadingSystems")
-                    : t("import.export.entireLibrary", { systems: systems.length, roms: totalRoms })}
-                </option>
-                {systems.map((system) => (
-                  <option key={`${system.system}-${system.path}`} value={system.system}>
-                    {system.system} ({system.romCount}) — {normalizePath(system.path)}
-                  </option>
+              <div className="mb-2 flex items-center gap-2">
+                <Button variant="ghost" size="sm" disabled={isLoadingSystems} onClick={() => setSelectedSystemPaths(systems.map((system) => system.path))}>
+                  {t("import.export.selectAll")}
+                </Button>
+                <Button variant="ghost" size="sm" disabled={isLoadingSystems} onClick={() => setSelectedSystemPaths([])}>
+                  {t("import.export.selectNone")}
+                </Button>
+                <span className="text-xs text-text-muted">
+                  {t("import.export.selectedSystems", { selected: selectedSystemPaths.length, total: systems.length })}
+                </span>
+              </div>
+              <div className="max-h-56 space-y-1 overflow-auto rounded-[var(--radius-md)] border border-border-default bg-bg-primary/50 p-2">
+                {isLoadingSystems ? (
+                  <p className="p-2 text-sm text-text-muted">{t("import.export.loadingSystems")}</p>
+                ) : systems.map((system) => (
+                  <label key={`${system.system}-${system.path}`} className="flex cursor-pointer items-center gap-3 rounded-[var(--radius-sm)] px-2 py-2 hover:bg-bg-tertiary">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-accent-primary"
+                      checked={selectedSystemPaths.includes(system.path)}
+                      onChange={() => toggleSystem(system.path)}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-text-primary" title={normalizePath(system.path)}>
+                      {system.system} ({system.romCount}) — {normalizePath(system.path)}
+                    </span>
+                  </label>
                 ))}
-              </Select>
-            </label>
+              </div>
+            </div>
 
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{t("import.export.format")}</span>
-              <Select value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)}>
+              <Select value={format} onChange={(event) => handleFormatChange(event.target.value as ExportFormat)}>
                 <option value="pegasus">Pegasus — metadata.pegasus.txt</option>
                 <option value="emulationstation">EmulationStation — gamelist.xml</option>
               </Select>
@@ -173,7 +218,7 @@ export default function Import() {
 
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{t("import.export.nameMode")}</span>
-              <Select value={nameMode} onChange={(event) => setNameMode(event.target.value as ExportNameMode)}>
+              <Select value={nameMode} onChange={(event) => handleNameModeChange(event.target.value as ExportNameMode)}>
                 <option value="original">{t("import.export.nameOriginal")}</option>
                 <option value="chinese">{t("import.export.nameChinese")}</option>
               </Select>
@@ -204,9 +249,7 @@ export default function Import() {
             <div className="rounded-[var(--radius-md)] border border-border-default bg-bg-primary/50 p-4 text-sm text-text-secondary">
               <div className="flex items-center gap-2">
                 <FileArchive className="h-4 w-4 text-accent-primary" />
-                {scope === ALL_SYSTEMS
-                  ? t("import.export.libraryContents")
-                  : t("import.export.contents")}
+                {t("import.export.selectionContents", { count: selectedSystemPaths.length })}
               </div>
               {isExporting && exportProgress && (
                 <div className="mt-3">
@@ -232,9 +275,7 @@ export default function Import() {
               onClick={handleExport}
             >
               <FileDown className="h-4 w-4" />
-              {scope === ALL_SYSTEMS
-                ? t("import.export.libraryAction")
-                : t("import.export.action")}
+              {t("import.export.selectionAction", { count: selectedSystemPaths.length })}
             </Button>
           </div>
         </Card>

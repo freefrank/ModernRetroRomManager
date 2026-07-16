@@ -154,6 +154,12 @@ pub fn update_app_setting(
         "language" => s.language = value.clone(),
         "view_mode" => s.view_mode = value.clone(),
         "motion_level" => s.motion_level = Some(value.clone()),
+        "export_format" if matches!(value.as_str(), "pegasus" | "emulationstation") => {
+            s.export_format = value.clone()
+        }
+        "export_name_mode" if matches!(value.as_str(), "original" | "chinese") => {
+            s.export_name_mode = value.clone()
+        }
         _ => {}
     })
     .map_err(|e| e.to_string())

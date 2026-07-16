@@ -742,6 +742,7 @@ pub async fn export_library_scraped_data(
     target_directory: Option<String>,
     name_mode: Option<String>,
     rom_assets_only: Option<bool>,
+    system_paths: Option<Vec<String>>,
 ) -> Result<(), String> {
     let library = get_settings()
         .directories
@@ -749,13 +750,22 @@ pub async fn export_library_scraped_data(
         .find(|library| library.id == library_id)
         .ok_or_else(|| format!("Library 不存在: {library_id}"))?;
     let scan_id = library.id.clone();
-    let systems = if let Some(cached) = load_cached_roms_for_library(&library.id) {
+    let mut systems = if let Some(cached) = load_cached_roms_for_library(&library.id) {
         cached
     } else {
         tokio::task::spawn_blocking(move || scan_library_by_id(&scan_id, ScanMode::Full, |_| {}))
             .await
             .map_err(|error| format!("ROM 扫描任务失败: {error}"))??
     };
+    if let Some(system_paths) = system_paths {
+        let selected = system_paths
+            .into_iter()
+            .map(|path| display_path(Path::new(&path)).to_ascii_lowercase())
+            .collect::<std::collections::HashSet<_>>();
+        systems.retain(|system| {
+            selected.contains(&display_path(Path::new(&system.path)).to_ascii_lowercase())
+        });
+    }
 
     let target_directory = target_directory
         .filter(|path| !path.trim().is_empty())
@@ -772,7 +782,7 @@ pub async fn export_library_scraped_data(
         return Err("Library 导出目标不能是源目录或其子目录".to_string());
     }
     if systems.is_empty() {
-        return Err(format!("Library“{}”中没有可导出的 ROM", library.name));
+        return Err(format!("Library“{}”中没有选中的可导出平台", library.name));
     }
 
     if EXPORT_RUNNING.swap(true, Ordering::SeqCst) {

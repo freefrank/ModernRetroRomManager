@@ -56,6 +56,14 @@ async function httpFetch<T>(endpoint: string, options?: RequestInit): Promise<T>
 }
 
 export const api = {
+  async getAppSettings<T>(): Promise<T> {
+    return isTauri() ? tauriInvoke<T>("get_app_settings") : ({} as T);
+  },
+
+  async updateAppSetting(key: string, value: string): Promise<void> {
+    if (isTauri()) await tauriInvoke("update_app_setting", { key, value });
+  },
+
   async getRoms(): Promise<SystemRoms[]> {
     if (isTauri()) {
       return tauriInvoke<SystemRoms[]>("get_roms", {});
@@ -415,9 +423,10 @@ export const scraperApi = {
     targetDirectory?: string,
     nameMode?: "original" | "chinese",
     romAssetsOnly = false,
+    systemPaths?: string[],
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode, romAssetsOnly });
+      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode, romAssetsOnly, systemPaths });
     }
   },
 

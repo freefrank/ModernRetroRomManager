@@ -17,7 +17,14 @@ describe("export option wiring", () => {
 
   it("passes the selected mode to platform and library exports", async () => {
     await scraperApi.exportScrapedData("gba", "Y:\\gba", "pegasus", "D:\\out", "chinese");
-    await scraperApi.exportLibraryScrapedData("library-gba", "emulationstation", "D:\\out", "original", true);
+    await scraperApi.exportLibraryScrapedData(
+      "library-gba",
+      "emulationstation",
+      "D:\\out",
+      "original",
+      true,
+      ["Y:\\gba", "Y:\\psp"],
+    );
 
     expect(invoke).toHaveBeenNthCalledWith(1, "export_scraped_data", {
       system: "gba",
@@ -33,6 +40,7 @@ describe("export option wiring", () => {
       targetDirectory: "D:\\out",
       nameMode: "original",
       romAssetsOnly: true,
+      systemPaths: ["Y:\\gba", "Y:\\psp"],
     });
   });
 });
