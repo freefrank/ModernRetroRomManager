@@ -45,9 +45,10 @@
       "selected": "IA Traduire",
       "platform": "Plateforme de traduction",
       "dialogTitle": "Métadonnées de traduction par lots",
-      "warning": "Le point de terminaison IA configuré sera appelé une fois pour chacun des {{count}} jeux et les résultats seront enregistrés en tant que métadonnées d'aperçu. Des frais API peuvent s'appliquer.",
+      "warning": "Le point de terminaison IA traduira {{count}} jeux à l'aide de requêtes individuelles ou groupées selon les paramètres actuels. Les résultats seront enregistrés en tant que métadonnées d'aperçu. Des frais API peuvent s'appliquer.",
       "confirm": "Traduire les éléments {{count}}",
       "progress": "Traduction de {{current}}/{{total}}",
+      "stop": "Arrêter",
       "done": "Traduction AI terminée : {{success}} a réussi, {{failed}} a échoué"
     }
   },

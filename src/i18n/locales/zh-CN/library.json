@@ -45,9 +45,10 @@
       "selected": "AI 翻译",
       "platform": "翻译此平台",
       "dialogTitle": "批量翻译 Metadata",
-      "warning": "即将逐项调用已配置的 AI 接口翻译 {{count}} 个游戏，并把结果保存为预览 metadata。该操作可能产生 API 费用。",
+      "warning": "即将按当前设置逐项或合并调用 AI 接口翻译 {{count}} 个游戏，并把结果保存为预览 metadata。该操作可能产生 API 费用。",
       "confirm": "翻译 {{count}} 项",
       "progress": "翻译中 {{current}}/{{total}}",
+      "stop": "停止",
       "done": "AI 翻译完成：成功 {{success}}，失败 {{failed}}"
     }
   },

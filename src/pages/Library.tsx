@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Search,
@@ -20,6 +20,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { Rom, ViewMode } from "@/types";
 import { aiTranslationApi, ps3Api, scraperApi } from "@/lib/api";
 import { romMetadata } from "@/lib/metadataTranslation";
+import { groupTranslationRequests } from "@/lib/translationBatch";
 import { Button, Dialog, EmptyState, IconButton, Input, toast } from "@/components/ui";
 
 import RomView from "@/components/rom/RomView";
@@ -66,6 +67,7 @@ export default function Library() {
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateProgress, setTranslateProgress] = useState({ current: 0, total: 0 });
+  const translateCancelRef = useRef(false);
 
   const systemData = systemRoms.find((s) => s.system === systemName);
   const romsOfSystem = useMemo(() => systemData?.roms ?? [], [systemData]);
@@ -130,34 +132,99 @@ export default function Library() {
     : romsOfSystem;
 
   const openTranslation = (scope: "selection" | "platform") => {
+    translateCancelRef.current = false;
     setTranslateScope(scope);
     setTranslateProgress({ current: 0, total: 0 });
     setIsTranslateDialogOpen(true);
   };
 
+  const closeTranslationDialog = () => {
+    if (isTranslating) translateCancelRef.current = true;
+    setIsTranslateDialogOpen(false);
+  };
+
   const handleBatchTranslate = async () => {
     if (translationRoms.length === 0) return;
     setIsTranslating(true);
+    translateCancelRef.current = false;
     setTranslateProgress({ current: 0, total: translationRoms.length });
     let success = 0;
     let failed = 0;
-    for (const [index, rom] of translationRoms.entries()) {
-      setTranslateProgress({ current: index + 1, total: translationRoms.length });
+
+    const translationRequest = (rom: Rom) => ({
+      system: rom.system,
+      file_name: rom.file,
+      metadata: romMetadata(rom),
+    });
+
+    const translateOne = async (rom: Rom) => {
       try {
-        const metadata = await aiTranslationApi.translateMetadata({
-          system: rom.system,
-          file_name: rom.file,
-          metadata: romMetadata(rom),
-        });
+        const metadata = await aiTranslationApi.translateMetadata(translationRequest(rom));
         await scraperApi.saveTempMetadata(rom.system, rom.directory, rom.file, metadata);
         success += 1;
       } catch (error) {
         failed += 1;
         console.error(`AI metadata translation failed for ${rom.file}:`, error);
       }
+    };
+
+    const config = await aiTranslationApi.getConfig().catch(() => null);
+    if (config?.merge_batch_requests) {
+      const batches = groupTranslationRequests(
+        translationRoms,
+        translationRequest,
+        config.batch_token_limit,
+      );
+      let processed = 0;
+      for (const batch of batches) {
+        if (translateCancelRef.current) break;
+        if (batch.length === 1) {
+          await translateOne(batch[0]);
+          processed += 1;
+          setTranslateProgress({ current: processed, total: translationRoms.length });
+          continue;
+        }
+        try {
+          const results = await aiTranslationApi.translateMetadataBatch(batch.map(translationRequest));
+          const resultByIndex = new Map(results.map(result => [result.index, result.metadata]));
+          for (const [index, rom] of batch.entries()) {
+            const metadata = resultByIndex.get(index);
+            if (!metadata) {
+              if (!translateCancelRef.current) await translateOne(rom);
+              continue;
+            }
+            try {
+              await scraperApi.saveTempMetadata(rom.system, rom.directory, rom.file, metadata);
+              success += 1;
+            } catch (error) {
+              failed += 1;
+              console.error(`AI metadata translation save failed for ${rom.file}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error("Merged AI metadata translation failed; falling back to individual requests:", error);
+          if (!translateCancelRef.current) {
+            for (const rom of batch) {
+              if (translateCancelRef.current) break;
+              await translateOne(rom);
+            }
+          }
+        }
+        processed += batch.length;
+        setTranslateProgress({
+          current: Math.min(processed, translationRoms.length),
+          total: translationRoms.length,
+        });
+      }
+    } else {
+      for (const [index, rom] of translationRoms.entries()) {
+        if (translateCancelRef.current) break;
+        await translateOne(rom);
+        setTranslateProgress({ current: index + 1, total: translationRoms.length });
+      }
     }
     setIsTranslating(false);
-    setIsTranslateDialogOpen(false);
+    if (!translateCancelRef.current) setIsTranslateDialogOpen(false);
     await fetchRoms();
     toast.success(t("library.translation.done", { success, failed }));
   };
@@ -403,12 +470,12 @@ export default function Library() {
 
       <Dialog
         open={isTranslateDialogOpen}
-        onClose={() => { if (!isTranslating) setIsTranslateDialogOpen(false); }}
+        onClose={closeTranslationDialog}
         title={t("library.translation.dialogTitle")}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsTranslateDialogOpen(false)} disabled={isTranslating}>
-              {t("common.cancel")}
+            <Button variant="ghost" onClick={closeTranslationDialog}>
+              {isTranslating ? t("library.translation.stop") : t("common.cancel")}
             </Button>
             <Button onClick={handleBatchTranslate} loading={isTranslating}>
               {isTranslating

@@ -83,6 +83,12 @@ pub struct AiTranslationConfig {
     pub model: String,
     #[serde(default = "default_ai_target_language")]
     pub target_language: String,
+    /// Batch translation may combine several ROM entries into one API request.
+    #[serde(default)]
+    pub merge_batch_requests: bool,
+    /// Approximate context budget used when grouping batch translation requests.
+    #[serde(default = "default_ai_batch_token_limit")]
+    pub batch_token_limit: u32,
 }
 
 fn default_ai_endpoint() -> String {
@@ -93,6 +99,10 @@ fn default_ai_target_language() -> String {
     "简体中文（zh-CN）".to_string()
 }
 
+fn default_ai_batch_token_limit() -> u32 {
+    50_000
+}
+
 impl Default for AiTranslationConfig {
     fn default() -> Self {
         Self {
@@ -100,6 +110,8 @@ impl Default for AiTranslationConfig {
             api_key: String::new(),
             model: String::new(),
             target_language: default_ai_target_language(),
+            merge_batch_requests: false,
+            batch_token_limit: default_ai_batch_token_limit(),
         }
     }
 }

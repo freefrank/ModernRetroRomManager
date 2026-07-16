@@ -45,9 +45,10 @@
       "selected": "Traductor AI",
       "platform": "Plataforma de traducción",
       "dialogTitle": "Metadatos de traducción por lotes",
-      "warning": "El punto final de IA configurado se llamará una vez para cada uno de los juegos {{count}} y los resultados se guardarán como metadatos de vista previa. Es posible que se apliquen cargos de API.",
+      "warning": "El punto final de IA traducirá {{count}} juegos mediante solicitudes individuales o agrupadas según la configuración actual. Los resultados se guardarán como metadatos de vista previa. Es posible que se apliquen cargos de API.",
       "confirm": "Traducir elementos {{count}}",
       "progress": "Traduciendo {{current}}/{{total}}",
+      "stop": "Detener",
       "done": "Traducción AI finalizada: {{success}} exitosa, {{failed}} fallida"
     }
   },

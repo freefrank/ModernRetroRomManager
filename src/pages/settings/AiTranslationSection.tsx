@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Bot, KeyRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { aiTranslationApi } from "@/lib/api";
-import { Badge, Button, Input, toast } from "@/components/ui";
+import { Badge, Button, Input, Select, toast } from "@/components/ui";
 
 export default function AiTranslationSection() {
   const { t } = useTranslation();
@@ -11,6 +11,8 @@ export default function AiTranslationSection() {
   const [targetLanguage, setTargetLanguage] = useState("简体中文（zh-CN）");
   const [apiKey, setApiKey] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [mergeBatchRequests, setMergeBatchRequests] = useState(false);
+  const [batchTokenLimit, setBatchTokenLimit] = useState(50000);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -19,6 +21,8 @@ export default function AiTranslationSection() {
       setModel(config.model);
       setTargetLanguage(config.target_language);
       setHasApiKey(config.has_api_key);
+      setMergeBatchRequests(config.merge_batch_requests);
+      setBatchTokenLimit(config.batch_token_limit);
     }).catch(error => toast.error(t("settings.aiTranslation.loadFailed", { error: String(error) })));
   }, [t]);
 
@@ -30,6 +34,8 @@ export default function AiTranslationSection() {
         model,
         target_language: targetLanguage,
         api_key: apiKey || undefined,
+        merge_batch_requests: mergeBatchRequests,
+        batch_token_limit: batchTokenLimit,
       });
       if (apiKey) setHasApiKey(true);
       setApiKey("");
@@ -72,6 +78,33 @@ export default function AiTranslationSection() {
           <span>{t("settings.aiTranslation.targetLanguage")}</span>
           <Input value={targetLanguage} onChange={event => setTargetLanguage(event.target.value)} />
         </label>
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-text-primary">
+          <input
+            type="checkbox"
+            checked={mergeBatchRequests}
+            onChange={event => setMergeBatchRequests(event.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-[var(--accent-primary)]"
+          />
+          <span>
+            <span className="block">{t("settings.aiTranslation.mergeBatchRequests")}</span>
+            <span className="mt-1 block text-xs leading-relaxed text-text-muted">
+              {t("settings.aiTranslation.mergeBatchHint")}
+            </span>
+          </span>
+        </label>
+        {mergeBatchRequests && (
+          <label className="block space-y-1.5 text-sm text-text-primary">
+            <span>{t("settings.aiTranslation.batchTokenLimit")}</span>
+            <Select
+              value={String(batchTokenLimit)}
+              onChange={event => setBatchTokenLimit(Number(event.target.value))}
+            >
+              <option value="50000">50K</option>
+              <option value="100000">100K</option>
+              <option value="200000">200K</option>
+            </Select>
+          </label>
+        )}
         <p className="text-xs leading-relaxed text-text-muted">{t("settings.aiTranslation.securityHint")}</p>
         <Button onClick={save} loading={saving} disabled={!endpoint.trim() || !model.trim() || !targetLanguage.trim()}>
           {t("common.save")}

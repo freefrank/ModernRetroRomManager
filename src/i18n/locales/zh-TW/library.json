@@ -45,9 +45,10 @@
       "selected": "AI 翻譯",
       "platform": "翻譯此平台",
       "dialogTitle": "批次翻譯 Metadata",
-      "warning": "即將逐項呼叫已設定的 AI 介面翻譯 {{count}} 個遊戲，並將結果儲存為預覽 metadata。該操作可能產生 API 費用。",
+      "warning": "即將依目前設定逐項或合併呼叫 AI 介面翻譯 {{count}} 個遊戲，並將結果儲存為預覽 metadata。該操作可能產生 API 費用。",
       "confirm": "翻譯 {{count}} 項",
       "progress": "翻譯中 {{current}}/{{total}}",
+      "stop": "停止",
       "done": "AI 翻譯完成：成功 {{success}}，失敗 {{failed}}"
     }
   },

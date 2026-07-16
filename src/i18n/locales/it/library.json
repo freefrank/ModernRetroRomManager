@@ -45,9 +45,10 @@
       "selected": "Traduttore AI",
       "platform": "Piattaforma di traduzione",
       "dialogTitle": "Metadati di traduzione batch",
-      "warning": "L'endpoint AI configurato verrà chiamato una volta per ciascuno dei giochi {{count}} e i risultati verranno salvati come metadati di anteprima. Potrebbero essere applicati costi API.",
+      "warning": "L'endpoint AI tradurrà {{count}} giochi usando richieste singole o raggruppate in base alle impostazioni correnti. I risultati verranno salvati come metadati di anteprima. Potrebbero essere applicati costi API.",
       "confirm": "Traduci {{count}} Elementi",
       "progress": "Traduzione in corso {{current}}/{{total}}",
+      "stop": "Interrompi",
       "done": "Traduzione AI completata: {{success}} riuscita, {{failed}} non riuscita"
     }
   },

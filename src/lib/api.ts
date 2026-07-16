@@ -1,4 +1,4 @@
-import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo, AiTranslationConfig, AiTranslationConfigInput, TranslateMetadataRequest } from "@/types";
+import type { SystemRoms, RomSystemSummary, GameSystem, ScanDirectory, Rom, ScraperProviderInfo, ScraperCredentials, ScraperSearchResult, ScraperGameMetadata, ScraperMediaAsset, ScrapeResult, ApplyScrapedDataOptions, CustomThemeInfo, AiTranslationConfig, AiTranslationConfigInput, TranslateMetadataRequest, BatchTranslationResult } from "@/types";
 
 declare global {
   interface Window {
@@ -420,7 +420,7 @@ export const scraperApi = {
 export const aiTranslationApi = {
   async getConfig(): Promise<AiTranslationConfig> {
     if (isTauri()) return tauriInvoke<AiTranslationConfig>("get_ai_translation_config");
-    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "简体中文（zh-CN）", has_api_key: false };
+    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "简体中文（zh-CN）", has_api_key: false, merge_batch_requests: false, batch_token_limit: 50000 };
   },
 
   async saveConfig(input: AiTranslationConfigInput): Promise<void> {
@@ -429,6 +429,11 @@ export const aiTranslationApi = {
 
   async translateMetadata(request: TranslateMetadataRequest): Promise<ScraperGameMetadata> {
     if (isTauri()) return tauriInvoke<ScraperGameMetadata>("translate_metadata", { request });
+    throw new Error("Not available in web mode");
+  },
+
+  async translateMetadataBatch(requests: TranslateMetadataRequest[]): Promise<BatchTranslationResult[]> {
+    if (isTauri()) return tauriInvoke<BatchTranslationResult[]>("translate_metadata_batch", { requests });
     throw new Error("Not available in web mode");
   },
 };

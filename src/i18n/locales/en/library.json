@@ -45,9 +45,10 @@
       "selected": "AI Translate",
       "platform": "Translate Platform",
       "dialogTitle": "Batch Translate Metadata",
-      "warning": "The configured AI endpoint will be called once for each of {{count}} games and results will be saved as preview metadata. API charges may apply.",
+      "warning": "The AI endpoint will translate {{count}} games using individual or merged requests according to the current settings. Results will be saved as preview metadata. API charges may apply.",
       "confirm": "Translate {{count}} Items",
       "progress": "Translating {{current}}/{{total}}",
+      "stop": "Stop",
       "done": "AI translation finished: {{success}} succeeded, {{failed}} failed"
     }
   },

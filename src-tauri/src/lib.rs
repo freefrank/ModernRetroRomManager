@@ -71,6 +71,7 @@ pub fn run() {
             commands::ai::get_ai_translation_config,
             commands::ai::save_ai_translation_config,
             commands::ai::translate_metadata,
+            commands::ai::translate_metadata_batch,
             // Scraper (Updated)
             commands::scraper::get_scraper_providers,
             commands::scraper::configure_scraper_provider,

@@ -45,9 +45,10 @@
       "selected": "KI-Übersetzung",
       "platform": "Plattform übersetzen",
       "dialogTitle": "Batch-Übersetzung von Metadaten",
-      "warning": "Der konfigurierte KI-Endpunkt wird einmal für jedes der {{count}} Spiele aufgerufen und die Ergebnisse werden als Vorschau-Metadaten gespeichert. Es können API-Gebühren anfallen.",
+      "warning": "Der KI-Endpunkt übersetzt {{count}} Spiele gemäß den aktuellen Einstellungen mit einzelnen oder zusammengefassten Anfragen. Die Ergebnisse werden als Vorschau-Metadaten gespeichert. Es können API-Gebühren anfallen.",
       "confirm": "Übersetzen Sie {{count}} Elemente",
       "progress": "Übersetzen {{current}}/{{total}}",
+      "stop": "Stoppen",
       "done": "AI-Übersetzung abgeschlossen: {{success}} erfolgreich, {{failed}} fehlgeschlagen"
     }
   },

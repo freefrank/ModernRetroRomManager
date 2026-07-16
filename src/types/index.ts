@@ -183,6 +183,8 @@ export interface AiTranslationConfig {
   model: string;
   target_language: string;
   has_api_key: boolean;
+  merge_batch_requests: boolean;
+  batch_token_limit: number;
 }
 
 export interface AiTranslationConfigInput {
@@ -190,11 +192,18 @@ export interface AiTranslationConfigInput {
   model: string;
   target_language: string;
   api_key?: string;
+  merge_batch_requests: boolean;
+  batch_token_limit: number;
 }
 
 export interface TranslateMetadataRequest {
   system: string;
   file_name: string;
+  metadata: ScraperGameMetadata;
+}
+
+export interface BatchTranslationResult {
+  index: number;
   metadata: ScraperGameMetadata;
 }
 
