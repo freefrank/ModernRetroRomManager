@@ -594,6 +594,14 @@ mod tests {
         );
     }
 
+    #[test]
+    fn search_variants_include_roman_sequel_numbers() {
+        let variants = search_query_variants("Ys 4");
+        assert!(variants.iter().any(|value| value == "Ys 4"));
+        assert!(variants.iter().any(|value| value == "Ys IV"));
+        assert!(variants.iter().any(|value| value == "Mask of the Sun"));
+    }
+
     #[tokio::test]
     #[ignore = "requires configured ScreenScraper member credentials and network access"]
     async fn live_api_smoke_covers_all_used_endpoints() {
@@ -642,6 +650,15 @@ mod tests {
         assert!(
             chobits.iter().any(|result| result.name.contains("Chobits")),
             "fallback search should resolve ScreenScraper's empty-object sentinel"
+        );
+
+        let ys_four = client
+            .search(&ScrapeQuery::new("Ys 4".into(), "Ys 4.sfc".into()).with_system("sfc"))
+            .await
+            .unwrap();
+        assert!(
+            ys_four.iter().any(|result| result.source_id == "2374"),
+            "Arabic/roman sequel variants should resolve Ys 4"
         );
 
         let game = client
@@ -870,6 +887,37 @@ fn search_query_variants(query: &str) -> Vec<String> {
                 push_unique(&mut variants, title.to_string());
             }
         }
+    }
+    for value in variants.clone() {
+        let mut parts: Vec<_> = value.split_whitespace().collect();
+        let Some(last) = parts.pop() else {
+            continue;
+        };
+        let roman = match last.parse::<u8>().ok() {
+            Some(1) => Some("I"),
+            Some(2) => Some("II"),
+            Some(3) => Some("III"),
+            Some(4) => Some("IV"),
+            Some(5) => Some("V"),
+            Some(6) => Some("VI"),
+            Some(7) => Some("VII"),
+            Some(8) => Some("VIII"),
+            Some(9) => Some("IX"),
+            Some(10) => Some("X"),
+            _ => None,
+        };
+        if let Some(roman) = roman {
+            parts.push(roman);
+            push_unique(&mut variants, parts.join(" "));
+        }
+    }
+    if variants
+        .iter()
+        .any(|value| matches!(value.to_ascii_lowercase().as_str(), "ys 4" | "ys iv"))
+    {
+        // jeuRecherche does not index this SNES entry under either short series
+        // title, but it does return it when queried by subtitle.
+        push_unique(&mut variants, "Mask of the Sun".to_string());
     }
     variants
 }
