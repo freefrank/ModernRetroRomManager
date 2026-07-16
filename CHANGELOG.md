@@ -6,6 +6,38 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.6] - 2026-07-15
+
+### English
+
+#### Added
+
+- Added a dedicated Chinese ROM name field with legacy metadata migration and original/Chinese name selection for platform and whole-library exports.
+
+#### Changed
+
+- Simplified and Traditional Chinese interfaces now prefer the Chinese ROM name while other interface languages continue to display the original name.
+
+#### Fixed
+
+- Added regular JSON and SSE response handling for OpenAI-compatible metadata translation endpoints, including providers that default to streaming responses.
+- Release CI now explicitly publishes the generated GitHub Release and marks it as latest instead of relying only on the release action's draft setting.
+
+### 简体中文
+
+#### 新增
+
+- 增加独立中文 ROM 名称字段、旧 Metadata 迁移，以及平台和整个游戏库导出时的原名/中文名选择。
+
+#### 变更
+
+- 简体中文和繁体中文界面优先显示中文 ROM 名称，其他界面语言继续显示原名。
+
+#### 修复
+
+- AI Metadata 翻译兼容 OpenAI Compatible 接口的普通 JSON 和 SSE 响应，包括默认返回流式内容的 Provider。
+- Release CI 在生成 GitHub Release 后显式取消草稿并设为最新版本，不再只依赖 Release Action 的 draft 参数。
+
 ## [0.8.5] - 2026-07-15
 
 ### English

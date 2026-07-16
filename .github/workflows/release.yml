@@ -149,3 +149,7 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+      - name: Ensure release is published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
