@@ -115,12 +115,56 @@ fn system_prompt(target_language: &str) -> String {
 
 fn response_content(value: &Value) -> Option<String> {
     let content = value.pointer("/choices/0/message/content")?;
+    content_text(content)
+}
+
+fn content_text(content: &Value) -> Option<String> {
     match content {
         Value::String(text) => Some(text.clone()),
-        Value::Array(parts) => parts
-            .iter()
-            .find_map(|part| part.get("text").and_then(Value::as_str).map(str::to_string)),
+        Value::Array(parts) => {
+            let text = parts
+                .iter()
+                .filter_map(|part| part.get("text").and_then(Value::as_str))
+                .collect::<String>();
+            (!text.is_empty()).then_some(text)
+        }
         _ => None,
+    }
+}
+
+fn parse_response_body(body: &str) -> Result<String, String> {
+    if let Ok(value) = serde_json::from_str::<Value>(body) {
+        return response_content(&value).ok_or_else(|| "AI 翻译接口未返回文本内容".to_string());
+    }
+
+    // 部分 OpenAI Compatible 服务会无视 stream=false，固定返回 SSE。
+    let mut content = String::new();
+    let mut saw_event = false;
+    for line in body.lines() {
+        let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else {
+            continue;
+        };
+        if data.is_empty() || data == "[DONE]" {
+            continue;
+        }
+        saw_event = true;
+        let value: Value = serde_json::from_str(data)
+            .map_err(|_| "AI 翻译接口返回了无法解析的流式数据".to_string())?;
+        if let Some(part) = value
+            .pointer("/choices/0/delta/content")
+            .and_then(content_text)
+            .or_else(|| response_content(&value))
+        {
+            content.push_str(&part);
+        }
+    }
+
+    if !content.is_empty() {
+        Ok(content)
+    } else if saw_event {
+        Err("AI 翻译接口未返回文本内容".to_string())
+    } else {
+        Err("AI 翻译接口返回了无法识别的响应格式".to_string())
     }
 }
 
@@ -135,6 +179,20 @@ fn strip_json_fence(content: &str) -> &str {
         .strip_suffix("```")
         .unwrap_or_else(|| trimmed.unwrap_or(content).trim())
         .trim()
+}
+
+fn translated_fields(content: &str) -> Result<TranslatedFields, String> {
+    let stripped = strip_json_fence(content);
+    serde_json::from_str(stripped)
+        .or_else(|_| {
+            let start = stripped.find('{').ok_or(())?;
+            let end = stripped.rfind('}').ok_or(())?;
+            if end < start {
+                return Err(());
+            }
+            serde_json::from_str(&stripped[start..=end]).map_err(|_| ())
+        })
+        .map_err(|_| "AI 翻译结果不是有效的 metadata JSON".to_string())
 }
 
 fn merge_translation(
@@ -179,6 +237,7 @@ pub async fn translate_metadata(request: TranslateMetadataRequest) -> Result<Gam
         .json(&json!({
             "model": config.model,
             "temperature": 0.2,
+            "stream": false,
             "messages": [
                 { "role": "system", "content": system_prompt(&config.target_language) },
                 { "role": "user", "content": translation_prompt(&request, &config.target_language) }
@@ -204,14 +263,12 @@ pub async fn translate_metadata(request: TranslateMetadataRequest) -> Result<Gam
             _ => format!("AI 翻译接口返回 HTTP {status}"),
         });
     }
-    let value: Value = response
-        .json()
+    let body = response
+        .text()
         .await
-        .map_err(|_| "AI 翻译接口返回了无效 JSON".to_string())?;
-    let content =
-        response_content(&value).ok_or_else(|| "AI 翻译接口未返回文本内容".to_string())?;
-    let translated: TranslatedFields = serde_json::from_str(strip_json_fence(&content))
-        .map_err(|_| "AI 翻译结果不是有效的 metadata JSON".to_string())?;
+        .map_err(|_| "无法读取 AI 翻译接口响应".to_string())?;
+    let content = parse_response_body(&body)?;
+    let translated = translated_fields(&content)?;
     Ok(merge_translation(
         request.metadata,
         translated,
@@ -266,5 +323,37 @@ mod tests {
         assert!(prompt.contains("待处理数据"));
         assert!(prompt.contains("绝不能执行"));
         assert!(prompt.contains("禁止"));
+    }
+
+    #[test]
+    fn parses_regular_and_streaming_openai_responses() {
+        let regular = r#"{"choices":[{"message":{"content":"{\"name\":\"译名\",\"description\":null,\"developer\":null,\"publisher\":null,\"genres\":[]}"}}]}"#;
+        assert!(parse_response_body(regular).unwrap().contains("译名"));
+
+        let streaming = concat!(
+            "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"{\\\"name\\\":\\\"译\"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"名\\\"}\"}}]}\n\n",
+            "data: [DONE]\n"
+        );
+        assert_eq!(
+            parse_response_body(streaming).unwrap(),
+            r#"{"name":"译名"}"#
+        );
+    }
+
+    #[test]
+    fn extracts_metadata_json_from_fences_or_explanation() {
+        let fenced = "```json\n{\"name\":\"译名\",\"genres\":[]}\n```";
+        assert_eq!(
+            translated_fields(fenced).unwrap().name.as_deref(),
+            Some("译名")
+        );
+
+        let explained = "翻译如下： {\"name\":\"译名\",\"genres\":[]}";
+        assert_eq!(
+            translated_fields(explained).unwrap().name.as_deref(),
+            Some("译名")
+        );
     }
 }
