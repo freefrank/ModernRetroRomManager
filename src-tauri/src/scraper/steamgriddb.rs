@@ -189,6 +189,7 @@ impl ScraperProvider for SteamGridDBClient {
             genres: vec![],
             players: None,
             rating: None,
+            translated_languages: Vec::new(),
         })
     }
 

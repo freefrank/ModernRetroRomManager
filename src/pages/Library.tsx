@@ -24,6 +24,24 @@ import { groupTranslationRequests } from "@/lib/translationBatch";
 import { Button, Dialog, EmptyState, IconButton, Input, toast } from "@/components/ui";
 
 import RomView from "@/components/rom/RomView";
+
+function normalizeTranslationLanguage(language: string): string {
+  const normalized = language.trim().toLowerCase();
+  if (normalized.includes("zh-cn") || language.includes("简体")) return "zh-CN";
+  if (normalized.includes("zh-tw") || normalized.includes("zh-hk") || language.includes("繁體") || language.includes("繁体")) return "zh-TW";
+  return normalized;
+}
+
+function isAlreadyTranslated(rom: Rom, targetLanguage: string): boolean {
+  const source = rom.temp_data ? { ...rom, ...rom.temp_data } : rom;
+  const target = normalizeTranslationLanguage(targetLanguage);
+  if (source.translated_languages?.some(language => normalizeTranslationLanguage(language) === target)) {
+    return true;
+  }
+  // Legacy metadata predates the marker. A Chinese title already satisfies a
+  // Chinese target and avoids needlessly replacing curated/localized names.
+  return target.startsWith("zh-") && Boolean(source.chinese_name?.trim());
+}
 import RomDetail from "@/components/rom/RomDetail";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 
@@ -169,28 +187,36 @@ export default function Library() {
     };
 
     const config = await aiTranslationApi.getConfig().catch(() => null);
+    const translationQueue = config
+      ? translationRoms.filter(rom => !isAlreadyTranslated(rom, config.target_language))
+      : translationRoms;
+    const skipped = translationRoms.length - translationQueue.length;
+    if (skipped > 0) {
+      console.info(`AI metadata translation skipped ${skipped} already translated entries.`);
+    }
+    setTranslateProgress({ current: 0, total: translationQueue.length });
+    if (translationQueue.length === 0) {
+      setIsTranslating(false);
+      setIsTranslateDialogOpen(false);
+      toast.success(t("library.translation.done", { success: 0, failed: 0 }));
+      return;
+    }
     if (config?.merge_batch_requests) {
-      const batches = groupTranslationRequests(
-        translationRoms,
-        translationRequest,
-        config.batch_token_limit,
-      );
-      let processed = 0;
-      for (const batch of batches) {
-        if (translateCancelRef.current) break;
+      const translateMerged = async (batch: Rom[]): Promise<void> => {
+        if (translateCancelRef.current || batch.length === 0) return;
         if (batch.length === 1) {
           await translateOne(batch[0]);
-          processed += 1;
-          setTranslateProgress({ current: processed, total: translationRoms.length });
-          continue;
+          return;
         }
+
         try {
           const results = await aiTranslationApi.translateMetadataBatch(batch.map(translationRequest));
           const resultByIndex = new Map(results.map(result => [result.index, result.metadata]));
+          const missing: Rom[] = [];
           for (const [index, rom] of batch.entries()) {
             const metadata = resultByIndex.get(index);
             if (!metadata) {
-              if (!translateCancelRef.current) await translateOne(rom);
+              missing.push(rom);
               continue;
             }
             try {
@@ -201,26 +227,52 @@ export default function Library() {
               console.error(`AI metadata translation save failed for ${rom.file}:`, error);
             }
           }
-        } catch (error) {
-          console.error("Merged AI metadata translation failed; falling back to individual requests:", error);
-          if (!translateCancelRef.current) {
-            for (const rom of batch) {
-              if (translateCancelRef.current) break;
-              await translateOne(rom);
+          if (!translateCancelRef.current && missing.length > 0) {
+            if (missing.length === batch.length) {
+              const middle = Math.ceil(missing.length / 2);
+              await translateMerged(missing.slice(0, middle));
+              await translateMerged(missing.slice(middle));
+            } else {
+              await translateMerged(missing);
             }
           }
+        } catch {
+          // Output limits and inconsistent JSON-mode support vary between
+          // compatible providers. Split adaptively until each request works;
+          // a singleton uses the proven individual translation path.
+          const middle = Math.ceil(batch.length / 2);
+          console.info(`AI translation batch split for retry: ${batch.length} -> ${middle} + ${batch.length - middle}`);
+          await translateMerged(batch.slice(0, middle));
+          await translateMerged(batch.slice(middle));
         }
+      };
+
+      const batches = groupTranslationRequests(
+        translationQueue,
+        translationRequest,
+        config.batch_token_limit,
+      );
+      let processed = 0;
+      for (const batch of batches) {
+        if (translateCancelRef.current) break;
+        if (batch.length === 1) {
+          await translateOne(batch[0]);
+          processed += 1;
+          setTranslateProgress({ current: processed, total: translationQueue.length });
+          continue;
+        }
+        await translateMerged(batch);
         processed += batch.length;
         setTranslateProgress({
-          current: Math.min(processed, translationRoms.length),
-          total: translationRoms.length,
+          current: Math.min(processed, translationQueue.length),
+          total: translationQueue.length,
         });
       }
     } else {
-      for (const [index, rom] of translationRoms.entries()) {
+      for (const [index, rom] of translationQueue.entries()) {
         if (translateCancelRef.current) break;
         await translateOne(rom);
-        setTranslateProgress({ current: index + 1, total: translationRoms.length });
+        setTranslateProgress({ current: index + 1, total: translationQueue.length });
       }
     }
     setIsTranslating(false);

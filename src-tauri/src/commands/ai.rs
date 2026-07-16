@@ -16,6 +16,7 @@ pub struct AiTranslationConfigView {
     pub has_api_key: bool,
     pub merge_batch_requests: bool,
     pub batch_token_limit: u32,
+    pub reasoning_effort: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,6 +28,8 @@ pub struct SaveAiTranslationConfig {
     pub merge_batch_requests: bool,
     #[serde(default = "default_batch_token_limit")]
     pub batch_token_limit: u32,
+    #[serde(default)]
+    pub reasoning_effort: String,
     #[serde(default)]
     pub api_key: Option<String>,
 }
@@ -64,6 +67,7 @@ pub fn get_ai_translation_config() -> AiTranslationConfigView {
         has_api_key: !config.api_key.trim().is_empty(),
         merge_batch_requests: config.merge_batch_requests,
         batch_token_limit: config.batch_token_limit,
+        reasoning_effort: config.reasoning_effort,
     }
 }
 
@@ -90,6 +94,7 @@ pub fn save_ai_translation_config(input: SaveAiTranslationConfig) -> Result<(), 
         target_language: input.target_language.trim().to_string(),
         merge_batch_requests: input.merge_batch_requests,
         batch_token_limit: normalize_batch_token_limit(input.batch_token_limit),
+        reasoning_effort: normalize_reasoning_effort(&input.reasoning_effort),
         // 留空表示保留已保存的 Key，避免设置页回显秘密。
         api_key: input
             .api_key
@@ -112,6 +117,18 @@ fn normalize_batch_token_limit(value: u32) -> u32 {
         50_000 | 100_000 | 200_000 => value,
         _ => DEFAULT_BATCH_TOKEN_LIMIT,
     }
+}
+
+fn normalize_reasoning_effort(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "none" => "none",
+        "minimal" => "minimal",
+        "low" => "low",
+        "medium" => "medium",
+        "high" => "high",
+        _ => "auto",
+    }
+    .to_string()
 }
 
 fn chat_completions_url(endpoint: &str) -> String {
@@ -151,9 +168,11 @@ fn batch_system_prompt(target_language: &str) -> String {
 逐项根据游戏平台、原始标题和 ROM 文件名确认游戏身份；文件名中的汉化组、语言、地区、版本、校验值和容量标签不是标题。\n\
 如果 metadata 标题与可明确识别的 ROM 基础标题冲突，以 ROM 基础标题和平台为准，禁止在条目之间复制或串用译名。\n\
 只本地化 name、description、developer、publisher、genres；无法确认标题时保留原名，描述不得扩写或补充原数据没有的事实。\n\
+如果原始 description 明显属于另一个游戏，与依据平台和 ROM 文件名确认的身份冲突，description 必须返回 null，禁止翻译或改写错误描述。\n\
 对每个条目独立核对，不要为了统一措辞而复用其他条目的标题或描述。准确性优先，不要为了缩短输出而省略已有信息。\n\
 输入每个 id 必须恰好输出一次，id 和条目顺序不得改变，不得合并、遗漏或新增条目。\n\
-只输出一个 JSON 数组；每项只能包含 id、name、description、developer、publisher、genres，不要 Markdown 或解释。"
+只输出一个 JSON 对象，格式必须是 {{\"items\":[{{\"id\":0,\"name\":null,\"description\":null,\"developer\":null,\"publisher\":null,\"genres\":[]}}]}}。\n\
+items 中每项只能包含 id、name、description、developer、publisher、genres，禁止输出 Identification、File、System、Markdown、分析过程或解释。"
     )
 }
 
@@ -272,19 +291,20 @@ fn translated_fields(content: &str) -> Result<TranslatedFields, String> {
 
 fn batch_translated_fields(content: &str) -> Result<Vec<(usize, TranslatedFields)>, String> {
     let stripped = strip_json_fence(content);
-    let value = serde_json::from_str::<Value>(stripped).or_else(|_| {
-        let start = stripped.find('[').ok_or(())?;
-        let end = stripped.rfind(']').ok_or(())?;
-        if end < start {
-            return Err(());
-        }
-        serde_json::from_str(&stripped[start..=end]).map_err(|_| ())
-    });
-    let value = value.map_err(|_| "AI 批量翻译结果不是有效的 JSON 数组".to_string())?;
-    let items = value
-        .as_array()
-        .or_else(|| value.get("items").and_then(Value::as_array))
-        .ok_or_else(|| "AI 批量翻译结果不是有效的 JSON 数组".to_string())?;
+    let recovered_items;
+    let items = if let Ok(value) = parse_json_value(stripped) {
+        recovered_items = batch_items(&value).cloned().unwrap_or_default();
+        recovered_items.as_slice()
+    } else {
+        // Some compatible endpoints truncate long completions mid-item. Keep
+        // every complete object already returned; the caller retries missing
+        // IDs individually instead of discarding the successful prefix.
+        recovered_items = recover_complete_batch_items(stripped);
+        recovered_items.as_slice()
+    };
+    if items.is_empty() {
+        return Err("AI 批量翻译结果未包含完整的 JSON 条目".to_string());
+    }
     let mut seen = HashSet::new();
     let translated = items
         .iter()
@@ -306,6 +326,97 @@ fn batch_translated_fields(content: &str) -> Result<Vec<(usize, TranslatedFields
     } else {
         Ok(translated)
     }
+}
+
+fn recover_complete_batch_items(content: &str) -> Vec<Value> {
+    let Some(items_key) = content.find("\"items\"") else {
+        return Vec::new();
+    };
+    let Some(relative_array_start) = content[items_key..].find('[') else {
+        return Vec::new();
+    };
+    let array_start = items_key + relative_array_start + 1;
+    let mut objects = Vec::new();
+    let mut object_start = None;
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for (relative_offset, character) in content[array_start..].char_indices() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' {
+                escaped = true;
+            } else if character == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match character {
+            '"' => in_string = true,
+            '{' => {
+                if depth == 0 {
+                    object_start = Some(array_start + relative_offset);
+                }
+                depth += 1;
+            }
+            '}' if depth > 0 => {
+                depth -= 1;
+                if depth == 0 {
+                    if let Some(start) = object_start.take() {
+                        let end = array_start + relative_offset + character.len_utf8();
+                        if let Ok(value) = serde_json::from_str::<Value>(&content[start..end]) {
+                            objects.push(value);
+                        }
+                    }
+                }
+            }
+            ']' if depth == 0 => break,
+            _ => {}
+        }
+    }
+    objects
+}
+
+fn parse_json_value(content: &str) -> Result<Value, ()> {
+    if let Ok(mut value) = serde_json::from_str::<Value>(content) {
+        for _ in 0..2 {
+            let Value::String(encoded) = value else {
+                return Ok(value);
+            };
+            value = serde_json::from_str::<Value>(&encoded).map_err(|_| ())?;
+        }
+        return Ok(value);
+    }
+
+    for (open, close) in [('{', '}'), ('[', ']')] {
+        let Some(start) = content.find(open) else {
+            continue;
+        };
+        let Some(end) = content.rfind(close) else {
+            continue;
+        };
+        if end >= start {
+            if let Ok(value) = serde_json::from_str::<Value>(&content[start..=end]) {
+                return Ok(value);
+            }
+        }
+    }
+    Err(())
+}
+
+fn batch_items(value: &Value) -> Option<&Vec<Value>> {
+    if let Some(items) = value.as_array() {
+        return Some(items);
+    }
+    let object = value.as_object()?;
+    for key in ["items", "translations", "results", "data", "output"] {
+        if let Some(items) = object.get(key).and_then(Value::as_array) {
+            return Some(items);
+        }
+    }
+    None
 }
 
 fn merge_translation(
@@ -333,30 +444,69 @@ fn merge_translation(
     if let Some(genres) = translated.genres {
         source.genres = genres;
     }
+    let language = normalize_translation_language(target_language);
+    if !source
+        .translated_languages
+        .iter()
+        .any(|existing| existing.eq_ignore_ascii_case(&language))
+    {
+        source.translated_languages.push(language);
+    }
     source
+}
+
+fn normalize_translation_language(language: &str) -> String {
+    let normalized = language.trim().to_ascii_lowercase();
+    if normalized.contains("zh-cn") || language.contains("简体") {
+        "zh-CN".to_string()
+    } else if normalized.contains("zh-tw")
+        || normalized.contains("zh-hk")
+        || language.contains("繁體")
+        || language.contains("繁体")
+    {
+        "zh-TW".to_string()
+    } else {
+        normalized
+    }
 }
 
 async fn request_translation_content(
     config: &AiTranslationConfig,
     system: String,
     prompt: String,
+    force_json_object: bool,
 ) -> Result<String, String> {
+    let request_timeout = if force_json_object { 600 } else { 90 };
     let client = Client::builder()
         .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(90))
+        .timeout(Duration::from_secs(request_timeout))
         .build()
         .map_err(|_| "无法初始化 AI 翻译客户端".to_string())?;
+    let context_limit = normalize_batch_token_limit(config.batch_token_limit);
+    let prompt_tokens = estimate_prompt_tokens(&prompt) as u32;
+    let output_tokens = context_limit
+        .saturating_sub(prompt_tokens)
+        .saturating_sub(1_024)
+        .max(4_096);
+    let mut payload = json!({
+        "model": config.model,
+        "temperature": 0.2,
+        "stream": false,
+        "max_tokens": output_tokens,
+        "messages": [
+            { "role": "system", "content": system },
+            { "role": "user", "content": prompt }
+        ]
+    });
+    if force_json_object {
+        payload["response_format"] = json!({ "type": "json_object" });
+    }
+    if config.reasoning_effort != "auto" {
+        payload["reasoning_effort"] = json!(config.reasoning_effort);
+    }
     let mut http_request = client
         .post(chat_completions_url(&config.endpoint))
-        .json(&json!({
-            "model": config.model,
-            "temperature": 0.2,
-            "stream": false,
-            "messages": [
-                { "role": "system", "content": system },
-                { "role": "user", "content": prompt }
-            ]
-        }));
+        .json(&payload);
     if !config.api_key.trim().is_empty() {
         http_request = http_request.bearer_auth(&config.api_key);
     }
@@ -392,6 +542,7 @@ pub async fn translate_metadata(request: TranslateMetadataRequest) -> Result<Gam
         &config,
         system_prompt(&config.target_language),
         translation_prompt(&request, &config.target_language),
+        false,
     )
     .await?;
     let translated = translated_fields(&content)?;
@@ -412,9 +563,10 @@ pub async fn translate_metadata_batch(
     let config = get_settings().ai_translation;
     validate_config(&config)?;
     let prompt = batch_translation_prompt(&requests);
-    // Accuracy first: use at most half of the advertised context for input,
-    // leaving ample room for descriptions and providers' hidden reasoning.
-    let input_budget = normalize_batch_token_limit(config.batch_token_limit) as usize / 2;
+    // Accuracy first: use at most one eighth of the advertised context for
+    // input. Reasoning models may consume most output tokens invisibly, and
+    // large batches are more prone to cross-entry metadata contamination.
+    let input_budget = normalize_batch_token_limit(config.batch_token_limit) as usize / 8;
     let estimated_tokens = estimate_prompt_tokens(&prompt);
     if estimated_tokens > input_budget {
         return Err(format!(
@@ -425,9 +577,11 @@ pub async fn translate_metadata_batch(
         &config,
         batch_system_prompt(&config.target_language),
         prompt,
+        true,
     )
     .await?;
-    let translated = batch_translated_fields(&content)?
+    let translated = batch_translated_fields(&content)
+        .unwrap_or_default()
         .into_iter()
         .collect::<HashMap<_, _>>();
     Ok(requests
@@ -491,6 +645,7 @@ mod tests {
         assert_eq!(merged.chinese_name.as_deref(), Some("译名"));
         assert_eq!(merged.release_date.as_deref(), Some("2001-01-01"));
         assert_eq!(merged.rating, Some(8.5));
+        assert_eq!(merged.translated_languages, vec!["zh-CN"]);
     }
 
     #[test]
@@ -546,6 +701,35 @@ mod tests {
         assert_eq!(translated[0].0, 1);
         assert_eq!(translated[1].0, 0);
         assert_eq!(translated[1].1.name.as_deref(), Some("第一项"));
+
+        let wrapped = r#"{"translations":[{"id":"0","name":"包装结果","genres":[]}]}"#;
+        assert_eq!(
+            batch_translated_fields(wrapped).unwrap()[0]
+                .1
+                .name
+                .as_deref(),
+            Some("包装结果")
+        );
+
+        let double_encoded = r#""{\"items\":[{\"id\":0,\"name\":\"双重编码\",\"genres\":[]}]}""#;
+        assert_eq!(
+            batch_translated_fields(double_encoded).unwrap()[0]
+                .1
+                .name
+                .as_deref(),
+            Some("双重编码")
+        );
+
+        let truncated = concat!(
+            "{\"items\":[",
+            "{\"id\":0,\"name\":\"完整一\",\"genres\":[]},",
+            "{\"id\":1,\"name\":\"完整二\",\"genres\":[]},",
+            "{\"id\":2,\"name\":\"未完成"
+        );
+        let recovered = batch_translated_fields(truncated).unwrap();
+        assert_eq!(recovered.len(), 2);
+        assert_eq!(recovered[0].1.name.as_deref(), Some("完整一"));
+        assert_eq!(recovered[1].1.name.as_deref(), Some("完整二"));
     }
 
     #[test]

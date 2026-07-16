@@ -28,6 +28,7 @@ export interface Rom {
   video?: string;
   english_name?: string;
   chinese_name?: string;
+  translated_languages?: string[];
   /** ROM 文件大小(bytes,文件夹型 ROM 或读取失败为空) */
   file_size?: number;
   /** ROM 文件修改时间(unix 秒,读取失败为空) */
@@ -154,6 +155,7 @@ export interface ScraperGameMetadata {
   genres: string[];
   players?: string;
   rating?: number;
+  translated_languages?: string[];
 }
 
 export interface ScraperMediaAsset {
@@ -185,6 +187,7 @@ export interface AiTranslationConfig {
   has_api_key: boolean;
   merge_batch_requests: boolean;
   batch_token_limit: number;
+  reasoning_effort: "auto" | "none" | "minimal" | "low" | "medium" | "high";
 }
 
 export interface AiTranslationConfigInput {
@@ -194,6 +197,7 @@ export interface AiTranslationConfigInput {
   api_key?: string;
   merge_batch_requests: boolean;
   batch_token_limit: number;
+  reasoning_effort: "auto" | "none" | "minimal" | "low" | "medium" | "high";
 }
 
 export interface TranslateMetadataRequest {

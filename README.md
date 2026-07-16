@@ -15,7 +15,7 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 - Search multiple metadata providers, with platform-aware confidence ranking and fallback handling
 - Scrape individual games, selected games, an entire platform, or the complete ROM library; optionally force a full rescrape that bypasses existing metadata, assets, and caches
 - Select optional media types, reuse persistent scrape results across libraries, and cache alternative artwork for review
-- Translate metadata for one game, a selection, or an entire platform through a configurable OpenAI-compatible endpoint
+- Translate metadata for one game, a selection, or an entire platform through a configurable OpenAI-compatible endpoint, with merged requests, reasoning-effort control, adaptive retries, and per-language completion markers
 - Export the active or a selected library's metadata and related media for EmulationStation `gamelist.xml` and Pegasus `metadata.pegasus.txt`
 - Inspect scan, scrape, provider, and error messages in a level-filtered bottom Console
 - Import custom themes and use the built-in responsive dark interface; the Retro theme bundles Zpix for consistent English and Chinese pixel text
@@ -35,7 +35,7 @@ Each configured scan directory is an independent library. One library is active 
 Provider credentials, rate limits, worker threads, priority, and optional media types can be configured in the application settings.
 ScreenScraper application credentials are bundled with MRRM, so users only need to enter their own ScreenScraper member username and password.
 
-AI metadata translation is configured separately with a custom endpoint, API key, model, and target language. Requests are sent by the native backend, and translated fields are saved as preview metadata before export.
+AI metadata translation is configured separately with a custom endpoint, API key, model, target language, reasoning effort, and batch context limit. Requests are sent by the native backend; incomplete structured responses are split and retried, while per-language markers prevent completed metadata from being translated again.
 
 ## Technology
 

@@ -42,6 +42,7 @@ pub struct PegasusGame {
     pub rating: Option<String>,
     pub sort_title: Option<String>,
     pub chinese_name: Option<String>,
+    pub translated_languages: Vec<String>,
     // Media assets
     pub box_front: Option<String>,
     pub box_back: Option<String>,
@@ -105,6 +106,7 @@ impl From<PegasusGame> for crate::scraper::GameMetadata {
                     None
                 }
             }),
+            translated_languages: game.translated_languages,
         }
     }
 }
@@ -291,6 +293,14 @@ fn apply_key_value(
             "rating" => g.rating = Some(value.to_string()),
             "sort_title" | "sort_name" | "sort-by" => g.sort_title = Some(value.to_string()),
             "x-mrrm-cn" => g.chinese_name = Some(value.to_string()),
+            "x-mrrm-translated-languages" => {
+                g.translated_languages = value
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|language| !language.is_empty())
+                    .map(str::to_string)
+                    .collect();
+            }
 
             "assets.boxfront" | "assets.box_front" | "assets.boxart2d" | "boxart" | "cover" => {
                 g.box_front = asset_value();
@@ -416,6 +426,12 @@ pub fn export_to_pegasus(games: &[PegasusGame], options: &PegasusExportOptions) 
         if let Some(ref chinese_name) = game.chinese_name {
             output.push_str(&format!("x-mrrm-cn: {}\n", chinese_name));
         }
+        if !game.translated_languages.is_empty() {
+            output.push_str(&format!(
+                "x-mrrm-translated-languages: {}\n",
+                game.translated_languages.join(",")
+            ));
+        }
 
         // File(s)
         if let Some(ref file) = game.file {
@@ -485,7 +501,7 @@ pub fn export_to_pegasus(games: &[PegasusGame], options: &PegasusExportOptions) 
         let mut extra_keys: Vec<_> = game.extra.keys().collect();
         extra_keys.sort();
         for k in extra_keys {
-            if k.as_str() != "x-mrrm-cn" {
+            if k.as_str() != "x-mrrm-cn" && k.as_str() != "x-mrrm-translated-languages" {
                 if let Some(v) = game.extra.get(k) {
                     output.push_str(&format!("{}: {}\n", k, v));
                 }

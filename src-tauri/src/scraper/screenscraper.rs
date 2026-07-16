@@ -150,6 +150,7 @@ impl ScreenScraperClient {
                 .note
                 .as_deref()
                 .and_then(|note| note.parse::<f64>().ok()),
+            translated_languages: Vec::new(),
         }
     }
 

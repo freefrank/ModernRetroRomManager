@@ -13,6 +13,7 @@ export default function AiTranslationSection() {
   const [hasApiKey, setHasApiKey] = useState(false);
   const [mergeBatchRequests, setMergeBatchRequests] = useState(false);
   const [batchTokenLimit, setBatchTokenLimit] = useState(50000);
+  const [reasoningEffort, setReasoningEffort] = useState<"auto" | "none" | "minimal" | "low" | "medium" | "high">("auto");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function AiTranslationSection() {
       setHasApiKey(config.has_api_key);
       setMergeBatchRequests(config.merge_batch_requests);
       setBatchTokenLimit(config.batch_token_limit);
+      setReasoningEffort(config.reasoning_effort);
     }).catch(error => toast.error(t("settings.aiTranslation.loadFailed", { error: String(error) })));
   }, [t]);
 
@@ -36,6 +38,7 @@ export default function AiTranslationSection() {
         api_key: apiKey || undefined,
         merge_batch_requests: mergeBatchRequests,
         batch_token_limit: batchTokenLimit,
+        reasoning_effort: reasoningEffort,
       });
       if (apiKey) setHasApiKey(true);
       setApiKey("");
@@ -77,6 +80,23 @@ export default function AiTranslationSection() {
         <label className="block space-y-1.5 text-sm text-text-primary">
           <span>{t("settings.aiTranslation.targetLanguage")}</span>
           <Input value={targetLanguage} onChange={event => setTargetLanguage(event.target.value)} />
+        </label>
+        <label className="block space-y-1.5 text-sm text-text-primary">
+          <span>{t("settings.aiTranslation.reasoningEffort")}</span>
+          <Select
+            value={reasoningEffort}
+            onChange={event => setReasoningEffort(event.target.value as typeof reasoningEffort)}
+          >
+            <option value="auto">{t("settings.aiTranslation.reasoningAuto")}</option>
+            <option value="none">{t("settings.aiTranslation.reasoningNone")}</option>
+            <option value="minimal">{t("settings.aiTranslation.reasoningMinimal")}</option>
+            <option value="low">{t("settings.aiTranslation.reasoningLow")}</option>
+            <option value="medium">{t("settings.aiTranslation.reasoningMedium")}</option>
+            <option value="high">{t("settings.aiTranslation.reasoningHigh")}</option>
+          </Select>
+          <span className="block text-xs leading-relaxed text-text-muted">
+            {t("settings.aiTranslation.reasoningHint")}
+          </span>
         </label>
         <label className="flex cursor-pointer items-start gap-3 text-sm text-text-primary">
           <input

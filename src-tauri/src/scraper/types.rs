@@ -92,6 +92,8 @@ pub struct GameMetadata {
     pub genres: Vec<String>,
     pub players: Option<String>,
     pub rating: Option<f64>,
+    #[serde(default)]
+    pub translated_languages: Vec<String>,
 }
 
 // ============================================================================

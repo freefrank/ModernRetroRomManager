@@ -42,6 +42,7 @@ pub struct RomInfo {
     pub video: Option<String>,
     pub english_name: Option<String>,
     pub chinese_name: Option<String>,
+    pub translated_languages: Vec<String>,
     /// ROM 文件大小(bytes,文件夹型 ROM 为 None,读取失败为 None)
     pub file_size: Option<u64>,
     /// ROM 文件修改时间(unix 秒,读取失败为 None)
@@ -129,6 +130,7 @@ impl From<PegasusGame> for RomInfo {
             video: game.video,
             english_name,
             chinese_name: explicit_chinese_name.or(legacy_chinese_name),
+            translated_languages: game.translated_languages,
             file_size: None,
             modified_at: None,
             temp_data: None,

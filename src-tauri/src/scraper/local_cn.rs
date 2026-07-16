@@ -513,6 +513,7 @@ impl ScraperProvider for LocalCnProvider {
                         genres: vec![],
                         players: None,
                         rating: None,
+                        translated_languages: Vec::new(),
                     });
                 }
             }
@@ -532,6 +533,7 @@ impl ScraperProvider for LocalCnProvider {
                     genres: vec![],
                     players: None,
                     rating: None,
+                    translated_languages: Vec::new(),
                 });
             }
         }

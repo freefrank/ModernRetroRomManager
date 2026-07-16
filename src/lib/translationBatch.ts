@@ -22,9 +22,10 @@ export function groupTranslationRequests<T>(
   toRequest: (item: T) => TranslateMetadataRequest,
   contextLimit: number,
 ): T[][] {
-  // Accuracy first: only half the context is used for input. The rest is kept
-  // for complete translated descriptions and provider-side reasoning tokens.
-  const inputBudget = Math.floor(normalizeContextLimit(contextLimit) / 2);
+  // Accuracy first: only one eighth of the context is used for input. The
+  // remainder covers complete output and hidden reasoning tokens while also
+  // reducing cross-entry contamination in large batches.
+  const inputBudget = Math.floor(normalizeContextLimit(contextLimit) / 8);
   const promptOverhead = 512;
   const batches: T[][] = [];
   let current: T[] = [];

@@ -6,6 +6,40 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [0.8.7] - 2026-07-16
+
+### English
+
+#### Added
+
+- Added optional merged AI metadata translation with configurable 50K, 100K, and 200K context limits.
+- Added configurable OpenAI-compatible reasoning effort and per-language translation markers so completed metadata can be skipped safely.
+
+#### Changed
+
+- Improved translation prompts to prioritize platform and ROM filename evidence, keep entries isolated, and favor accuracy over token efficiency.
+- Merged translation batches use no more than one eighth of the selected context for input, reserve the remaining budget for visible output and hidden reasoning, and adaptively split failed or incomplete batches.
+
+#### Fixed
+
+- Translation dialogs can now be closed or stopped while processing; completed results are preserved and no further requests are started.
+
+### 简体中文
+
+#### 新增
+
+- 增加可选的 AI Metadata 合并翻译，并可配置 50K、100K、200K 上下文限制。
+- 增加 OpenAI Compatible 思考强度设置及按语言翻译标记，可安全跳过已完成的 Metadata。
+
+#### 变更
+
+- 优化翻译提示词，优先依据平台及 ROM 文件名确认游戏身份，隔离不同条目，并以准确性而非 Token 效率为优先目标。
+- 合并翻译最多使用所选上下文的八分之一作为输入，为可见输出及隐藏推理预留预算，并对失败或不完整批次进行自适应拆分。
+
+#### 修复
+
+- 翻译过程中现在可以关闭弹窗或停止任务；已完成结果会保留，并且不会继续发送后续请求。
+
 ## [0.8.6] - 2026-07-15
 
 ### English

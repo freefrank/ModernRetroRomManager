@@ -18,5 +18,6 @@ export function romMetadata(rom: Rom): ScraperGameMetadata {
     genres: source.genre ? [source.genre] : [],
     players: source.players,
     rating: typeof rating === "number" && Number.isFinite(rating) ? rating : undefined,
+    translated_languages: source.translated_languages,
   };
 }

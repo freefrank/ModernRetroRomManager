@@ -420,7 +420,7 @@ export const scraperApi = {
 export const aiTranslationApi = {
   async getConfig(): Promise<AiTranslationConfig> {
     if (isTauri()) return tauriInvoke<AiTranslationConfig>("get_ai_translation_config");
-    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "简体中文（zh-CN）", has_api_key: false, merge_batch_requests: false, batch_token_limit: 50000 };
+    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "简体中文（zh-CN）", has_api_key: false, merge_batch_requests: false, batch_token_limit: 50000, reasoning_effort: "auto" };
   },
 
   async saveConfig(input: AiTranslationConfigInput): Promise<void> {

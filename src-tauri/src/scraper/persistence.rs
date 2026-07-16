@@ -216,6 +216,7 @@ pub fn save_metadata_pegasus_with_media(
         description: metadata.description.clone(),
         release: metadata.release_date.clone(),
         rating: metadata.rating.map(|r| format!("{}%", (r * 100.0) as i32)),
+        translated_languages: metadata.translated_languages.clone(),
         ..Default::default()
     };
 

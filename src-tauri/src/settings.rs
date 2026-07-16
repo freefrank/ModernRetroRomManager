@@ -89,6 +89,9 @@ pub struct AiTranslationConfig {
     /// Approximate context budget used when grouping batch translation requests.
     #[serde(default = "default_ai_batch_token_limit")]
     pub batch_token_limit: u32,
+    /// OpenAI-compatible reasoning_effort value; auto omits the parameter.
+    #[serde(default = "default_ai_reasoning_effort")]
+    pub reasoning_effort: String,
 }
 
 fn default_ai_endpoint() -> String {
@@ -103,6 +106,10 @@ fn default_ai_batch_token_limit() -> u32 {
     50_000
 }
 
+fn default_ai_reasoning_effort() -> String {
+    "auto".to_string()
+}
+
 impl Default for AiTranslationConfig {
     fn default() -> Self {
         Self {
@@ -112,6 +119,7 @@ impl Default for AiTranslationConfig {
             target_language: default_ai_target_language(),
             merge_batch_requests: false,
             batch_token_limit: default_ai_batch_token_limit(),
+            reasoning_effort: default_ai_reasoning_effort(),
         }
     }
 }
