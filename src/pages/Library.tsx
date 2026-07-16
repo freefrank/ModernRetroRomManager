@@ -118,7 +118,7 @@ export default function Library() {
   const handleSaveToRomDirectory = async () => {
     if (!systemData || !hasPendingData) return;
     try {
-      await exportData(systemData.system, systemData.path, "auto", systemData.path, "original");
+      await exportData(systemData.system, systemData.path, "both", systemData.path, "original");
       toast.success(t("library.actions.saveSuccess"));
     } catch (error) {
       toast.error(t("library.actions.saveFailed", { error: String(error) }));

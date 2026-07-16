@@ -27,7 +27,7 @@
     "cardSize": "Размер карты",
     "noResults": "Нет подходящих игр.",
     "noResultsHint": "Попробуйте другое ключевое слово",
-    "actions": { "selectAll": "Все", "translate": "Перевести", "scrape": "Скрапинг", "save": "Сохранить", "saveHint": "Сохранить метаданные и изображения в папку ROM", "saveSuccess": "Метаданные и ресурсы сохранены", "saveFailed": "Ошибка сохранения: {{error}}" },
+    "actions": { "selectAll": "Все", "translate": "Перевести", "scrape": "Скрапинг", "save": "Сохранить", "saveHint": "Сохранить метаданные Pegasus, gamelist.xml и изображения в папку ROM", "saveSuccess": "Метаданные Pegasus, gamelist.xml и ресурсы сохранены", "saveFailed": "Ошибка сохранения: {{error}}" },
     "batch": {
       "selectedCount": "{{count}} выбрано",
       "selectAll": "Выбрать текущие результаты",

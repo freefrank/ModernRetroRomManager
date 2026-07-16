@@ -27,7 +27,7 @@
     "cardSize": "Tamaño de tarjeta",
     "noResults": "No hay juegos coincidentes",
     "noResultsHint": "Pruebe con una palabra clave diferente",
-    "actions": { "selectAll": "Todo", "translate": "Traducir", "scrape": "Scrapear", "save": "Guardar", "saveHint": "Guardar metadatos e imágenes en la carpeta ROM", "saveSuccess": "Metadatos y recursos guardados", "saveFailed": "Error al guardar: {{error}}" },
+    "actions": { "selectAll": "Todo", "translate": "Traducir", "scrape": "Scrapear", "save": "Guardar", "saveHint": "Guardar metadata Pegasus, gamelist.xml e imágenes en la carpeta ROM", "saveSuccess": "Metadata Pegasus, gamelist.xml y recursos guardados", "saveFailed": "Error al guardar: {{error}}" },
     "batch": {
       "selectedCount": "{{count}} seleccionado",
       "selectAll": "Seleccionar resultados actuales",

@@ -552,6 +552,25 @@ fn export_emulationstation(
     Ok(path)
 }
 
+fn export_metadata_formats(
+    target: &Path,
+    system: &str,
+    games: &[PegasusGame],
+    name_mode: ExportNameMode,
+    format: &str,
+) -> Result<PathBuf, String> {
+    match format {
+        "emulationstation" | "es" | "gamelist" => export_emulationstation(target, games, name_mode),
+        "pegasus" => export_pegasus(target, system, games, name_mode),
+        "both" => {
+            export_emulationstation(target, games, name_mode)?;
+            export_pegasus(target, system, games, name_mode)?;
+            Ok(target.to_path_buf())
+        }
+        other => Err(format!("不支持的导出格式: {other}")),
+    }
+}
+
 struct ExportOutcome {
     games: usize,
     media: usize,
@@ -629,13 +648,13 @@ fn export_system_data(
         if copies_library { 75 } else { 10 },
         "写入元数据...".to_string(),
     );
-    let output = match resolved_format {
-        "emulationstation" | "es" | "gamelist" => {
-            export_emulationstation(&target, &metadata.games, name_mode)?
-        }
-        "pegasus" => export_pegasus(&target, &system, &metadata.games, name_mode)?,
-        other => return Err(format!("不支持的导出格式: {other}")),
-    };
+    let output = export_metadata_formats(
+        &target,
+        &system,
+        &metadata.games,
+        name_mode,
+        resolved_format,
+    )?;
 
     let media_progress = |current, message| {
         progress(
@@ -973,6 +992,19 @@ mod tests {
         let path = export_pegasus(&root, "GBA", &[game()], ExportNameMode::Original).unwrap();
         let content = fs::read_to_string(path).unwrap();
         assert!(content.contains("assets.boxFront: media/game/boxfront.png"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn combined_metadata_export_writes_pegasus_and_gamelist() {
+        let root = std::env::temp_dir().join(format!("mrrm-export-both-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        export_metadata_formats(&root, "GBA", &[game()], ExportNameMode::Original, "both").unwrap();
+
+        assert!(root.join("metadata.pegasus.txt").is_file());
+        assert!(root.join("gamelist.xml").is_file());
         fs::remove_dir_all(root).unwrap();
     }
 
