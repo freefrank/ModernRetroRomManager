@@ -590,6 +590,7 @@ mod tests {
                 "Chobits for Game Boy Advance - Atashi Dake no Hito",
                 "Chobits - Atashi Dake no Hito",
                 "Chobits for Game Boy Advance",
+                "Atashi Dake no Hito",
                 "Chobits",
             ]
         );
@@ -660,6 +661,23 @@ mod tests {
         assert!(
             ys_four.iter().any(|result| result.source_id == "2374"),
             "Arabic/roman sequel variants should resolve Ys 4"
+        );
+
+        let gun_hazard = client
+            .search(
+                &ScrapeQuery::new(
+                    "Front Mission - Gun Hazard".into(),
+                    "Front Mission - Gun Hazard.sfc".into(),
+                )
+                .with_system("sfc"),
+            )
+            .await
+            .unwrap();
+        assert!(
+            gun_hazard
+                .iter()
+                .any(|result| result.name.to_ascii_lowercase().contains("gun hazard")),
+            "subtitle fallback should resolve Front Mission - Gun Hazard"
         );
 
         let game = client
@@ -884,8 +902,9 @@ fn search_query_variants(query: &str) -> Vec<String> {
 
     for value in variants.clone() {
         for separator in [" - ", ": ", " – ", " — "] {
-            if let Some((title, _)) = value.split_once(separator) {
+            if let Some((title, subtitle)) = value.split_once(separator) {
                 push_unique(&mut variants, title.to_string());
+                push_unique(&mut variants, subtitle.to_string());
             }
         }
     }
