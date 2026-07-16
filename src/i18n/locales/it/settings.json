@@ -60,6 +60,7 @@
       "removeFailed": "Impossibile rimuovere la libreria: {{error}}",
       "scanThisLibrary": "Attiva ed esegui la scansione completa di questa libreria",
       "config": "Configura cartelle indicizzate", "configTitle": "Configura {{name}}", "configDescription": "Scegli le cartelle figlie immediate da indicizzare.",
+      "addConfigDescription": "Scegli le cartelle immediate da indicizzare prima della prima scansione.",
       "selectAll": "Tutte", "selectNone": "Nessuna", "noFolders": "Nessuna cartella disponibile",
       "folderLoadFailed": "Impossibile leggere le cartelle: {{error}}", "configSaved": "Configurazione indice salvata", "configSaveFailed": "Impossibile salvare: {{error}}"
     },

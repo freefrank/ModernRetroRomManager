@@ -97,6 +97,7 @@ async fn scan_with_events(
     mode: ScanMode,
     library_id: Option<String>,
 ) -> Result<Vec<SystemRoms>, String> {
+    crate::rom_index::begin_scan();
     let mode_name = match mode {
         ScanMode::Full => "full",
         ScanMode::Incremental => "incremental",
@@ -152,6 +153,7 @@ async fn scan_with_events(
     .await
     .map_err(|error| format!("ROM 扫描任务失败: {error}"))??;
 
+    let cancelled = crate::rom_index::scan_cancelled();
     let _ = app.emit(
         "rom-scan-progress",
         RomScanProgress {
@@ -159,13 +161,23 @@ async fn scan_with_events(
             total: total.load(Ordering::Acquire),
             system: None,
             mode: mode_name,
-            message: "ROM 扫描完成".to_string(),
+            message: if cancelled {
+                "ROM 扫描已停止，已保留完成的索引".to_string()
+            } else {
+                "ROM 扫描完成".to_string()
+            },
             finished: true,
             changed: false,
             library_id,
         },
     );
+    crate::rom_index::begin_scan();
     Ok(systems)
+}
+
+#[tauri::command]
+pub fn cancel_rom_scan() {
+    crate::rom_index::cancel_scan();
 }
 
 /// 获取 ROM 列表 (按系统分组或扁平化)

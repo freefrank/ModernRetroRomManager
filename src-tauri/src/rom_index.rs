@@ -5,14 +5,28 @@ use crate::rom_service::{
 };
 use crate::settings::{get_settings, DirectoryConfig};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::UNIX_EPOCH;
 
 const INDEX_VERSION: u32 = 4;
 const FINGERPRINT_VERSION: u8 = 1;
+static SCAN_CANCELLED: AtomicBool = AtomicBool::new(false);
+
+pub fn begin_scan() {
+    SCAN_CANCELLED.store(false, Ordering::Release);
+}
+
+pub fn cancel_scan() {
+    SCAN_CANCELLED.store(true, Ordering::Release);
+}
+
+pub(crate) fn scan_cancelled() -> bool {
+    SCAN_CANCELLED.load(Ordering::Acquire)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScanMode {
@@ -114,6 +128,9 @@ fn hash_directory_shallow(path: &Path, state: &mut impl Hasher) {
     let mut entries: Vec<_> = entries.filter_map(Result::ok).collect();
     entries.sort_by_key(|entry| entry.file_name().to_string_lossy().to_ascii_lowercase());
     for entry in entries {
+        if scan_cancelled() {
+            break;
+        }
         let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
         name.hash(state);
         let is_dir = entry.file_type().ok().is_some_and(|kind| kind.is_dir());
@@ -372,22 +389,25 @@ fn scan_library_config(
 ) -> Result<Vec<SystemRoms>, String> {
     let candidates = discover_candidates(std::slice::from_ref(&library));
     let total = candidates.len();
-    let previous: HashMap<String, IndexedDirectory> = if mode == ScanMode::Incremental {
-        load_index_for(&library)
-            .map(|index| {
-                index
-                    .directories
-                    .into_iter()
-                    .map(|item| (normalized_path(Path::new(&item.path)), item))
-                    .collect()
-            })
-            .unwrap_or_default()
-    } else {
-        HashMap::new()
-    };
+    let candidate_keys: HashSet<_> = candidates
+        .iter()
+        .map(|candidate| normalized_path(&candidate.fingerprint_path))
+        .collect();
+    let previous: HashMap<String, IndexedDirectory> = load_index_for(&library)
+        .map(|index| {
+            index
+                .directories
+                .into_iter()
+                .map(|item| (normalized_path(Path::new(&item.path)), item))
+                .collect()
+        })
+        .unwrap_or_default();
 
     let mut indexed = Vec::new();
     for (position, candidate) in candidates.into_iter().enumerate() {
+        if scan_cancelled() {
+            break;
+        }
         let current = position + 1;
         let system = candidate
             .config
@@ -404,8 +424,9 @@ fn scan_library_config(
         let fingerprint = directory_fingerprint(&candidate.fingerprint_path);
         let path = candidate.fingerprint_path.to_string_lossy().into_owned();
         let key = normalized_path(&candidate.fingerprint_path);
-        if let Some(cached) = previous
-            .get(&key)
+        if let Some(cached) = (mode == ScanMode::Incremental)
+            .then(|| previous.get(&key))
+            .flatten()
             .filter(|item| item.fingerprint_version == 0 || item.fingerprint == fingerprint)
         {
             on_progress(ScanUpdate {
@@ -432,12 +453,29 @@ fn scan_library_config(
         } else {
             get_roms_for_directory(&candidate.config)
         };
-        indexed.push(IndexedDirectory {
+        let scanned = IndexedDirectory {
             path,
             fingerprint,
             fingerprint_version: FINGERPRINT_VERSION,
             systems,
-        });
+        };
+        if scan_cancelled() {
+            // An interrupted refresh must not replace a complete existing platform
+            // with a partial one. A brand-new library still keeps what was found.
+            indexed.push(previous.get(&key).cloned().unwrap_or(scanned));
+            break;
+        }
+        indexed.push(scanned);
+    }
+
+    if scan_cancelled() {
+        let indexed_keys: HashSet<_> = indexed
+            .iter()
+            .map(|item| normalized_path(Path::new(&item.path)))
+            .collect();
+        indexed.extend(previous.into_iter().filter_map(|(key, item)| {
+            (candidate_keys.contains(&key) && !indexed_keys.contains(&key)).then_some(item)
+        }));
     }
 
     indexed.sort_by(|left, right| left.path.cmp(&right.path));

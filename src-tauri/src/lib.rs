@@ -46,6 +46,7 @@ pub fn run() {
             commands::rom::get_rom_stats,
             commands::rom::get_roms_for_single_directory,
             commands::rom::scan_rom_library,
+            commands::rom::cancel_rom_scan,
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,

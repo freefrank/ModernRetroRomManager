@@ -1,6 +1,6 @@
 import { FolderOpen, Check, Gamepad2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Dialog } from "@/components/ui";
 
 interface MetadataFileInfo {
@@ -20,7 +20,7 @@ interface RootDirectoryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   subDirectories: SubDirectoryInfo[];
-  onImportAsRoot: () => void;
+  onImportAsRoot: (indexedFolders: string[] | null) => void;
   onSelectSubDirectory: (subDir: SubDirectoryInfo, format: string) => void;
 }
 
@@ -33,6 +33,24 @@ export default function RootDirectoryDialog({
 }: RootDirectoryDialogProps) {
   const { t } = useTranslation();
   const [expandedDir, setExpandedDir] = useState<string | null>(null);
+  const [indexedFolders, setIndexedFolders] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIndexedFolders(null);
+      setExpandedDir(null);
+    }
+  }, [isOpen]);
+
+  const toggleFolder = (name: string) => {
+    setIndexedFolders((current) => {
+      const selected = current === null ? subDirectories.map((directory) => directory.name) : [...current];
+      const index = selected.findIndex((folder) => folder.toLowerCase() === name.toLowerCase());
+      if (index >= 0) selected.splice(index, 1);
+      else selected.push(name);
+      return selected;
+    });
+  };
 
   const dirsWithMetadata = subDirectories.filter((d) => d.metadata_files.length > 0);
   const dirsWithoutMetadata = subDirectories.filter((d) => d.metadata_files.length === 0);
@@ -66,9 +84,41 @@ export default function RootDirectoryDialog({
         {t("rootDirectoryDialog.description")}
       </p>
 
+      <div className="mb-4 rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default bg-bg-secondary p-3">
+        <p className="mb-3 text-sm text-text-secondary">
+          {t("settings.scanDirectories.addConfigDescription")}
+        </p>
+        <div className="mb-2 flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setIndexedFolders(null)}>
+            {t("settings.scanDirectories.selectAll")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setIndexedFolders([])}>
+            {t("settings.scanDirectories.selectNone")}
+          </Button>
+        </div>
+        <div className="max-h-52 space-y-1 overflow-auto">
+          {subDirectories.map((directory) => {
+            const checked = indexedFolders === null || indexedFolders.some((name) => name.toLowerCase() === directory.name.toLowerCase());
+            return (
+              <label key={directory.path} className="flex cursor-pointer items-center gap-3 rounded-[var(--radius-sm)] px-2 py-2 hover:bg-bg-tertiary">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleFolder(directory.name)}
+                  className="h-4 w-4 accent-[var(--accent-primary)]"
+                />
+                <span className="min-w-0 truncate text-sm text-text-primary" title={directory.path}>
+                  {directory.name}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
       <button
         type="button"
-        onClick={onImportAsRoot}
+        onClick={() => onImportAsRoot(indexedFolders)}
         className={
           "w-full p-4 rounded-[var(--radius-md)] border-[length:var(--border-width)] text-left mb-4 " +
           "transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] " +

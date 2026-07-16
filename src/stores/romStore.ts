@@ -65,6 +65,7 @@ interface RomState {
   fetchLibrarySummary: () => Promise<void>;
   fetchSystemRoms: (system: string) => Promise<void>;
   scanLibrary: (full?: boolean) => Promise<void>;
+  cancelScan: () => Promise<void>;
   initializeScanProgress: () => Promise<void>;
   isLoadingRoms: boolean;
   
@@ -98,6 +99,7 @@ interface RomState {
     metadataFormat?: string,
     isRoot?: boolean,
     systemId?: string | null,
+    indexedFolders?: string[] | null,
   ) => Promise<void>;
   removeScanDirectory: (id: string) => Promise<void>;
   activateLibrary: (id: string, fullScan?: boolean) => Promise<void>;
@@ -322,6 +324,9 @@ export const useRomStore = create<RomState>((set, get) => ({
       throw error;
     }
   },
+  cancelScan: async () => {
+    await api.cancelRomScan();
+  },
   cancelBatchScrape: async () => {
     await scraperApi.cancelBatchScrape();
   },
@@ -400,10 +405,11 @@ export const useRomStore = create<RomState>((set, get) => ({
     metadataFormat = "none",
     isRoot = false,
     systemId = null,
+    indexedFolders = null,
   ) => {
     try {
       // 新目录由后端自动设为激活 Library；先清空旧库状态再开始首次全量扫描。
-      await api.addDirectory(path, metadataFormat, isRoot, systemId);
+      await api.addDirectory(path, metadataFormat, isRoot, systemId, indexedFolders);
       systemRequestSequence++;
       set({
         roms: [],

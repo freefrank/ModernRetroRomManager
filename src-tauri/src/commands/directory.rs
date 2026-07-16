@@ -80,9 +80,11 @@ pub fn add_directory(
     metadataFormat: String,
     isRoot: bool,
     systemId: Option<String>,
+    indexedFolders: Option<Vec<String>>,
 ) -> Result<DirectoryInfo, String> {
     let normalized = normalize_path(&path);
     let stored_path = native_path(&path);
+    let indexed_folders = normalize_indexed_folders(indexedFolders);
 
     let updated = update_setting(|settings| {
         // 使用规范化路径去重
@@ -107,7 +109,7 @@ pub fn add_directory(
                 metadata_format: metadataFormat.clone(),
                 is_root_directory: isRoot,
                 system_id: systemId.clone(),
-                indexed_folders: None,
+                indexed_folders: indexed_folders.clone(),
             });
             id
         });
@@ -265,16 +267,7 @@ pub fn set_library_indexed_folders(
     libraryId: String,
     indexedFolders: Option<Vec<String>>,
 ) -> Result<DirectoryInfo, String> {
-    let normalized = indexedFolders.map(|folders| {
-        let mut folders: Vec<_> = folders
-            .into_iter()
-            .map(|folder| folder.trim().to_string())
-            .filter(|folder| !folder.is_empty())
-            .collect();
-        folders.sort_by_key(|folder| folder.to_lowercase());
-        folders.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
-        folders
-    });
+    let normalized = normalize_indexed_folders(indexedFolders);
     let updated = update_setting(|settings| {
         if let Some(library) = settings
             .directories
@@ -294,6 +287,19 @@ pub fn set_library_indexed_folders(
         .ok_or_else(|| "Library 不存在".to_string())?;
     invalidate_library_index(&libraryId);
     Ok(result)
+}
+
+fn normalize_indexed_folders(indexed_folders: Option<Vec<String>>) -> Option<Vec<String>> {
+    indexed_folders.map(|folders| {
+        let mut folders: Vec<_> = folders
+            .into_iter()
+            .map(|folder| folder.trim().to_string())
+            .filter(|folder| !folder.is_empty())
+            .collect();
+        folders.sort_by_key(|folder| folder.to_lowercase());
+        folders.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
+        folders
+    })
 }
 
 fn detect_metadata_in_dir(dir_path: &Path) -> Vec<MetadataFileInfo> {

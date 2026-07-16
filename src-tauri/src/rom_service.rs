@@ -718,6 +718,9 @@ pub fn get_roms_for_directory_with_progress(
 
         if let Ok(entries) = std::fs::read_dir(dir_path) {
             for entry in entries.filter_map(|e| e.ok()) {
+                if crate::rom_index::scan_cancelled() {
+                    break;
+                }
                 let sub_path = entry.path();
                 if sub_path.is_dir() {
                     let system_name = sub_path
@@ -812,6 +815,9 @@ pub fn get_roms_for_directory_with_progress(
         if let Ok(mut roms) = root_scan {
             // 添加根目录下的PS3游戏文件夹
             for ps3_game_path in root_ps3_games {
+                if crate::rom_index::scan_cancelled() {
+                    break;
+                }
                 let folder_name = ps3_game_path
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -850,9 +856,11 @@ pub fn get_roms_for_directory_with_progress(
                     "[DEBUG] Root mode (root itself): dir_path={:?}, library_path={:?}, system={}",
                     dir_path, library_path, root_system_name
                 );
-                let _ = create_or_update_metadata(library_path, dir_path, &root_system_name, &roms);
-
-                apply_temp_metadata(&mut roms, library_path, &root_system_name);
+                if !crate::rom_index::scan_cancelled() {
+                    let _ =
+                        create_or_update_metadata(library_path, dir_path, &root_system_name, &roms);
+                    apply_temp_metadata(&mut roms, library_path, &root_system_name);
+                }
 
                 systems.push(SystemRoms {
                     system: root_system_name,
@@ -903,13 +911,16 @@ pub fn get_roms_for_directory_with_progress(
                         dir_path, library_path, system_name
                     );
 
-                    println!("[DEBUG] 开始 create_or_update_metadata...");
-                    let _ = create_or_update_metadata(library_path, dir_path, &system_name, &roms);
-                    println!("[DEBUG] create_or_update_metadata 完成");
+                    if !crate::rom_index::scan_cancelled() {
+                        println!("[DEBUG] 开始 create_or_update_metadata...");
+                        let _ =
+                            create_or_update_metadata(library_path, dir_path, &system_name, &roms);
+                        println!("[DEBUG] create_or_update_metadata 完成");
 
-                    println!("[DEBUG] 开始 apply_temp_metadata...");
-                    apply_temp_metadata(&mut roms, library_path, &system_name);
-                    println!("[DEBUG] apply_temp_metadata 完成");
+                        println!("[DEBUG] 开始 apply_temp_metadata...");
+                        apply_temp_metadata(&mut roms, library_path, &system_name);
+                        println!("[DEBUG] apply_temp_metadata 完成");
+                    }
 
                     systems.push(SystemRoms {
                         system: system_name,
@@ -981,6 +992,9 @@ fn read_pegasus_roms(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>,
                 .games
                 .into_iter()
                 .filter_map(|g| {
+                    if crate::rom_index::scan_cancelled() {
+                        return None;
+                    }
                     let mut rom: RomInfo = g.into();
                     rom.directory = dir_path.to_string_lossy().to_string();
                     rom.system = system_name.to_string();
@@ -1205,6 +1219,9 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
         .games
         .into_iter()
         .filter_map(|g| {
+            if crate::rom_index::scan_cancelled() {
+                return None;
+            }
             let file = g.path.trim_start_matches("./").to_string();
 
             // 验证 ROM 文件是否存在
@@ -1332,6 +1349,9 @@ fn scan_rom_files_internal(
     if system_lower == "easyrpg" {
         if let Ok(entries) = fs::read_dir(dir_path) {
             for entry in entries.filter_map(|entry| entry.ok()) {
+                if crate::rom_index::scan_cancelled() {
+                    break;
+                }
                 let path = entry.path();
                 if !path.is_dir() {
                     continue;
@@ -1359,10 +1379,16 @@ fn scan_rom_files_internal(
             paths: &mut Vec<PathBuf>,
             recursive: bool,
         ) {
+            if crate::rom_index::scan_cancelled() {
+                return;
+            }
             let Ok(entries) = fs::read_dir(directory) else {
                 return;
             };
             for entry in entries.filter_map(|entry| entry.ok()) {
+                if crate::rom_index::scan_cancelled() {
+                    break;
+                }
                 let path = entry.path();
                 if path.is_dir() {
                     if !recursive {
@@ -1391,6 +1417,9 @@ fn scan_rom_files_internal(
         collect_rom_paths(dir_path, &allowed_extensions, &mut paths, recursive);
         paths.sort();
         for path in paths {
+            if crate::rom_index::scan_cancelled() {
+                break;
+            }
             let relative = path.strip_prefix(dir_path).unwrap_or(&path);
             let file = relative.to_string_lossy().into_owned();
             let name = path
@@ -1416,6 +1445,9 @@ fn scan_rom_files_internal(
         println!("[DEBUG] read_dir 成功，开始遍历...");
         let mut count = 0;
         for entry in entries.filter_map(|e| e.ok()) {
+            if crate::rom_index::scan_cancelled() {
+                break;
+            }
             count += 1;
             let path = entry.path();
 

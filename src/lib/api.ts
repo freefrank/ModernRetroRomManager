@@ -101,6 +101,10 @@ export const api = {
     return this.getRomLibrarySummary();
   },
 
+  async cancelRomScan(): Promise<void> {
+    if (isTauri()) await tauriInvoke("cancel_rom_scan");
+  },
+
   async getSystems(): Promise<GameSystem[]> {
     if (isTauri()) {
       return tauriInvoke<GameSystem[]>("get_systems");
@@ -115,9 +119,9 @@ export const api = {
     return [];
   },
 
-  async addDirectory(path: string, metadataFormat: string, isRoot: boolean, systemId: string | null): Promise<ScanDirectory | null> {
+  async addDirectory(path: string, metadataFormat: string, isRoot: boolean, systemId: string | null, indexedFolders: string[] | null = null): Promise<ScanDirectory | null> {
     if (isTauri()) {
-      return tauriInvoke<ScanDirectory>("add_directory", { path, metadataFormat, isRoot, systemId });
+      return tauriInvoke<ScanDirectory>("add_directory", { path, metadataFormat, isRoot, systemId, indexedFolders });
     }
     return null;
   },

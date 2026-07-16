@@ -60,6 +60,7 @@
       "removeFailed": "Échec de la suppression de la bibliothèque : {{error}}",
       "scanThisLibrary": "Activer et analyser entièrement cette bibliothèque",
       "config": "Configurer les dossiers indexés", "configTitle": "Configurer {{name}}", "configDescription": "Choisissez les dossiers enfants directs à indexer.",
+      "addConfigDescription": "Choisissez les dossiers directs à indexer avant la première analyse.",
       "selectAll": "Tout", "selectNone": "Aucun", "noFolders": "Aucun dossier disponible",
       "folderLoadFailed": "Impossible de lire les dossiers : {{error}}", "configSaved": "Configuration d’index enregistrée", "configSaveFailed": "Échec de l’enregistrement : {{error}}"
     },

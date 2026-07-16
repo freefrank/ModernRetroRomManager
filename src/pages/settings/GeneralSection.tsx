@@ -91,6 +91,7 @@ export default function GeneralSection() {
     isBatchScraping,
     scanProgress,
     scanLibrary,
+    cancelScan,
   } = useRomStore();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -243,10 +244,10 @@ export default function GeneralSection() {
     }
   };
 
-  const handleImportAsRoot = async () => {
+  const handleImportAsRoot = async (selectedFolders: string[] | null) => {
     setIsRootDialogOpen(false);
     try {
-      await addScanDirectory(pendingDirPath, "auto", true, null);
+      await addScanDirectory(pendingDirPath, "auto", true, null, selectedFolders);
       setPendingDirPath("");
       setDetectedSubDirs([]);
     } catch (error) {
@@ -501,14 +502,20 @@ export default function GeneralSection() {
           <div className="mb-4 p-4 bg-bg-secondary border-[length:var(--border-width)] border-accent-primary/30 rounded-[var(--radius-lg)] relative overflow-hidden">
             <div className="absolute inset-0 bg-accent-primary/5 animate-pulse"></div>
             <div className="relative z-10">
-              <div className="flex justify-between text-sm mb-2">
+              <div className="flex items-center justify-between gap-3 text-sm mb-2">
                 <span className="text-text-primary font-medium">
                   {t("common.loading")}
                 </span>
-                <span className="text-accent-primary">
-                  {scanProgress.current}{" "}
-                  {scanProgress.total ? `/ ${scanProgress.total}` : ""}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-accent-primary">
+                    {scanProgress.current}{" "}
+                    {scanProgress.total ? `/ ${scanProgress.total}` : ""}
+                  </span>
+                  <Button variant="danger" size="sm" onClick={() => void cancelScan()}>
+                    <X className="h-4 w-4" />
+                    {t("common.stop")}
+                  </Button>
+                </div>
               </div>
               <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
