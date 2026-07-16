@@ -6,6 +6,42 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-16
+
+### English
+
+#### Added
+
+- Added indexed-folder selection while creating a Library and cancellation controls for active ROM scans.
+- Added a safe per-Library cleanup tool that previews and removes artwork and media not referenced by valid Pegasus or EmulationStation metadata.
+
+#### Changed
+
+- Expanded ScreenScraper platform IDs and folder aliases across the supported Nintendo, Sega, Sony, NEC, SNK, Bandai, Atari, Microsoft, arcade, and computer systems.
+- Completed console Logo resolution for mapping-only platforms and corrected missing or invalid Logo references across built-in systems and arcade categories.
+- Packed the bundled DAT/CSV lookup data into compressed embedded archives, substantially reducing the standalone Windows portable executable size without extracting database files at runtime.
+
+#### Fixed
+
+- Normalized malformed, empty, legacy, and percentage-style ratings without repeatedly multiplying already normalized values.
+
+### 简体中文
+
+#### 新增
+
+- 新建 Library 时可直接选择需要索引的文件夹，并为进行中的 ROM 扫描增加取消控制。
+- 增加安全的逐 Library 未引用资源清理工具，可先预览，再删除未被有效 Pegasus 或 EmulationStation Metadata 引用的美术与媒体文件。
+
+#### 变更
+
+- 扩展 ScreenScraper 平台 ID 与目录别名，覆盖项目支持的 Nintendo、Sega、Sony、NEC、SNK、Bandai、Atari、Microsoft、街机及电脑平台。
+- 补全仅存在于目录映射表的平台 Logo，并修复内置系统与街机分类中缺失或无效的 Logo 引用。
+- 将内置 DAT/CSV 匹配数据压缩打包进嵌入式资源，在运行时不释放数据库文件的同时显著缩小 Windows 单文件 Portable 体积。
+
+#### 修复
+
+- 正确规范化异常、空值、旧格式及百分比评分，避免已经规范化的评分被重复放大。
+
 ## [1.0.1] - 2026-07-16
 
 ### English
