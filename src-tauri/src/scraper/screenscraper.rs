@@ -441,10 +441,26 @@ mod tests {
         assert!(parse_search_response(r#"{"response":{"jeux":null}}"#)
             .unwrap()
             .is_empty());
+        assert!(parse_search_response(r#"{"response":{"jeux":[{}]}}"#)
+            .unwrap()
+            .is_empty());
         assert!(matches!(
-            parse_search_response(r#"{"response":{"jeux":[{}]}}"#),
+            parse_search_response(r#"{"response":{"jeux":[{"unexpected":"value"}]}}"#),
             Err(error) if error.contains("结构无法识别")
         ));
+    }
+
+    #[test]
+    fn search_variants_remove_platform_boilerplate_and_subtitles() {
+        assert_eq!(
+            search_query_variants("Chobits for Game Boy Advance - Atashi Dake no Hito"),
+            [
+                "Chobits for Game Boy Advance - Atashi Dake no Hito",
+                "Chobits - Atashi Dake no Hito",
+                "Chobits for Game Boy Advance",
+                "Chobits",
+            ]
+        );
     }
 
     #[tokio::test]
@@ -480,6 +496,21 @@ mod tests {
         assert!(
             !love_hina.is_empty(),
             "the canonical ALHJ title should be searchable"
+        );
+
+        let chobits = client
+            .search(
+                &ScrapeQuery::new(
+                    "Chobits for Game Boy Advance - Atashi Dake no Hito".into(),
+                    "chobits.gba".into(),
+                )
+                .with_system("gba"),
+            )
+            .await
+            .unwrap();
+        assert!(
+            chobits.iter().any(|result| result.name.contains("Chobits")),
+            "fallback search should resolve ScreenScraper's empty-object sentinel"
         );
 
         let game = client
@@ -671,6 +702,47 @@ fn game_has_content(game: &SSGame) -> bool {
         || !game.medias.is_empty()
 }
 
+fn search_query_variants(query: &str) -> Vec<String> {
+    fn push_unique(variants: &mut Vec<String>, value: String) {
+        let value = value
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .trim_matches(['-', ':', ' '])
+            .to_string();
+        if value.len() >= 3
+            && !variants
+                .iter()
+                .any(|existing| existing.eq_ignore_ascii_case(&value))
+        {
+            variants.push(value);
+        }
+    }
+
+    let mut variants = Vec::new();
+    push_unique(&mut variants, query.to_string());
+
+    let mut without_platform = query.to_string();
+    for marker in [" for Game Boy Advance", " Game Boy Advance"] {
+        while let Some(index) = without_platform
+            .to_ascii_lowercase()
+            .find(&marker.to_ascii_lowercase())
+        {
+            without_platform.replace_range(index..index + marker.len(), "");
+        }
+    }
+    push_unique(&mut variants, without_platform);
+
+    for value in variants.clone() {
+        for separator in [" - ", ": ", " – ", " — "] {
+            if let Some((title, _)) = value.split_once(separator) {
+                push_unique(&mut variants, title.to_string());
+            }
+        }
+    }
+    variants
+}
+
 fn parse_search_response(body: &str) -> Result<Vec<SSGame>, String> {
     let root = parse_json_response(body)?;
     if let Some(message) = api_error_message(&root) {
@@ -683,12 +755,19 @@ fn parse_search_response(body: &str) -> Result<Vec<SSGame>, String> {
         .unwrap_or(Value::Null);
     let raw_games = values_from_list(games);
     let raw_count = raw_games.len();
+    let is_empty_sentinel = raw_games
+        .iter()
+        .all(|game| game.is_null() || game.as_object().is_some_and(|object| object.is_empty()));
     let parsed: Vec<SSGame> = raw_games
         .into_iter()
         .filter_map(|game| serde_json::from_value(game).ok())
         .filter(game_has_content)
         .collect();
     if raw_count > 0 && parsed.is_empty() {
+        // jeuRecherche uses `[{}]` as its real-world "no match" sentinel.
+        if is_empty_sentinel {
+            return Ok(Vec::new());
+        }
         return Err("ScreenScraper 搜索结果结构无法识别".to_string());
     }
     Ok(parsed)
@@ -753,8 +832,13 @@ impl ScraperProvider for ScreenScraperClient {
             .as_deref()
             .and_then(Self::system_id)
             .ok_or_else(|| "ScreenScraper 缺少受支持的平台映射".to_string())?;
-        let games = self.search_games(&query.name, system_id).await?;
-        Ok(Self::build_search_results(games, query.system.clone()))
+        for candidate in search_query_variants(&query.name) {
+            let games = self.search_games(&candidate, system_id).await?;
+            if !games.is_empty() {
+                return Ok(Self::build_search_results(games, query.system.clone()));
+            }
+        }
+        Ok(Vec::new())
     }
 
     async fn get_metadata(&self, source_id: &str) -> Result<GameMetadata, String> {

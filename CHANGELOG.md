@@ -6,6 +6,32 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-16
+
+### English
+
+#### Changed
+
+- ScreenScraper retries progressively simplified title variants when long database-style names return no match.
+
+#### Fixed
+
+- Recognized ScreenScraper's real-world `[{}]` empty-search sentinel instead of treating it as a malformed response.
+- Batch scraping now excludes Providers without usable credentials and stops before processing when none of the selected Providers are available.
+- Missing Provider configuration and Provider request failures now produce actionable errors instead of reporting every ROM as unmatched.
+
+### 简体中文
+
+#### 变更
+
+- ScreenScraper 遇到过长数据库式标题无结果时，会逐步简化标题并重试搜索。
+
+#### 修复
+
+- 正确识别 ScreenScraper 实际使用的 `[{}]` 空搜索结果，不再误判为响应结构损坏。
+- 批量抓取会排除没有可用凭据的 Provider；所选来源均不可用时会在处理 ROM 前停止。
+- Provider 配置缺失或请求失败时显示可操作错误，不再将每个 ROM 都报告为未匹配。
+
 ## [1.0.0] - 2026-07-16
 
 ### English

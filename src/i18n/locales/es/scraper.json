@@ -104,6 +104,7 @@
       "selectSource": "Seleccionar fuente",
       "recommended": "ScreenScraper recomendado",
       "noSourceEnabled": "Primero habilite al menos una fuente en la configuración",
+      "noConfiguredSource": "No hay fuentes disponibles. Configura primero las credenciales del Provider en Ajustes.",
       "start": "Iniciar Scrape"
     }
   }

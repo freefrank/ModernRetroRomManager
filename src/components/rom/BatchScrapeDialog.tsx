@@ -40,7 +40,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
 
   useEffect(() => {
     const enabledIds = [...providers]
-      .filter(p => p.enabled)
+      .filter(p => p.enabled && (!p.requires_credentials || p.has_credentials))
       .sort((left, right) => left.priority - right.priority)
       .map(p => p.id);
     if (enabledIds.length > 0 && !providersInitialized.current) {
@@ -72,7 +72,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   // 后端会按优先级调度；弹窗也显式排序，避免旧状态或
   // HTTP fallback 的返回顺序与设置页不一致。
   const activeProviders = [...providers]
-    .filter(p => p.enabled)
+    .filter(p => p.enabled && (!p.requires_credentials || p.has_credentials))
     .sort((left, right) => left.priority - right.priority);
   const targetCount = scope === "library"
     ? forceRescrape ? stats.totalRoms : Math.max(0, stats.totalRoms - stats.scrapedRoms)
@@ -218,7 +218,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
                 {activeProviders.length === 0 ? (
                   <div className="flex items-center gap-3 p-4 bg-accent-error/10 border-[length:var(--border-width)] border-accent-error/20 rounded-[var(--radius-lg)] text-accent-error">
                     <AlertCircle className="w-5 h-5" />
-                    <span className="text-sm font-bold">{t("scraper.batch.noSourceEnabled")}</span>
+                    <span className="text-sm font-bold">{t("scraper.batch.noConfiguredSource")}</span>
                   </div>
                 ) : (
                   activeProviders.map(p => {

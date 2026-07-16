@@ -259,6 +259,26 @@ pub async fn scraper_search(
 
     let report = state.manager.read().await.search_fresh_report(&query).await;
     emit_provider_outcomes(&app, &report.outcomes);
+    if report.outcomes.is_empty() {
+        return Err(
+            "没有可用的抓取 Provider；请先在设置中配置凭据并启用至少一个 Provider".to_string(),
+        );
+    }
+    if report.results.is_empty() {
+        let errors: Vec<_> = report
+            .outcomes
+            .iter()
+            .filter_map(|outcome| {
+                outcome
+                    .error
+                    .as_ref()
+                    .map(|error| format!("{}: {error}", outcome.provider))
+            })
+            .collect();
+        if !errors.is_empty() {
+            return Err(format!("Provider 搜索失败: {}", errors.join("；")));
+        }
+    }
     Ok(report.results)
 }
 
@@ -691,6 +711,14 @@ pub async fn batch_scrape(
 ) -> Result<(), String> {
     if provider_ids.is_empty() {
         return Err("请至少选择一个抓取来源".to_string());
+    }
+    if !state
+        .manager
+        .read()
+        .await
+        .has_enabled_provider_matching(&provider_ids)
+    {
+        return Err("所选抓取来源没有可用凭据；请先在设置中完成 Provider 配置".to_string());
     }
     if state
         .batch_running

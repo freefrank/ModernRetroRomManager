@@ -104,6 +104,7 @@
       "selectSource": "選擇抓取來源",
       "recommended": "推薦使用 ScreenScraper",
       "noSourceEnabled": "請先在設定中啟用至少一個抓取來源",
+      "noConfiguredSource": "沒有可用的抓取來源，請先在設定中配置 Provider 憑據",
       "start": "開始抓取"
     }
   }

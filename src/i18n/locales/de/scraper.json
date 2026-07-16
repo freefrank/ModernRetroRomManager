@@ -104,6 +104,7 @@
       "selectSource": "Quelle auswählen",
       "recommended": "ScreenScraper empfohlen",
       "noSourceEnabled": "Aktivieren Sie zunächst mindestens eine Quelle in den Einstellungen",
+      "noConfiguredSource": "Keine Quelle verfügbar. Konfigurieren Sie zuerst die Provider-Zugangsdaten in den Einstellungen.",
       "start": "Start Scrape"
     }
   }

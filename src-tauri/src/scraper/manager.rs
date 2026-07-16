@@ -354,6 +354,10 @@ impl ScraperManager {
         providers.into_iter().map(|(_, p)| p).collect()
     }
 
+    pub fn has_enabled_provider_matching(&self, provider_ids: &[String]) -> bool {
+        !self.enabled_providers_matching(provider_ids).is_empty()
+    }
+
     /// 统一搜索 - 并行查询所有启用的 providers,结果经评分排序
     #[allow(dead_code)]
     pub async fn search(&self, query: &ScrapeQuery) -> Vec<SearchResult> {
@@ -742,6 +746,12 @@ impl ScraperManager {
             matches.insert(result.provider.clone(), result);
         }
         if matches.is_empty() {
+            if provider_outcomes.is_empty() {
+                return Err(
+                    "没有可用的抓取 Provider；请在设置中为 ScreenScraper、SteamGridDB 或 TheGamesDB 配置凭据并启用"
+                        .to_string(),
+                );
+            }
             let provider_errors: Vec<_> = provider_outcomes
                 .iter()
                 .filter_map(|outcome| {
@@ -917,6 +927,17 @@ mod tests {
     fn test_manager_creation() {
         let manager = ScraperManager::new();
         assert!(manager.provider_ids().is_empty());
+        assert!(!manager.has_enabled_provider_matching(&["screenscraper".into()]));
+    }
+
+    #[tokio::test]
+    async fn scrape_without_registered_providers_reports_configuration_error() {
+        let manager = ScraperManager::new();
+        let error = manager
+            .scrape(&ScrapeQuery::new("Chobits".into(), "chobits.gba".into()))
+            .await
+            .unwrap_err();
+        assert!(error.contains("没有可用的抓取 Provider"));
     }
 
     fn settings_with(entries: &[(&str, ScraperConfig)]) -> AppSettings {
