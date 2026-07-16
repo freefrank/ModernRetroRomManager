@@ -91,7 +91,16 @@
       "cleanupFailed": "Failed to clean incomplete files: {{error}}",
       "clearSuccess": "Removed {{count}} cache files and freed {{size}}",
       "clearFailed": "Failed to clear scraper cache: {{error}}",
-      "openFailed": "Failed to open cache folder: {{error}}"
+      "openFailed": "Failed to open cache folder: {{error}}",
+      "scanOrphanAssets": "Check Unreferenced Assets",
+      "orphanConfirmTitle": "Clean Unreferenced Library Assets",
+      "cleanupOrphanAssets": "Clean Assets",
+      "orphanSummary": "Found {{count}} assets not referenced by metadata in “{{library}}”, totaling {{size}}.",
+      "orphanDetails": "Scanned {{scanned}} assets and found {{indexed}} metadata references; safely skipped {{skipped}} system folders without valid metadata.",
+      "orphanSafetyHint": "Only explicit asset folders such as media, images, and artwork are checked. The app scans again before cleanup; ROMs, patches, and metadata files are never removed.",
+      "orphanScanFailed": "Failed to check unreferenced assets: {{error}}",
+      "orphanCleanupSuccess": "Removed {{count}} unreferenced assets and freed {{size}}",
+      "orphanCleanupFailed": "Failed to clean unreferenced assets: {{error}}"
     },
     "apiConfig": {
       "title": "API Configuration",

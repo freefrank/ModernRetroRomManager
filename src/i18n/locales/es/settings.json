@@ -91,7 +91,16 @@
       "cleanupFailed": "No se pudieron limpiar los archivos incompletos: {{error}}",
       "clearSuccess": "Se eliminaron {{count}} archivos de caché y se liberaron {{size}}",
       "clearFailed": "No se pudo vaciar la caché: {{error}}",
-      "openFailed": "No se pudo abrir la carpeta de caché: {{error}}"
+      "openFailed": "No se pudo abrir la carpeta de caché: {{error}}",
+      "scanOrphanAssets": "Comprobar recursos sin referencia",
+      "orphanConfirmTitle": "Limpiar recursos de Library sin referencia",
+      "cleanupOrphanAssets": "Limpiar recursos",
+      "orphanSummary": "Se encontraron {{count}} recursos sin referencia en «{{library}}», con un total de {{size}}.",
+      "orphanDetails": "Se analizaron {{scanned}} recursos y se encontraron {{indexed}} referencias; se omitieron {{skipped}} carpetas de sistema sin metadata válidos.",
+      "orphanSafetyHint": "Solo se comprueban carpetas de recursos explícitas. Nunca se eliminan ROM, parches ni archivos de metadata.",
+      "orphanScanFailed": "Error al comprobar recursos: {{error}}",
+      "orphanCleanupSuccess": "Se eliminaron {{count}} recursos y se liberaron {{size}}",
+      "orphanCleanupFailed": "Error al limpiar recursos: {{error}}"
     },
     "apiConfig": {
       "title": "Configuración API",

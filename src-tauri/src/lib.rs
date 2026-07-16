@@ -70,6 +70,8 @@ pub fn run() {
             commands::storage::get_storage_stats,
             commands::storage::cleanup_incomplete_cache,
             commands::storage::clear_rebuildable_cache,
+            commands::storage::scan_orphaned_library_assets,
+            commands::storage::cleanup_orphaned_library_assets,
             commands::storage::open_cache_directory,
             commands::media_cache::resolve_cached_library_asset,
             // AI metadata translation

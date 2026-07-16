@@ -66,6 +66,16 @@ interface CleanupResult {
   removed_files: number;
 }
 
+interface OrphanAssetReport {
+  library_id: string;
+  library_name: string;
+  orphaned: DirectoryUsage;
+  scanned_assets: number;
+  indexed_assets: number;
+  skipped_systems: number;
+  sample_files: string[];
+}
+
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -103,6 +113,8 @@ export default function GeneralSection() {
   const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
   const [isStorageLoading, setIsStorageLoading] = useState(false);
   const [isClearCacheDialogOpen, setIsClearCacheDialogOpen] = useState(false);
+  const [orphanAssetReport, setOrphanAssetReport] = useState<OrphanAssetReport | null>(null);
+  const [isOrphanAssetLoading, setIsOrphanAssetLoading] = useState(false);
   const [editingLibraryId, setEditingLibraryId] = useState<string | null>(null);
   const [editingLibraryName, setEditingLibraryName] = useState("");
   const [configLibrary, setConfigLibrary] = useState<ScanDirectory | null>(null);
@@ -110,6 +122,7 @@ export default function GeneralSection() {
   const [indexedFolders, setIndexedFolders] = useState<string[] | null>(null);
   const [isFolderConfigLoading, setIsFolderConfigLoading] = useState(false);
   const librarySectionRef = useRef<HTMLElement>(null);
+  const activeLibrary = scanDirectories.find((library) => library.isActive);
 
   // 元数据检测状态
   const [detectedMetadata, setDetectedMetadata] = useState<MetadataFileInfo[]>([]);
@@ -394,6 +407,41 @@ export default function GeneralSection() {
       await invoke("open_cache_directory");
     } catch (error) {
       toast.error(t("settings.storage.openFailed", { error: String(error) }));
+    }
+  };
+
+  const handleScanOrphanAssets = async () => {
+    if (!activeLibrary) return;
+    setIsOrphanAssetLoading(true);
+    try {
+      const report = await invoke<OrphanAssetReport>("scan_orphaned_library_assets", {
+        libraryId: activeLibrary.id,
+      });
+      setOrphanAssetReport(report);
+    } catch (error) {
+      toast.error(t("settings.storage.orphanScanFailed", { error: String(error) }));
+    } finally {
+      setIsOrphanAssetLoading(false);
+    }
+  };
+
+  const handleCleanupOrphanAssets = async () => {
+    if (!orphanAssetReport) return;
+    setIsOrphanAssetLoading(true);
+    try {
+      const result = await invoke<CleanupResult>("cleanup_orphaned_library_assets", {
+        libraryId: orphanAssetReport.library_id,
+      });
+      clearCachedMediaUrls();
+      setOrphanAssetReport(null);
+      toast.success(t("settings.storage.orphanCleanupSuccess", {
+        count: result.removed_files,
+        size: formatBytes(result.removed_bytes),
+      }));
+    } catch (error) {
+      toast.error(t("settings.storage.orphanCleanupFailed", { error: String(error) }));
+    } finally {
+      setIsOrphanAssetLoading(false);
     }
   };
 
@@ -772,6 +820,16 @@ export default function GeneralSection() {
                 <Trash2 className="w-4 h-4" />
                 {t("settings.storage.clearCache")}
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={isOrphanAssetLoading}
+                disabled={!activeLibrary || isScanning || isBatchScraping}
+                onClick={() => void handleScanOrphanAssets()}
+              >
+                <Trash2 className="w-4 h-4" />
+                {t("settings.storage.scanOrphanAssets")}
+              </Button>
             </div>
           </div>
 
@@ -860,6 +918,51 @@ export default function GeneralSection() {
             size: formatBytes(storageStats?.cache.bytes ?? 0),
           })}
         </p>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(orphanAssetReport)}
+        onClose={() => !isOrphanAssetLoading && setOrphanAssetReport(null)}
+        title={t("settings.storage.orphanConfirmTitle")}
+        footer={
+          <>
+            <Button variant="ghost" size="sm" disabled={isOrphanAssetLoading} onClick={() => setOrphanAssetReport(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={isOrphanAssetLoading}
+              disabled={!orphanAssetReport?.orphaned.files}
+              onClick={() => void handleCleanupOrphanAssets()}
+            >
+              {t("settings.storage.cleanupOrphanAssets")}
+            </Button>
+          </>
+        }
+      >
+        {orphanAssetReport && (
+          <div className="space-y-3 text-sm text-text-secondary">
+            <p>{t("settings.storage.orphanSummary", {
+              library: orphanAssetReport.library_name,
+              count: orphanAssetReport.orphaned.files,
+              size: formatBytes(orphanAssetReport.orphaned.bytes),
+            })}</p>
+            <p>{t("settings.storage.orphanDetails", {
+              scanned: orphanAssetReport.scanned_assets,
+              indexed: orphanAssetReport.indexed_assets,
+              skipped: orphanAssetReport.skipped_systems,
+            })}</p>
+            <p className="text-xs text-text-muted">{t("settings.storage.orphanSafetyHint")}</p>
+            {orphanAssetReport.sample_files.length > 0 && (
+              <div className="max-h-52 overflow-auto rounded-[var(--radius-md)] border border-border-default bg-bg-tertiary p-2 font-mono text-xs">
+                {orphanAssetReport.sample_files.map((file) => (
+                  <div key={file} className="truncate py-0.5" title={file}>{file}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Dialog>
 
       {/* 添加目录弹窗 */}

@@ -91,7 +91,16 @@
       "cleanupFailed": "Unvollständige Dateien konnten nicht bereinigt werden: {{error}}",
       "clearSuccess": "{{count}} Cache-Dateien entfernt, {{size}} freigegeben",
       "clearFailed": "Scraper-Cache konnte nicht geleert werden: {{error}}",
-      "openFailed": "Cache-Ordner konnte nicht geöffnet werden: {{error}}"
+      "openFailed": "Cache-Ordner konnte nicht geöffnet werden: {{error}}",
+      "scanOrphanAssets": "Nicht referenzierte Assets prüfen",
+      "orphanConfirmTitle": "Nicht referenzierte Library-Assets bereinigen",
+      "cleanupOrphanAssets": "Assets bereinigen",
+      "orphanSummary": "In „{{library}}“ wurden {{count}} nicht referenzierte Assets mit insgesamt {{size}} gefunden.",
+      "orphanDetails": "{{scanned}} Assets geprüft, {{indexed}} Referenzen gefunden; {{skipped}} Systemordner ohne gültige Metadaten wurden übersprungen.",
+      "orphanSafetyHint": "Nur eindeutige Asset-Ordner werden geprüft. ROMs, Patches und Metadatendateien werden niemals gelöscht.",
+      "orphanScanFailed": "Prüfung fehlgeschlagen: {{error}}",
+      "orphanCleanupSuccess": "{{count}} Assets entfernt und {{size}} freigegeben",
+      "orphanCleanupFailed": "Bereinigung fehlgeschlagen: {{error}}"
     },
     "apiConfig": {
       "title": "API-Konfiguration",

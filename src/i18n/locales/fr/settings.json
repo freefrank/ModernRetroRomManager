@@ -91,7 +91,16 @@
       "cleanupFailed": "Échec du nettoyage : {{error}}",
       "clearSuccess": "{{count}} fichiers en cache supprimés, {{size}} libérés",
       "clearFailed": "Impossible de vider le cache : {{error}}",
-      "openFailed": "Impossible d’ouvrir le dossier du cache : {{error}}"
+      "openFailed": "Impossible d’ouvrir le dossier du cache : {{error}}",
+      "scanOrphanAssets": "Vérifier les ressources non référencées",
+      "orphanConfirmTitle": "Nettoyer les ressources non référencées",
+      "cleanupOrphanAssets": "Nettoyer",
+      "orphanSummary": "{{count}} ressources non référencées ont été trouvées dans « {{library}} », soit {{size}}.",
+      "orphanDetails": "{{scanned}} ressources analysées, {{indexed}} références trouvées ; {{skipped}} dossiers système sans métadonnées valides ont été ignorés.",
+      "orphanSafetyHint": "Seuls les dossiers de ressources explicites sont vérifiés. Les ROM, correctifs et fichiers de métadonnées ne sont jamais supprimés.",
+      "orphanScanFailed": "Échec de la vérification : {{error}}",
+      "orphanCleanupSuccess": "{{count}} ressources supprimées, {{size}} libérés",
+      "orphanCleanupFailed": "Échec du nettoyage : {{error}}"
     },
     "apiConfig": {
       "title": "Configuration de l'API",

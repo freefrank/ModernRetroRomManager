@@ -91,7 +91,16 @@
       "cleanupFailed": "清理中斷檔案失敗：{{error}}",
       "clearSuccess": "已刪除 {{count}} 個快取檔案，釋放 {{size}}",
       "clearFailed": "清空抓取快取失敗：{{error}}",
-      "openFailed": "開啟快取目錄失敗：{{error}}"
+      "openFailed": "開啟快取目錄失敗：{{error}}",
+      "scanOrphanAssets": "檢查未引用資源",
+      "orphanConfirmTitle": "清理未引用的 Library 資源",
+      "cleanupOrphanAssets": "確認清理",
+      "orphanSummary": "Library「{{library}}」中發現 {{count}} 個未被 Metadata 引用的資源，共 {{size}}。",
+      "orphanDetails": "已掃描 {{scanned}} 個資源，Metadata 引用 {{indexed}} 個；安全略過 {{skipped}} 個無 Metadata 或解析失敗的平台目錄。",
+      "orphanSafetyHint": "僅檢查 media、images、artwork 等明確的資源目錄。確認時會重新掃描，ROM、補丁和 Metadata 檔案不會被刪除。",
+      "orphanScanFailed": "檢查未引用資源失敗：{{error}}",
+      "orphanCleanupSuccess": "已清理 {{count}} 個未引用資源，釋放 {{size}}",
+      "orphanCleanupFailed": "清理未引用資源失敗：{{error}}"
     },
     "apiConfig": {
       "title": "API 配置",

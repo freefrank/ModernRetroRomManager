@@ -91,7 +91,16 @@
       "cleanupFailed": "清理中断文件失败：{{error}}",
       "clearSuccess": "已删除 {{count}} 个缓存文件，释放 {{size}}",
       "clearFailed": "清空抓取缓存失败：{{error}}",
-      "openFailed": "打开缓存目录失败：{{error}}"
+      "openFailed": "打开缓存目录失败：{{error}}",
+      "scanOrphanAssets": "检查未引用资源",
+      "orphanConfirmTitle": "清理未引用的 Library 资源",
+      "cleanupOrphanAssets": "确认清理",
+      "orphanSummary": "Library“{{library}}”中发现 {{count}} 个未被 Metadata 引用的资源，共 {{size}}。",
+      "orphanDetails": "已扫描 {{scanned}} 个资源，Metadata 引用 {{indexed}} 个；安全跳过 {{skipped}} 个无 Metadata 或解析失败的平台目录。",
+      "orphanSafetyHint": "仅检查 media、images、artwork 等明确的资源目录。确认时会重新扫描，ROM、补丁和 Metadata 文件不会被删除。",
+      "orphanScanFailed": "检查未引用资源失败：{{error}}",
+      "orphanCleanupSuccess": "已清理 {{count}} 个未引用资源，释放 {{size}}",
+      "orphanCleanupFailed": "清理未引用资源失败：{{error}}"
     },
     "apiConfig": {
       "title": "API 配置",

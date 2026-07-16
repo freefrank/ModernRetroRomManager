@@ -91,7 +91,16 @@
       "cleanupFailed": "Не удалось удалить незавершённые файлы: {{error}}",
       "clearSuccess": "Удалено файлов кэша: {{count}}, освобождено {{size}}",
       "clearFailed": "Не удалось очистить кэш: {{error}}",
-      "openFailed": "Не удалось открыть папку кэша: {{error}}"
+      "openFailed": "Не удалось открыть папку кэша: {{error}}",
+      "scanOrphanAssets": "Проверить ресурсы без ссылок",
+      "orphanConfirmTitle": "Очистить ресурсы Library без ссылок",
+      "cleanupOrphanAssets": "Очистить ресурсы",
+      "orphanSummary": "В «{{library}}» найдено {{count}} ресурсов без ссылок общим размером {{size}}.",
+      "orphanDetails": "Проверено {{scanned}} ресурсов, найдено {{indexed}} ссылок; пропущено {{skipped}} системных папок без корректных метаданных.",
+      "orphanSafetyHint": "Проверяются только явные папки ресурсов. ROM, патчи и файлы метаданных никогда не удаляются.",
+      "orphanScanFailed": "Не удалось проверить ресурсы: {{error}}",
+      "orphanCleanupSuccess": "Удалено {{count}} ресурсов, освобождено {{size}}",
+      "orphanCleanupFailed": "Не удалось очистить ресурсы: {{error}}"
     },
     "apiConfig": {
       "title": "Конфигурация API",

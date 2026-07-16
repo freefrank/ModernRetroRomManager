@@ -91,7 +91,16 @@
       "cleanupFailed": "Pulizia dei file incompleti non riuscita: {{error}}",
       "clearSuccess": "Rimossi {{count}} file dalla cache e liberati {{size}}",
       "clearFailed": "Impossibile svuotare la cache: {{error}}",
-      "openFailed": "Impossibile aprire la cartella cache: {{error}}"
+      "openFailed": "Impossibile aprire la cartella cache: {{error}}",
+      "scanOrphanAssets": "Controlla risorse non referenziate",
+      "orphanConfirmTitle": "Pulisci risorse Library non referenziate",
+      "cleanupOrphanAssets": "Pulisci risorse",
+      "orphanSummary": "Trovate {{count}} risorse non referenziate in “{{library}}”, per un totale di {{size}}.",
+      "orphanDetails": "Analizzate {{scanned}} risorse e trovati {{indexed}} riferimenti; ignorate {{skipped}} cartelle di sistema senza metadata validi.",
+      "orphanSafetyHint": "Vengono controllate solo le cartelle di risorse esplicite. ROM, patch e file metadata non vengono mai eliminati.",
+      "orphanScanFailed": "Controllo non riuscito: {{error}}",
+      "orphanCleanupSuccess": "Eliminate {{count}} risorse e liberati {{size}}",
+      "orphanCleanupFailed": "Pulizia non riuscita: {{error}}"
     },
     "apiConfig": {
       "title": "Configurazione API",
