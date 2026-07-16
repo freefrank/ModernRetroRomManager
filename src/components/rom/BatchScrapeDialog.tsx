@@ -18,11 +18,12 @@ interface BatchScrapeDialogProps {
 export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection" }: BatchScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
-  const { startBatchScrape, cancelBatchScrape, selectedRomIds, selectedSystem, systemRoms, stats, isBatchScraping, batchProgress } = useRomStore();
+  const { startBatchScrape, cancelBatchScrape, dismissBatchScrapeResult, selectedRomIds, selectedSystem, systemRoms, stats, isBatchScraping, batchProgress } = useRomStore();
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const [forceRescrape, setForceRescrape] = useState(false);
   const providersInitialized = useRef(false);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
     fetchProviders();
@@ -30,8 +31,12 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   }, [fetchProviders]);
 
   useEffect(() => {
+    if (isOpen && !wasOpen.current && batchProgress?.finished && !isBatchScraping) {
+      dismissBatchScrapeResult();
+    }
+    wasOpen.current = isOpen;
     if (isOpen) setForceRescrape(false);
-  }, [isOpen, scope]);
+  }, [batchProgress?.finished, dismissBatchScrapeResult, isBatchScraping, isOpen, scope]);
 
   useEffect(() => {
     const enabledIds = [...providers]
@@ -60,6 +65,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
     if (isBatchScraping && !batchProgress?.finished) {
       await cancelBatchScrape();
     }
+    if (batchProgress?.finished) dismissBatchScrapeResult();
     onClose();
   };
 
@@ -79,6 +85,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   const progressPercent = batchProgress
     ? Math.round((batchProgress.current / batchProgress.total) * 100)
     : 0;
+  const showBatchProgress = isBatchScraping || Boolean(batchProgress?.finished);
 
   return (
     <Dialog
@@ -91,7 +98,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
         </span>
       }
       footer={
-        !isBatchScraping ? (
+        !showBatchProgress ? (
           <>
             <Button variant="ghost" onClick={onClose}>
               {t("common.cancel")}
@@ -112,13 +119,21 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
       }
     >
       <div className="space-y-6 py-2">
-        {isBatchScraping ? (
+        {showBatchProgress ? (
           /* 进度展示 */
           <div className="space-y-6 py-2">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-accent-primary">
-                <Spinner size={20} />
-                <span className="font-bold text-sm uppercase tracking-widest">{t("scraper.batch.scraping")}</span>
+                {batchProgress?.finished
+                  ? batchProgress.cancelled
+                    ? <AlertCircle className="h-5 w-5" />
+                    : <CheckCircle2 className="h-5 w-5" />
+                  : <Spinner size={20} />}
+                <span className="font-bold text-sm uppercase tracking-widest">
+                  {batchProgress?.finished
+                    ? t(batchProgress.cancelled ? "scraper.batch.stopped" : "scraper.batch.completed")
+                    : t("scraper.batch.scraping")}
+                </span>
               </div>
               <span className="text-xl font-black text-text-primary">{progressPercent}%</span>
             </div>

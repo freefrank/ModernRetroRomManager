@@ -473,6 +473,15 @@ mod tests {
             games.len()
         );
 
+        let love_hina = client
+            .search_games("Love Hina Advance - Shukufuku no Kane wa Naru Kana", "12")
+            .await
+            .unwrap();
+        assert!(
+            !love_hina.is_empty(),
+            "the canonical ALHJ title should be searchable"
+        );
+
         let game = client
             .fetch_game_info(vec![("gameid", game_id.to_string())])
             .await

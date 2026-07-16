@@ -17,6 +17,8 @@
       "nameModeHint": "Cambia solo il titolo visualizzato esportato; la voce separata del nome cinese viene mantenuta.",
       "target": "Directory di esportazione",
       "targetHint": "Scegli una destinazione esterna alla libreria sorgente. Le cartelle delle piattaforme vengono mantenute.",
+      "romAssetsOnly": "Copia solo ROM e risorse",
+      "romAssetsOnlyHint": "Ignora documentazione, log, configurazione e altri file vari. I metadata nel formato scelto vengono comunque generati.",
       "contents": "Include tutti i metadati temporanei e i file correlati nella directory multimediale della piattaforma.",
       "libraryContents": "Copia tutte le piattaforme indicizzate, le ROM e le risorse esistenti, quindi scrive i metadati di anteprima.",
       "action": "Esporta metadati e risorse",

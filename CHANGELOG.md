@@ -6,6 +6,44 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-16
+
+### English
+
+#### Added
+
+- Added configurable AI metadata target language, following the interface language by default while allowing a custom value.
+- Added file-level library export progress with byte throughput, cancellation, same-size file skipping, and an option to copy only ROM and artwork/media assets.
+
+#### Changed
+
+- Batch scrape completion remains visible until explicitly dismissed, and the Chinese dialog title no longer includes the redundant English label.
+- ROM grid and cover layouts now enforce a minimum per-item padding across themes and viewport sizes.
+
+#### Fixed
+
+- Fixed GBA releases sharing a serial by disambiguating them with the internal ROM title, including `ALHJ` Love Hina Advance.
+- Empty Provider searches are no longer persisted indefinitely, and total search failures now report actionable Provider errors or the exact query and platform.
+- Folder-based ROMs such as PS3 remain complete when using filtered library exports, while unrelated source files are omitted.
+
+### 简体中文
+
+#### 新增
+
+- 增加 AI Metadata 目标语言设置，默认跟随界面语言，同时允许用户自定义填写。
+- 增加文件级游戏库导出进度、字节速度、停止、同大小文件跳过，以及“只复制 ROM 和美术/媒体资产”选项。
+
+#### 变更
+
+- 批量抓取完成结果会保持显示直至用户主动关闭，中文弹窗标题不再附带多余英文提示。
+- ROM 网格与封面布局在不同主题和窗口尺寸下强制保留最小条目间距。
+
+#### 修复
+
+- 使用 ROM 内部标题消歧共享相同序列号的 GBA 游戏，包括 `ALHJ`《纯情房东俏房客 Advance》。
+- Provider 空搜索结果不再被永久缓存；全部搜索失败时会显示可操作的 Provider 错误，或具体查询名称与平台。
+- 筛选导出时完整保留 PS3 等文件夹型 ROM，同时忽略无关源文件。
+
 ## [0.9.0] - 2026-07-15
 
 ### English

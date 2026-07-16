@@ -139,6 +139,7 @@
       "apiKey": "API Key",
       "model": "模型",
       "targetLanguage": "目標語言",
+      "targetLanguageHint": "新設定預設使用目前介面語言，也可以直接填寫任意目標語言。",
       "reasoningEffort": "思考強度",
       "reasoningAuto": "自動（Provider 預設）",
       "reasoningNone": "關閉（僅部分模型支援）",

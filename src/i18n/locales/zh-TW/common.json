@@ -41,6 +41,7 @@
   "common": {
     "save": "保存",
     "cancel": "取消",
+    "stop": "停止",
     "confirm": "確認",
     "delete": "刪除",
     "edit": "編輯",

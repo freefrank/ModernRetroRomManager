@@ -139,6 +139,7 @@
       "apiKey": "API key",
       "model": "Modell",
       "targetLanguage": "Zielsprache",
+      "targetLanguageHint": "Neue Konfigurationen verwenden standardmäßig die Oberflächensprache; jede Zielsprache kann eingegeben werden.",
       "reasoningEffort": "Denkintensität",
       "reasoningAuto": "Automatisch (Provider-Standard)",
       "reasoningNone": "Aus (nur unterstützte Modelle)",

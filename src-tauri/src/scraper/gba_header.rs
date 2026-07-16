@@ -6,6 +6,8 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::OnceLock;
 
+use super::matcher::jaro_winkler_similarity;
+
 const GBA_SERIAL_CSV: &str = include_str!("../../resources/gba-serial.csv");
 
 #[derive(Debug, Clone)]
@@ -131,6 +133,48 @@ fn unique_names(entries: &[SerialEntry]) -> Vec<String> {
         .collect()
 }
 
+fn compact_ascii(value: &str) -> String {
+    value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .map(|character| character.to_ascii_lowercase())
+        .collect()
+}
+
+fn resolve_release_name(entries: &[SerialEntry], internal_title: &str) -> Option<String> {
+    let names = unique_names(entries);
+    if names.len() <= 1 {
+        return names.into_iter().next();
+    }
+
+    let header = compact_ascii(internal_title);
+    if header.len() < 4 {
+        return None;
+    }
+    let mut scored: Vec<_> = names
+        .into_iter()
+        .map(|name| {
+            let candidate = compact_ascii(&name);
+            let prefix_match = candidate.starts_with(&header) || header.starts_with(&candidate);
+            let similarity = jaro_winkler_similarity(&header, &candidate);
+            (name, prefix_match, similarity)
+        })
+        .collect();
+    scored.sort_by(|left, right| {
+        right.1.cmp(&left.1).then_with(|| {
+            right
+                .2
+                .partial_cmp(&left.2)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+    });
+    let best = scored.first()?;
+    let runner_up = scored.get(1);
+    let clearly_better = best.1 && !runner_up.is_some_and(|candidate| candidate.1)
+        || best.2 >= 0.72 && runner_up.is_none_or(|candidate| best.2 - candidate.2 >= 0.08);
+    clearly_better.then(|| best.0.clone())
+}
+
 pub fn identify_gba_rom(path: &Path) -> Result<Option<GbaIdentification>, String> {
     let header = load_header(path)?;
     let checksum = ((0_u8)
@@ -155,11 +199,9 @@ pub fn identify_gba_rom(path: &Path) -> Result<Option<GbaIdentification>, String
     let Some(direct_entries) = index.by_serial.get(&game_code) else {
         return Ok(None);
     };
-    let release_names = unique_names(direct_entries);
-    if release_names.len() != 1 {
+    let Some(release_name) = resolve_release_name(direct_entries, &internal_title) else {
         return Ok(None);
-    }
-    let release_name = release_names[0].clone();
+    };
 
     let mut english_candidates = Vec::new();
     if let Some(siblings) = index.by_prefix.get(&game_code[..3]) {
@@ -226,5 +268,15 @@ mod tests {
             ),
             "CT Special Forces 2"
         );
+    }
+
+    #[test]
+    fn duplicate_serial_is_disambiguated_by_internal_title() {
+        let entries = serial_index().by_serial.get("ALHJ").unwrap();
+        assert_eq!(
+            resolve_release_name(entries, "LOVEHINAADVA").as_deref(),
+            Some("Love Hina Advance - Shukufuku no Kane wa Naru Kana")
+        );
+        assert!(resolve_release_name(entries, "UNKNOWN").is_none());
     }
 }

@@ -95,6 +95,7 @@ pub fn run() {
             // Export (New location)
             commands::export::export_scraped_data,
             commands::export::export_library_scraped_data,
+            commands::export::cancel_export,
             commands::export::export_to_emulationstation, // Placeholder
             commands::export::export_to_pegasus,          // Placeholder
             // Naming check / CN ROM Tool

@@ -17,6 +17,8 @@
       "nameModeHint": "Nur der exportierte Anzeigetitel ändert sich; der separate chinesische Namenseintrag bleibt erhalten.",
       "target": "Exportverzeichnis",
       "targetHint": "Wählen Sie ein Ziel außerhalb der Quellbibliothek. Plattformordner bleiben erhalten.",
+      "romAssetsOnly": "Nur ROM- und Asset-Dateien kopieren",
+      "romAssetsOnlyHint": "Dokumentation, Protokolle, Konfiguration und sonstige Dateien werden ignoriert. Metadaten im gewählten Format werden weiterhin erstellt.",
       "contents": "Enthält alle temporären Metadaten und zugehörigen Dateien im Medienverzeichnis der Plattform.",
       "libraryContents": "Kopiert alle indizierten Plattformen, ROMs und vorhandenen Ressourcen; Vorschaudaten werden als neue Metadaten geschrieben.",
       "action": "Metadaten und Assets exportieren",

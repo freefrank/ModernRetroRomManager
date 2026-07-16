@@ -59,7 +59,7 @@ pub struct BatchTranslationResult {
 
 #[tauri::command]
 pub fn get_ai_translation_config() -> AiTranslationConfigView {
-    let config = get_settings().ai_translation;
+    let config = resolved_translation_config();
     AiTranslationConfigView {
         endpoint: config.endpoint,
         model: config.model,
@@ -69,6 +69,29 @@ pub fn get_ai_translation_config() -> AiTranslationConfigView {
         batch_token_limit: config.batch_token_limit,
         reasoning_effort: config.reasoning_effort,
     }
+}
+
+fn interface_target_language(language: &str) -> String {
+    match language {
+        "zh" | "zh-CN" => "简体中文（zh-CN）",
+        "zh-TW" => "繁體中文（zh-TW）",
+        "fr" => "Français（fr）",
+        "de" => "Deutsch（de）",
+        "it" => "Italiano（it）",
+        "es" => "Español（es）",
+        "ru" => "Русский（ru）",
+        _ => "English（en）",
+    }
+    .to_string()
+}
+
+fn resolved_translation_config() -> AiTranslationConfig {
+    let settings = get_settings();
+    let mut config = settings.ai_translation;
+    if !config.target_language_custom {
+        config.target_language = interface_target_language(&settings.language);
+    }
+    config
 }
 
 fn validate_config(config: &AiTranslationConfig) -> Result<(), String> {
@@ -92,6 +115,7 @@ pub fn save_ai_translation_config(input: SaveAiTranslationConfig) -> Result<(), 
         endpoint: input.endpoint.trim().trim_end_matches('/').to_string(),
         model: input.model.trim().to_string(),
         target_language: input.target_language.trim().to_string(),
+        target_language_custom: true,
         merge_batch_requests: input.merge_batch_requests,
         batch_token_limit: normalize_batch_token_limit(input.batch_token_limit),
         reasoning_effort: normalize_reasoning_effort(&input.reasoning_effort),
@@ -536,7 +560,7 @@ async fn request_translation_content(
 
 #[tauri::command]
 pub async fn translate_metadata(request: TranslateMetadataRequest) -> Result<GameMetadata, String> {
-    let config = get_settings().ai_translation;
+    let config = resolved_translation_config();
     validate_config(&config)?;
     let content = request_translation_content(
         &config,
@@ -560,7 +584,7 @@ pub async fn translate_metadata_batch(
     if requests.is_empty() {
         return Ok(Vec::new());
     }
-    let config = get_settings().ai_translation;
+    let config = resolved_translation_config();
     validate_config(&config)?;
     let prompt = batch_translation_prompt(&requests);
     // Accuracy first: use at most one eighth of the advertised context for
@@ -609,6 +633,13 @@ pub async fn translate_metadata_batch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn interface_language_maps_to_explicit_translation_target() {
+        assert_eq!(interface_target_language("en"), "English（en）");
+        assert_eq!(interface_target_language("zh-TW"), "繁體中文（zh-TW）");
+        assert_eq!(interface_target_language("fr"), "Français（fr）");
+    }
 
     #[test]
     fn endpoint_accepts_base_or_full_chat_url() {

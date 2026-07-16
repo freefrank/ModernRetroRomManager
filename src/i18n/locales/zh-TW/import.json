@@ -17,6 +17,8 @@
       "nameModeHint": "只改變匯出的顯示名稱，獨立的中文名條目仍會保留。",
       "target": "匯出目錄",
       "targetHint": "必須選擇不同於來源 Library 的目標目錄；整庫匯出會保留平台子目錄結構。",
+      "romAssetsOnly": "只複製 ROM 和資產檔案",
+      "romAssetsOnlyHint": "忽略來源目錄中的說明、日誌、設定及其他雜項檔案；仍會產生所選格式的 metadata。",
       "contents": "複製該平台的 ROM 和現有檔案，並寫入預覽 metadata 與資源。",
       "libraryContents": "複製整個 Library 的所有已索引平台、ROM 和現有資源；有預覽資料的平台會寫入新 metadata。",
       "action": "匯出 Metadata 與資產",

@@ -17,6 +17,8 @@
       "nameModeHint": "Solo cambia el título mostrado al exportar; se conserva la entrada separada del nombre chino.",
       "target": "Exportar directorio",
       "targetHint": "Elija un destino fuera de la biblioteca de origen. Se conservan las carpetas de plataforma.",
+      "romAssetsOnly": "Copiar solo ROM y recursos",
+      "romAssetsOnlyHint": "Ignora documentación, registros, configuración y otros archivos. Los metadatos del formato elegido se siguen generando.",
       "contents": "Incluye todos los metadatos temporales y archivos relacionados en el directorio de medios de la plataforma.",
       "libraryContents": "Copia todas las plataformas indexadas, ROM y recursos existentes, y escribe los metadatos de vista previa.",
       "action": "Exportar metadatos y activos",

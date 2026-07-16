@@ -86,6 +86,9 @@ pub struct AiTranslationConfig {
     pub model: String,
     #[serde(default = "default_ai_target_language")]
     pub target_language: String,
+    /// 新配置默认跟随界面语言；旧配置缺少此字段时保留原目标语言。
+    #[serde(default = "legacy_ai_target_language_is_custom")]
+    pub target_language_custom: bool,
     /// Batch translation may combine several ROM entries into one API request.
     #[serde(default)]
     pub merge_batch_requests: bool,
@@ -105,6 +108,10 @@ fn default_ai_target_language() -> String {
     "简体中文（zh-CN）".to_string()
 }
 
+fn legacy_ai_target_language_is_custom() -> bool {
+    true
+}
+
 fn default_ai_batch_token_limit() -> u32 {
     50_000
 }
@@ -120,6 +127,7 @@ impl Default for AiTranslationConfig {
             api_key: String::new(),
             model: String::new(),
             target_language: default_ai_target_language(),
+            target_language_custom: false,
             merge_batch_requests: false,
             batch_token_limit: default_ai_batch_token_limit(),
             reasoning_effort: default_ai_reasoning_effort(),
@@ -417,6 +425,20 @@ mod tests {
         let legacy = r#"{"theme":"dark","language":"zh","view_mode":"grid"}"#;
         let loaded: AppSettings = serde_json::from_str(legacy).unwrap();
         assert!(loaded.motion_level.is_none());
+    }
+
+    #[test]
+    fn ai_target_language_defaults_to_interface_but_preserves_legacy_choice() {
+        let current = AiTranslationConfig::default();
+        assert!(!current.target_language_custom);
+
+        let mut legacy = serde_json::to_value(&current).unwrap();
+        legacy
+            .as_object_mut()
+            .unwrap()
+            .remove("target_language_custom");
+        let loaded: AiTranslationConfig = serde_json::from_value(legacy).unwrap();
+        assert!(loaded.target_language_custom);
     }
 
     #[test]

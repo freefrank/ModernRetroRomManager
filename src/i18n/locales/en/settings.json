@@ -139,6 +139,7 @@
       "apiKey": "API key",
       "model": "Model",
       "targetLanguage": "Target language",
+      "targetLanguageHint": "New configurations default to the interface language; you can enter any target language.",
       "reasoningEffort": "Reasoning effort",
       "reasoningAuto": "Auto (provider default)",
       "reasoningNone": "Off (supported models only)",

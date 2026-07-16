@@ -139,6 +139,7 @@
       "apiKey": "API key",
       "model": "Modèle",
       "targetLanguage": "Langue cible",
+      "targetLanguageHint": "Les nouvelles configurations utilisent la langue de l’interface par défaut ; vous pouvez saisir toute langue cible.",
       "reasoningEffort": "Niveau de raisonnement",
       "reasoningAuto": "Automatique (valeur du fournisseur)",
       "reasoningNone": "Désactivé (modèles compatibles uniquement)",

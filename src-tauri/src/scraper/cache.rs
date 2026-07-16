@@ -68,11 +68,15 @@ fn search_path(provider: &str, query: &ScrapeQuery) -> PathBuf {
 }
 
 pub fn load_search(provider: &str, query: &ScrapeQuery) -> Option<Vec<SearchResult>> {
-    read_json(&search_path(provider, query))
+    // 空结果可能来自临时限流、Provider 故障或旧版错误查询，不能永久粘住。
+    read_json::<Vec<SearchResult>>(&search_path(provider, query))
+        .filter(|results| !results.is_empty())
 }
 
 pub fn save_search(provider: &str, query: &ScrapeQuery, results: &[SearchResult]) {
-    let _ = write_json(&search_path(provider, query), &results);
+    if !results.is_empty() {
+        let _ = write_json(&search_path(provider, query), &results);
+    }
 }
 
 fn provider_item_path(kind: &str, provider: &str, source_id: &str) -> PathBuf {

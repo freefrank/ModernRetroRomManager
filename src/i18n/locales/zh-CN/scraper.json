@@ -89,7 +89,7 @@
       "confirmAndApply": "确认并应用"
     },
     "batch": {
-      "title": "批量抓取 (Batch Scrape)",
+      "title": "批量抓取",
       "scraping": "正在抓取数据...",
       "processed": "{{current}} / {{total}} 个游戏已处理",
       "preparing": "准备中...",

@@ -390,9 +390,10 @@ export const scraperApi = {
     format = "auto",
     targetDirectory?: string,
     nameMode?: "original" | "chinese",
+    romAssetsOnly = false,
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_scraped_data", { system, directory, format, targetDirectory, nameMode });
+      await tauriInvoke("export_scraped_data", { system, directory, format, targetDirectory, nameMode, romAssetsOnly });
     }
   },
 
@@ -402,10 +403,15 @@ export const scraperApi = {
     format = "auto",
     targetDirectory?: string,
     nameMode?: "original" | "chinese",
+    romAssetsOnly = false,
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode });
+      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode, romAssetsOnly });
     }
+  },
+
+  async cancelExport(): Promise<boolean> {
+    return isTauri() ? tauriInvoke<boolean>("cancel_export") : false;
   },
 
   /** 保存手动编辑的临时元数据 */
@@ -434,7 +440,7 @@ export const scraperApi = {
 export const aiTranslationApi = {
   async getConfig(): Promise<AiTranslationConfig> {
     if (isTauri()) return tauriInvoke<AiTranslationConfig>("get_ai_translation_config");
-    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "简体中文（zh-CN）", has_api_key: false, merge_batch_requests: false, batch_token_limit: 50000, reasoning_effort: "auto" };
+    return { endpoint: "https://api.openai.com/v1", model: "", target_language: "", has_api_key: false, merge_batch_requests: false, batch_token_limit: 50000, reasoning_effort: "auto" };
   },
 
   async saveConfig(input: AiTranslationConfigInput): Promise<void> {

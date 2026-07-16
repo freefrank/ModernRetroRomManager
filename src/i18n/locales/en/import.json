@@ -17,6 +17,8 @@
       "nameModeHint": "Only the exported display title changes; the separate Chinese-name entry is preserved.",
       "target": "Export directory",
       "targetHint": "Choose a destination outside the source library. Whole-library exports preserve platform subdirectories.",
+      "romAssetsOnly": "Copy ROM and asset files only",
+      "romAssetsOnlyHint": "Ignore source documentation, logs, configuration, and miscellaneous files. Metadata in the selected format is still generated.",
       "contents": "Copies the platform ROMs and existing files, then writes preview metadata and assets.",
       "libraryContents": "Copies every indexed platform, ROM, and existing asset. Platforms with preview data also receive updated metadata and assets.",
       "action": "Export metadata and assets",

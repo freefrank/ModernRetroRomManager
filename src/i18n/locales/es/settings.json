@@ -139,6 +139,7 @@
       "apiKey": "API key",
       "model": "Modelo",
       "targetLanguage": "Idioma de destino",
+      "targetLanguageHint": "Las configuraciones nuevas usan el idioma de la interfaz de forma predeterminada; puede escribir cualquier idioma.",
       "reasoningEffort": "Intensidad de razonamiento",
       "reasoningAuto": "Automático (predeterminado del proveedor)",
       "reasoningNone": "Desactivado (solo modelos compatibles)",

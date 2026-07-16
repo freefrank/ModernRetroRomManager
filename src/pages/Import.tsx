@@ -15,13 +15,14 @@ const normalizePath = (path: string) => path.replace(/\\/g, "/");
 
 export default function Import() {
   const { t } = useTranslation();
-  const { exportData, exportLibraryData, isExporting, exportProgress } = useRomStore();
+  const { exportData, exportLibraryData, cancelExport, isExporting, exportProgress } = useRomStore();
   const [libraries, setLibraries] = useState<ScanDirectory[]>([]);
   const [libraryId, setLibraryId] = useState("");
   const [systems, setSystems] = useState<RomSystemSummary[]>([]);
   const [scope, setScope] = useState(ALL_SYSTEMS);
   const [format, setFormat] = useState<ExportFormat>("pegasus");
   const [nameMode, setNameMode] = useState<ExportNameMode>("original");
+  const [romAssetsOnly, setRomAssetsOnly] = useState(false);
   const [targetDirectory, setTargetDirectory] = useState("");
   const [isLoadingSystems, setIsLoadingSystems] = useState(false);
 
@@ -87,7 +88,7 @@ export default function Import() {
     if (!selectedLibrary || !targetDirectory.trim()) return;
     try {
       if (scope === ALL_SYSTEMS) {
-        await exportLibraryData(selectedLibrary.id, format, targetDirectory.trim(), nameMode);
+        await exportLibraryData(selectedLibrary.id, format, targetDirectory.trim(), nameMode, romAssetsOnly);
       } else if (selectedSystem) {
         await exportData(
           selectedSystem.system,
@@ -95,6 +96,7 @@ export default function Import() {
           format,
           targetDirectory.trim(),
           nameMode,
+          romAssetsOnly,
         );
       }
     } catch (error) {
@@ -125,6 +127,7 @@ export default function Import() {
               <h2 className="text-lg font-bold">{t("import.export.title")}</h2>
               <p className="mt-1 text-sm text-text-muted">{t("import.export.description")}</p>
             </div>
+
           </div>
 
           <div className="space-y-5">
@@ -183,6 +186,21 @@ export default function Import() {
               <p className="mt-2 text-xs text-text-muted">{t("import.export.targetHint")}</p>
             </div>
 
+            <label className="flex items-start gap-3 rounded-[var(--radius-md)] border border-border-default bg-bg-primary/50 p-4">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-accent-primary"
+                checked={romAssetsOnly}
+                onChange={(event) => setRomAssetsOnly(event.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium">{t("import.export.romAssetsOnly")}</span>
+                <span className="mt-1 block text-xs text-text-muted">
+                  {t("import.export.romAssetsOnlyHint")}
+                </span>
+              </span>
+            </label>
+
             <div className="rounded-[var(--radius-md)] border border-border-default bg-bg-primary/50 p-4 text-sm text-text-secondary">
               <div className="flex items-center gap-2">
                 <FileArchive className="h-4 w-4 text-accent-primary" />
@@ -198,6 +216,11 @@ export default function Import() {
                   <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                     <div className="h-full bg-accent-primary" style={{ width: `${exportProgress.current}%` }} />
                   </div>
+                  {!exportProgress.finished && (
+                    <Button className="mt-3" variant="danger" onClick={() => void cancelExport()}>
+                      {t("common.stop")}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

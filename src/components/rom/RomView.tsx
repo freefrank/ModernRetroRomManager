@@ -513,24 +513,26 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                       : `${rom.directory}/${rom.name}-${index}`;
                     const isSelected = selectedIds.has(rom.file);
 
-                    return viewMode === "cover" ? (
-                      <CoverCard
-                        key={key}
-                        rom={rom}
-                        isSelected={isSelected}
-                        onRomClick={onRomClick}
-                        onToggleSelect={onToggleSelect}
-                        language={i18n.resolvedLanguage}
-                      />
-                    ) : (
-                      <GridCard
-                        key={key}
-                        rom={rom}
-                        isSelected={isSelected}
-                        onRomClick={onRomClick}
-                        onToggleSelect={onToggleSelect}
-                        language={i18n.resolvedLanguage}
-                      />
+                    return (
+                      <div key={key} className="min-w-0" style={{ padding: "8px" }}>
+                        {viewMode === "cover" ? (
+                          <CoverCard
+                            rom={rom}
+                            isSelected={isSelected}
+                            onRomClick={onRomClick}
+                            onToggleSelect={onToggleSelect}
+                            language={i18n.resolvedLanguage}
+                          />
+                        ) : (
+                          <GridCard
+                            rom={rom}
+                            isSelected={isSelected}
+                            onRomClick={onRomClick}
+                            onToggleSelect={onToggleSelect}
+                            language={i18n.resolvedLanguage}
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>

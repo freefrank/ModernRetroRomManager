@@ -41,6 +41,7 @@
   "common": {
     "save": "Speichern",
     "cancel": "Abbrechen",
+    "stop": "Stoppen",
     "confirm": "Bestätigen",
     "delete": "Löschen",
     "edit": "Bearbeiten",

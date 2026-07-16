@@ -724,6 +724,7 @@ impl ScraperManager {
         let search_report = self
             .search_with_providers_internal(query, provider_ids, force_refresh)
             .await;
+        let provider_outcomes = search_report.outcomes;
         let mut fallback_name = None;
         let mut fallback_year = None;
         for result in search_report.results {
@@ -741,7 +742,23 @@ impl ScraperManager {
             matches.insert(result.provider.clone(), result);
         }
         if matches.is_empty() {
-            return Err("No results found".to_string());
+            let provider_errors: Vec<_> = provider_outcomes
+                .iter()
+                .filter_map(|outcome| {
+                    outcome
+                        .error
+                        .as_ref()
+                        .map(|error| format!("{}: {error}", outcome.provider))
+                })
+                .collect();
+            if !provider_errors.is_empty() {
+                return Err(format!("Provider 搜索失败: {}", provider_errors.join("；")));
+            }
+            return Err(format!(
+                "未找到匹配结果（查询：{}，平台：{}）",
+                query.name,
+                query.system.as_deref().unwrap_or("未知")
+            ));
         }
         let providers = self.enabled_providers_matching(provider_ids);
         let metadata_futures: Vec<_> = providers
@@ -800,7 +817,7 @@ impl ScraperManager {
             metadata,
             media,
             sources: metadata_sources,
-            provider_outcomes: search_report.outcomes,
+            provider_outcomes,
         })
     }
 

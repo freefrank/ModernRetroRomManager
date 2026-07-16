@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Bot, KeyRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { languages } from "@/i18n";
 import { aiTranslationApi } from "@/lib/api";
 import { Badge, Button, Input, Select, toast } from "@/components/ui";
 
 export default function AiTranslationSection() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const displayTargetLanguage = `${languages.find(language => language.code === i18n.resolvedLanguage)?.name ?? "English"}（${i18n.resolvedLanguage ?? "en"}）`;
   const [endpoint, setEndpoint] = useState("https://api.openai.com/v1");
   const [model, setModel] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("简体中文（zh-CN）");
+  const [targetLanguage, setTargetLanguage] = useState(displayTargetLanguage);
   const [apiKey, setApiKey] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
   const [mergeBatchRequests, setMergeBatchRequests] = useState(false);
@@ -20,13 +22,13 @@ export default function AiTranslationSection() {
     aiTranslationApi.getConfig().then(config => {
       setEndpoint(config.endpoint);
       setModel(config.model);
-      setTargetLanguage(config.target_language);
+      setTargetLanguage(config.target_language || displayTargetLanguage);
       setHasApiKey(config.has_api_key);
       setMergeBatchRequests(config.merge_batch_requests);
       setBatchTokenLimit(config.batch_token_limit);
       setReasoningEffort(config.reasoning_effort);
     }).catch(error => toast.error(t("settings.aiTranslation.loadFailed", { error: String(error) })));
-  }, [t]);
+  }, [displayTargetLanguage, t]);
 
   const save = async () => {
     setSaving(true);
@@ -80,6 +82,9 @@ export default function AiTranslationSection() {
         <label className="block space-y-1.5 text-sm text-text-primary">
           <span>{t("settings.aiTranslation.targetLanguage")}</span>
           <Input value={targetLanguage} onChange={event => setTargetLanguage(event.target.value)} />
+          <span className="block text-xs leading-relaxed text-text-muted">
+            {t("settings.aiTranslation.targetLanguageHint")}
+          </span>
         </label>
         <label className="block space-y-1.5 text-sm text-text-primary">
           <span>{t("settings.aiTranslation.reasoningEffort")}</span>
