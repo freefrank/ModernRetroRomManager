@@ -250,6 +250,7 @@ fn identify(
     system: &str,
     internal_title: String,
     game_code: String,
+    name_hint: &str,
 ) -> Option<CartridgeIdentification> {
     let direct: Vec<_> = index(system)
         .iter()
@@ -266,10 +267,36 @@ fn identify(
         .map(|entry| clean_release_name(&entry.name))
         .filter(|name| names.insert(name.clone()))
         .collect();
-    if release_names.len() != 1 {
+    let release_name = if release_names.len() == 1 {
+        release_names[0].clone()
+    } else if system == "N64" {
+        let lower_hint = name_hint.to_ascii_lowercase();
+        let requests_master_quest = lower_hint.contains("master quest")
+            || lower_hint.contains("ura")
+            || name_hint.contains('里')
+            || name_hint.contains('裏');
+        let master_quest = release_names
+            .iter()
+            .find(|name| name.to_ascii_lowercase().contains("master quest"));
+        if requests_master_quest {
+            master_quest.cloned()
+        } else {
+            let shortest = release_names.iter().min_by_key(|name| name.len());
+            shortest
+                .filter(|base| {
+                    release_names
+                        .iter()
+                        .all(|name| name == *base || name.starts_with(&format!("{} - ", base)))
+                })
+                .cloned()
+        }
+        .or_else(|| {
+            identify_by_internal_title(system, internal_title.clone(), game_code.clone())
+                .map(|value| value.release_name)
+        })?
+    } else {
         return identify_by_internal_title(system, internal_title, game_code);
-    }
-    let release_name = release_names[0].clone();
+    };
 
     let family = if system == "N64" && game_code.len() == 4 {
         &game_code[..3]
@@ -398,7 +425,11 @@ pub fn identify_cartridge_rom(
         "SFC" => parse_sfc(&data),
         _ => None,
     };
-    Ok(parsed.and_then(|(title, code)| identify(&canonical, title, code)))
+    let name_hint = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    Ok(parsed.and_then(|(title, code)| identify(&canonical, title, code, name_hint)))
 }
 
 #[cfg(test)]
@@ -419,14 +450,41 @@ mod tests {
 
     #[test]
     fn identifies_known_product_codes() {
-        assert!(identify("MD", "SANGOKUSHI II".into(), "T-76023".into()).is_some());
-        assert!(identify("N64", "GOLDENEYE".into(), "NGEJ".into()).is_some());
-        assert!(identify("SFC", "SOCCER".into(), "AY2J".into()).is_some());
-        let ique = identify("N64", "SUPER MARIO 64".into(), "BSMC".into()).unwrap();
+        assert!(identify("MD", "SANGOKUSHI II".into(), "T-76023".into(), "").is_some());
+        assert!(identify("N64", "GOLDENEYE".into(), "NGEJ".into(), "").is_some());
+        assert!(identify("SFC", "SOCCER".into(), "AY2J".into(), "").is_some());
+        let ique = identify("N64", "SUPER MARIO 64".into(), "BSMC".into(), "").unwrap();
         assert_eq!(ique.scrape_name, "Super Mario 64");
         assert_eq!(ique.confidence, 97.0);
-        let internal = identify("SFC", "F-ZERO".into(), String::new()).unwrap();
+        let internal = identify("SFC", "F-ZERO".into(), String::new(), "").unwrap();
         assert_eq!(internal.scrape_name, "F-Zero");
         assert_eq!(internal.confidence, 94.0);
+    }
+
+    #[test]
+    fn disambiguates_ocarina_master_quest_from_the_archive_name() {
+        let master_quest = identify(
+            "N64",
+            "THE LEGEND OF ZELDA".into(),
+            "CZLE".into(),
+            "塞尔达传说 时之笛 里[简][atomic_]",
+        )
+        .unwrap();
+        assert_eq!(
+            master_quest.scrape_name,
+            "Legend of Zelda, The - Ocarina of Time - Master Quest"
+        );
+
+        let regular = identify(
+            "N64",
+            "THE LEGEND OF ZELDA".into(),
+            "CZLE".into(),
+            "塞尔达传说 时之笛[简]",
+        )
+        .unwrap();
+        assert_eq!(
+            regular.scrape_name,
+            "Legend of Zelda, The - Ocarina of Time"
+        );
     }
 }

@@ -733,6 +733,23 @@ mod tests {
             "subtitle fallback should resolve Front Mission - Gun Hazard"
         );
 
+        let master_quest = client
+            .search(
+                &ScrapeQuery::new(
+                    "Legend of Zelda, The - Ocarina of Time - Master Quest".into(),
+                    "zelda-master-quest.z64".into(),
+                )
+                .with_system("n64"),
+            )
+            .await
+            .unwrap();
+        assert!(
+            master_quest
+                .iter()
+                .any(|result| result.source_id == "98597"),
+            "N64 Master Quest title should resolve the dedicated ScreenScraper entry"
+        );
+
         let ps1_serial = client
             .search(
                 &ScrapeQuery::new(
