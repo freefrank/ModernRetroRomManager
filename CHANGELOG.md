@@ -6,6 +6,36 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-07-17
+
+### English
+
+#### Changed
+
+- PlayStation batch scraping now extracts disc serials from BIN/CUE `SYSTEM.CNF` data and uses ScreenScraper serial lookup before title search.
+- ScreenScraper now prefers US/World titles over the first regional alias and retries parenthetical aliases, sports titles without season suffixes, and longer trailing subtitles.
+- Translated ROM filenames are cleaned before fallback searches, preserving meaningful aliases while removing localization and repair tags and extracting embedded English titles.
+
+#### Fixed
+
+- PlayStation libraries no longer index a CUE file, its referenced BIN tracks, and an accompanying `_BIOS.BIN` as separate games; standalone BIN images remain supported.
+- Improved N64 batch matching for iQue, translated, encrypted, and modified ROM archives by combining reliable cartridge-header identification with cleaned filename fallbacks.
+- Preserved explicit manual search terms while limiting PlayStation serial-based exact matching to automatic and batch scraping.
+
+### 简体中文
+
+#### 变更
+
+- PlayStation 批量抓取现在会从 BIN/CUE 的 `SYSTEM.CNF` 数据提取光盘序列号，并优先使用 ScreenScraper 序列号匹配。
+- ScreenScraper 现在优先采用美国/世界版标题，并支持括号别名、移除赛季后缀的体育游戏标题以及更长的末尾副标题回退。
+- 汉化 ROM 文件名在回退搜索前会进行清理：保留有意义的别名，移除汉化与修复标签，并提取其中的英文标题。
+
+#### 修复
+
+- PlayStation 库不再把 CUE、其引用的 BIN 轨道和附带的 `_BIOS.BIN` 分别索引为游戏，同时继续支持没有 CUE 的独立 BIN 镜像。
+- 结合可靠的卡带头识别与清理后的文件名回退，改善神游、汉化、加密及修改版 N64 ROM 的批量匹配。
+- 单独抓取继续完整尊重用户输入，PlayStation 序列号精确匹配仅用于自动与批量抓取。
+
 ## [1.0.4] - 2026-07-16
 
 ### English
