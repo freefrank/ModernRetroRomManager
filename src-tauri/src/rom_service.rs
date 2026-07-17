@@ -1415,6 +1415,69 @@ fn scan_rom_files_internal(
 
         let mut paths = Vec::new();
         collect_rom_paths(dir_path, &allowed_extensions, &mut paths, recursive);
+        if matches!(
+            system_lower.as_str(),
+            "ps" | "ps1" | "psx" | "playstation" | "ps1 hack"
+        ) {
+            // CUE/BIN 是同一张光盘，不应把数据轨、音轨和附带 BIOS 分别列成游戏。
+            // 同目录存在 CUE 时只索引 CUE；没有 CUE 的单独 BIN 仍然保留。
+            let cue_directories: HashSet<PathBuf> = paths
+                .iter()
+                .filter(|path| {
+                    path.extension()
+                        .and_then(|value| value.to_str())
+                        .is_some_and(|value| value.eq_ignore_ascii_case("cue"))
+                })
+                .filter_map(|path| path.parent().map(Path::to_path_buf))
+                .collect();
+            let referenced_bins: HashSet<String> = paths
+                .iter()
+                .filter(|path| {
+                    path.extension()
+                        .and_then(|value| value.to_str())
+                        .is_some_and(|value| value.eq_ignore_ascii_case("cue"))
+                })
+                .filter_map(|cue| std::fs::read_to_string(cue).ok().map(|text| (cue, text)))
+                .flat_map(|(cue, text)| {
+                    text.lines()
+                        .filter_map(|line| {
+                            let line = line.trim();
+                            if !line.to_ascii_uppercase().starts_with("FILE ") {
+                                return None;
+                            }
+                            let file_name = line
+                                .split_once('"')
+                                .and_then(|(_, rest)| rest.split_once('"'))
+                                .map(|(name, _)| name)
+                                .or_else(|| line.split_whitespace().nth(1))?;
+                            Some(
+                                cue.parent()
+                                    .unwrap_or_else(|| Path::new(""))
+                                    .join(file_name)
+                                    .to_string_lossy()
+                                    .to_ascii_lowercase(),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            paths.retain(|path| {
+                let is_bin = path
+                    .extension()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|value| value.eq_ignore_ascii_case("bin"));
+                let referenced =
+                    referenced_bins.contains(&path.to_string_lossy().to_ascii_lowercase());
+                let is_sidecar_bios = path
+                    .file_stem()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|value| value.to_ascii_lowercase().ends_with("_bios"))
+                    && path
+                        .parent()
+                        .is_some_and(|parent| cue_directories.contains(parent));
+                !is_bin || (!referenced && !is_sidecar_bios)
+            });
+        }
         paths.sort();
         for path in paths {
             if crate::rom_index::scan_cancelled() {
@@ -1683,6 +1746,27 @@ mod tests {
             roms[0].file,
             Path::new("RPG").join("Test Game.zip").to_string_lossy()
         );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn ps1_scan_uses_cue_instead_of_duplicate_bin_tracks() {
+        let dir = create_temp_dir();
+        let game = dir.join("Game");
+        let bin_only = dir.join("Bin Only");
+        fs::create_dir_all(&game).unwrap();
+        fs::create_dir_all(&bin_only).unwrap();
+        fs::write(game.join("Game.cue"), b"FILE \"Game.bin\" BINARY").unwrap();
+        fs::write(game.join("Game.bin"), b"disc").unwrap();
+        fs::write(game.join("Game_BIOS.BIN"), b"bios").unwrap();
+        fs::write(game.join("Independent.bin"), b"disc").unwrap();
+        fs::write(bin_only.join("Standalone.bin"), b"disc").unwrap();
+
+        let roms = scan_rom_files(&dir, "PS1").unwrap();
+        assert_eq!(roms.len(), 3);
+        assert!(roms.iter().any(|rom| rom.file.ends_with("Game.cue")));
+        assert!(roms.iter().any(|rom| rom.file.ends_with("Independent.bin")));
+        assert!(roms.iter().any(|rom| rom.file.ends_with("Standalone.bin")));
         let _ = fs::remove_dir_all(&dir);
     }
 

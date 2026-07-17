@@ -23,6 +23,9 @@ pub struct ScrapeQuery {
     pub system: Option<String>,
     /// ROM Hash (用于精确匹配)
     pub hash: Option<RomHash>,
+    /// 光盘平台序列号（例如 PlayStation 的 SLPM-86154）
+    #[serde(default)]
+    pub serial: Option<String>,
     /// 原始文件名
     pub file_name: String,
 }
@@ -33,6 +36,7 @@ impl ScrapeQuery {
             name,
             system: None,
             hash: None,
+            serial: None,
             file_name,
         }
     }
@@ -45,6 +49,11 @@ impl ScrapeQuery {
     #[allow(dead_code)]
     pub fn with_hash(mut self, hash: RomHash) -> Self {
         self.hash = Some(hash);
+        self
+    }
+
+    pub fn with_serial(mut self, serial: impl Into<String>) -> Self {
+        self.serial = Some(serial.into());
         self
     }
 }

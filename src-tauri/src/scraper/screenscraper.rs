@@ -54,6 +54,19 @@ pub struct ScreenScraperClient {
 }
 
 impl ScreenScraperClient {
+    fn preferred_name(game: &SSGame) -> String {
+        ["us", "wor", "ss", "eu", "jp"]
+            .iter()
+            .find_map(|region| {
+                game.noms.iter().find(|name| {
+                    name.region.eq_ignore_ascii_case(region) && !name.nom.trim().is_empty()
+                })
+            })
+            .or_else(|| game.noms.iter().find(|name| !name.nom.trim().is_empty()))
+            .map(|name| name.nom.clone())
+            .unwrap_or_default()
+    }
+
     pub fn new(
         ssid: String,
         sspassword: String,
@@ -206,7 +219,7 @@ impl ScreenScraperClient {
 
     /// 从 SSGame 解析元数据
     fn parse_metadata(jeu: &SSGame) -> GameMetadata {
-        let name = jeu.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
+        let name = Self::preferred_name(jeu);
         let description = jeu
             .synopsis
             .iter()
@@ -288,7 +301,7 @@ impl ScreenScraperClient {
             })
             .enumerate()
             .map(|(index, (game, source_id))| {
-                let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
+                let name = Self::preferred_name(&game);
                 let year = game.dates.first().map(|d| {
                     // 提取年份 (格式可能是 YYYY-MM-DD 或 YYYY)
                     d.date.split('-').next().unwrap_or(&d.date).to_string()
@@ -522,6 +535,21 @@ mod tests {
     }
 
     #[test]
+    fn prefers_us_title_over_first_regional_alias() {
+        let game = parse_game_response(
+            r#"{"response":{"jeu":{"id":"5416","noms":[{"region":"eu","text":"Lylat Wars"},{"region":"us","text":"Star Fox 64"}]}}}"#,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            ScreenScraperClient::parse_metadata(&game).name,
+            "Star Fox 64"
+        );
+        let results = ScreenScraperClient::build_search_results(vec![game], Some("n64".into()));
+        assert_eq!(results[0].name, "Star Fox 64");
+    }
+
+    #[test]
     fn search_response_skips_malformed_items_and_accepts_single_objects() {
         let body = r#"{
             "response": {
@@ -611,6 +639,24 @@ mod tests {
         assert!(variants.iter().any(|value| value == "Gun Hazard"));
     }
 
+    #[test]
+    fn search_variants_remove_trailing_sports_season() {
+        let variants = search_query_variants("J.League Jikkyou Winning Eleven '98-'99");
+        assert!(variants
+            .iter()
+            .any(|value| value == "J.League Jikkyou Winning Eleven"));
+    }
+
+    #[test]
+    fn search_variants_split_parenthetical_alias_and_long_subtitle() {
+        let animal = search_query_variants("Animal Forest (Animal Crossing)");
+        assert!(animal.iter().any(|value| value == "Animal Forest"));
+        assert!(animal.iter().any(|value| value == "Animal Crossing"));
+
+        let zelda = search_query_variants("The Legend of Zelda Ocarina of Time");
+        assert!(zelda.iter().any(|value| value == "Ocarina of Time"));
+    }
+
     #[tokio::test]
     #[ignore = "requires configured ScreenScraper member credentials and network access"]
     async fn live_api_smoke_covers_all_used_endpoints() {
@@ -687,6 +733,21 @@ mod tests {
             "subtitle fallback should resolve Front Mission - Gun Hazard"
         );
 
+        let ps1_serial = client
+            .search(
+                &ScrapeQuery::new(
+                    "J.League Jikkyou Winning Eleven '98-'99".into(),
+                    "winning-eleven.cue".into(),
+                )
+                .with_system("ps1")
+                .with_serial("SLPM-86154"),
+            )
+            .await
+            .unwrap();
+        assert!(
+            ps1_serial.iter().any(|result| result.source_id == "192500"),
+            "PlayStation serial lookup should resolve the exact disc entry"
+        );
         let game = client
             .fetch_game_info(vec![("gameid", game_id.to_string())])
             .await
@@ -730,6 +791,8 @@ struct SSGame {
 
 #[derive(Deserialize)]
 struct SSName {
+    #[serde(default, deserialize_with = "deserialize_text")]
+    region: String,
     #[serde(rename = "text", default, deserialize_with = "deserialize_text")]
     nom: String,
 }
@@ -908,6 +971,31 @@ fn search_query_variants(query: &str) -> Vec<String> {
     push_unique(&mut variants, without_platform);
 
     for value in variants.clone() {
+        if value.ends_with(')') {
+            if let Some(open) = value.rfind('(') {
+                push_unique(&mut variants, value[..open].to_string());
+                push_unique(&mut variants, value[open + 1..value.len() - 1].to_string());
+            }
+        }
+    }
+
+    for value in variants.clone() {
+        let mut words: Vec<_> = value.split_whitespace().collect();
+        let Some(last) = words.last() else {
+            continue;
+        };
+        let is_year_range = last.contains('-')
+            && last.chars().any(|character| character.is_ascii_digit())
+            && last
+                .chars()
+                .all(|character| character.is_ascii_digit() || matches!(character, '\'' | '-'));
+        if is_year_range {
+            words.pop();
+            push_unique(&mut variants, words.join(" "));
+        }
+    }
+
+    for value in variants.clone() {
         for separator in [" - ", ": ", " – ", " — "] {
             if let Some((title, subtitle)) = value.split_once(separator) {
                 push_unique(&mut variants, title.to_string());
@@ -920,6 +1008,9 @@ fn search_query_variants(query: &str) -> Vec<String> {
         .any(|separator| query.contains(separator));
     if !has_explicit_subtitle {
         let words: Vec<_> = query.split_whitespace().collect();
+        if words.len() >= 4 {
+            push_unique(&mut variants, words[words.len() - 3..].join(" "));
+        }
         if words.len() >= 3 {
             // jeuRecherche 对省略标题分隔符的完整名称经常返回空结果，但能按
             // 最后的副标题命中，例如 "Front Mission Gun Hazard" -> "Gun Hazard"。
@@ -1054,6 +1145,17 @@ impl ScraperProvider for ScreenScraperClient {
                     query.system.as_deref().unwrap_or("未指定")
                 )
             })?;
+        if let Some(serial) = query.serial.as_deref() {
+            if let Some(game) = self
+                .fetch_game_info(vec![
+                    ("systemeid", system_id.to_string()),
+                    ("serialnum", serial.to_string()),
+                ])
+                .await?
+            {
+                return Ok(Self::build_search_results(vec![game], query.system.clone()));
+            }
+        }
         for candidate in search_query_variants(&query.name) {
             let games = self.search_games(&candidate, system_id).await?;
             if !games.is_empty() {
@@ -1118,7 +1220,7 @@ impl ScraperProvider for ScreenScraperClient {
                     Some(source_id) if !source_id.is_empty() => source_id.to_string(),
                     _ => return Ok(None),
                 };
-                let name = game.noms.first().map(|n| n.nom.clone()).unwrap_or_default();
+                let name = Self::preferred_name(&game);
                 Ok(Some(SearchResult {
                     provider: PROVIDER_ID.to_string(),
                     source_id,

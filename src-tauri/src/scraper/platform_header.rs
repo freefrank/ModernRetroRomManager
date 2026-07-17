@@ -162,6 +162,81 @@ pub fn identify_playstation_pbp(path: &Path) -> Result<Option<PlatformIdentifica
     identification_from_sfo(&sfo, 98.0)
 }
 
+/// 从 PlayStation BIN/CUE 的 SYSTEM.CNF 启动命令读取标准光盘序列号。
+/// 仅读取镜像开头，避免在慢速磁盘或网络挂载上扫描整张光盘。
+pub fn identify_playstation_serial(path: &Path) -> Result<Option<String>, String> {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    let image_path = if extension.eq_ignore_ascii_case("cue") {
+        let cue = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
+        let Some(file_line) = cue
+            .lines()
+            .find(|line| line.trim_start().to_ascii_uppercase().starts_with("FILE "))
+        else {
+            return Ok(None);
+        };
+        let file_name = file_line
+            .split_once('"')
+            .and_then(|(_, rest)| rest.split_once('"'))
+            .map(|(name, _)| name)
+            .or_else(|| file_line.split_whitespace().nth(1));
+        let Some(file_name) = file_name else {
+            return Ok(None);
+        };
+        path.parent()
+            .unwrap_or_else(|| Path::new(""))
+            .join(file_name)
+    } else if extension.eq_ignore_ascii_case("bin") || extension.eq_ignore_ascii_case("img") {
+        path.to_path_buf()
+    } else {
+        return Ok(None);
+    };
+
+    let mut file = File::open(&image_path).map_err(|error| error.to_string())?;
+    let mut data = Vec::new();
+    file.by_ref()
+        .take(8 * 1024 * 1024)
+        .read_to_end(&mut data)
+        .map_err(|error| error.to_string())?;
+    data.make_ascii_uppercase();
+
+    for prefix in [
+        b"SLPS".as_slice(),
+        b"SCPS".as_slice(),
+        b"SLPM".as_slice(),
+        b"SLES".as_slice(),
+        b"SCES".as_slice(),
+        b"SLUS".as_slice(),
+        b"SCUS".as_slice(),
+        b"SIPS".as_slice(),
+        b"PAPX".as_slice(),
+    ] {
+        for position in data
+            .windows(prefix.len())
+            .enumerate()
+            .filter_map(|(position, value)| (value == prefix).then_some(position))
+        {
+            let mut digits = String::new();
+            for byte in data.iter().skip(position + prefix.len()).take(12) {
+                if byte.is_ascii_digit() {
+                    digits.push(char::from(*byte));
+                    if digits.len() == 5 {
+                        return Ok(Some(format!(
+                            "{}-{digits}",
+                            String::from_utf8_lossy(prefix)
+                        )));
+                    }
+                } else if !matches!(byte, b'_' | b'-' | b'.' | b' ' | b'\\') {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(None)
+}
+
 fn identification_from_sfo(
     data: &[u8],
     confidence: f32,
@@ -310,9 +385,31 @@ fn read_iso9660_file(path: &Path, directory: &str, filename: &str) -> Result<Vec
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     #[test]
     fn nds_database_contains_known_serial() {
         assert!(nds_serials().contains_key("BKAJ"));
+    }
+
+    #[test]
+    fn extracts_playstation_serial_from_bin_and_cue() {
+        let root = std::env::temp_dir().join(format!("mrrm-ps-serial-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let bin = root.join("Game.bin");
+        let mut file = File::create(&bin).unwrap();
+        file.write_all(b"BOOT = cdrom:\\SLPM_861.54;1\r\n").unwrap();
+        let cue = root.join("Game.cue");
+        std::fs::write(&cue, "FILE \"Game.bin\" BINARY\n  TRACK 01 MODE2/2352\n").unwrap();
+
+        assert_eq!(
+            identify_playstation_serial(&bin).unwrap().as_deref(),
+            Some("SLPM-86154")
+        );
+        assert_eq!(
+            identify_playstation_serial(&cue).unwrap().as_deref(),
+            Some("SLPM-86154")
+        );
+        let _ = std::fs::remove_dir_all(root);
     }
 }

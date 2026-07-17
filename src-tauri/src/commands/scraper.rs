@@ -11,7 +11,8 @@ use crate::scraper::{
     manager::{record_selected, ProviderInfo, ScraperManager},
     persistence::{download_media, save_metadata_pegasus, save_metadata_pegasus_with_media},
     platform_header::{
-        identify_nds_rom, identify_playstation_pbp, identify_psp_iso, identify_sega_disc,
+        identify_nds_rom, identify_playstation_pbp, identify_playstation_serial, identify_psp_iso,
+        identify_sega_disc,
     },
     three_ds_header::identify_3ds_rom,
     types::{GameMetadata, MediaAsset, ScrapeQuery, ScrapeResult, SearchResult},
@@ -27,6 +28,102 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
 
 use crate::settings::{get_settings, update_setting, ScraperConfig};
+
+fn clean_scrape_name(value: &str) -> String {
+    fn metadata_parenthetical(value: &str) -> bool {
+        let lower = value.trim().to_ascii_lowercase();
+        [
+            "chs", "cht", "cn", "sc", "tc", "usa", "europe", "japan", "jp", "存档", "修复", "汉化",
+            "简体", "繁体", "简中", "繁中",
+        ]
+        .iter()
+        .any(|marker| lower == *marker || lower.contains(marker))
+    }
+
+    let stem = Path::new(value)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or(value);
+    let chars: Vec<_> = stem.chars().collect();
+    let mut cleaned = String::new();
+    let mut position = 0;
+    while position < chars.len() {
+        match chars[position] {
+            '[' => {
+                position += 1;
+                while position < chars.len() && chars[position] != ']' {
+                    position += 1;
+                }
+            }
+            '(' => {
+                let start = position + 1;
+                position = start;
+                while position < chars.len() && chars[position] != ')' {
+                    position += 1;
+                }
+                let content: String = chars[start..position].iter().collect();
+                if !metadata_parenthetical(&content) {
+                    cleaned.push('(');
+                    cleaned.push_str(&content);
+                    cleaned.push(')');
+                }
+            }
+            character => cleaned.push(character),
+        }
+        position += 1;
+    }
+    let cleaned = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    // 汉化 ROM 常用“中文名 + 英文名”命名；优先取最长的 ASCII 标题片段，
+    // 避免把中文、汉化组和修复标记一起提交给只支持英文检索的 Provider。
+    let mut runs = Vec::new();
+    let mut current = String::new();
+    for character in cleaned.chars() {
+        if character.is_ascii() {
+            current.push(character);
+        } else if !current.is_empty() {
+            runs.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.is_empty() {
+        runs.push(current);
+    }
+    runs.into_iter()
+        .map(|value| {
+            value
+                .trim_matches(|character: char| {
+                    character.is_whitespace() || matches!(character, '-' | '_' | ':' | '：')
+                })
+                .to_string()
+        })
+        .filter(|value| {
+            value
+                .chars()
+                .filter(|character| character.is_ascii_alphabetic())
+                .count()
+                >= 3
+        })
+        .max_by_key(|value| {
+            value
+                .chars()
+                .filter(|character| character.is_ascii_alphanumeric())
+                .count()
+        })
+        .unwrap_or_else(|| cleaned.trim().to_string())
+}
+
+fn playstation_serial(file_name: &str, system: &str, directory: &str) -> Option<String> {
+    let canonical = find_mapping_by_folder(system)
+        .map(|mapping| mapping.folder_name.to_ascii_uppercase())
+        .unwrap_or_else(|| system.to_ascii_uppercase());
+    matches!(canonical.as_str(), "PS" | "PS1" | "PSX" | "PS1 HACK")
+        .then(|| {
+            identify_playstation_serial(&Path::new(directory).join(file_name))
+                .ok()
+                .flatten()
+        })
+        .flatten()
+}
 
 fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &str) -> String {
     let path = Path::new(directory).join(file_name);
@@ -54,7 +151,7 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
             .ok()
             .flatten()
             .map(|value| value.scrape_name),
-        "PS" => identify_playstation_pbp(&path)
+        "PS" | "PS1" | "PSX" | "PS1 HACK" => identify_playstation_pbp(&path)
             .ok()
             .flatten()
             .map(|value| value.scrape_name),
@@ -68,7 +165,7 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
             .map(|value| value.scrape_name),
         _ => None,
     };
-    identified.unwrap_or(name)
+    identified.unwrap_or_else(|| clean_scrape_name(&name))
 }
 
 // ============================================================================
@@ -855,20 +952,29 @@ pub async fn batch_scrape(
                     };
                     let search_name =
                         resolve_scrape_name(search_name, &file_name, &system, &directory);
+                    let serial = playstation_serial(&file_name, &system, &directory);
 
                     let _ = app.emit(
                         "batch-scrape-progress",
                         BatchProgress {
                             current: completed.load(Ordering::Relaxed) + 1,
                             total,
-                            message: format!("正在抓取: {}", search_name),
+                            message: match serial.as_deref() {
+                                Some(serial) => {
+                                    format!("正在抓取: {} [{}]", search_name, serial)
+                                }
+                                None => format!("正在抓取: {}", search_name),
+                            },
                             finished: false,
                             cancelled: false,
                         },
                     );
 
-                    let query = ScrapeQuery::new(search_name, file_name.clone())
+                    let mut query = ScrapeQuery::new(search_name, file_name.clone())
                         .with_system(system.clone());
+                    if let Some(serial) = serial {
+                        query = query.with_serial(serial);
+                    }
 
                     let scrape_res = {
                         let manager = manager_arc.read().await;
@@ -1088,6 +1194,24 @@ mod batch_tests {
         let other = "https://api.example/media.php?jeuid=2375&media=box-2D";
         assert_eq!(asset_cache_key(first), asset_cache_key(second));
         assert_ne!(asset_cache_key(first), asset_cache_key(other));
+    }
+
+    #[test]
+    fn scrape_name_removes_translation_tags_and_prefers_english_title() {
+        assert_eq!(
+            clean_scrape_name("J.League Jikkyou Winning Eleven '98-'99 (chs).bin"),
+            "J.League Jikkyou Winning Eleven '98-'99"
+        );
+        assert_eq!(
+            clean_scrape_name("动物森林 Animal Forest (Animal Crossing)[官方简中](存档修复).7z"),
+            "Animal Forest (Animal Crossing)"
+        );
+        assert_eq!(
+            clean_scrape_name(
+                "塞尔达传说 时光之笛The Legend of Zelda Ocarina of Time[繁体中文](存档修复).7z"
+            ),
+            "The Legend of Zelda Ocarina of Time"
+        );
     }
 }
 
