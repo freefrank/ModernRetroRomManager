@@ -6,6 +6,24 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-07-17
+
+### English
+
+#### Fixed
+
+- N64 cartridge-header matching now disambiguates the regular Ocarina of Time release from Master Quest using archive-name markers such as `Master Quest`, `Ura`, `里`, and `裏`.
+- Ambiguous Ocarina of Time product codes now fall back to the base release when no Master Quest marker is present instead of sending untranslated filenames to Providers.
+- Added a live ScreenScraper regression check confirming that the Master Quest query resolves its dedicated N64 entry.
+
+### 简体中文
+
+#### 修复
+
+- N64 卡带头匹配现在会根据压缩包名中的 `Master Quest`、`Ura`、“里”和“裏”等标记，正确区分普通版《时之笛》与里篇。
+- 当有歧义的《时之笛》产品码不含里篇标记时，现在会回退到普通版英文标题，不再把未翻译文件名发给 Provider。
+- 增加 ScreenScraper 真实 API 回归检查，确认里篇查询会命中其 N64 专用条目。
+
 ## [1.0.5] - 2026-07-17
 
 ### English
