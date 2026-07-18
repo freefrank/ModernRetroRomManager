@@ -1235,6 +1235,28 @@ fn cn_main_title(name: &str) -> String {
     name[..cut].trim().to_lowercase()
 }
 
+/// 数字签名:剥去括号标记后按出现顺序提取阿拉伯数字串。
+/// 模糊匹配的中文核心比较会丢弃数字,导致“梦幻模拟战1&2”与“梦幻模拟战3”
+/// 几乎同串;fuzzy 命中必须数字签名一致才可采信。
+fn digit_signature(value: &str) -> Vec<String> {
+    let bracket_re =
+        BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[（【][^\)\]）】]*[\)\]）】]").unwrap());
+    let cleaned = bracket_re.replace_all(value, "");
+    let mut runs = Vec::new();
+    let mut current = String::new();
+    for character in cleaned.chars() {
+        if character.is_ascii_digit() {
+            current.push(character);
+        } else if !current.is_empty() {
+            runs.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.is_empty() {
+        runs.push(current);
+    }
+    runs
+}
+
 /// 全名规范化键:仅保留字母、数字与汉字并转小写,抹平分隔符/空格差异。
 /// 用于“查询 = 库全名 + 额外副标题”的前缀匹配(如“机动战士高达 交错维度0079 致赴死者的祈祷”)。
 fn normalize_cn_key(value: &str) -> String {
@@ -1453,8 +1475,10 @@ pub(crate) fn resolve_english_from_cn(system: &str, query_cn: &str) -> Option<St
         (Some(result), None) | (None, Some(result)) => Some(result),
         (None, None) => None,
     };
-    if let Some((english_name, _chinese_name, confidence)) = best {
-        if confidence >= 0.9 {
+    if let Some((english_name, chinese_name, confidence)) = best {
+        // 数字签名不一致的高分命中是 Jaccard 同串陷阱(“梦幻模拟战1&2”≈“梦幻模拟战3”),
+        // 宁可回退干净中文也不发错误英文名。
+        if confidence >= 0.9 && digit_signature(query_cn) == digit_signature(&chinese_name) {
             let cleaned = move_leading_article(&clean_english_name(&english_name));
             if !cleaned.trim().is_empty() {
                 return Some(cleaned);
@@ -2521,6 +2545,35 @@ mod tests {
         )
         .expect("七风岛物语应解析出英文");
         assert_eq!(nanatsu, "Nanatsu Kaze no Shima Monogatari");
+    }
+
+    #[test]
+    fn fuzzy_match_rejects_digit_signature_mismatch() {
+        // “梦幻模拟战1&2”不得错配到 Langrisser III/IV(数字签名不一致)。
+        let langrisser = resolve_english_query_from_filename(
+            "SS",
+            r"梦幻模拟战1&2[简][V1.0][痕]\LANGRISSER.cue",
+        );
+        if let Some(query) = &langrisser {
+            let lower = query.to_lowercase();
+            assert!(
+                !lower.contains("langrisser iii") && !lower.contains("langrisser iv"),
+                "错配: {query}"
+            );
+        }
+
+        // “光明力量3剧本2 被狙击的神子”不得错配到玛莉的炼金工房。
+        let scenario2 = resolve_english_query_from_filename(
+            "SS",
+            r"光明力量3剧本2 被狙击的神子[简][完美汉化1.02][陈志东]\SHINING_FORCE_3_2.BIN",
+        );
+        if let Some(query) = &scenario2 {
+            let lower = query.to_lowercase();
+            assert!(
+                !lower.contains("atelier") && !lower.contains("marie"),
+                "错配: {query}"
+            );
+        }
     }
 
     #[test]

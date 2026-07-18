@@ -1357,6 +1357,58 @@ mod batch_tests {
         assert_eq!(query, "Chrono Trigger");
     }
 
+    #[test]
+    #[ignore = "本地诊断:需要 G:\\ROMS\\ss 存在,输出全库解析查询词"]
+    fn diagnose_local_ss_library_resolution() {
+        let root = std::path::Path::new(r"G:\ROMS\ss");
+        if !root.exists() {
+            return;
+        }
+        let mut entries = Vec::new();
+        for dir in std::fs::read_dir(root).unwrap().flatten() {
+            let path = dir.path();
+            if path.is_dir() {
+                for file in std::fs::read_dir(&path).unwrap().flatten() {
+                    if file.path().is_file() {
+                        entries.push(format!(
+                            "{}\\{}",
+                            dir.file_name().to_string_lossy(),
+                            file.file_name().to_string_lossy()
+                        ));
+                    }
+                }
+            } else if path.is_file() {
+                entries.push(dir.file_name().to_string_lossy().to_string());
+            }
+        }
+        entries.sort();
+        let mut total = 0;
+        let mut cjk_left = 0;
+        for rel in entries {
+            let lower = rel.to_ascii_lowercase();
+            if ![".cue", ".mds", ".chd", ".iso", ".bin", ".img", ".mdf"]
+                .iter()
+                .any(|extension| lower.ends_with(extension))
+            {
+                continue;
+            }
+            total += 1;
+            let stem = std::path::Path::new(&rel)
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            let query = resolve_scrape_name(stem, &rel, "ss", r"G:\ROMS\ss");
+            if has_cjk(&query) {
+                cjk_left += 1;
+                println!("[中文残留] {rel}\n  -> {query}");
+            } else {
+                println!("{rel}\n  -> {query}");
+            }
+        }
+        println!("共 {total} 个文件,中文残留 {cjk_left}");
+    }
+
     fn asset(asset_type: MediaType, suffix: &str) -> MediaAsset {
         MediaAsset {
             provider: "test".into(),
