@@ -6,6 +6,44 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-18
+
+### English
+
+#### Added
+
+- Batch scraping gains an optional AI name-resolution fallback: ROMs whose English title cannot be resolved locally are matched by your configured OpenAI-compatible LLM against the built-in No-Intro title list. Only titles copied verbatim from the list are accepted, results (including misses) are cached locally, and the per-run switch lives in the batch scrape dialog.
+- Sega Saturn libraries now index Alcohol 120% images (`.mds`/`.mdf`), so official Traditional-Chinese discs stored in that format appear in the library.
+
+#### Fixed
+
+- Cartridge-header identification no longer returns No-Intro comma-article names (`Lion King, The`) as scrape queries; they are restored to natural order so translated SFC ROMs with intact headers finally match.
+- The built-in Chinese title database now resolves far more translated ROMs: folder names take priority over cryptic release-group filenames for disc games, full-width brackets and trailing disc markers (`CD1`, `Disc A`) are stripped, `MSU-1` markers are removed, and queries formed as “database title + extra subtitle” match via a normalized-prefix tier (e.g. `46亿年物语 向远方的伊甸` → E.V.O. - Search for Eden).
+- Fuzzy matching validates digit signatures, eliminating confident mismatches such as `梦幻模拟战1&2` → Langrisser III or `光明力量3剧本2` → Marie no Atelier; exact multi-region hits now deterministically prefer informative variants (`D之食卓` → `D no Shokutaku` instead of the unsearchable `D`).
+- Saturn/Dreamcast disc-header titles are only trusted when the Chinese database cannot resolve a name, and polluted headers (rewritten by translation tools) are rejected instead of producing garbled queries.
+- Injected-disc PlayStation translations no longer mislead Providers: the carrier disc's serial is ignored once the Chinese database resolves the real title, and lettered disc markers (`Disc A`) are cleaned.
+- Batch scrape no longer reports “0 games” for libraries whose `gamelist.xml` contains empty tags: empty `<desc/>`/`<image/>` elements no longer count as scraped metadata or produce phantom media paths.
+- Disc-based platforms (PS1, Saturn, Dreamcast, Mega-CD, PCE-CD, 3DO) index a single bootable descriptor per disc — CUE-referenced tracks and same-name `bin`/`img`/`mdf`/`ccd`/`sub` companions are no longer listed as separate games.
+- BIOS and system files (`*bios*`, `scph*`, `syscard*`, `neogeo.zip`, `pgm.zip`, `dc_boot`/`dc_flash`) are excluded from scanning on every platform.
+
+### 简体中文
+
+#### 新增
+
+- 批量抓取新增可选的 AI 名称解析兜底：本地无法解析英文名的 ROM，交给你配置的 OpenAI 兼容 LLM 在内置 No-Intro 标题清单内匹配。只接受逐字来自清单的标题，结果（含未命中）本地缓存，开关位于批量抓取对话框、按次生效。
+- 世嘉土星库现在会索引 Alcohol 120% 镜像（`.mds`/`.mdf`），官方繁体中文光盘不再缺席。
+
+#### 修复
+
+- 卡带头识别不再把 No-Intro 逗号冠词名（`Lion King, The`）直接用作抓取查询词，而是还原自然语序，卡带头完好的汉化 SFC ROM 终于能够命中。
+- 内置中文标题库解析能力大幅增强：光盘游戏优先使用中文文件夹名而非汉化组代号文件名，清理全角括号与尾部盘号（`CD1`、`Disc A`），剥离 `MSU-1` 标记，“库标题 + 额外副标题”式查询经规范化前缀层命中（如 `46亿年物语 向远方的伊甸` → E.V.O. - Search for Eden）。
+- 模糊匹配增加数字签名校验，消除“梦幻模拟战1&2 → Langrisser III”“光明力量3剧本2 → 玛莉的炼金工房”这类自信错配；多区域精确命中确定性优先取信息量足的变体（`D之食卓` → `D no Shokutaku` 而非检索不到的 `D`）。
+- 土星/DC 光盘头标题仅在中文库解析失败时才采信，被汉化工具改写污染的头部会被拒绝，不再产生乱码查询。
+- 注入式 PlayStation 汉化盘不再误导 Provider：中文库解析出真实标题后忽略底盘序列号，并清理字母盘号（`Disc A`）。
+- 修复 `gamelist.xml` 空标签导致批量抓取显示“0 个游戏”的问题：空 `<desc/>`/`<image/>` 不再被计为已抓取，也不再产生指向库目录的伪媒体路径。
+- 光盘平台（PS1、土星、DC、Mega-CD、PCE-CD、3DO）一张盘只索引一个可引导描述文件——CUE 引用轨与同名 `bin`/`img`/`mdf`/`ccd`/`sub` 不再被列为独立游戏。
+- 全平台扫描排除 BIOS 与系统文件（`*bios*`、`scph*`、`syscard*`、`neogeo.zip`、`pgm.zip`、`dc_boot`/`dc_flash`）。
+
 ## [1.0.7] - 2026-07-18
 
 ### English
