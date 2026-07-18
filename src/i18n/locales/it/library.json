@@ -27,7 +27,15 @@
     "cardSize": "Formato della carta",
     "noResults": "Nessun gioco corrispondente",
     "noResultsHint": "Prova una parola chiave diversa",
-    "actions": { "selectAll": "Tutto", "translate": "Traduci", "scrape": "Scrape", "save": "Salva", "saveHint": "Salva metadata Pegasus, gamelist.xml e immagini nella cartella ROM", "saveSuccess": "Metadata Pegasus, gamelist.xml e risorse salvati", "saveFailed": "Salvataggio non riuscito: {{error}}" },
+    "actions": {
+      "selectAll": "Tutto",
+      "translate": "Traduci",
+      "scrape": "Scrape",
+      "save": "Salva",
+      "saveHint": "Salva metadata Pegasus, gamelist.xml e immagini nella cartella ROM",
+      "saveSuccess": "Metadata Pegasus, gamelist.xml e risorse salvati",
+      "saveFailed": "Salvataggio non riuscito: {{error}}"
+    },
     "batch": {
       "selectedCount": "{{count}} selezionato",
       "selectAll": "Seleziona risultati correnti",
@@ -51,6 +59,10 @@
       "progress": "Traduzione in corso {{current}}/{{total}}",
       "stop": "Interrompi",
       "done": "Traduzione AI completata: {{success}} riuscita, {{failed}} non riuscita"
+    },
+    "nameDisplay": {
+      "game": "Nome del gioco",
+      "file": "Nome file"
     }
   },
   "romDetail": {

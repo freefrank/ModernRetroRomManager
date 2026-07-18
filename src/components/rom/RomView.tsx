@@ -12,6 +12,8 @@ interface RomViewProps {
   viewMode: ViewMode;
   /** 卡片尺寸缩放系数(>1 卡片更大、列数更少),仅 cover/grid 生效 */
   cardScale?: number;
+  /** true 时展示原始文件名,否则展示游戏名(中文名/标题) */
+  showFileName?: boolean;
   selectedIds: Set<string>;
   onRomClick: (rom: Rom) => void;
   onToggleSelect: (id: string) => void;
@@ -144,12 +146,18 @@ interface CardProps {
   onRomClick: (rom: Rom) => void;
   onToggleSelect: (id: string) => void;
   language?: string;
+  showFileName?: boolean;
+}
+
+// 根据显示模式解析卡片标题:文件名模式直接用原始文件名,否则用游戏名
+function resolveCardName(rom: Rom, language: string | undefined, showFileName: boolean): string {
+  return showFileName ? rom.file : getRomDisplayName(rom, language);
 }
 
 // Cover Card - Compact, image-focused
-function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language }: CardProps) {
+function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
-  const displayName = getRomDisplayName(rom, language);
+  const displayName = resolveCardName(rom, language, showFileName);
   const [imgError, setImgError] = useState(false);
   const [containCover, setContainCover] = useState(false);
 
@@ -223,9 +231,9 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language }: Ca
 }
 
 // Grid Card - Larger with metadata
-function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language }: CardProps) {
+function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
-  const displayName = getRomDisplayName(rom, language);
+  const displayName = resolveCardName(rom, language, showFileName);
   const [imgError, setImgError] = useState(false);
   const [containCover, setContainCover] = useState(false);
 
@@ -312,9 +320,9 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language }: Car
 }
 
 // List Row - Compact table-like row
-function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language }: CardProps) {
+function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
-  const displayName = getRomDisplayName(rom, language);
+  const displayName = resolveCardName(rom, language, showFileName);
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -388,7 +396,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language }: Card
 
 // ============ Main Component ============
 
-export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
+export default function RomView({ roms, viewMode, cardScale = 1, showFileName = false, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
   const { t, i18n } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
   const config = VIEW_CONFIG[viewMode];
@@ -497,6 +505,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                   onRomClick={onRomClick}
                   onToggleSelect={onToggleSelect}
                   language={i18n.resolvedLanguage}
+                  showFileName={showFileName}
                 />
               ) : (
                 // Grid/Cover view - multiple items per row
@@ -522,6 +531,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                             onRomClick={onRomClick}
                             onToggleSelect={onToggleSelect}
                             language={i18n.resolvedLanguage}
+                            showFileName={showFileName}
                           />
                         ) : (
                           <GridCard
@@ -530,6 +540,7 @@ export default function RomView({ roms, viewMode, cardScale = 1, selectedIds, on
                             onRomClick={onRomClick}
                             onToggleSelect={onToggleSelect}
                             language={i18n.resolvedLanguage}
+                            showFileName={showFileName}
                           />
                         )}
                       </div>

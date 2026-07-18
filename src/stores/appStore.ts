@@ -95,12 +95,22 @@ async function loadCustomThemes(): Promise<LoadedTheme[]> {
 // (未知 key 被静默丢弃),故沿用 localStorage 持久化(旧 key sidebar_collapsed 已废弃)
 const SIDEBAR_PANEL_COLLAPSED_KEY = "sidebar_panel_collapsed";
 const CONSOLE_ENABLED_KEY = "console_enabled";
+// ROM 库名称显示模式(游戏名/文件名);后端 update_app_setting 无对应分支,故用 localStorage 持久化
+const NAME_DISPLAY_MODE_KEY = "name_display_mode";
 
 const loadSidebarPanelCollapsed = (): boolean => {
   try {
     return localStorage.getItem(SIDEBAR_PANEL_COLLAPSED_KEY) === "true";
   } catch {
     return false;
+  }
+};
+
+const loadNameDisplayMode = (): NameDisplayMode => {
+  try {
+    return localStorage.getItem(NAME_DISPLAY_MODE_KEY) === "file" ? "file" : "game";
+  } catch {
+    return "game";
   }
 };
 
@@ -118,6 +128,9 @@ const defaultMotionLevel = (): MotionLevel =>
 
 const isMotionLevel = (v: unknown): v is MotionLevel =>
   v === "off" || v === "low" || v === "full";
+
+/** ROM 库列表的名称显示模式:游戏名(默认)或原始文件名 */
+export type NameDisplayMode = "game" | "file";
 
 interface AppSettings {
   theme: string;
@@ -152,6 +165,10 @@ interface AppState {
   // UI 状态
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+
+  // ROM 库名称显示模式(游戏名/文件名;localStorage 持久化)
+  nameDisplayMode: NameDisplayMode;
+  setNameDisplayMode: (mode: NameDisplayMode) => void;
 
   // 语言
   language: string;
@@ -272,6 +289,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
   setViewMode: (mode) => {
     set({ viewMode: mode });
     saveSettingToBackend("view_mode", mode);
+  },
+
+  // ROM 库名称显示模式
+  nameDisplayMode: loadNameDisplayMode(),
+  setNameDisplayMode: (mode) => {
+    set({ nameDisplayMode: mode });
+    try {
+      localStorage.setItem(NAME_DISPLAY_MODE_KEY, mode);
+    } catch {
+      // 存储不可用时静默降级为会话内状态
+    }
   },
 
   // 语言

@@ -12,6 +12,8 @@ import {
   SearchX,
   Languages,
   Save,
+  Tag,
+  FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
@@ -76,7 +78,7 @@ export default function Library() {
     isExporting,
   } = useRomStore();
   const activeLibrary = scanDirectories.find(item => item.isActive);
-  const { viewMode, setViewMode, searchQuery, setSearchQuery } = useAppStore();
+  const { viewMode, setViewMode, searchQuery, setSearchQuery, nameDisplayMode, setNameDisplayMode } = useAppStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [activeRom, setActiveRom] = useState<Rom | null>(null);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
@@ -493,6 +495,28 @@ export default function Library() {
             </label>
           )}
 
+          {/* Name Display Toggle:游戏名 / 文件名 */}
+          <div className="flex items-center gap-1 p-1 bg-bg-secondary rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default">
+            <IconButton
+              size="sm"
+              variant={nameDisplayMode === "game" ? "primary" : "ghost"}
+              onClick={() => setNameDisplayMode("game")}
+              title={t("library.nameDisplay.game")}
+              aria-label={t("library.nameDisplay.game")}
+            >
+              <Tag className="w-5 h-5" />
+            </IconButton>
+            <IconButton
+              size="sm"
+              variant={nameDisplayMode === "file" ? "primary" : "ghost"}
+              onClick={() => setNameDisplayMode("file")}
+              title={t("library.nameDisplay.file")}
+              aria-label={t("library.nameDisplay.file")}
+            >
+              <FileText className="w-5 h-5" />
+            </IconButton>
+          </div>
+
           {/* View Toggle */}
           <div className="flex items-center gap-1 p-1 bg-bg-secondary rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default">
             {VIEW_MODES.map(({ mode, icon: Icon, labelKey }) => (
@@ -527,6 +551,7 @@ export default function Library() {
             roms={filteredRoms}
             viewMode={viewMode}
             cardScale={cardScale}
+            showFileName={nameDisplayMode === "file"}
             selectedIds={selectedRomIds}
             onRomClick={setActiveRom}
             onToggleSelect={(id) => toggleRomSelection(id, true)}
