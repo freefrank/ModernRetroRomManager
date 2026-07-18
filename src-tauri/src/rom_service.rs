@@ -1320,6 +1320,26 @@ fn get_system_extensions(system_name: &str) -> Option<Vec<String>> {
         .map(|s| s.extensions)
 }
 
+/// 各平台常见 BIOS/系统文件,不应作为游戏被索引与抓取。
+/// 输入为小写文件名(含扩展名)。
+fn is_bios_file(file_name_lower: &str) -> bool {
+    let stem = file_name_lower
+        .rsplit_once('.')
+        .map(|(stem, _)| stem)
+        .unwrap_or(file_name_lower);
+    stem.contains("bios")
+        // PS1/PS2 系统 ROM(scph1001.bin 等)
+        || stem.starts_with("scph")
+        // PC Engine CD 系统卡(syscard1/2/3.pce)
+        || stem.starts_with("syscard")
+        // 街机 BIOS 包:游戏目录里必须伴随但不是游戏
+        || stem == "neogeo"
+        || stem == "pgm"
+        // Dreamcast 引导/闪存
+        || stem == "dc_boot"
+        || stem == "dc_flash"
+}
+
 /// 无 metadata 时扫描 ROM 文件
 fn scan_rom_files(dir_path: &Path, system_name: &str) -> Result<Vec<RomInfo>, String> {
     scan_rom_files_internal(dir_path, system_name, true)
@@ -1423,6 +1443,9 @@ fn scan_rom_files_internal(
                     collect_rom_paths(&path, allowed, paths, recursive);
                 } else {
                     let name = entry.file_name().to_string_lossy().to_lowercase();
+                    if is_bios_file(&name) {
+                        continue;
+                    }
                     if allowed
                         .iter()
                         .any(|extension| name.ends_with(&format!(".{extension}")))
@@ -1502,14 +1525,6 @@ fn scan_rom_files_internal(
             let ccd_stems = stems_with_extension(&paths, "ccd");
             let mds_stems = stems_with_extension(&paths, "mds");
             paths.retain(|path| {
-                // 附带的模拟器 BIOS 文件不是游戏(如 SagaBIOS.bin、brm-bios.bin)。
-                if path
-                    .file_stem()
-                    .and_then(|value| value.to_str())
-                    .is_some_and(|value| value.to_ascii_lowercase().contains("bios"))
-                {
-                    return false;
-                }
                 // CUE 显式引用的载荷文件(数据轨/音轨)。
                 if referenced_payloads.contains(&path.to_string_lossy().to_ascii_lowercase()) {
                     return false;
@@ -1856,6 +1871,26 @@ mod tests {
             "应保留 mds: {files:?}"
         );
         assert_eq!(roms.len(), 2, "载荷轨/子码/BIOS 不应成为游戏: {files:?}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bios_files_are_excluded_on_every_platform() {
+        let dir = create_temp_dir();
+        fs::write(dir.join("Real Game.zip"), b"rom").unwrap();
+        fs::write(dir.join("neogeo.zip"), b"bios").unwrap();
+        fs::write(dir.join("gba_bios.bin"), b"bios").unwrap();
+        fs::write(dir.join("scph1001.bin"), b"bios").unwrap();
+        fs::write(dir.join("syscard3.pce"), b"bios").unwrap();
+
+        // 使用无预设扩展的系统名走兜底扩展列表(含 zip/bin/pce)
+        let roms = scan_rom_files(&dir, "UnknownSystem").unwrap();
+        let files: Vec<_> = roms.iter().map(|rom| rom.file.as_str()).collect();
+        assert_eq!(
+            files,
+            vec!["Real Game.zip"],
+            "BIOS 文件不应被索引: {files:?}"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 
