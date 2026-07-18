@@ -1302,6 +1302,39 @@ fn cn_resolver_for(system: &str) -> Arc<CnResolver> {
 }
 
 impl CnResolver {
+    /// 零级匹配:中文全名规范化后与库条目完全一致时,在全部同名条目中确定性择优。
+    /// 相比模糊索引的任意单条命中:检索需要信息量,清理后只剩 1-2 个字符的名称
+    /// (如“D (USA)”→“D”)Provider 搜不到,优先取更长的变体(“D no Shokutaku”);
+    /// 同长度层级再按区域优先,消除多区域条目的随机性。
+    fn resolve_exact_full(&self, query_cn: &str) -> Option<String> {
+        let q_norm = normalize_cn_key(query_cn);
+        if q_norm.chars().count() < 2 {
+            return None;
+        }
+        let mut candidates: Vec<(u8, String)> = Vec::new();
+        for (_, norm_full, english_raw) in &self.subtitle_entries {
+            if *norm_full != q_norm {
+                continue;
+            }
+            let cleaned = move_leading_article(&clean_english_name(english_raw));
+            if cleaned.trim().is_empty() {
+                continue;
+            }
+            if !candidates.iter().any(|(_, name)| *name == cleaned) {
+                candidates.push((region_rank(english_raw), cleaned));
+            }
+        }
+        if candidates.is_empty() {
+            return None;
+        }
+        let has_informative = candidates.iter().any(|(_, name)| name.chars().count() >= 3);
+        if has_informative {
+            candidates.retain(|(_, name)| name.chars().count() >= 3);
+        }
+        candidates.sort_by(|left, right| left.0.cmp(&right.0));
+        candidates.into_iter().next().map(|(_, name)| name)
+    }
+
     /// 副标题感知匹配(二级回退):当模糊匹配未达阈值时,按主标题匹配。
     /// - 查询主标题 == 库主标题(库名含副标题,文件名只有主标题)
     /// - 或库主标题以数字结尾且是查询的前缀词(文件名带数字+额外副标题)
@@ -1397,6 +1430,10 @@ impl CnResolver {
 /// 抓取路径采用较高阈值(≥0.9),宁可回退干净中文查询,也不发一个自信但错误的英文名。
 pub(crate) fn resolve_english_from_cn(system: &str, query_cn: &str) -> Option<String> {
     let resolver = cn_resolver_for(system);
+    // 全名精确一致时优先走确定性择优,避免模糊索引在多区域条目间随机取名。
+    if let Some(exact) = resolver.resolve_exact_full(query_cn) {
+        return Some(exact);
+    }
     let cn_match = resolver
         .cn_repo
         .as_ref()
@@ -2484,6 +2521,16 @@ mod tests {
         )
         .expect("七风岛物语应解析出英文");
         assert_eq!(nanatsu, "Nanatsu Kaze no Shima Monogatari");
+    }
+
+    #[test]
+    fn exact_full_match_prefers_informative_variant() {
+        // “D (USA)”清理后只剩单字母,Provider 检索不到;
+        // 多区域同名条目应确定性取信息量更足的“D no Shokutaku”。
+        assert_eq!(
+            resolve_english_from_cn("SS", "D之食卓").as_deref(),
+            Some("D no Shokutaku")
+        );
     }
 
     #[test]

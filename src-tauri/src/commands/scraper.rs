@@ -202,10 +202,6 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
             .ok()
             .flatten()
             .map(|value| value.scrape_name),
-        "SS" | "DC" => identify_sega_disc(&path, &canonical)
-            .ok()
-            .flatten()
-            .map(|value| value.scrape_name),
         "GB" | "GBC" | "GG" => identify_dat_rom(&canonical, &path)
             .ok()
             .flatten()
@@ -225,6 +221,17 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
         crate::commands::naming_check::resolve_english_query_from_filename(system, file_name)
     {
         return english;
+    }
+    // SS/DC 光盘头标题是纯文本、无数据库校验,汉化镜像常被改成汉化组署名
+    // (如“D CN CD1 BY SGGG”),因此只在中文库解析失败时才信头部标题。
+    if matches!(canonical.as_str(), "SS" | "DC") {
+        if let Some(identified) = identify_sega_disc(&path, &canonical)
+            .ok()
+            .flatten()
+            .map(|value| value.scrape_name)
+        {
+            return crate::commands::naming_check::normalize_no_intro_query(&identified);
+        }
     }
     // 文件名未解析出英文时:若 search_name 本身是中文,走 CN 解析(英文优先,否则干净
     // 中文标题,避免 clean_scrape_name 误取汉化组拉丁名);否则保留其可能是用户设定的
