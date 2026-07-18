@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "marketplace-ingestion": {
+      "type": "http",
+      "url": "https://ingestion-mcp.marketplace-ingestion.mp.microsoft.com/mcp"
+    }
+  }
+}
