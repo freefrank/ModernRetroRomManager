@@ -1437,20 +1437,22 @@ fn scan_rom_files_internal(
         collect_rom_paths(dir_path, &allowed_extensions, &mut paths, recursive);
         if matches!(
             system_lower.as_str(),
-            "ps" | "ps1" | "psx" | "playstation" | "ps1 hack"
+            "ps" | "ps1"
+                | "psx"
+                | "playstation"
+                | "ps1 hack"
+                | "ss"
+                | "saturn"
+                | "dc"
+                | "dreamcast"
+                | "mdcd"
+                | "segacd"
+                | "pcecd"
+                | "3do"
         ) {
-            // CUE/BIN 是同一张光盘，不应把数据轨、音轨和附带 BIOS 分别列成游戏。
-            // 同目录存在 CUE 时只索引 CUE；没有 CUE 的单独 BIN 仍然保留。
-            let cue_directories: HashSet<PathBuf> = paths
-                .iter()
-                .filter(|path| {
-                    path.extension()
-                        .and_then(|value| value.to_str())
-                        .is_some_and(|value| value.eq_ignore_ascii_case("cue"))
-                })
-                .filter_map(|path| path.parent().map(Path::to_path_buf))
-                .collect();
-            let referenced_bins: HashSet<String> = paths
+            // 光盘游戏一张盘对应多个文件(CUE/CCD/MDS 描述文件 + BIN/IMG/MDF 载荷轨
+            // + 附带模拟器 BIOS),只应索引一个可引导的描述文件,其余不是游戏。
+            let referenced_payloads: HashSet<String> = paths
                 .iter()
                 .filter(|path| {
                     path.extension()
@@ -1481,21 +1483,57 @@ fn scan_rom_files_internal(
                         .collect::<Vec<_>>()
                 })
                 .collect();
+            let stems_with_extension = |paths: &[PathBuf], extension: &str| -> HashSet<String> {
+                paths
+                    .iter()
+                    .filter(|path| {
+                        path.extension()
+                            .and_then(|value| value.to_str())
+                            .is_some_and(|value| value.eq_ignore_ascii_case(extension))
+                    })
+                    .map(|path| {
+                        path.with_extension("")
+                            .to_string_lossy()
+                            .to_ascii_lowercase()
+                    })
+                    .collect()
+            };
+            let cue_stems = stems_with_extension(&paths, "cue");
+            let ccd_stems = stems_with_extension(&paths, "ccd");
+            let mds_stems = stems_with_extension(&paths, "mds");
             paths.retain(|path| {
-                let is_bin = path
-                    .extension()
-                    .and_then(|value| value.to_str())
-                    .is_some_and(|value| value.eq_ignore_ascii_case("bin"));
-                let referenced =
-                    referenced_bins.contains(&path.to_string_lossy().to_ascii_lowercase());
-                let is_sidecar_bios = path
+                // 附带的模拟器 BIOS 文件不是游戏(如 SagaBIOS.bin、brm-bios.bin)。
+                if path
                     .file_stem()
                     .and_then(|value| value.to_str())
-                    .is_some_and(|value| value.to_ascii_lowercase().ends_with("_bios"))
-                    && path
-                        .parent()
-                        .is_some_and(|parent| cue_directories.contains(parent));
-                !is_bin || (!referenced && !is_sidecar_bios)
+                    .is_some_and(|value| value.to_ascii_lowercase().contains("bios"))
+                {
+                    return false;
+                }
+                // CUE 显式引用的载荷文件(数据轨/音轨)。
+                if referenced_payloads.contains(&path.to_string_lossy().to_ascii_lowercase()) {
+                    return false;
+                }
+                let extension = path
+                    .extension()
+                    .and_then(|value| value.to_str())
+                    .map(|value| value.to_ascii_lowercase())
+                    .unwrap_or_default();
+                let stem_key = path
+                    .with_extension("")
+                    .to_string_lossy()
+                    .to_ascii_lowercase();
+                match extension.as_str() {
+                    // 同名描述文件存在时,载荷不单独成为游戏;孤立 BIN/IMG 仍保留。
+                    "bin" | "img" => {
+                        !cue_stems.contains(&stem_key) && !ccd_stems.contains(&stem_key)
+                    }
+                    "mdf" => !mds_stems.contains(&stem_key),
+                    // CCD 与同名 CUE 并存时只保留 CUE。
+                    "ccd" => !cue_stems.contains(&stem_key),
+                    "sub" => false,
+                    _ => true,
+                }
             });
         }
         paths.sort();
@@ -1787,6 +1825,37 @@ mod tests {
         assert!(roms.iter().any(|rom| rom.file.ends_with("Game.cue")));
         assert!(roms.iter().any(|rom| rom.file.ends_with("Independent.bin")));
         assert!(roms.iter().any(|rom| rom.file.ends_with("Standalone.bin")));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn saturn_scan_keeps_single_descriptor_per_disc() {
+        let dir = create_temp_dir();
+        let clone_cd = dir.join("CloneCD Game");
+        let alcohol = dir.join("Alcohol Game");
+        fs::create_dir_all(&clone_cd).unwrap();
+        fs::create_dir_all(&alcohol).unwrap();
+        // CloneCD 抓轨:cue + ccd + img + sub 只应保留 cue
+        fs::write(clone_cd.join("Disc.cue"), b"FILE \"Disc.img\" BINARY").unwrap();
+        fs::write(clone_cd.join("Disc.ccd"), b"ccd").unwrap();
+        fs::write(clone_cd.join("Disc.img"), b"payload").unwrap();
+        fs::write(clone_cd.join("Disc.sub"), b"sub").unwrap();
+        fs::write(clone_cd.join("SagaBIOS.bin"), b"bios").unwrap();
+        // Alcohol 抓轨:mds + mdf 只应保留 mds
+        fs::write(alcohol.join("Disc.mds"), b"mds").unwrap();
+        fs::write(alcohol.join("Disc.mdf"), b"payload").unwrap();
+
+        let roms = scan_rom_files(&dir, "SS").unwrap();
+        let files: Vec<_> = roms.iter().map(|rom| rom.file.as_str()).collect();
+        assert!(
+            files.iter().any(|file| file.ends_with("Disc.cue")),
+            "应保留 cue: {files:?}"
+        );
+        assert!(
+            files.iter().any(|file| file.ends_with("Disc.mds")),
+            "应保留 mds: {files:?}"
+        );
+        assert_eq!(roms.len(), 2, "载荷轨/子码/BIOS 不应成为游戏: {files:?}");
         let _ = fs::remove_dir_all(&dir);
     }
 

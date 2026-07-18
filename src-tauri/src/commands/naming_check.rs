@@ -444,9 +444,10 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     let msu1_re = MSU1_RE.get_or_init(|| Regex::new(r"(?i)\s*MSU-?1\s*版?").unwrap());
     result = msu1_re.replace_all(&result, "").to_string();
 
-    // 去除尾部光盘序号标记(多碟游戏文件夹常见“…CD1”“…Disc 2”)
-    let disc_re =
-        DISC_RE.get_or_init(|| Regex::new(r"(?i)[\s\-_－]*(?:cd|disc|disk)[\s\-_]*\d+$").unwrap());
+    // 去除尾部光盘序号标记(多碟游戏文件夹常见“…CD1”“…Disc 2”“…Disc A”)
+    let disc_re = DISC_RE.get_or_init(|| {
+        Regex::new(r"(?i)[\s\-_－]*(?:cd|disc|disk)[\s\-_]*(?:\d+|[a-d])$").unwrap()
+    });
     result = disc_re.replace_all(&result, "").to_string();
 
     // 处理全角字符
@@ -1412,11 +1413,26 @@ impl CnResolver {
         let mut best: Option<(usize, u8, String)> = None;
         let mut ambiguous = false;
         for (_, norm_full, english_raw) in &self.subtitle_entries {
-            // 前缀过短容易撞车,要求库全名至少 5 个字符且为查询的真前缀。
+            // 前缀过短容易撞车:普通库名要求至少 5 个字符;数字结尾的库名
+            // (如“三国志6”)自带边界,放宽到 4。必须是查询的真前缀,且余部
+            // 不以数字开头(避免“三国志6”前缀命中“三国志64”)。
             let length = norm_full.chars().count();
-            if length < 5
+            let min_length = if norm_full
+                .chars()
+                .last()
+                .is_some_and(|character| character.is_ascii_digit())
+            {
+                4
+            } else {
+                5
+            };
+            if length < min_length
                 || q_norm.len() <= norm_full.len()
                 || !q_norm.starts_with(norm_full.as_str())
+                || q_norm[norm_full.len()..]
+                    .chars()
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit())
             {
                 continue;
             }
@@ -2574,6 +2590,28 @@ mod tests {
                 "错配: {query}"
             );
         }
+    }
+
+    #[test]
+    fn ps1_disc_letter_and_powerup_titles_resolve() {
+        // “Disc A”字母盘号应剥离,经文件夹名命中皇牌空战3。
+        assert_eq!(
+            resolve_english_query_from_filename(
+                "PS1",
+                r"皇牌空战3 电脑空间[简][v1.02][ailyth99]Disc A\ACE3ES1.iso",
+            )
+            .as_deref(),
+            Some("Ace Combat 3 - Electrosphere")
+        );
+        // 数字签名一致的模糊命中:三国志6威力加强版 → Sangokushi VI。
+        assert_eq!(
+            resolve_english_query_from_filename(
+                "PS1",
+                r"三国志6威力加强版[简][v1.02][mszl100]\PS_Sangokushi VI wPK_CN_v1.02_mszl100.iso",
+            )
+            .as_deref(),
+            Some("Sangokushi VI")
+        );
     }
 
     #[test]

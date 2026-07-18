@@ -1113,7 +1113,18 @@ pub async fn batch_scrape(
                         .get(&(system.clone(), file_name.clone()))
                         .cloned()
                         .unwrap_or(search_name);
-                    let serial = playstation_serial(&file_name, &system, &directory);
+                    // 注入式汉化盘的 SYSTEM.CNF 序列号属于“底盘”游戏,会把 Provider
+                    // 引向错误条目;中文库已解析出标题时不再使用序列号。
+                    let serial =
+                        if crate::commands::naming_check::resolve_english_query_from_filename(
+                            &system, &file_name,
+                        )
+                        .is_some()
+                        {
+                            None
+                        } else {
+                            playstation_serial(&file_name, &system, &directory)
+                        };
 
                     let _ = app.emit(
                         "batch-scrape-progress",
