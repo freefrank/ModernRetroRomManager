@@ -6,6 +6,28 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-07-18
+
+### English
+
+#### Added
+
+- The ROM library toolbar now has a game-name / file-name toggle; switching to file name lists ROMs by their original filename across cover, grid, and list views, and the preference is remembered locally.
+
+#### Fixed
+
+- Scrape queries now strip leftover parenthetical markers — language tags (`简`, `繁`, `中`, …), version tags (`v1`, `v1.01`), checksums (`1d444`), and sizes (`16Mb`) — so translated ROMs no longer send noisy queries that caused SFC and other platforms to miss matches.
+
+### 简体中文
+
+#### 新增
+
+- ROM 库工具栏新增“游戏名 / 文件名”切换开关；切换到文件名后，封面、卡片、列表三种视图均按原始文件名展示，偏好本地记忆。
+
+#### 修复
+
+- 抓取查询词现在会剥离残留括注标记——语言标记（`简`、`繁`、`中` 等）、版本号（`v1`、`v1.01`）、校验和（`1d444`）与容量（`16Mb`），避免汉化 ROM 发出带噪声的查询词导致 SFC 等平台匹配失败。
+
 ## [1.0.6] - 2026-07-17
 
 ### English
