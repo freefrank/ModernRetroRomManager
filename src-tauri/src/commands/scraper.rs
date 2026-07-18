@@ -31,13 +31,59 @@ use crate::settings::{get_settings, update_setting, ScraperConfig};
 
 fn clean_scrape_name(value: &str) -> String {
     fn metadata_parenthetical(value: &str) -> bool {
-        let lower = value.trim().to_ascii_lowercase();
-        [
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            return true;
+        }
+        let lower = trimmed.to_ascii_lowercase();
+
+        // 版本号：v1、v1.01、ver 2.0
+        let version_body = lower
+            .strip_prefix("ver")
+            .or_else(|| lower.strip_prefix('v'))
+            .unwrap_or(&lower)
+            .trim_start_matches(['.', ' ']);
+        if lower.starts_with('v')
+            && !version_body.is_empty()
+            && version_body.chars().all(|c| c.is_ascii_digit() || c == '.')
+        {
+            return true;
+        }
+
+        // 容量标记：16mb、4m、512k、8mbit（以数字开头，仅含数字与容量单位字母）
+        if lower.starts_with(|c: char| c.is_ascii_digit())
+            && lower
+                .chars()
+                .all(|c| c.is_ascii_digit() || matches!(c, 'm' | 'k' | 'g' | 'b' | 'i' | 't' | '.'))
+        {
+            return true;
+        }
+
+        // 校验和/哈希：4 位以上十六进制且同时含字母与数字，如 (1d444)
+        if trimmed.chars().count() >= 4
+            && trimmed.chars().all(|c| c.is_ascii_hexdigit())
+            && trimmed.chars().any(|c| c.is_ascii_alphabetic())
+            && trimmed.chars().any(|c| c.is_ascii_digit())
+        {
+            return true;
+        }
+
+        const MARKERS: &[&str] = &[
             "chs", "cht", "cn", "sc", "tc", "usa", "europe", "japan", "jp", "存档", "修复", "汉化",
             "简体", "繁体", "简中", "繁中",
-        ]
-        .iter()
-        .any(|marker| lower == *marker || lower.contains(marker))
+        ];
+        if MARKERS
+            .iter()
+            .any(|marker| lower == *marker || lower.contains(marker))
+        {
+            return true;
+        }
+
+        // 语言/区域短标记：(简)(繁)(中)(日)(美)(欧) 等
+        const CJK_TAG_CHARS: &[char] = &[
+            '简', '繁', '中', '文', '版', '日', '美', '欧', '港', '台', '韩', '亚', '世', '界',
+        ];
+        trimmed.chars().count() <= 4 && trimmed.chars().all(|c| CJK_TAG_CHARS.contains(&c))
     }
 
     let stem = Path::new(value)
@@ -1212,6 +1258,17 @@ mod batch_tests {
             ),
             "The Legend of Zelda Ocarina of Time"
         );
+    }
+
+    #[test]
+    fn scrape_name_strips_language_version_and_hash_tags_for_chinese_only_titles() {
+        // 汉化 SFC ROM 常见命名：语言(简)、版本(v1.01)、校验和(1d444)、容量(16Mb)
+        assert_eq!(
+            clean_scrape_name("龙虎之拳(简)(v1.01)(1d444)(16Mb).zip"),
+            "龙虎之拳"
+        );
+        // 前端已部分清洗后的显示名仍需去除残留标记
+        assert_eq!(clean_scrape_name("龙虎之拳(简)(v1)"), "龙虎之拳");
     }
 }
 
