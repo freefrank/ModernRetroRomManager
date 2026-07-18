@@ -105,7 +105,10 @@
       "recommended": "ScreenScraper consigliato",
       "noSourceEnabled": "Abilita prima almeno una fonte nelle impostazioni",
       "noConfiguredSource": "Nessuna fonte disponibile. Configura prima le credenziali del Provider nelle impostazioni.",
-      "start": "Inizio Scrape"
+      "start": "Inizio Scrape",
+      "aiNameResolution": "Risoluzione nomi con IA (fallback)",
+      "aiNameResolutionDesc": "Le ROM il cui titolo inglese non può essere risolto localmente vengono abbinate dall'IA all'elenco No-Intro integrato. I risultati sono memorizzati nella cache locale; ogni file viene interrogato una sola volta.",
+      "aiNameResolutionUnavailable": "Configura prima endpoint, modello e chiave API in Impostazioni → Traduzione metadati IA."
     }
   }
 }

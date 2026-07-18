@@ -105,7 +105,10 @@
       "recommended": "ScreenScraper recommended",
       "noSourceEnabled": "Enable at least one source in settings first",
       "noConfiguredSource": "No source is available. Configure Provider credentials in Settings first.",
-      "start": "Start Scrape"
+      "start": "Start Scrape",
+      "aiNameResolution": "AI name resolution (fallback)",
+      "aiNameResolutionDesc": "ROMs whose English title cannot be resolved locally are matched by the AI against the built-in No-Intro title list. Results are cached locally; each file is only queried once.",
+      "aiNameResolutionUnavailable": "Configure the endpoint, model and API key in Settings → AI Metadata Translation first."
     }
   }
 }

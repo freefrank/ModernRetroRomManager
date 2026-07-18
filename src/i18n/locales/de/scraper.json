@@ -105,7 +105,10 @@
       "recommended": "ScreenScraper empfohlen",
       "noSourceEnabled": "Aktivieren Sie zunächst mindestens eine Quelle in den Einstellungen",
       "noConfiguredSource": "Keine Quelle verfügbar. Konfigurieren Sie zuerst die Provider-Zugangsdaten in den Einstellungen.",
-      "start": "Start Scrape"
+      "start": "Start Scrape",
+      "aiNameResolution": "KI-Namensauflösung (Fallback)",
+      "aiNameResolutionDesc": "ROMs, deren englischer Titel lokal nicht ermittelt werden kann, werden von der KI mit der integrierten No-Intro-Titelliste abgeglichen. Ergebnisse werden lokal zwischengespeichert; jede Datei wird nur einmal angefragt.",
+      "aiNameResolutionUnavailable": "Konfigurieren Sie zuerst Endpunkt, Modell und API-Schlüssel unter Einstellungen → KI-Metadaten-Übersetzung."
     }
   }
 }

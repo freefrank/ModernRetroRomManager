@@ -105,7 +105,10 @@
       "recommended": "推荐使用 ScreenScraper",
       "noSourceEnabled": "请先在设置中启用至少一个抓取源",
       "noConfiguredSource": "没有可用的抓取源，请先在设置中配置 Provider 凭据",
-      "start": "开始抓取"
+      "start": "开始抓取",
+      "aiNameResolution": "AI 名称解析(兜底)",
+      "aiNameResolutionDesc": "本地无法识别英文名的 ROM,交给 AI 在内置 No-Intro 清单中匹配官方英文标题;结果本地缓存,同一文件只询问一次。",
+      "aiNameResolutionUnavailable": "需要先在 设置 → AI Metadata 翻译 中配置端点、模型和 API Key。"
     }
   }
 }

@@ -20,6 +20,7 @@ use crate::scraper::{
 use crate::system_mapping::find_mapping_by_folder;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -963,6 +964,7 @@ pub async fn batch_scrape(
     provider_ids: Vec<String>,
     media_types: Option<Vec<String>>,
     force_rescrape: bool,
+    resolve_names_with_ai: Option<bool>,
 ) -> Result<(), String> {
     if provider_ids.is_empty() {
         return Err("请至少选择一个抓取来源".to_string());
@@ -998,6 +1000,73 @@ pub async fn batch_scrape(
     let allowed_media = media_types.unwrap_or(settings.scraper_media_types);
 
     tokio::spawn(async move {
+        // AI 名称解析预处理(兜底):本地解析后查询词仍是中文的 ROM,按平台合批交给
+        // LLM 在 No-Intro DAT 清单内匹配英文标题。仅当本次抓取在对话框勾选且 LLM
+        // 配置有效时启用;未命中或请求失败时不影响原流程。
+        let ai_requested = resolve_names_with_ai.unwrap_or(false);
+        let ai_overrides: HashMap<(String, String), String> = if ai_requested
+            && crate::commands::ai::ai_name_resolution_available()
+        {
+            let mut by_system: HashMap<String, Vec<String>> = HashMap::new();
+            for rom_item in &roms {
+                let rom_system = if rom_item.system.trim().is_empty() {
+                    system.clone()
+                } else {
+                    rom_item.system.clone()
+                };
+                let rom_directory = if rom_item.directory.trim().is_empty() {
+                    directory.clone()
+                } else {
+                    rom_item.directory.clone()
+                };
+                let name = if rom_item.search_name.trim().is_empty() {
+                    rom_item.file_name.clone()
+                } else {
+                    rom_item.search_name.clone()
+                };
+                let resolved =
+                    resolve_scrape_name(name, &rom_item.file_name, &rom_system, &rom_directory);
+                if has_cjk(&resolved) {
+                    by_system
+                        .entry(rom_system)
+                        .or_default()
+                        .push(rom_item.file_name.clone());
+                }
+            }
+            let mut overrides = HashMap::new();
+            for (rom_system, files) in by_system {
+                let _ = app.emit(
+                    "app-log",
+                    AppLog {
+                        level: "info",
+                        source: "scraper".to_string(),
+                        message: format!(
+                            "AI 名称解析：{} 个 ROM 待匹配（{rom_system}）",
+                            files.len()
+                        ),
+                    },
+                );
+                let resolved =
+                    crate::commands::ai::resolve_names_from_nointro(&rom_system, &files).await;
+                for (file, english) in resolved {
+                    let query = crate::commands::naming_check::normalize_no_intro_query(&english);
+                    let _ = app.emit(
+                        "app-log",
+                        AppLog {
+                            level: "info",
+                            source: "scraper".to_string(),
+                            message: format!("AI 名称解析：{file} → {query}"),
+                        },
+                    );
+                    overrides.insert((rom_system.clone(), file), query);
+                }
+            }
+            overrides
+        } else {
+            HashMap::new()
+        };
+        let ai_overrides = Arc::new(ai_overrides);
+
         let completed = Arc::new(AtomicUsize::new(0));
         let cancel_stream = Arc::clone(&batch_cancelled);
         futures::stream::iter(roms.into_iter())
@@ -1012,6 +1081,7 @@ pub async fn batch_scrape(
                 let provider_ids = provider_ids.clone();
                 let force_rescrape = force_rescrape;
                 let completed = Arc::clone(&completed);
+                let ai_overrides = Arc::clone(&ai_overrides);
                 async move {
                     let file_name = rom_item.file_name;
                     let system = if rom_item.system.trim().is_empty() {
@@ -1031,6 +1101,11 @@ pub async fn batch_scrape(
                     };
                     let search_name =
                         resolve_scrape_name(search_name, &file_name, &system, &directory);
+                    // AI 预处理已确认的英文标题优先于本地解析结果。
+                    let search_name = ai_overrides
+                        .get(&(system.clone(), file_name.clone()))
+                        .cloned()
+                        .unwrap_or(search_name);
                     let serial = playstation_serial(&file_name, &system, &directory);
 
                     let _ = app.emit(

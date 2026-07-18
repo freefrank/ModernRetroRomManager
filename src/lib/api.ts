@@ -385,6 +385,7 @@ export const scraperApi = {
     providerIds: string[],
     mediaTypes?: string[],
     forceRescrape = false,
+    resolveNamesWithAi = false,
   ): Promise<void> {
     if (isTauri()) {
       await tauriInvoke("batch_scrape", {
@@ -394,6 +395,7 @@ export const scraperApi = {
         providerIds,
         mediaTypes,
         forceRescrape,
+        resolveNamesWithAi,
       });
     }
   },

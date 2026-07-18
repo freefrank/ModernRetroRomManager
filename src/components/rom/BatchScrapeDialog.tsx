@@ -5,7 +5,7 @@ import { useScraperStore } from "@/stores/scraperStore";
 import { useRomStore, type BatchScrapeScope } from "@/stores/romStore";
 import { Button, Dialog, Spinner } from "@/components/ui";
 import { clsx } from "clsx";
-import { scraperApi } from "@/lib/api";
+import { scraperApi, aiTranslationApi } from "@/lib/api";
 import MediaTypeSelector from "./MediaTypeSelector";
 import { shouldIncludeInBatchScrape } from "@/lib/romScrapeStatus";
 
@@ -15,6 +15,8 @@ interface BatchScrapeDialogProps {
   scope?: BatchScrapeScope;
 }
 
+const AI_NAME_RESOLUTION_KEY = "batch_scrape_ai_names";
+
 export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection" }: BatchScrapeDialogProps) {
   const { t } = useTranslation();
   const { providers, fetchProviders } = useScraperStore();
@@ -22,13 +24,25 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const [forceRescrape, setForceRescrape] = useState(false);
+  const [resolveNamesWithAi, setResolveNamesWithAi] = useState(
+    () => localStorage.getItem(AI_NAME_RESOLUTION_KEY) === "1",
+  );
+  const [aiConfigured, setAiConfigured] = useState(false);
   const providersInitialized = useRef(false);
   const wasOpen = useRef(false);
 
   useEffect(() => {
     fetchProviders();
     scraperApi.getMediaTypes().then(setMediaTypes).catch(console.error);
+    aiTranslationApi.getConfig()
+      .then(config => setAiConfigured(config.has_api_key && Boolean(config.model.trim())))
+      .catch(() => setAiConfigured(false));
   }, [fetchProviders]);
+
+  const toggleResolveNamesWithAi = (checked: boolean) => {
+    setResolveNamesWithAi(checked);
+    localStorage.setItem(AI_NAME_RESOLUTION_KEY, checked ? "1" : "0");
+  };
 
   useEffect(() => {
     if (isOpen && !wasOpen.current && batchProgress?.finished && !isBatchScraping) {
@@ -51,7 +65,13 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
 
   const handleStart = async () => {
     if (selectedProviderIds.length === 0) return;
-    await startBatchScrape(selectedProviderIds, mediaTypes, scope, forceRescrape);
+    await startBatchScrape(
+      selectedProviderIds,
+      mediaTypes,
+      scope,
+      forceRescrape,
+      resolveNamesWithAi && aiConfigured,
+    );
   };
 
   const toggleProvider = (providerId: string) => {
@@ -205,6 +225,30 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
                   </span>
                   <span className="mt-1 block text-xs leading-relaxed text-text-muted">
                     {t("scraper.batch.forceRescrapeDesc")}
+                  </span>
+                </span>
+              </label>
+              <label
+                className={clsx(
+                  "flex items-start gap-3 rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default bg-bg-secondary/50 p-4",
+                  aiConfigured ? "cursor-pointer hover:border-border-hover" : "opacity-60",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={resolveNamesWithAi && aiConfigured}
+                  disabled={!aiConfigured}
+                  onChange={(event) => toggleResolveNamesWithAi(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-accent-primary"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-text-primary">
+                    {t("scraper.batch.aiNameResolution")}
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed text-text-muted">
+                    {aiConfigured
+                      ? t("scraper.batch.aiNameResolutionDesc")
+                      : t("scraper.batch.aiNameResolutionUnavailable")}
                   </span>
                 </span>
               </label>

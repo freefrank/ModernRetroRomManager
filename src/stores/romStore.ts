@@ -83,6 +83,7 @@ interface RomState {
     mediaTypes?: string[],
     scope?: BatchScrapeScope,
     forceRescrape?: boolean,
+    resolveNamesWithAi?: boolean,
   ) => Promise<void>;
   cancelBatchScrape: () => Promise<void>;
   dismissBatchScrapeResult: () => void;
@@ -221,6 +222,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     mediaTypes?: string[],
     scope = "selection",
     forceRescrape = false,
+    resolveNamesWithAi = false,
   ) => {
     const { selectedRomIds, selectedSystem } = get();
 
@@ -270,6 +272,7 @@ export const useRomStore = create<RomState>((set, get) => ({
         providerIds,
         mediaTypes,
         forceRescrape,
+        resolveNamesWithAi,
       );
     } catch (error) {
       console.error("Failed to start batch scrape:", error);

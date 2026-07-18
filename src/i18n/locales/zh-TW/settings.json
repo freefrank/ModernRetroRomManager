@@ -59,10 +59,16 @@
       "switchFailed": "切換 Library 失敗:{{error}}",
       "removeFailed": "刪除 Library 失敗:{{error}}",
       "scanThisLibrary": "啟動並全量掃描此 Library",
-      "config": "設定索引資料夾", "configTitle": "設定 {{name}}", "configDescription": "選擇此 Library 中需要建立索引的直屬資料夾。儲存後，目前 Library 會自動完整重掃。",
+      "config": "設定索引資料夾",
+      "configTitle": "設定 {{name}}",
+      "configDescription": "選擇此 Library 中需要建立索引的直屬資料夾。儲存後，目前 Library 會自動完整重掃。",
       "addConfigDescription": "首次掃描前，選擇要啟用索引的直屬資料夾。",
-      "selectAll": "全選", "selectNone": "None", "noFolders": "沒有可選資料夾",
-      "folderLoadFailed": "讀取資料夾失敗：{{error}}", "configSaved": "Library 索引設定已儲存", "configSaveFailed": "儲存索引設定失敗：{{error}}"
+      "selectAll": "全選",
+      "selectNone": "None",
+      "noFolders": "沒有可選資料夾",
+      "folderLoadFailed": "讀取資料夾失敗：{{error}}",
+      "configSaved": "Library 索引設定已儲存",
+      "configSaveFailed": "儲存索引設定失敗：{{error}}"
     },
     "storage": {
       "title": "儲存設定",

@@ -59,10 +59,16 @@
       "switchFailed": "Fehler beim Wechseln der Bibliothek: {{error}}",
       "removeFailed": "Fehler beim Entfernen der Bibliothek: {{error}}",
       "scanThisLibrary": "Aktivieren Sie diese Bibliothek und scannen Sie sie vollständig",
-      "config": "Indexordner konfigurieren", "configTitle": "{{name}} konfigurieren", "configDescription": "Wählen Sie die direkt untergeordneten Ordner für den Index aus.",
+      "config": "Indexordner konfigurieren",
+      "configTitle": "{{name}} konfigurieren",
+      "configDescription": "Wählen Sie die direkt untergeordneten Ordner für den Index aus.",
       "addConfigDescription": "Wählen Sie vor dem ersten Scan die zu indexierenden direkten Ordner aus.",
-      "selectAll": "Alle", "selectNone": "Keine", "noFolders": "Keine Ordner verfügbar",
-      "folderLoadFailed": "Ordner konnten nicht gelesen werden: {{error}}", "configSaved": "Indexkonfiguration gespeichert", "configSaveFailed": "Speichern fehlgeschlagen: {{error}}"
+      "selectAll": "Alle",
+      "selectNone": "Keine",
+      "noFolders": "Keine Ordner verfügbar",
+      "folderLoadFailed": "Ordner konnten nicht gelesen werden: {{error}}",
+      "configSaved": "Indexkonfiguration gespeichert",
+      "configSaveFailed": "Speichern fehlgeschlagen: {{error}}"
     },
     "storage": {
       "title": "Speichereinstellungen",

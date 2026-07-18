@@ -59,10 +59,16 @@
       "switchFailed": "切换 Library 失败:{{error}}",
       "removeFailed": "删除 Library 失败:{{error}}",
       "scanThisLibrary": "激活并全量扫描此 Library",
-      "config": "配置索引目录", "configTitle": "配置 {{name}}", "configDescription": "选择此 Library 中需要建立索引的直属文件夹。保存后，当前 Library 会自动全量重扫。",
+      "config": "配置索引目录",
+      "configTitle": "配置 {{name}}",
+      "configDescription": "选择此 Library 中需要建立索引的直属文件夹。保存后，当前 Library 会自动全量重扫。",
       "addConfigDescription": "首次扫描前，选择需要启用索引的直属文件夹。",
-      "selectAll": "全选", "selectNone": "None", "noFolders": "没有可选文件夹",
-      "folderLoadFailed": "读取文件夹失败：{{error}}", "configSaved": "Library 索引配置已保存", "configSaveFailed": "保存索引配置失败：{{error}}"
+      "selectAll": "全选",
+      "selectNone": "None",
+      "noFolders": "没有可选文件夹",
+      "folderLoadFailed": "读取文件夹失败：{{error}}",
+      "configSaved": "Library 索引配置已保存",
+      "configSaveFailed": "保存索引配置失败：{{error}}"
     },
     "storage": {
       "title": "存储设置",
