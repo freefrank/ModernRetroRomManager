@@ -16,7 +16,9 @@
     "shelf": {
       "systemCount": "{{count}} sistemi",
       "addCard": "Aggiungi libreria",
-      "addCardHint": "Aggiungi una libreria ROM indipendente in Impostazioni"
+      "addCardHint": "Aggiungi una libreria ROM indipendente in Impostazioni",
+      "saveNoPending": "Nessun dato di scraping in sospeso da salvare",
+      "saveSuccess": "Dati di scraping salvati per {{count}} piattaforma/e nelle directory ROM"
     },
     "breadcrumb": "Percorso di navigazione",
     "systemNotFound": {

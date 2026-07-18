@@ -16,7 +16,9 @@
     "shelf": {
       "systemCount": "{{count}}",
       "addCard": "Ajouter une bibliothèque",
-      "addCardHint": "Ajouter une bibliothèque ROM indépendante dans Paramètres"
+      "addCardHint": "Ajouter une bibliothèque ROM indépendante dans Paramètres",
+      "saveNoPending": "Aucune donnée de scraping en attente à enregistrer",
+      "saveSuccess": "Données de scraping enregistrées pour {{count}} plateforme(s) dans les répertoires ROM"
     },
     "breadcrumb": "Fil d’Ariane",
     "systemNotFound": {

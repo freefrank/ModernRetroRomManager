@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Database, Ghost, Plus } from "lucide-react";
+import { Database, Ghost, Plus, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore } from "@/stores/romStore";
-import { Button, Card, EmptyState } from "@/components/ui";
+import { Button, Card, EmptyState, toast } from "@/components/ui";
 import SystemCard from "@/components/rom/SystemCard";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 import { api } from "@/lib/api";
@@ -30,10 +30,35 @@ function findSystemLogo(
 export default function LibraryShelf() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { availableSystems, stats, systems, fetchSystems, scanDirectories } = useRomStore();
+  const { availableSystems, stats, systems, fetchSystems, scanDirectories, exportData, isExporting } = useRomStore();
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [isSavingLibrary, setIsSavingLibrary] = useState(false);
   const [mappedLogos, setMappedLogos] = useState<Record<string, string>>({});
   const activeLibrary = scanDirectories.find(item => item.isActive);
+
+  // 把整个库中所有含待保存抓取数据的平台逐个原地写回 ROM 目录
+  // (整库导出命令不允许原地写回,因此逐平台走单系统保存路径)。
+  const handleSaveLibrary = async () => {
+    setIsSavingLibrary(true);
+    try {
+      const sourceSystems = await api.getRoms();
+      const pending = sourceSystems.filter(
+        sys => sys.path && sys.roms.some(rom => rom.has_temp_metadata),
+      );
+      if (pending.length === 0) {
+        toast.info(t("library.shelf.saveNoPending"));
+        return;
+      }
+      for (const sys of pending) {
+        await exportData(sys.system, sys.path, "both", sys.path, "original");
+      }
+      toast.success(t("library.shelf.saveSuccess", { count: pending.length }));
+    } catch (error) {
+      toast.error(t("library.actions.saveFailed", { error: String(error) }));
+    } finally {
+      setIsSavingLibrary(false);
+    }
+  };
 
   // 装载预置系统列表以解析各系统 logo
   useEffect(() => {
@@ -78,10 +103,22 @@ export default function LibraryShelf() {
             {t("library.gameCount", { count: stats.totalRoms })}
           </p>
         </div>
-        <Button onClick={() => setIsBatchDialogOpen(true)} disabled={stats.totalRoms === 0}>
-          <Database className="w-4 h-4" />
-          {t("library.batch.scrapeLibrary")}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => setIsBatchDialogOpen(true)} disabled={stats.totalRoms === 0}>
+            <Database className="w-4 h-4" />
+            {t("library.batch.scrapeLibrary")}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => void handleSaveLibrary()}
+            disabled={stats.totalRoms === 0 || isExporting || isSavingLibrary}
+            loading={isSavingLibrary}
+            title={t("library.actions.saveHint")}
+          >
+            {!isSavingLibrary && <Save className="w-4 h-4" />}
+            <span>{t("library.actions.save")}</span>
+          </Button>
+        </div>
       </header>
 
       {availableSystems.length === 0 ? (

@@ -16,7 +16,9 @@
     "shelf": {
       "systemCount": "{{count}} 個系統",
       "addCard": "新增 Library",
-      "addCardHint": "前往設定新增獨立 ROM 遊戲庫"
+      "addCardHint": "前往設定新增獨立 ROM 遊戲庫",
+      "saveNoPending": "沒有待儲存的抓取資料",
+      "saveSuccess": "已把 {{count}} 個平台的抓取資料儲存到 ROM 目錄"
     },
     "breadcrumb": "麵包屑導覽",
     "systemNotFound": {

@@ -16,7 +16,9 @@
     "shelf": {
       "systemCount": "{{count}} systems",
       "addCard": "Add Library",
-      "addCardHint": "Add an independent ROM library in Settings"
+      "addCardHint": "Add an independent ROM library in Settings",
+      "saveNoPending": "No pending scraped data to save",
+      "saveSuccess": "Saved scraped data for {{count}} platform(s) to the ROM directories"
     },
     "breadcrumb": "Breadcrumb",
     "systemNotFound": {
