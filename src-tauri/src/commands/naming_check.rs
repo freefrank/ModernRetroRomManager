@@ -1197,10 +1197,39 @@ impl NamingIndex {
 struct CnResolver {
     cn_repo: Option<NamingIndex>,
     jy6d: Option<NamingIndex>,
+    /// 副标题感知匹配用:cn_repo 每条的 (主标题小写, 原始英文名)。
+    /// 主标题 = 中文名截断到第一个副标题分隔符前。
+    subtitle_entries: Vec<(String, String)>,
 }
 
 static CN_RESOLVER_CACHE: OnceLock<Mutex<std::collections::HashMap<String, Arc<CnResolver>>>> =
     OnceLock::new();
+
+/// 取中文名的主标题:截断到第一个副标题分隔符前并转小写。
+fn cn_main_title(name: &str) -> String {
+    const SEPARATORS: &[&str] = &[" - ", " – ", " — ", "－", "：", ": ", "·"];
+    let mut cut = name.len();
+    for sep in SEPARATORS {
+        if let Some(pos) = name.find(sep) {
+            cut = cut.min(pos);
+        }
+    }
+    name[..cut].trim().to_lowercase()
+}
+
+/// 英文名区域优先级:USA < Europe < World < 其它(数字越小越优先)。
+fn region_rank(english: &str) -> u8 {
+    let lower = english.to_lowercase();
+    if lower.contains("(usa)") || lower.contains("(usa,") {
+        0
+    } else if lower.contains("(europe") {
+        1
+    } else if lower.contains("(world") {
+        2
+    } else {
+        3
+    }
+}
 
 /// 获取(或首次构建)指定平台的中文解析器。
 /// 仅使用内置数据库:抓取路径没有 `AppHandle`,而内置数据已覆盖各平台。
@@ -1211,18 +1240,81 @@ fn cn_resolver_for(system: &str) -> Arc<CnResolver> {
     if let Some(existing) = guard.get(&key) {
         return existing.clone();
     }
-    let cn_repo = read_embedded_csv(system)
+    let cn_entries = read_embedded_csv(system)
         .ok()
-        .filter(|entries| !entries.is_empty())
-        .map(NamingIndex::from_cn_entries);
+        .filter(|entries| !entries.is_empty());
+    let subtitle_entries = cn_entries
+        .as_ref()
+        .map(|entries| {
+            entries
+                .iter()
+                .map(|entry| {
+                    (
+                        cn_main_title(&entry.chinese_name),
+                        entry.english_name.clone(),
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let cn_repo = cn_entries.map(NamingIndex::from_cn_entries);
     let jy6d = find_mapping_by_folder(system)
         .and_then(|mapping| mapping.jy6d_csv_name)
         .and_then(|name| load_embedded_jy6d_csv(name).ok())
         .filter(|entries| !entries.is_empty())
         .map(NamingIndex::from_jy6d_entries);
-    let resolver = Arc::new(CnResolver { cn_repo, jy6d });
+    let resolver = Arc::new(CnResolver {
+        cn_repo,
+        jy6d,
+        subtitle_entries,
+    });
     guard.insert(key, resolver.clone());
     resolver
+}
+
+impl CnResolver {
+    /// 副标题感知匹配(二级回退):当模糊匹配未达阈值时,按主标题匹配。
+    /// - 查询主标题 == 库主标题(库名含副标题,文件名只有主标题)
+    /// - 或库主标题以数字结尾且是查询的前缀词(文件名带数字+额外副标题)
+    /// 命中项按区域优先取最优;仅当最优区域内英文唯一才返回,避免歧义误配。
+    fn resolve_by_subtitle(&self, query_cn: &str) -> Option<String> {
+        let q_main = cn_main_title(query_cn);
+        // 主标题至少要有 2 个中文字符,避免过短前缀误命中。
+        if q_main.chars().filter(|c| !c.is_ascii()).count() < 2 {
+            return None;
+        }
+        let mut best_rank = u8::MAX;
+        let mut best_english: Option<String> = None;
+        let mut ambiguous = false;
+        for (main_lower, english_raw) in &self.subtitle_entries {
+            let digit_prefixed = main_lower
+                .chars()
+                .last()
+                .is_some_and(|c| c.is_ascii_digit())
+                && q_main.len() > main_lower.len()
+                && q_main.starts_with(main_lower.as_str())
+                && q_main[main_lower.len()..].starts_with(' ');
+            if *main_lower != q_main && !digit_prefixed {
+                continue;
+            }
+            let cleaned = move_leading_article(&clean_english_name(english_raw));
+            if cleaned.trim().is_empty() {
+                continue;
+            }
+            let rank = region_rank(english_raw);
+            if rank < best_rank {
+                best_rank = rank;
+                best_english = Some(cleaned);
+                ambiguous = false;
+            } else if rank == best_rank && best_english.as_deref() != Some(cleaned.as_str()) {
+                ambiguous = true;
+            }
+        }
+        if ambiguous {
+            return None;
+        }
+        best_english
+    }
 }
 
 /// 将中文/混合命名解析为内置数据库中的英文标题(已去除区域标记)。
@@ -1249,12 +1341,16 @@ pub(crate) fn resolve_english_from_cn(system: &str, query_cn: &str) -> Option<St
         (Some(result), None) | (None, Some(result)) => Some(result),
         (None, None) => None,
     };
-    let (english_name, _chinese_name, confidence) = best?;
-    if confidence < 0.9 {
-        return None;
+    if let Some((english_name, _chinese_name, confidence)) = best {
+        if confidence >= 0.9 {
+            let cleaned = move_leading_article(&clean_english_name(&english_name));
+            if !cleaned.trim().is_empty() {
+                return Some(cleaned);
+            }
+        }
     }
-    let cleaned = move_leading_article(&clean_english_name(&english_name));
-    (!cleaned.trim().is_empty()).then_some(cleaned)
+    // 二级回退:模糊匹配未达阈值时,按主标题做副标题感知匹配。
+    resolver.resolve_by_subtitle(query_cn)
 }
 
 /// 是否包含 CJK 汉字。
@@ -2103,6 +2199,44 @@ mod tests {
     #[test]
     fn returns_none_for_unknown_chinese_title() {
         assert!(resolve_english_from_cn("SFC", "完全不存在的游戏名甲乙丙丁").is_none());
+    }
+
+    #[test]
+    fn subtitle_aware_match_resolves_prefix_and_numbered_titles() {
+        // A. 库名带副标题、文件名只有主标题
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "塞尔达传说 (简) (部分汉化)(Dark_Link)(12Mb).zip"),
+            Some("The Legend of Zelda - A Link to the Past".to_string())
+        );
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "伊苏3 (简) (v0.99)(Yjsturboc)(8Mb).zip"),
+            Some("Ys III - Wanderers from Ys".to_string())
+        );
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "北斗神拳7 (简) (部分汉化)(madcell)(20Mb).zip"),
+            Some("Hokuto no Ken 7 - Seiken Retsuden Denshousha e no Michi".to_string())
+        );
+        // B. 文件名带数字主标题 + 额外副标题,库名是数字主标题(取美版名)
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "洛克人7 宿命的对决(简)(v3)(iused)(24Mb).zip"),
+            Some("Mega Man 7".to_string())
+        );
+    }
+
+    #[test]
+    fn subtitle_aware_match_avoids_ambiguous_non_numbered_prefix() {
+        // 前线任务 兵器危机 = Gun Hazard(独立作品),主标题“前线任务”不带数字,
+        // 不应被前缀匹配误配成 Front Mission;回退干净中文。
+        let query = resolve_scrape_query_from_cn(
+            "SFC",
+            "前线任务 兵器危机(简)(v1.01)(烈火暴龙+aGuGu+阿刃)(32Mb).zip",
+        )
+        .expect("应至少返回中文标题");
+        assert!(
+            !query.to_lowercase().contains("front mission"),
+            "不应误配成 Front Mission: {query}"
+        );
+        assert!(contains_cjk(&query), "应回退干净中文: {query}");
     }
 
     #[test]
