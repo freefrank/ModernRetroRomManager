@@ -1045,7 +1045,11 @@ fn resolve_media_path(dir_path: &Path, value: &str) -> String {
 fn resolve_all_media_paths(rom: &mut RomInfo, dir_path: &Path) {
     let resolve = |opt: &mut Option<String>| {
         if let Some(v) = opt.take() {
-            *opt = Some(resolve_media_path(dir_path, &v));
+            // gamelist.xml 的空标签(如 <image/>)解析为空串,join 后会变成
+            // 指向库目录的“伪路径”,让 ROM 被误判为已有资源,必须丢弃。
+            if !v.trim().is_empty() {
+                *opt = Some(resolve_media_path(dir_path, &v));
+            }
         }
     };
 
@@ -1241,10 +1245,18 @@ fn read_emulationstation_roms(dir_path: &Path, system_name: &str) -> Result<Vec<
                     .to_string()
             });
 
-            let image = g.image.map(|image| resolve_media_path(dir_path, &image));
-            let boxart = g.boxart.map(|boxart| resolve_media_path(dir_path, &boxart));
+            // 空标签(<image/>)解析为空串,join 后会变成指向库目录的“伪路径”,先滤掉。
+            let image = g
+                .image
+                .filter(|value| !value.trim().is_empty())
+                .map(|image| resolve_media_path(dir_path, &image));
+            let boxart = g
+                .boxart
+                .filter(|value| !value.trim().is_empty())
+                .map(|boxart| resolve_media_path(dir_path, &boxart));
             let marquee = g
                 .marquee
+                .filter(|value| !value.trim().is_empty())
                 .map(|marquee| resolve_media_path(dir_path, &marquee));
 
             let mut rom = RomInfo {

@@ -32,6 +32,13 @@ pub struct RomSystemSummary {
     pub total_size: u64,
 }
 
+/// gamelist.xml 的空标签(如 `<desc/>`)会解析成 Some(""),不能算已抓取。
+fn present(value: &Option<String>) -> bool {
+    value
+        .as_deref()
+        .is_some_and(|value| !value.trim().is_empty())
+}
+
 fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
     systems
         .iter()
@@ -43,10 +50,10 @@ fn summarize(systems: &[SystemRoms]) -> Vec<RomSystemSummary> {
                 .roms
                 .iter()
                 .filter(|rom| {
-                    rom.box_front.is_some()
-                        || rom.description.is_some()
+                    present(&rom.box_front)
+                        || present(&rom.description)
                         || rom.temp_data.as_ref().is_some_and(|game| {
-                            game.box_front.is_some() || game.description.is_some()
+                            present(&game.box_front) || present(&game.description)
                         })
                 })
                 .count(),
