@@ -1397,6 +1397,21 @@ pub(crate) fn resolve_scrape_query_from_cn(system: &str, raw: &str) -> Option<St
     Some(cn_title)
 }
 
+/// 从文件名经内置 CN 库解析英文标题;未命中返回 `None`(不回退中文)。
+/// 供批量/自动抓取以“文件名”这一真实来源覆盖存量元数据里的旧格式/残缺名。
+pub(crate) fn resolve_english_query_from_filename(system: &str, file_name: &str) -> Option<String> {
+    let cn_title = extract_game_name(file_name, true)?;
+    if !contains_cjk(&cn_title) {
+        return None;
+    }
+    resolve_english_from_cn(system, &cn_title)
+}
+
+/// 把可能的 No-Intro 逗号冠词格式还原为自然语序(供存量英文查询词规范化)。
+pub(crate) fn normalize_no_intro_query(query: &str) -> String {
+    move_leading_article(query)
+}
+
 #[tauri::command]
 pub async fn auto_fix_naming(
     app: AppHandle,

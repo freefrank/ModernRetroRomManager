@@ -214,10 +214,18 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
     if let Some(identified) = identified {
         return identified;
     }
-    // 中文命名的汉化 ROM(如 SFC,内部卡带头为日文罗马音、与内置英文库对不上):
-    // clean_scrape_name 的“取最长 ASCII 片段”启发式会误把汉化组拉丁名(KOEI、Dark_Link…)
-    // 当成标题。改用“去所有标记得纯中文标题 → CN 库解析英文名”路径,
-    // 命中则用英文名,未命中至少回退干净中文标题,绝不发汉化组名。
+    // 汉化 ROM 抓取:传入的 search_name 来自前端(rom.english_name || rom.name),
+    // 可能是上一轮跑出的旧格式英文名(No-Intro 逗号格式如 “Lion King, The”)或
+    // 残缺中文名。这些会绕过 has_cjk 判断,让 CN 解析失效。因此优先以“文件名”这一
+    // 真实来源经内置 CN 库解析英文标题,成功则覆盖存量名。
+    if let Some(english) =
+        crate::commands::naming_check::resolve_english_query_from_filename(system, file_name)
+    {
+        return english;
+    }
+    // 文件名未解析出英文时:若 search_name 本身是中文,走 CN 解析(英文优先,否则干净
+    // 中文标题,避免 clean_scrape_name 误取汉化组拉丁名);否则保留其可能是用户设定的
+    // 英文名,仅把 No-Intro 逗号冠词格式还原为自然语序。
     if has_cjk(&name) {
         if let Some(query) =
             crate::commands::naming_check::resolve_scrape_query_from_cn(system, &name)
@@ -227,7 +235,7 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
             }
         }
     }
-    clean_scrape_name(&name)
+    crate::commands::naming_check::normalize_no_intro_query(&clean_scrape_name(&name))
 }
 
 /// 是否包含 CJK 汉字(用于判断查询词是否仍以中文为主)
@@ -1190,6 +1198,46 @@ pub fn cancel_batch_scrape(state: State<'_, ScraperState>) -> bool {
 mod batch_tests {
     use super::*;
     use crate::scraper::MediaType;
+
+    #[test]
+    fn resolve_scrape_name_uses_filename_over_stale_search_name() {
+        // 复现真实场景:上一轮把旧格式英文名存进了元数据,前端把它作为 search_name 传入。
+        // 卡带头识别失败(目录不存在),应以“文件名”经 CN 库重新解析出规范英文,覆盖存量名。
+        let query = resolve_scrape_name(
+            "Lion King, The".to_string(),
+            "狮子王 (简) (少量汉化)(死神DIY)(24Mb).zip",
+            "sfc",
+            "Z:/does-not-exist",
+        );
+        assert_eq!(query, "The Lion King");
+
+        // 忍者战士 归来 库中对应多个英文名(Ninjawarriors 系列),具体取哪个不确定,
+        // 但必须是英文、且不残留 No-Intro 逗号冠词格式。
+        let ninja = resolve_scrape_name(
+            "Ninjawarriors Again, The".to_string(),
+            "忍者战士 归来(简)(zjwps+阿刃)(16Mb).zip",
+            "sfc",
+            "Z:/does-not-exist",
+        );
+        assert!(
+            ninja.to_lowercase().contains("ninjawarriors"),
+            "应解析出 Ninjawarriors 系列英文名: {ninja}"
+        );
+        assert!(!ninja.contains(", The"), "不应残留逗号冠词格式: {ninja}");
+    }
+
+    #[test]
+    fn resolve_scrape_name_preserves_curated_english_when_not_in_cn_db() {
+        // 文件名是中文但库中未收录(时空之旅 = Chrono Trigger 改版),
+        // 用户设定的英文名不应被中文覆盖,仅规范化冠词。
+        let query = resolve_scrape_name(
+            "Chrono Trigger".to_string(),
+            "时空之旅 (简) (Beta)(Goldegg)(32Mb).zip",
+            "sfc",
+            "Z:/does-not-exist",
+        );
+        assert_eq!(query, "Chrono Trigger");
+    }
 
     fn asset(asset_type: MediaType, suffix: &str) -> MediaAsset {
         MediaAsset {
