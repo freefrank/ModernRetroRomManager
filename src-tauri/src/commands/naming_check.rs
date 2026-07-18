@@ -25,7 +25,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 use tauri::{AppHandle, Emitter, Manager};
 
 static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
+static UNCLOSED_BRACKET_RE: OnceLock<Regex> = OnceLock::new();
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
+static MSU1_RE: OnceLock<Regex> = OnceLock::new();
 static MULTI_SPACE_RE: OnceLock<Regex> = OnceLock::new();
 
 #[allow(dead_code)]
@@ -404,6 +406,11 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     let bracket_re = BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap());
     result = bracket_re.replace_all(&result, "").to_string();
 
+    // 存量元数据里的旧脏名可能残留未闭合括号(如“大老二(16”“…(大字版”),一并截去
+    let unclosed_re =
+        UNCLOSED_BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[][^\)\]]*$").unwrap());
+    result = unclosed_re.replace_all(&result, "").to_string();
+
     // 去除常见汉化组标识
     let groups = [
         "汉化",
@@ -430,6 +437,10 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     let version_re =
         VERSION_RE.get_or_init(|| Regex::new(r"(?i)\s*v(er)?\.?\s*\d+(\.\d+)*").unwrap());
     result = version_re.replace_all(&result, "").to_string();
+
+    // 去除 MSU-1 音轨增强版标记(“塞尔达传说 MSU-1版”应按原游戏检索)
+    let msu1_re = MSU1_RE.get_or_init(|| Regex::new(r"(?i)\s*MSU-?1\s*版?").unwrap());
+    result = msu1_re.replace_all(&result, "").to_string();
 
     // 处理全角字符
     result = result.replace('－', "-").replace('　', " "); // 全角空格转半角
@@ -1197,9 +1208,9 @@ impl NamingIndex {
 struct CnResolver {
     cn_repo: Option<NamingIndex>,
     jy6d: Option<NamingIndex>,
-    /// 副标题感知匹配用:cn_repo 每条的 (主标题小写, 原始英文名)。
-    /// 主标题 = 中文名截断到第一个副标题分隔符前。
-    subtitle_entries: Vec<(String, String)>,
+    /// 副标题感知匹配用:cn_repo 每条的 (主标题小写, 全名规范化键, 原始英文名)。
+    /// 主标题 = 中文名截断到第一个副标题分隔符前;规范化键 = 仅保留字母数字与汉字并小写。
+    subtitle_entries: Vec<(String, String, String)>,
 }
 
 static CN_RESOLVER_CACHE: OnceLock<Mutex<std::collections::HashMap<String, Arc<CnResolver>>>> =
@@ -1215,6 +1226,16 @@ fn cn_main_title(name: &str) -> String {
         }
     }
     name[..cut].trim().to_lowercase()
+}
+
+/// 全名规范化键:仅保留字母、数字与汉字并转小写,抹平分隔符/空格差异。
+/// 用于“查询 = 库全名 + 额外副标题”的前缀匹配(如“机动战士高达 交错维度0079 致赴死者的祈祷”)。
+fn normalize_cn_key(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 /// 英文名区域优先级:USA < Europe < World < 其它(数字越小越优先)。
@@ -1251,6 +1272,7 @@ fn cn_resolver_for(system: &str) -> Arc<CnResolver> {
                 .map(|entry| {
                     (
                         cn_main_title(&entry.chinese_name),
+                        normalize_cn_key(&entry.chinese_name),
                         entry.english_name.clone(),
                     )
                 })
@@ -1286,7 +1308,7 @@ impl CnResolver {
         let mut best_rank = u8::MAX;
         let mut best_english: Option<String> = None;
         let mut ambiguous = false;
-        for (main_lower, english_raw) in &self.subtitle_entries {
+        for (main_lower, _, english_raw) in &self.subtitle_entries {
             let digit_prefixed = main_lower
                 .chars()
                 .last()
@@ -1313,7 +1335,53 @@ impl CnResolver {
         if ambiguous {
             return None;
         }
-        best_english
+        if best_english.is_some() {
+            return best_english;
+        }
+        self.resolve_by_normalized_prefix(query_cn)
+    }
+
+    /// 三级回退:查询以“库全名 + 额外副标题”形式出现时做规范化前缀匹配。
+    /// 例:“46亿年物语 向远方的伊甸”←→ 库“46亿年物语”;
+    ///     “机动战士高达 交错维度0079 致赴死者的祈祷”←→ 库“机动战士高达 - 交错维度0079”。
+    /// 取最长前缀命中,再按区域优先;仅当最优组内英文唯一才返回。
+    fn resolve_by_normalized_prefix(&self, query_cn: &str) -> Option<String> {
+        let q_norm = normalize_cn_key(query_cn);
+        let mut best: Option<(usize, u8, String)> = None;
+        let mut ambiguous = false;
+        for (_, norm_full, english_raw) in &self.subtitle_entries {
+            // 前缀过短容易撞车,要求库全名至少 5 个字符且为查询的真前缀。
+            let length = norm_full.chars().count();
+            if length < 5
+                || q_norm.len() <= norm_full.len()
+                || !q_norm.starts_with(norm_full.as_str())
+            {
+                continue;
+            }
+            let cleaned = move_leading_article(&clean_english_name(english_raw));
+            if cleaned.trim().is_empty() {
+                continue;
+            }
+            let rank = region_rank(english_raw);
+            match &mut best {
+                Some((best_length, best_rank, best_name)) => {
+                    if length > *best_length || (length == *best_length && rank < *best_rank) {
+                        *best_length = length;
+                        *best_rank = rank;
+                        *best_name = cleaned;
+                        ambiguous = false;
+                    } else if length == *best_length && rank == *best_rank && *best_name != cleaned
+                    {
+                        ambiguous = true;
+                    }
+                }
+                None => best = Some((length, rank, cleaned)),
+            }
+        }
+        if ambiguous {
+            return None;
+        }
+        best.map(|(_, _, name)| name)
     }
 }
 
@@ -2324,6 +2392,54 @@ mod tests {
             skid.to_lowercase()
                 .contains("romance of the three kingdoms"),
             "三国志3 解析非预期: {skid}"
+        );
+    }
+
+    #[test]
+    fn normalized_prefix_match_resolves_subtitle_extended_titles() {
+        // 查询 = 库全名 + 额外副标题(库“46亿年物语”,查询多出“向远方的伊甸”)
+        assert_eq!(
+            resolve_scrape_query_from_cn(
+                "SFC",
+                "46亿年物语 向远方的伊甸(简)(大字版v1.01)(aGuGu)(16Mb).zip"
+            ),
+            Some("E.V.O. - Search for Eden".to_string())
+        );
+        // 库“机动战士高达 - 交错维度0079”,查询多出“致赴死者的祈祷”且无分隔符
+        assert_eq!(
+            resolve_scrape_query_from_cn(
+                "SFC",
+                "机动战士高达 交错维度0079 致赴死者的祈祷(简)(小鬼混+阿刃)(16Mb).zip"
+            ),
+            Some("Kidou Senshi Gundam - Cross Dimension 0079".to_string())
+        );
+    }
+
+    #[test]
+    fn cleans_stale_metadata_names_with_unclosed_brackets() {
+        // 存量元数据里旧清洗逻辑残留的脏名:未闭合括号必须截掉。
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "46亿年物语 向远方的伊甸(大字版"),
+            Some("E.V.O. - Search for Eden".to_string())
+        );
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "大老二(16"),
+            Some("大老二".to_string())
+        );
+        assert_eq!(
+            resolve_scrape_query_from_cn("SFC", "热血高校躲避球全员集合 ("),
+            Some("热血高校躲避球全员集合".to_string())
+        );
+    }
+
+    #[test]
+    fn strips_msu1_marker_before_resolving() {
+        assert_eq!(
+            resolve_scrape_query_from_cn(
+                "SFC",
+                "塞尔达传说 MSU-1版(简)(花屏文字修正)(Dark_Link+hlken)(16Mb).zip"
+            ),
+            Some("The Legend of Zelda - A Link to the Past".to_string())
         );
     }
 

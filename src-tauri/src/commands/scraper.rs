@@ -212,7 +212,9 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
         _ => None,
     };
     if let Some(identified) = identified {
-        return identified;
+        // 序列库/内部标题给出的是 No-Intro 逗号冠词格式(如“Lion King, The”),
+        // Provider 检索需要自然语序,否则汉化 ROM 即使卡带头识别成功也搜不到。
+        return crate::commands::naming_check::normalize_no_intro_query(&identified);
     }
     // 汉化 ROM 抓取:传入的 search_name 来自前端(rom.english_name || rom.name),
     // 可能是上一轮跑出的旧格式英文名(No-Intro 逗号格式如 “Lion King, The”)或
@@ -1224,6 +1226,40 @@ mod batch_tests {
             "应解析出 Ninjawarriors 系列英文名: {ninja}"
         );
         assert!(!ninja.contains(", The"), "不应残留逗号冠词格式: {ninja}");
+    }
+
+    #[test]
+    fn resolve_scrape_name_normalizes_cartridge_header_identification() {
+        // 复现线上根因:汉化 ROM 卡带头完好时,序列库 direct 命中返回 No-Intro
+        // 逗号冠词格式(“Lion King, The”),该结果优先于 CN 库解析直接返回,
+        // 必须在返回前还原自然语序,否则 Provider 检索不到。
+        let dir = std::env::temp_dir().join(format!(
+            "mrrm-header-scrape-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file_name = "狮子王 (简) (少量汉化)(死神DIY)(24Mb).sfc";
+
+        // 构造最小合法 LoROM:0x7FC0 内部标题、0x7FB2 产品码 ALKJ(日版狮子王)、
+        // checksum ^ complement == 0xFFFF。
+        let mut data = vec![0_u8; 0x8000];
+        data[0x7fc0..0x7fc0 + 21].copy_from_slice(b"THE LION KING        ");
+        data[0x7fb2..0x7fb6].copy_from_slice(b"ALKJ");
+        data[0x7fdc..0x7fde].copy_from_slice(&0x1234_u16.to_le_bytes());
+        data[0x7fde..0x7fe0].copy_from_slice(&0xedcb_u16.to_le_bytes());
+        std::fs::write(dir.join(file_name), &data).unwrap();
+
+        let query = resolve_scrape_name(
+            "Lion King, The".to_string(),
+            file_name,
+            "sfc",
+            dir.to_str().unwrap(),
+        );
+        std::fs::remove_dir_all(&dir).ok();
+        assert_eq!(query, "The Lion King");
     }
 
     #[test]
