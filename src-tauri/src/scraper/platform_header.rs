@@ -279,9 +279,12 @@ pub fn identify_sega_disc(
         "DC" => (b"SEGA SEGAKATANA".as_slice(), 0x40, 10, 0x80, 128),
         _ => return Ok(None),
     };
+    // 真实系统头位于镜像起始扇区附近;从尾部倒查会命中数据区中的字符串副本,
+    // 汉化镜像上会读出被污染的“标题”。只认头部第一个匹配。
     let Some(start) = data
         .windows(magic.len())
-        .rposition(|window| window == magic)
+        .position(|window| window == magic)
+        .filter(|start| *start <= 0x1_0000)
     else {
         return Ok(None);
     };
@@ -296,7 +299,13 @@ pub fn identify_sega_disc(
     };
     let product_code = clean(&data[start + code_offset..start + code_offset + code_length]);
     let title = clean(&data[start + title_offset..end]);
-    if title.is_empty() {
+    // 正版系统头标题只含可打印 ASCII;出现替换符/控制字符说明头部被汉化工具
+    // 改写污染,拒绝并回退到文件名/中文库解析。
+    if title.is_empty()
+        || !title
+            .chars()
+            .all(|character| character.is_ascii_graphic() || character == ' ')
+    {
         return Ok(None);
     }
     Ok(Some(PlatformIdentification {
@@ -390,6 +399,37 @@ mod tests {
     #[test]
     fn nds_database_contains_known_serial() {
         assert!(nds_serials().contains_key("BKAJ"));
+    }
+
+    #[test]
+    fn sega_disc_rejects_polluted_header_title() {
+        let root = std::env::temp_dir().join(format!("mrrm-ss-header-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+
+        let build = |title: &[u8]| {
+            let mut data = vec![0_u8; 0x200];
+            data[..15].copy_from_slice(b"SEGA SEGASATURN");
+            data[0x20..0x20 + 4].copy_from_slice(b"T-01");
+            data[0x60..0x60 + title.len()].copy_from_slice(title);
+            data
+        };
+
+        // 汉化工具污染的标题(含无效 UTF-8/控制字节)必须拒绝,回退文件名解析
+        let polluted = root.join("polluted.bin");
+        std::fs::write(
+            &polluted,
+            build(b"\"\"\xFF\"\xFEa\n\n Nanatsukaze_no_shima_monog"),
+        )
+        .unwrap();
+        assert_eq!(identify_sega_disc(&polluted, "SS").unwrap(), None);
+
+        // 正常 ASCII 标题照常识别
+        let clean = root.join("clean.bin");
+        std::fs::write(&clean, build(b"NANATSU KAZE NO SHIMA")).unwrap();
+        let identified = identify_sega_disc(&clean, "SS").unwrap().unwrap();
+        assert_eq!(identified.scrape_name, "NANATSU KAZE NO SHIMA");
+
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

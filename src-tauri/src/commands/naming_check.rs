@@ -28,6 +28,7 @@ static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
 static UNCLOSED_BRACKET_RE: OnceLock<Regex> = OnceLock::new();
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 static MSU1_RE: OnceLock<Regex> = OnceLock::new();
+static DISC_RE: OnceLock<Regex> = OnceLock::new();
 static MULTI_SPACE_RE: OnceLock<Regex> = OnceLock::new();
 
 #[allow(dead_code)]
@@ -402,8 +403,9 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
         name.to_string()
     };
 
-    // 去除括号内容：(xxx), [xxx]
-    let bracket_re = BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[][^\)\]]*[\)\]]").unwrap());
+    // 去除括号内容：(xxx), [xxx],含全角（xxx）【xxx】
+    let bracket_re =
+        BRACKET_RE.get_or_init(|| Regex::new(r"\s*[\(\[（【][^\)\]）】]*[\)\]）】]").unwrap());
     result = bracket_re.replace_all(&result, "").to_string();
 
     // 存量元数据里的旧脏名可能残留未闭合括号(如“大老二(16”“…(大字版”),一并截去
@@ -441,6 +443,11 @@ fn extract_game_name(name: &str, is_filename: bool) -> Option<String> {
     // 去除 MSU-1 音轨增强版标记(“塞尔达传说 MSU-1版”应按原游戏检索)
     let msu1_re = MSU1_RE.get_or_init(|| Regex::new(r"(?i)\s*MSU-?1\s*版?").unwrap());
     result = msu1_re.replace_all(&result, "").to_string();
+
+    // 去除尾部光盘序号标记(多碟游戏文件夹常见“…CD1”“…Disc 2”)
+    let disc_re =
+        DISC_RE.get_or_init(|| Regex::new(r"(?i)[\s\-_－]*(?:cd|disc|disk)[\s\-_]*\d+$").unwrap());
+    result = disc_re.replace_all(&result, "").to_string();
 
     // 处理全角字符
     result = result.replace('－', "-").replace('　', " "); // 全角空格转半角
@@ -1455,7 +1462,7 @@ fn move_leading_article(name: &str) -> String {
 /// - 未命中但确为中文名 → 返回干净中文标题(优于 clean_scrape_name 误取的汉化组拉丁名)
 /// - 提取后并非中文名 → 返回 None,交回默认清洗
 pub(crate) fn resolve_scrape_query_from_cn(system: &str, raw: &str) -> Option<String> {
-    let cn_title = extract_game_name(raw, true)?;
+    let cn_title = cn_title_from_path(raw)?;
     if !contains_cjk(&cn_title) {
         return None;
     }
@@ -1465,13 +1472,28 @@ pub(crate) fn resolve_scrape_query_from_cn(system: &str, raw: &str) -> Option<St
     Some(cn_title)
 }
 
+/// 从相对路径提取用于 CN 解析的中文标题。
+/// 光盘游戏常整游戏一个子文件夹(文件夹名是中文标题,内部文件是汉化组代号,
+/// 如“D之食卓[简][SGGG汉化组]CD1\D_CN3_CD1_….cue”),此时优先用文件夹名。
+fn cn_title_from_path(file_name: &str) -> Option<String> {
+    let path = Path::new(file_name);
+    let folder_title = path
+        .parent()
+        .and_then(|parent| parent.file_name())
+        .and_then(|value| value.to_str())
+        .filter(|value| contains_cjk(value))
+        .and_then(|value| extract_game_name(value, false))
+        .filter(|value| contains_cjk(value));
+    if folder_title.is_some() {
+        return folder_title;
+    }
+    extract_game_name(file_name, true).filter(|title| contains_cjk(title))
+}
+
 /// 从文件名经内置 CN 库解析英文标题;未命中返回 `None`(不回退中文)。
 /// 供批量/自动抓取以“文件名”这一真实来源覆盖存量元数据里的旧格式/残缺名。
 pub(crate) fn resolve_english_query_from_filename(system: &str, file_name: &str) -> Option<String> {
-    let cn_title = extract_game_name(file_name, true)?;
-    if !contains_cjk(&cn_title) {
-        return None;
-    }
+    let cn_title = cn_title_from_path(file_name)?;
     resolve_english_from_cn(system, &cn_title)
 }
 
@@ -2441,6 +2463,27 @@ mod tests {
             ),
             Some("The Legend of Zelda - A Link to the Past".to_string())
         );
+    }
+
+    #[test]
+    fn saturn_subfolder_disc_games_resolve_via_folder_name() {
+        // 光盘游戏整游戏一个子文件夹:文件夹名是中文标题,内部文件是汉化组代号,
+        // 必须用文件夹名解析(并剥离尾部 CD1 光盘序号)。
+        let d = resolve_english_query_from_filename(
+            "SS",
+            r"D之食卓[简][CN3汉化正式版][SGGG汉化组]CD1\D_CN3_CD1_BY_SGGG20221202.cue",
+        )
+        .expect("D之食卓应经文件夹名解析出英文");
+        assert!(!contains_cjk(&d), "应为英文查询词: {d}");
+        assert!(d.to_ascii_lowercase().starts_with('d'), "非预期解析: {d}");
+
+        // 内部文件名本身含中文(带全角括号标记)时同样应命中库内标题。
+        let nanatsu = resolve_english_query_from_filename(
+            "SS",
+            r"七风岛物语[简][v1.0][陈志东+丁枫]\七风岛物语（中文1.0）.BIN",
+        )
+        .expect("七风岛物语应解析出英文");
+        assert_eq!(nanatsu, "Nanatsu Kaze no Shima Monogatari");
     }
 
     #[test]
