@@ -1,26 +1,49 @@
 # ModernRetroManager - 现代化 Retro ROM 管理软件
 
-## 📝 最近更新 (2026-01-21)
+> **当前焦点**：桌面版（Tauri）。Web 后端整体挂起，路线图 Phase 6 相关任务暂不推进。
 
-### 本次会话完成的功能
+## 📝 最近更新 (2026-07-17，桌面 v1.0.6)
+
+> 说明：自 v1.0.0（2026-07-16）起进入正式版迭代，半年内桌面版持续打磨抓取匹配、AI 翻译与游戏库管理。以下按版本归纳，细节见 `CHANGELOG.md`。
+
+### 抓取匹配攻坚 (v1.0.1 → v1.0.6)
+
+| 修复/优化项 | 说明 |
+|------------|------|
+| **N64 时之笛里篇消歧** | 依据压缩包名 `Master Quest`/`Ura`/“里”/“裏”标记区分普通版与里篇；歧义产品码回退普通版 |
+| **PS1 序列号匹配** | 从 BIN/CUE `SYSTEM.CNF` 提取光盘序列号，优先 ScreenScraper 序列号查询；修复 CUE+BIN+BIOS 被重复索引 |
+| **ScreenScraper 标题回退** | 优先 US/World 标题，支持副标题、括号别名、移除赛季后缀的体育标题回退；修复 Ys 4 搜索 |
+| **汉化文件名清洗** | 回退搜索前清理汉化/修复标签，提取内嵌英文标题，保留有效别名 |
+| **平台/systemid 映射补全** | `screenscraper.rs` 补全平台别名→systemid 映射；补全主机平台 Logo 映射 |
+| **手工抓取关键词保留** | 单独抓取尊重用户输入，序列号精确匹配仅用于自动/批量 |
+| **媒体候选缓存复用** | 复用已下载媒体候选，减少重复请求 |
+
+### 游戏库与导出 (v0.9.0 → v1.0.3)
+
+| 修复/优化项 | 说明 |
+|------------|------|
+| **多选导出 + 记忆选项** | 支持按系统多选导出，记忆导出格式与命名模式 |
+| **双 Metadata 写入** | 保存时同时写入 Pegasus 与 EmulationStation 两种格式 |
+| **建库索引选择 + 扫描停止** | 建库时可选索引范围，扫描可中途停止 |
+| **避免整库扫描** | 普通变更不再触发整库重扫，切库性能优化 |
+| **未引用资源安全清理** | 新增缓存统计与孤儿媒体安全清理 |
+| **便携版瘦身** | 压缩内置数据库，优化便携版体积 |
+
+### AI 批量翻译 (v0.8.5 → v0.8.7)
+
+| 修复/优化项 | 说明 |
+|------------|------|
+| **批量 AI 翻译 + 取消流程** | 完善批量翻译与可取消流程 |
+| **流式响应兼容** | 兼容流式 AI 翻译响应 |
+| **独立中文名 + 导出模式** | 增加独立中文名称字段与命名导出模式 |
+
+### 更早（2026-01，中文整理 & Pegasus 统一）
 
 | 修复/优化项 | 文件 | 说明 |
 |------------|------|------|
-| **双数据源匹配** | `naming_check.rs`, `jy6d_dz.rs` | 集成 jy6d-dz 数据源作为 cn_repo 的补充，自动选择置信度更高的匹配结果 |
-| **jy6d-dz CSV Reader** | `scraper/jy6d_dz.rs` | 新增 jy6d-dz 数据格式读取模块 |
-| **系统映射扩展** | `system_mapping.rs` | 新增 `jy6d_csv_name` 字段支持 jy6d 数据源 |
-
-### 之前完成的功能 (2026-01-20)
-
-| 修复/优化项 | 文件 | 说明 |
-|------------|------|------|
-| **扫描结果去重** | `naming_check.rs` | 基于 `file` 字段 HashMap 去重，保留更完整的条目 |
-| **Pegasus 模块统一** | `pegasus.rs`, `persistence.rs`, `naming_check.rs` | 将分散的 Pegasus metadata 生成逻辑统一到 `pegasus.rs` |
-| **增强 Pegasus 导出** | `pegasus.rs` | 新增 `PegasusExportOptions`、`write_pegasus_file()` 支持合并模式 |
-| **匹配英文名优化** | `naming_check.rs` | 不再重复扫描文件夹，直接读取临时 metadata |
-| **移除无用弹窗** | `CnRomTools.tsx` | 移除匹配英文名的确认弹窗和完成提示 |
-| **统一游戏名提取** | `naming_check.rs` | 合并 `parse_cn_name_from_filename` 和 `clean_folder_name` 为 `extract_game_name` |
-| **查询名优先级** | `naming_check.rs` | 匹配时优先使用已生成的 `name` 字段，而非重新提取 |
+| **双数据源匹配** | `naming_check.rs`, `jy6d_dz.rs` | 集成 jy6d-dz 作为 cn_repo 补充，自动选置信度更高结果 |
+| **Pegasus 模块统一** | `pegasus.rs`, `persistence.rs`, `naming_check.rs` | 分散的 Pegasus 生成逻辑统一到 `pegasus.rs`，支持合并导出 |
+| **统一游戏名提取** | `naming_check.rs` | 合并为 `extract_game_name`，统一清理括号/汉化组/版本号/全角字符 |
 
 ### 架构改进
 
@@ -222,13 +245,17 @@ graph TD
 - [x] 18 种游戏系统预设与图标映射
 - [x] 现代化单页 UI (Grid/List/Spotlight Search)
 
-### Phase 2: Scraper 核心 - [/] 进行中
+### Phase 2: Scraper 核心 - [/] 进行中（桌面焦点）
 - [x] ScraperManager 统一调度层
 - [x] Standardized Data Models (GameMetadata, MediaAsset)
 - [x] SteamGridDB & ScreenScraper 集成
 - [x] 多源数据智能聚合 (Priority-based Merge)
 - [x] Hash 精确匹配 (CRC32/MD5/SHA1)
 - [x] 并行媒体下载与本地缓存
+- [x] 平台别名 → ScreenScraper systemid 完整映射
+- [x] 标题回退搜索（US/World 优先、副标题/别名/序列号）
+- [x] PS1 序列号匹配与 N64 卡带头识别
+- [x] 媒体候选缓存复用、扫描停止
 - [ ] 批量 Scrape 任务队列与进度反馈 (Coming soon)
 - [ ] 更多 Provider 集成 (IGDB, MobyGames)
 
@@ -250,11 +277,12 @@ graph TD
 - [x] 手动编辑实时保存与前端覆盖显示
 - [x] 媒体 URL 解析与预加载系统
 
-### Phase 6: 部署与 Web 版本 - [/] 进行中
+### Phase 6: 部署与 Web 版本 - [⏸] 挂起（专注桌面，暂不推进）
 - [x] 环境变量覆盖配置 (`CONFIG_DIR`)
 - [x] Node.js Express 后端实现
 - [x] Docker 多阶段构建与 Compose 配置
 - [x] 前端 Web 模式 API 自动切换
+- [ ] Web 后端 EmulationStation 解析（`server/src/rom-service.ts:415` 仍为 TODO）
 - [ ] 用户权限管理 (Web 版专用)
 - [ ] 在线导出与 ZIP 打包下载
 
