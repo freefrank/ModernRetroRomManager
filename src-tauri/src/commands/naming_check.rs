@@ -1253,8 +1253,52 @@ pub(crate) fn resolve_english_from_cn(system: &str, query_cn: &str) -> Option<St
     if confidence < 0.9 {
         return None;
     }
-    let cleaned = clean_english_name(&english_name);
+    let cleaned = move_leading_article(&clean_english_name(&english_name));
     (!cleaned.trim().is_empty()).then_some(cleaned)
+}
+
+/// 是否包含 CJK 汉字。
+fn contains_cjk(value: &str) -> bool {
+    value
+        .chars()
+        .any(|c| matches!(c as u32, 0x3400..=0x9FFF | 0xF900..=0xFAFF))
+}
+
+/// 把 No-Intro 的逗号冠词格式还原为自然语序:
+/// `Lion King, The` → `The Lion King`,`Legend of Zelda, The - A Link...` → `The Legend of Zelda - A Link...`。
+/// Provider 用自然语序检索,逗号格式往往查不到。
+fn move_leading_article(name: &str) -> String {
+    const ARTICLES: &[&str] = &[
+        "The", "A", "An", "Le", "La", "Les", "Der", "Die", "Das", "Il", "Lo", "El", "Los", "Las",
+    ];
+    for article in ARTICLES {
+        let needle = format!(", {article}");
+        if let Some(pos) = name.find(&needle) {
+            let after = &name[pos + needle.len()..];
+            // 冠词后必须是结尾、副标题分隔符或空格,才认定是冠词后缀而非普通逗号。
+            if after.is_empty() || after.starts_with(" -") || after.starts_with(' ') {
+                let main = name[..pos].trim_end();
+                return format!("{article} {main}{after}");
+            }
+        }
+    }
+    name.to_string()
+}
+
+/// 供抓取路径复用:把中文命名的 ROM 文件名/显示名解析为 Provider 可检索的查询词。
+/// 流程:去除所有标记得到纯中文标题 → CN 库解析英文标题(已规范化冠词/区域)。
+/// - 命中英文库 → 返回英文标题
+/// - 未命中但确为中文名 → 返回干净中文标题(优于 clean_scrape_name 误取的汉化组拉丁名)
+/// - 提取后并非中文名 → 返回 None,交回默认清洗
+pub(crate) fn resolve_scrape_query_from_cn(system: &str, raw: &str) -> Option<String> {
+    let cn_title = extract_game_name(raw, true)?;
+    if !contains_cjk(&cn_title) {
+        return None;
+    }
+    if let Some(english) = resolve_english_from_cn(system, &cn_title) {
+        return Some(english);
+    }
+    Some(cn_title)
 }
 
 #[tauri::command]
@@ -2059,6 +2103,79 @@ mod tests {
     #[test]
     fn returns_none_for_unknown_chinese_title() {
         assert!(resolve_english_from_cn("SFC", "完全不存在的游戏名甲乙丙丁").is_none());
+    }
+
+    #[test]
+    fn move_leading_article_restores_natural_order() {
+        assert_eq!(move_leading_article("Lion King, The"), "The Lion King");
+        assert_eq!(
+            move_leading_article("Legend of Zelda, The - A Link to the Past"),
+            "The Legend of Zelda - A Link to the Past"
+        );
+        assert_eq!(
+            move_leading_article("Ninjawarriors Again, The"),
+            "The Ninjawarriors Again"
+        );
+        // 无冠词后缀保持不变
+        assert_eq!(
+            move_leading_article("Romance of the Three Kingdoms III - Dragon of Destiny"),
+            "Romance of the Three Kingdoms III - Dragon of Destiny"
+        );
+    }
+
+    #[test]
+    fn resolves_real_chinese_sfc_filenames_without_garbage() {
+        // 真实汉化 SFC 文件名,验证不再产出汉化组拉丁名等垃圾查询。
+        let cases = [
+            "三国志3 (繁) (官方中文版)(KOEI)(12Mb).zip",
+            "狮子王 (简) (少量汉化)(死神DIY)(24Mb).zip",
+            "塞尔达传说 (简) (部分汉化)(Dark_Link)(12Mb).zip",
+            "忍者战士 归来(简)(zjwps+阿刃)(16Mb).zip",
+            "最终幻想6 (简) (全剧情汉化) (英菜单)(Boco)(28Mb).zip",
+            "重装机兵瓦尔肯 (简) (完全汉化)(cslrxyz)(8Mb).zip",
+            "伊苏3 (简) (v0.99)(Yjsturboc)(8Mb).zip",
+            "46亿年物语 向远方的伊甸(简)(大字版v1.01)(aGuGu)(16Mb).zip",
+        ];
+        // 已知会污染查询的汉化组/标记片段,解析结果绝不应包含。
+        let forbidden = [
+            "KOEI",
+            "Dark_Link",
+            "Boco",
+            "cslrxyz",
+            "死神",
+            "Yjsturboc",
+            "aGuGu",
+            ")(",
+            "大字版",
+        ];
+        for name in cases {
+            let query = resolve_scrape_query_from_cn("SFC", name)
+                .unwrap_or_else(|| panic!("应返回查询词: {name}"));
+            println!("{name}\n  -> {query}");
+            for bad in forbidden {
+                assert!(
+                    !query.contains(bad),
+                    "查询词 `{query}` 残留了 `{bad}`(来自 {name})"
+                );
+            }
+            // 逗号冠词格式不应出现
+            assert!(!query.contains(", The"), "查询词残留逗号冠词格式: {query}");
+        }
+    }
+
+    #[test]
+    fn resolves_known_exact_titles_to_english() {
+        // 库中 CN 名与提取标题完全一致的,应解析出对应英文。
+        let lion = resolve_scrape_query_from_cn("SFC", "狮子王 (简) (少量汉化)(死神DIY)(24Mb).zip")
+            .expect("狮子王应解析");
+        assert_eq!(lion, "The Lion King");
+        let skid = resolve_scrape_query_from_cn("SFC", "三国志3 (繁) (官方中文版)(KOEI)(12Mb).zip")
+            .expect("三国志3应解析");
+        assert!(
+            skid.to_lowercase()
+                .contains("romance of the three kingdoms"),
+            "三国志3 解析非预期: {skid}"
+        );
     }
 
     #[test]

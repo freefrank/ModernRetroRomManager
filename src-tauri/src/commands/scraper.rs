@@ -214,21 +214,20 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
     if let Some(identified) = identified {
         return identified;
     }
-    let cleaned = clean_scrape_name(&name);
-    // 卡带头/序列号识别失败且清洗后仍以中文为主时(如 SFC 汉化 ROM,内部标题为日文
-    // 罗马音、与内置英文库对不上),用内置中文数据库把中文名解析成英文标题,
-    // 避免把中文查询词发给只支持英文检索的 Provider。
-    if has_cjk(&cleaned) {
-        if let Some(english) =
-            crate::commands::naming_check::resolve_english_from_cn(system, &cleaned)
+    // 中文命名的汉化 ROM(如 SFC,内部卡带头为日文罗马音、与内置英文库对不上):
+    // clean_scrape_name 的“取最长 ASCII 片段”启发式会误把汉化组拉丁名(KOEI、Dark_Link…)
+    // 当成标题。改用“去所有标记得纯中文标题 → CN 库解析英文名”路径,
+    // 命中则用英文名,未命中至少回退干净中文标题,绝不发汉化组名。
+    if has_cjk(&name) {
+        if let Some(query) =
+            crate::commands::naming_check::resolve_scrape_query_from_cn(system, &name)
         {
-            let english_query = clean_scrape_name(&english);
-            if !english_query.trim().is_empty() {
-                return english_query;
+            if !query.trim().is_empty() {
+                return query;
             }
         }
     }
-    cleaned
+    clean_scrape_name(&name)
 }
 
 /// 是否包含 CJK 汉字(用于判断查询词是否仍以中文为主)
