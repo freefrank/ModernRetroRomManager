@@ -550,10 +550,12 @@ fn try_load_from_temp_metadata(
                 rom.has_temp_metadata = true;
                 fill_file_metadata(&mut rom, &rom_path);
 
-                // 解析媒体路径为绝对路径
+                // 解析媒体路径为绝对路径;空串会 join 成指向库目录的“伪路径”,直接置空。
                 let resolve = |path: &mut Option<String>| {
                     if let Some(p) = path.as_ref() {
-                        if !p.starts_with("http") && !Path::new(p).is_absolute() {
+                        if p.trim().is_empty() {
+                            *path = None;
+                        } else if !p.starts_with("http") && !Path::new(p).is_absolute() {
                             *path = Some(base_dir.join(p).to_string_lossy().to_string());
                         }
                     }
@@ -665,12 +667,18 @@ fn read_emulationstation_media_assets(
         .into_iter()
         .map(|game| {
             let file = game.path.trim_start_matches("./").to_string();
-            let image = game.image.map(|value| resolve_media_path(dir_path, &value));
+            // 空标签(<image/>)解析为空串,join 后会变成指向库目录的“伪路径”,先滤掉。
+            let image = game
+                .image
+                .filter(|value| !value.trim().is_empty())
+                .map(|value| resolve_media_path(dir_path, &value));
             let boxart = game
                 .boxart
+                .filter(|value| !value.trim().is_empty())
                 .map(|value| resolve_media_path(dir_path, &value));
             let logo = game
                 .marquee
+                .filter(|value| !value.trim().is_empty())
                 .map(|value| resolve_media_path(dir_path, &value));
             (
                 file,
