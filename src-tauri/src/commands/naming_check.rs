@@ -21,7 +21,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use tauri::{AppHandle, Emitter, Manager};
 
 static BRACKET_RE: OnceLock<Regex> = OnceLock::new();
@@ -1193,6 +1193,70 @@ impl NamingIndex {
     }
 }
 
+/// 按平台缓存的内置中文数据库索引(cn_repo + jy6d),供抓取路径复用。
+struct CnResolver {
+    cn_repo: Option<NamingIndex>,
+    jy6d: Option<NamingIndex>,
+}
+
+static CN_RESOLVER_CACHE: OnceLock<Mutex<std::collections::HashMap<String, Arc<CnResolver>>>> =
+    OnceLock::new();
+
+/// 获取(或首次构建)指定平台的中文解析器。
+/// 仅使用内置数据库:抓取路径没有 `AppHandle`,而内置数据已覆盖各平台。
+fn cn_resolver_for(system: &str) -> Arc<CnResolver> {
+    let cache = CN_RESOLVER_CACHE.get_or_init(|| Mutex::new(std::collections::HashMap::new()));
+    let key = system.to_ascii_uppercase();
+    let mut guard = cache.lock().unwrap_or_else(|poison| poison.into_inner());
+    if let Some(existing) = guard.get(&key) {
+        return existing.clone();
+    }
+    let cn_repo = read_embedded_csv(system)
+        .ok()
+        .filter(|entries| !entries.is_empty())
+        .map(NamingIndex::from_cn_entries);
+    let jy6d = find_mapping_by_folder(system)
+        .and_then(|mapping| mapping.jy6d_csv_name)
+        .and_then(|name| load_embedded_jy6d_csv(name).ok())
+        .filter(|entries| !entries.is_empty())
+        .map(NamingIndex::from_jy6d_entries);
+    let resolver = Arc::new(CnResolver { cn_repo, jy6d });
+    guard.insert(key, resolver.clone());
+    resolver
+}
+
+/// 将中文/混合命名解析为内置数据库中的英文标题(已去除区域标记)。
+/// 供自动/批量抓取在卡带头识别失败时回退,把中文名换成 Provider 可检索的英文名。
+/// 抓取路径采用较高阈值(≥0.9),宁可回退干净中文查询,也不发一个自信但错误的英文名。
+pub(crate) fn resolve_english_from_cn(system: &str, query_cn: &str) -> Option<String> {
+    let resolver = cn_resolver_for(system);
+    let cn_match = resolver
+        .cn_repo
+        .as_ref()
+        .and_then(|index| index.search(query_cn, None));
+    let jy6d_match = resolver
+        .jy6d
+        .as_ref()
+        .and_then(|index| index.search(query_cn, None));
+    let best = match (cn_match, jy6d_match) {
+        (Some(a), Some(b)) => {
+            if a.2 >= b.2 {
+                Some(a)
+            } else {
+                Some(b)
+            }
+        }
+        (Some(result), None) | (None, Some(result)) => Some(result),
+        (None, None) => None,
+    };
+    let (english_name, _chinese_name, confidence) = best?;
+    if confidence < 0.9 {
+        return None;
+    }
+    let cleaned = clean_english_name(&english_name);
+    (!cleaned.trim().is_empty()).then_some(cleaned)
+}
+
 #[tauri::command]
 pub async fn auto_fix_naming(
     app: AppHandle,
@@ -1974,6 +2038,28 @@ fn detect_format(dir_path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolves_chinese_sfc_title_to_english_via_embedded_db() {
+        // 内置 SNES 库含 "Art of Fighting (USA),龙虎之拳" 与 "Ryuuko no Ken (Japan),龙虎之拳"。
+        // SFC 汉化 ROM 的内部标题是日文罗马音,与英文库对不上,须靠中文名解析英文标题。
+        let english = resolve_english_from_cn("SFC", "龙虎之拳").expect("应能解析出英文标题");
+        let lower = english.to_lowercase();
+        assert!(
+            lower.contains("art of fighting") || lower.contains("ryuuko"),
+            "解析结果非预期: {english}"
+        );
+        // 结果不应残留区域标记
+        assert!(
+            !english.contains('('),
+            "英文标题应已去除区域标记: {english}"
+        );
+    }
+
+    #[test]
+    fn returns_none_for_unknown_chinese_title() {
+        assert!(resolve_english_from_cn("SFC", "完全不存在的游戏名甲乙丙丁").is_none());
+    }
 
     #[test]
     fn scan_ignores_archive_backup_directory() {

@@ -211,7 +211,31 @@ fn resolve_scrape_name(name: String, file_name: &str, system: &str, directory: &
             .map(|value| value.scrape_name),
         _ => None,
     };
-    identified.unwrap_or_else(|| clean_scrape_name(&name))
+    if let Some(identified) = identified {
+        return identified;
+    }
+    let cleaned = clean_scrape_name(&name);
+    // 卡带头/序列号识别失败且清洗后仍以中文为主时(如 SFC 汉化 ROM,内部标题为日文
+    // 罗马音、与内置英文库对不上),用内置中文数据库把中文名解析成英文标题,
+    // 避免把中文查询词发给只支持英文检索的 Provider。
+    if has_cjk(&cleaned) {
+        if let Some(english) =
+            crate::commands::naming_check::resolve_english_from_cn(system, &cleaned)
+        {
+            let english_query = clean_scrape_name(&english);
+            if !english_query.trim().is_empty() {
+                return english_query;
+            }
+        }
+    }
+    cleaned
+}
+
+/// 是否包含 CJK 汉字(用于判断查询词是否仍以中文为主)
+fn has_cjk(value: &str) -> bool {
+    value
+        .chars()
+        .any(|c| matches!(c as u32, 0x3400..=0x9FFF | 0xF900..=0xFAFF))
 }
 
 // ============================================================================
