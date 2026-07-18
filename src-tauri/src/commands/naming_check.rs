@@ -2543,6 +2543,54 @@ mod tests {
     }
 
     #[test]
+    fn nonstandard_folder_aliases_load_chinese_database() {
+        // 用户可能用 genesis/megadrive 等通行名命名 MD 目录,内置库需照常加载。
+        for alias in ["megadrive", "Mega Drive", "MegaDrive", "genesis", "Genesis"] {
+            assert_eq!(
+                resolve_english_query_from_filename(alias, "怒之铁拳3 (简) (汉化).bin").as_deref(),
+                Some("Bare Knuckle III"),
+                "别名 {alias} 应命中 MD 中文库"
+            );
+        }
+        // SNES 别名同样应命中 SFC 库。
+        assert_eq!(
+            resolve_english_query_from_filename(
+                "snes",
+                "狮子王 (简) (少量汉化)(死神DIY)(24Mb).zip"
+            )
+            .as_deref(),
+            Some("The Lion King"),
+            "snes 别名应命中 SFC 库"
+        );
+    }
+
+    #[test]
+    #[ignore = "本地诊断:打印 MD 解析结果与别名对比"]
+    fn diagnose_md_resolution() {
+        for cn in ["怒之铁拳3", "梦幻之星", "梦幻之星2", "光明与黑暗", "索尼克"]
+        {
+            println!("[CN库] {cn} -> {:?}", resolve_english_from_cn("MD", cn));
+        }
+        for f in [
+            "怒之铁拳3 (简) (汉化).bin",
+            "梦幻之星2 不归的终点 (简).md",
+            "梦幻之星 (简) (完全汉化).gen",
+        ] {
+            println!(
+                "[文件名] {f} -> {:?}",
+                resolve_english_query_from_filename("MD", f)
+            );
+        }
+        // 别名对比:目录名非标准时 CN 库能否加载
+        for alias in ["MD", "md", "megadrive", "MegaDrive", "genesis", "Genesis"] {
+            println!(
+                "[别名 {alias}] -> {:?}",
+                resolve_english_query_from_filename(alias, "怒之铁拳3 (简) (汉化).bin")
+            );
+        }
+    }
+
+    #[test]
     fn saturn_subfolder_disc_games_resolve_via_folder_name() {
         // 光盘游戏整游戏一个子文件夹:文件夹名是中文标题,内部文件是汉化组代号,
         // 必须用文件夹名解析(并剥离尾部 CD1 光盘序号)。

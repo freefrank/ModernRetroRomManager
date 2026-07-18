@@ -432,9 +432,53 @@ pub fn get_system_mappings() -> Vec<SystemMapping> {
 /// 根据文件夹名查找系统映射（不区分大小写）
 pub fn find_mapping_by_folder(folder_name: &str) -> Option<SystemMapping> {
     let folder_lower = folder_name.to_lowercase();
-    get_system_mappings()
-        .into_iter()
+    let mappings = get_system_mappings();
+    if let Some(mapping) = mappings
+        .iter()
         .find(|m| m.folder_name.to_lowercase() == folder_lower)
+    {
+        return Some(mapping.clone());
+    }
+    // 精确匹配失败时按常见别名回退:用户可能用 "genesis"/"megadrive"/"snes" 等
+    // 通行名命名 ROM 目录,而内置数据库以标准缩写(MD/SFC…)为键,否则中文库无法加载。
+    let canonical = canonical_folder_alias(&folder_lower)?;
+    mappings.into_iter().find(|m| m.folder_name == canonical)
+}
+
+/// 把常见的 ROM 目录别名规范化为内置数据库使用的标准 folder_name。
+/// 仅在精确匹配失败时启用,忽略空格/连字符/下划线并按字母数字比较。
+fn canonical_folder_alias(folder_lower: &str) -> Option<&'static str> {
+    let key: String = folder_lower
+        .chars()
+        .filter(|character| character.is_alphanumeric())
+        .collect();
+    Some(match key.as_str() {
+        "genesis" | "megadrive" | "smd" | "gen" | "md" => "MD",
+        "32x" | "sega32x" | "genesis32x" => "MD-32X",
+        "segacd" | "megacd" => "MDCD",
+        "snes" | "superfamicom" | "supernintendo" | "sfamicom" | "supernes" => "SFC",
+        "nes" | "famicom" | "fc" => "FC",
+        "nintendo64" | "n64" => "N64",
+        "psx" | "ps" | "playstation" | "psone" | "ps1" => "PS1",
+        "saturn" | "segasaturn" | "ss" => "SS",
+        "dreamcast" | "dc" => "DC",
+        "gameboy" | "gb" => "GB",
+        "gameboycolor" | "gbc" => "GBC",
+        "gameboyadvance" | "gba" => "GBA",
+        "gamegear" | "gg" => "GG",
+        "mastersystem" | "segamastersystem" | "sms" => "SMS",
+        "pcengine" | "turbografx" | "turbografx16" | "tg16" | "pce" => "PCE",
+        "pcenginecd" | "turbografxcd" => "PCE-CD",
+        "neogeopocketcolor" | "ngpc" => "NGPC",
+        "wonderswan" | "ws" => "WS",
+        "wonderswancolor" | "wsc" => "WSC",
+        "virtualboy" | "vb" => "Virtual Boy",
+        "gamecube" | "ngc" | "gc" => "NGC",
+        "nintendods" | "nds" => "NDS",
+        "nintendo3ds" | "3ds" => "3DS",
+        "wii" => "WII",
+        _ => return None,
+    })
 }
 
 /// 根据文件夹名查找 CSV 数据库文件名

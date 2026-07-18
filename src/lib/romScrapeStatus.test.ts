@@ -41,4 +41,25 @@ describe("hasMetadataAndAsset", () => {
     expect(shouldIncludeInBatchScrape(scraped, true)).toBe(true);
     expect(shouldIncludeInBatchScrape(rom(), false)).toBe(true);
   });
+
+  it("re-includes scraped ROMs that are missing a selected media type", () => {
+    const scraped = rom({
+      description: "Description",
+      box_front: "media/box.png",
+    });
+
+    // 已有元数据+封面,选中类型都齐全时不重复抓取
+    expect(shouldIncludeInBatchScrape(scraped, false, ["boxfront"])).toBe(false);
+    // 选了 video 但缺 video,应补抓
+    expect(shouldIncludeInBatchScrape(scraped, false, ["boxfront", "video"])).toBe(true);
+    // 已有 video(含 temp_data)则不再纳入
+    const withVideo = rom({
+      description: "Description",
+      box_front: "media/box.png",
+      temp_data: { video: "cache/clip.mp4" },
+    });
+    expect(shouldIncludeInBatchScrape(withVideo, false, ["boxfront", "video"])).toBe(false);
+    // manual 无对应字段,不触发补抓
+    expect(shouldIncludeInBatchScrape(scraped, false, ["manual"])).toBe(false);
+  });
 });

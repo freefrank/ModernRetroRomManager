@@ -100,7 +100,7 @@ export default function BatchScrapeDialog({ isOpen, onClose, scope = "selection"
       .filter(item => item.system === selectedSystem)
       .flatMap(item => item.roms)
       .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
-      .filter(rom => shouldIncludeInBatchScrape(rom, forceRescrape))
+      .filter(rom => shouldIncludeInBatchScrape(rom, forceRescrape, mediaTypes))
       .length;
   const progressPercent = batchProgress
     ? Math.round((batchProgress.current / batchProgress.total) * 100)

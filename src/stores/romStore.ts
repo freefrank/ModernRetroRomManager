@@ -239,7 +239,7 @@ export const useRomStore = create<RomState>((set, get) => ({
     const targetRoms = targetSystems.flatMap(systemInfo =>
       systemInfo.roms
         .filter(rom => scope !== "selection" || selectedRomIds.has(rom.file))
-        .filter(rom => shouldIncludeInBatchScrape(rom, forceRescrape))
+        .filter(rom => shouldIncludeInBatchScrape(rom, forceRescrape, mediaTypes ?? []))
         .map(rom => ({
           file_name: rom.file,
           search_name: rom.english_name?.trim() || rom.name || rom.file,
