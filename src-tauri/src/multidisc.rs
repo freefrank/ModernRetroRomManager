@@ -167,6 +167,89 @@ fn match_chinese(name: &str) -> Option<DiscMarker> {
     None
 }
 
+/// 一张碟在多碟游戏中的条目。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiscEntry {
+    /// 碟序(从 1 起)。
+    pub disc: u32,
+    /// 该碟的代表文件(cue/描述文件等),相对平台目录、正斜杠。
+    pub file: String,
+}
+
+/// 一个多碟游戏组。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultiDiscGame {
+    /// 去碟号后的游戏基名(用于 m3u 文件名/子文件夹名)。
+    pub base: String,
+    /// 按碟序排序的各碟。
+    pub discs: Vec<DiscEntry>,
+}
+
+/// 从单个(已单碟去重的)代表文件路径解析 (分组键, 碟序)。
+/// 优先父文件夹的碟号标记(folder-per-disc),否则退回文件名标记(flat)。
+fn disc_key(file: &str) -> Option<(String, u32)> {
+    let norm = file.replace('\\', "/");
+    let segs: Vec<&str> = norm.split('/').filter(|s| !s.is_empty()).collect();
+    if segs.is_empty() {
+        return None;
+    }
+    // 1) 父文件夹标记(每碟一个文件夹)
+    if segs.len() >= 2 {
+        let folder = segs[segs.len() - 2];
+        if let Some(m) = parse_disc_marker(folder) {
+            let prefix = segs[..segs.len() - 2].join("/");
+            let key = if prefix.is_empty() {
+                m.base
+            } else {
+                format!("{prefix}/{}", m.base)
+            };
+            return Some((key, m.disc));
+        }
+    }
+    // 2) 文件名标记(平铺)
+    let filename = segs[segs.len() - 1];
+    let stem = filename
+        .rsplit_once('.')
+        .map(|(s, _)| s)
+        .unwrap_or(filename);
+    if let Some(m) = parse_disc_marker(stem) {
+        let prefix = segs[..segs.len() - 1].join("/");
+        let key = if prefix.is_empty() {
+            m.base
+        } else {
+            format!("{prefix}/{}", m.base)
+        };
+        return Some((key, m.disc));
+    }
+    None
+}
+
+/// 从代表文件列表中识别多碟游戏组(仅返回碟数 ≥2 的组)。
+/// 调用方应只对光盘平台的文件调用本函数。
+pub fn detect_multidisc_groups(files: &[String]) -> Vec<MultiDiscGame> {
+    use std::collections::BTreeMap;
+    // 保持稳定顺序:按基名排序;组内按碟序排序、同碟号去重(保留首个)。
+    let mut groups: BTreeMap<String, Vec<DiscEntry>> = BTreeMap::new();
+    for file in files {
+        if let Some((key, disc)) = disc_key(file) {
+            let entry = DiscEntry {
+                disc,
+                file: file.replace('\\', "/"),
+            };
+            groups.entry(key).or_default().push(entry);
+        }
+    }
+    let mut result = Vec::new();
+    for (base, mut discs) in groups {
+        discs.sort_by(|a, b| a.disc.cmp(&b.disc).then_with(|| a.file.cmp(&b.file)));
+        discs.dedup_by_key(|d| d.disc);
+        if discs.len() >= 2 {
+            result.push(MultiDiscGame { base, discs });
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,5 +308,68 @@ mod tests {
         assert_eq!(parse_disc_marker("三国志2 (简) (v20120913)"), None);
         assert_eq!(parse_disc_marker("Sonic CD"), None); // CD 无数字
         assert_eq!(parse_disc_marker("Discovery"), None); // 非独立 disc 标记
+    }
+
+    #[test]
+    fn groups_folder_per_disc_with_inner_disc_marker() {
+        // D之食卓:文件夹 Disc A/B/C,内层文件名又带 (Disc N)——应按文件夹分同一组。
+        let files = vec![
+            "D之食卓[简]Disc A/D no Shokutaku (Disc 1).cue".to_string(),
+            "D之食卓[简]Disc B/D no Shokutaku (Disc 2).cue".to_string(),
+            "D之食卓[简]Disc C/D no Shokutaku (Disc 3).cue".to_string(),
+        ];
+        let groups = detect_multidisc_groups(&files);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].base, "D之食卓[简]");
+        assert_eq!(
+            groups[0].discs.iter().map(|d| d.disc).collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn groups_folder_per_disc_simple() {
+        let files = vec![
+            "世纪末吸血鬼[简][xjsxjs197]Disc A/世纪末吸血鬼A.cue".to_string(),
+            "世纪末吸血鬼[简][xjsxjs197]Disc B/世纪末吸血鬼B.cue".to_string(),
+        ];
+        let groups = detect_multidisc_groups(&files);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].base, "世纪末吸血鬼[简][xjsxjs197]");
+        assert_eq!(groups[0].discs.len(), 2);
+    }
+
+    #[test]
+    fn groups_cd_chapter_folders() {
+        let files = vec![
+            "东京魔人学园CD1阳之章/game1.cue".to_string(),
+            "东京魔人学园CD2阴之章/game2.cue".to_string(),
+        ];
+        let groups = detect_multidisc_groups(&files);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].base, "东京魔人学园");
+    }
+
+    #[test]
+    fn groups_flat_disc_files() {
+        let files = vec![
+            "Final Fantasy VII (Disc 1).chd".to_string(),
+            "Final Fantasy VII (Disc 2).chd".to_string(),
+            "Final Fantasy VII (Disc 3).chd".to_string(),
+        ];
+        let groups = detect_multidisc_groups(&files);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].base, "Final Fantasy VII");
+        assert_eq!(groups[0].discs.len(), 3);
+    }
+
+    #[test]
+    fn single_disc_and_unrelated_not_grouped() {
+        let files = vec![
+            "单碟游戏/game.cue".to_string(),
+            "三国志2.md".to_string(),
+            "孤单 (Disc 1).cue".to_string(), // 只有一碟,不成组
+        ];
+        assert!(detect_multidisc_groups(&files).is_empty());
     }
 }
