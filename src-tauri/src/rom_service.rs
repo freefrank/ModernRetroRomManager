@@ -496,6 +496,58 @@ fn fill_missing_temp_media(game: &mut PegasusGame, base_dir: &Path, rom_file: &s
     fill_missing_temp_media_from_index(game, &index, rom_file);
 }
 
+/// 光盘平台(一张盘对应多个轨道/描述文件)。
+fn is_disc_platform(system_lower: &str) -> bool {
+    matches!(
+        system_lower,
+        "ps" | "ps1"
+            | "psx"
+            | "playstation"
+            | "ps1 hack"
+            | "ss"
+            | "saturn"
+            | "dc"
+            | "dreamcast"
+            | "mdcd"
+            | "segacd"
+            | "pcecd"
+            | "3do"
+    )
+}
+
+/// 临时元数据加载走独立路径,绕过了 scan_rom_files 的去重与 BIOS 排除。
+/// 此处对每个条目复用同样规则:全平台排除 BIOS;光盘平台一张盘只保留一个描述
+/// 文件(cue/mds),同名载荷轨(bin/img/mdf/ccd)与子码(sub)不单独成条。
+fn keep_temp_metadata_entry(
+    file: &str,
+    all_files_lower: &std::collections::HashSet<String>,
+    system_lower: &str,
+) -> bool {
+    let basename = file
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(file)
+        .to_lowercase();
+    if is_bios_file(&basename) {
+        return false;
+    }
+    if !is_disc_platform(system_lower) {
+        return true;
+    }
+    let lower = file.to_lowercase();
+    let Some((stem, ext)) = lower.rsplit_once('.') else {
+        return true;
+    };
+    let has_sibling = |extension: &str| all_files_lower.contains(&format!("{stem}.{extension}"));
+    match ext {
+        "sub" => false,
+        "bin" | "img" => !has_sibling("cue") && !has_sibling("ccd"),
+        "mdf" => !has_sibling("mds"),
+        "ccd" => !has_sibling("cue"),
+        _ => true,
+    }
+}
+
 /// 尝试从临时元数据加载 ROM 列表
 fn try_load_from_temp_metadata(
     library_path: &Path,
@@ -527,12 +579,26 @@ fn try_load_from_temp_metadata(
         // rescanning every ROM file on a network library.
         let source_media = read_emulationstation_media_assets(rom_dir);
         let media_index = build_temp_media_index(&base_dir);
+        // 去重/BIOS 判断需要全量文件名集合(小写)。
+        let all_files_lower: std::collections::HashSet<String> = metadata
+            .games
+            .iter()
+            .filter_map(|game| game.file.as_deref())
+            .map(|file| file.to_lowercase())
+            .collect();
+        let system_lower = system_name.to_lowercase();
         let roms: Vec<RomInfo> = metadata
             .games
             .into_iter()
             .filter_map(|g| {
                 // 必须有文件名
                 let file_name = g.file.clone()?;
+
+                // 光盘去重与 BIOS 排除(临时加载路径绕过了 scan 的同类处理)
+                if !keep_temp_metadata_entry(&file_name, &all_files_lower, &system_lower) {
+                    return None;
+                }
+
                 let rom_path = rom_dir.join(&file_name);
 
                 // 验证文件存在性 (快速检查)
@@ -1878,6 +1944,55 @@ mod tests {
         );
         assert_eq!(roms.len(), 2, "载荷轨/子码/BIOS 不应成为游戏: {files:?}");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn temp_metadata_dedupes_disc_tracks_and_bios() {
+        let files: std::collections::HashSet<String> = [
+            r"SD高达G世纪\SD高达G世纪.bin",
+            r"SD高达G世纪\SD高达G世纪.cue",
+            r"SD高达G世纪\专用BIOS.bin",
+            r"SNK\SNK Fan Collection - Garou Densetsu (Japan).bin",
+            r"SNK\SNK Fan Collection - Garou Densetsu (Japan).cue",
+        ]
+        .iter()
+        .map(|f| f.to_lowercase())
+        .collect();
+
+        // PS1:同名 cue 存在时 bin 被去重,BIOS 排除,cue 保留
+        assert!(keep_temp_metadata_entry(
+            r"SD高达G世纪\SD高达G世纪.cue",
+            &files,
+            "ps1"
+        ));
+        assert!(!keep_temp_metadata_entry(
+            r"SD高达G世纪\SD高达G世纪.bin",
+            &files,
+            "ps1"
+        ));
+        assert!(!keep_temp_metadata_entry(
+            r"SD高达G世纪\专用BIOS.bin",
+            &files,
+            "ps1"
+        ));
+        assert!(keep_temp_metadata_entry(
+            r"SNK\SNK Fan Collection - Garou Densetsu (Japan).cue",
+            &files,
+            "ps1"
+        ));
+        assert!(!keep_temp_metadata_entry(
+            r"SNK\SNK Fan Collection - Garou Densetsu (Japan).bin",
+            &files,
+            "ps1"
+        ));
+
+        // 非光盘平台:只排除 BIOS,不动 bin
+        let sfc: std::collections::HashSet<String> =
+            ["game.sfc".to_string(), "gba_bios.bin".to_string()]
+                .into_iter()
+                .collect();
+        assert!(keep_temp_metadata_entry("game.sfc", &sfc, "sfc"));
+        assert!(!keep_temp_metadata_entry("gba_bios.bin", &sfc, "sfc"));
     }
 
     #[test]
