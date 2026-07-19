@@ -385,34 +385,63 @@ fn find_temp_metadata(source_directory: &Path, system: &str) -> Result<PathBuf, 
         .ok_or_else(|| format!("没有找到 {system} 的临时抓取元数据"))
 }
 
-fn collect_files(directory: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-    if !directory.exists() {
-        return Ok(());
-    }
-    for entry in fs::read_dir(directory).map_err(|error| error.to_string())? {
-        let path = entry.map_err(|error| error.to_string())?.path();
-        if path.is_dir() {
-            collect_files(&path, files)?;
-        } else {
-            files.push(path);
+/// 收集元数据实际引用到的全部媒体相对路径(`media/<game>/<asset>.<ext>`)。
+/// 只导出被追踪的资源,既不漏(与扩展名无关)、也不产生孤儿。
+fn referenced_media_paths(games: &[PegasusGame]) -> std::collections::BTreeSet<String> {
+    let mut set = std::collections::BTreeSet::new();
+    let mut push = |value: &Option<String>| {
+        if let Some(raw) = value {
+            let normalized = raw.replace('\\', "/");
+            let trimmed = normalized.strip_prefix("./").unwrap_or(&normalized);
+            if !trimmed.is_empty() {
+                set.insert(trimmed.to_string());
+            }
         }
+    };
+    for game in games {
+        push(&game.box_front);
+        push(&game.box_back);
+        push(&game.box_spine);
+        push(&game.box_full);
+        push(&game.cartridge);
+        push(&game.logo);
+        push(&game.marquee);
+        push(&game.bezel);
+        push(&game.gridicon);
+        push(&game.flyer);
+        push(&game.background);
+        push(&game.music);
+        push(&game.screenshot);
+        push(&game.titlescreen);
+        push(&game.video);
     }
-    Ok(())
+    set
 }
 
-fn copy_media(
-    source: &Path,
+/// 按引用清单复制媒体:每个相对路径优先取 `primary_root`(临时抓取目录,最新),
+/// 回退 `fallback_root`(源库已应用媒体);两处都没有则跳过(引用悬空,数据问题)。
+fn copy_referenced_media(
+    referenced: &std::collections::BTreeSet<String>,
+    primary_root: &Path,
+    fallback_root: &Path,
     target: &Path,
     progress: &dyn Fn(usize, String),
 ) -> Result<usize, String> {
-    let mut files = Vec::new();
-    collect_files(source, &mut files)?;
-    let total = files.len().max(1);
-    for (index, source_file) in files.iter().enumerate() {
+    let total = referenced.len().max(1);
+    let mut copied = 0usize;
+    for (index, relative) in referenced.iter().enumerate() {
         check_export_cancelled()?;
-        let relative = source_file
-            .strip_prefix(source)
-            .map_err(|error| error.to_string())?;
+        let primary = primary_root.join(relative);
+        let source_file = if primary.is_file() {
+            primary
+        } else {
+            let fallback = fallback_root.join(relative);
+            if fallback.is_file() {
+                fallback
+            } else {
+                continue;
+            }
+        };
         let target_file = target.join(relative);
         if let Some(parent) = target_file.parent() {
             fs::create_dir_all(parent).map_err(|error| error.to_string())?;
@@ -425,24 +454,16 @@ fn copy_media(
             .metadata()
             .is_ok_and(|metadata| metadata.is_file() && metadata.len() == source_size);
         if !unchanged {
-            fs::copy(source_file, &target_file)
+            fs::copy(&source_file, &target_file)
                 .map_err(|error| format!("复制媒体 {} 失败: {error}", source_file.display()))?;
         }
+        copied += 1;
         progress(
             20 + ((index + 1) * 70 / total),
-            format!(
-                "导出媒体: {}/{}{}",
-                index + 1,
-                files.len(),
-                if unchanged {
-                    "（已跳过同大小文件）"
-                } else {
-                    ""
-                }
-            ),
+            format!("导出媒体: {}/{}", index + 1, referenced.len()),
         );
     }
-    Ok(files.len())
+    Ok(copied)
 }
 
 fn export_pegasus(
@@ -746,6 +767,14 @@ fn export_system_data(
         CopyMode::All
     };
 
+    // 有临时元数据时,媒体改由 copy_referenced_media 按引用精确导出;主库复制跳过整个
+    // media/ 子树,避免白名单漏拷非常规扩展名(如 .ico/.php)以及复制出无人引用的孤儿。
+    let skip_media_subtree = metadata.is_some();
+    let media_root_dir = source_directory.join("media");
+    let skip_for_copy = |path: &Path| -> bool {
+        skip_hidden_source(path) || (skip_media_subtree && path == media_root_dir.as_path())
+    };
+
     // 导出到外部目录时:先清理(单向同步删除目标中源已隐藏/删除的 ROM),再同步(复制)。
     if copies_library {
         if sync_delete {
@@ -758,7 +787,7 @@ fn export_system_data(
             &source_directory,
             &target,
             copy_mode,
-            &skip_hidden_source,
+            &skip_for_copy,
             progress,
         )?;
     }
@@ -815,9 +844,13 @@ fn export_system_data(
             message,
         )
     };
-    let media_count = copy_media(
-        &temp_directory.join("media"),
-        &target.join("media"),
+    // 只导出元数据实际引用的媒体:优先取临时抓取目录(最新),回退源库已应用媒体。
+    let referenced = referenced_media_paths(&metadata.games);
+    let media_count = copy_referenced_media(
+        &referenced,
+        temp_directory,
+        &source_directory,
+        &target,
         &media_progress,
     )?;
 
@@ -1378,6 +1411,52 @@ mod tests {
 
         assert_eq!(copy_directory_contents(&source, &target).unwrap(), 1);
         assert_eq!(fs::read(target.join("game.gba")).unwrap(), b"old");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn referenced_media_copy_pulls_only_tracked_assets_extension_agnostic() {
+        let root = std::env::temp_dir().join(format!("mrrm-refmedia-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let temp = root.join("temp");
+        let source = root.join("source");
+        let target = root.join("target");
+        // 追踪的资源:temp 优先命中 boxfront(.php 端点也照拷)、source 回退命中 logo;
+        // titlescreen 无对应文件 -> 跳过;orphan.png 未被引用 -> 不拷。
+        fs::create_dir_all(temp.join("media/game")).unwrap();
+        fs::create_dir_all(source.join("media/game")).unwrap();
+        fs::write(temp.join("media/game/boxfront.php"), b"img-new").unwrap();
+        fs::write(source.join("media/game/logo.png"), b"img-old").unwrap();
+        fs::write(source.join("media/game/orphan.png"), b"orphan").unwrap();
+
+        let mut g = game();
+        g.box_front = Some("media/game/boxfront.php".into());
+        g.logo = Some("media/game/logo.png".into());
+        g.screenshot = None;
+        g.titlescreen = Some("media/game/titlescreen.png".into());
+
+        let referenced = referenced_media_paths(std::slice::from_ref(&g));
+        let copied =
+            copy_referenced_media(&referenced, &temp, &source, &target, &|_, _| {}).unwrap();
+
+        assert_eq!(
+            copied, 2,
+            "命中 boxfront(temp) 与 logo(source),titlescreen 缺失跳过"
+        );
+        assert_eq!(
+            fs::read(target.join("media/game/boxfront.php")).unwrap(),
+            b"img-new",
+            ".php 端点媒体照样导出(不受扩展名白名单影响)"
+        );
+        assert!(target.join("media/game/logo.png").exists(), "回退源库命中");
+        assert!(
+            !target.join("media/game/orphan.png").exists(),
+            "未被引用的孤儿不导出"
+        );
+        assert!(
+            !target.join("media/game/titlescreen.png").exists(),
+            "无对应文件的引用跳过"
+        );
         let _ = fs::remove_dir_all(&root);
     }
 
