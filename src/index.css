@@ -112,6 +112,18 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color var(--motion-normal) var(--motion-easing), color var(--motion-normal) var(--motion-easing);
+  /* 桌面应用:UI 固定文字默认不可选,避免误选界面标签。 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 输入类元素与可复制的动态内容(ROM 名/描述等,挂 .select-text)恢复可选。 */
+input,
+textarea,
+[contenteditable="true"],
+.select-text {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Scrollbar */

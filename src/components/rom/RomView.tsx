@@ -196,7 +196,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, show
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-bg-tertiary to-bg-secondary flex flex-col items-center justify-center gap-2 px-2 py-3">
           <Gamepad2 className="w-10 h-10 shrink-0 text-text-muted/20 group-hover:text-accent-primary/30 transition-colors duration-[var(--motion-normal)] ease-[var(--motion-easing)]" />
-          <span className="w-full text-center text-xs font-medium text-text-secondary line-clamp-3 break-all">
+          <span className="select-text w-full text-center text-xs font-medium text-text-secondary line-clamp-3 break-all">
             {displayName}
           </span>
         </div>
@@ -204,7 +204,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, show
 
       {/* Hover overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/90 via-bg-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-normal)] ease-[var(--motion-easing)] flex flex-col justify-end p-3">
-        <h3 className="text-sm font-semibold text-text-primary truncate transform translate-y-2 group-hover:translate-y-0 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)]">
+        <h3 className="select-text text-sm font-semibold text-text-primary truncate transform translate-y-2 group-hover:translate-y-0 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-easing)]">
           {displayName}
         </h3>
         <span className="text-[10px] text-text-secondary uppercase tracking-wider">
@@ -320,7 +320,7 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showF
 
       <div className="p-4">
         <h3
-          className="font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
+          className="select-text font-semibold text-text-primary truncate mb-1 group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
           title={displayName}
         >
           {displayName}
@@ -391,10 +391,10 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFi
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-text-primary group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] truncate">
+          <div className="select-text font-medium text-text-primary group-hover:text-accent-primary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] truncate">
             {displayName}
           </div>
-          <div className="text-xs text-text-muted truncate">
+          <div className="select-text text-xs text-text-muted truncate">
             {rom.directory}
           </div>
         </div>

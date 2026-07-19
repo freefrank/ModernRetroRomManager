@@ -281,7 +281,7 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
                     className="font-bold"
                   />
                 ) : (
-                  <h2 className="text-3xl font-bold text-text-primary leading-tight">
+                  <h2 className="select-text text-3xl font-bold text-text-primary leading-tight">
                     {displayName}
                   </h2>
                 )}
@@ -426,7 +426,7 @@ export default function RomDetail({ rom: selectedRom, onClose }: RomDetailProps)
                     className="w-full bg-bg-primary p-3 text-sm text-text-primary placeholder:text-text-muted rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default hover:border-border-hover focus:border-border-highlight focus-visible:outline-none transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] resize-none font-medium leading-relaxed"
                   />
                 ) : (
-                  <p className="text-text-secondary leading-relaxed text-sm font-medium">
+                  <p className="select-text text-text-secondary leading-relaxed text-sm font-medium">
                     {currentData?.description || currentData?.summary || t("romDetail.fields.noDescription")}
                   </p>
                 )}
@@ -530,7 +530,7 @@ function InfoItem({ icon, label, value }: { icon: React.ReactNode, label: string
       <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-bg-tertiary flex items-center justify-center text-accent-primary shrink-0 border-[length:var(--border-width)] border-border-default">{icon}</div>
       <div className="min-w-0">
         <div className="text-[9px] font-bold text-text-muted uppercase tracking-widest leading-none mb-1">{label}</div>
-        <div className="text-sm font-bold text-text-primary truncate">{value || t("common.notAvailable")}</div>
+        <div className="select-text text-sm font-bold text-text-primary truncate">{value || t("common.notAvailable")}</div>
       </div>
     </div>
   );
