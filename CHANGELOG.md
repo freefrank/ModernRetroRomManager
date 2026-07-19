@@ -6,6 +6,38 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-19
+
+### English
+
+#### Added
+
+- ROM library right-click menu: open file location, hide / unhide, and permanently delete a ROM. Hidden ROMs are excluded from the library list (a toolbar toggle reveals them, greyed out) and are not written to gamelist/pegasus on export, so they never sync to your frontend or emulator.
+- Multi-select toolbar gains a batch delete action; in multi-select mode clicking anywhere on a card toggles its selection, and the checkbox hit area is enlarged for easier clicking.
+- The ROM library home page now has a Save button that writes scraped data for every pending platform back to its ROM directory in one click.
+- Export page gains a one-way sync option: exporting also deletes ROMs at the target that are hidden or removed in your library, keeping the target in sync. BIOS files are always kept and copied.
+- Batch scraping now re-includes already-scraped ROMs that are missing any selected media type (e.g. video), fetching only the missing assets from cache without re-downloading existing ones.
+
+#### Fixed
+
+- ROM directories named with common aliases (`genesis`/`megadrive` → MD, `snes` → SFC, `saturn` → SS, etc.) now load the built-in Chinese database correctly, so MegaDrive and other non-standard folder names resolve English titles again.
+- Libraries with temporary metadata (PS1/SS and others) now apply disc-track dedup and BIOS exclusion on load: the same disc no longer appears as both `.bin` and `.cue`, and dedicated BIOS files no longer show up as games.
+
+### 简体中文
+
+#### 新增
+
+- ROM 库右键菜单：打开文件位置、隐藏 / 取消隐藏、永久删除 ROM。隐藏的 ROM 从库列表隐去（工具栏开关可查看、灰显），且导出时不写入 gamelist/pegasus，因此不会同步到前端与模拟器。
+- 多选浮动栏新增批量删除；多选模式下点击卡片任意位置即可切换选中，复选框点击热区扩大更易点中。
+- ROM 库主页新增保存按钮，一键把所有待保存平台的抓取数据写回各自 ROM 目录。
+- 导出页新增单向同步开关：导出时会删除目标目录中已在 ROM 库隐藏或删除的 ROM，使目标与库保持一致；BIOS 文件始终保留并复制。
+- 批量抓取现在会重新纳入已抓取但缺少任一选中媒体类型（如 video）的 ROM，仅从缓存补下载缺失资源，不重复下载已有资源。
+
+#### 修复
+
+- ROM 目录使用常见别名（`genesis`/`megadrive` → MD、`snes` → SFC、`saturn` → SS 等）时也能正确加载内置中文库，MegaDrive 等非标准目录名重新可以解析英文名去搜索。
+- 有临时元数据的库（PS1/SS 等）加载时也应用光盘去重与 BIOS 排除：同一张盘不再 `.bin`/`.cue` 双列，专用 BIOS 不再作为游戏出现。
+
 ## [1.1.0] - 2026-07-18
 
 ### English
