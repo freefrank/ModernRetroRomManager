@@ -17,6 +17,10 @@ interface RomViewProps {
   selectedIds: Set<string>;
   onRomClick: (rom: Rom) => void;
   onToggleSelect: (id: string) => void;
+  /** 判断某 ROM 是否被隐藏(隐藏项灰显) */
+  isRomHidden?: (rom: Rom) => boolean;
+  /** 右键卡片时打开自定义菜单 */
+  onRomContextMenu?: (rom: Rom, event: React.MouseEvent) => void;
 }
 
 // 获取 ROM 封面路径，优先使用 temp_data
@@ -147,6 +151,8 @@ interface CardProps {
   onToggleSelect: (id: string) => void;
   language?: string;
   showFileName?: boolean;
+  isHidden?: boolean;
+  onContextMenu?: (rom: Rom, event: React.MouseEvent) => void;
 }
 
 // 根据显示模式解析卡片标题:文件名模式直接用原始文件名,否则用游戏名
@@ -155,7 +161,7 @@ function resolveCardName(rom: Rom, language: string | undefined, showFileName: b
 }
 
 // Cover Card - Compact, image-focused
-function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false }: CardProps) {
+function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false, isHidden = false, onContextMenu }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
   const displayName = resolveCardName(rom, language, showFileName);
   const [imgError, setImgError] = useState(false);
@@ -164,10 +170,12 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, show
   return (
     <div
       onClick={() => onRomClick(rom)}
+      onContextMenu={onContextMenu ? (event) => { event.preventDefault(); onContextMenu(rom, event); } : undefined}
       className={clsx(
         "rr-card group relative aspect-[3/4] rounded-[var(--radius-md)] overflow-hidden cursor-pointer",
         "border-[length:var(--border-width)]",
         "transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)]",
+        isHidden && "opacity-40",
         isSelected
           ? "border-accent-primary ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary"
           : "border-transparent"
@@ -231,7 +239,7 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, show
 }
 
 // Grid Card - Larger with metadata
-function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false }: CardProps) {
+function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false, isHidden = false, onContextMenu }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
   const displayName = resolveCardName(rom, language, showFileName);
   const [imgError, setImgError] = useState(false);
@@ -240,9 +248,11 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showF
   return (
     <div
       onClick={() => onRomClick(rom)}
+      onContextMenu={onContextMenu ? (event) => { event.preventDefault(); onContextMenu(rom, event); } : undefined}
       className={clsx(
         "rr-card group relative bg-bg-secondary rounded-[var(--radius-lg)] border-[length:var(--border-width)] overflow-hidden cursor-pointer",
         "transition-all duration-[var(--motion-normal)] ease-[var(--motion-easing)]",
+        isHidden && "opacity-40",
         isSelected
           ? "border-accent-primary ring-1 ring-accent-primary"
           : "border-border-default"
@@ -320,7 +330,7 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showF
 }
 
 // List Row - Compact table-like row
-function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false }: CardProps) {
+function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFileName = false, isHidden = false, onContextMenu }: CardProps) {
   const coverUrl = useMediaUrl(getRomCover(rom));
   const displayName = resolveCardName(rom, language, showFileName);
   const [imgError, setImgError] = useState(false);
@@ -328,8 +338,10 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFi
   return (
     <div
       onClick={() => onRomClick(rom)}
+      onContextMenu={onContextMenu ? (event) => { event.preventDefault(); onContextMenu(rom, event); } : undefined}
       className={clsx(
         "group flex items-center gap-4 px-4 py-3 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] cursor-pointer border-b border-border-default",
+        isHidden && "opacity-40",
         isSelected ? "bg-accent-primary/10 hover:bg-accent-primary/20" : "hover:bg-bg-tertiary"
       )}
     >
@@ -396,7 +408,7 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFi
 
 // ============ Main Component ============
 
-export default function RomView({ roms, viewMode, cardScale = 1, showFileName = false, selectedIds, onRomClick, onToggleSelect }: RomViewProps) {
+export default function RomView({ roms, viewMode, cardScale = 1, showFileName = false, selectedIds, onRomClick, onToggleSelect, isRomHidden, onRomContextMenu }: RomViewProps) {
   const { t, i18n } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
   const config = VIEW_CONFIG[viewMode];
@@ -506,6 +518,8 @@ export default function RomView({ roms, viewMode, cardScale = 1, showFileName = 
                   onToggleSelect={onToggleSelect}
                   language={i18n.resolvedLanguage}
                   showFileName={showFileName}
+                  isHidden={isRomHidden?.(rowRoms[0])}
+                  onContextMenu={onRomContextMenu}
                 />
               ) : (
                 // Grid/Cover view - multiple items per row
@@ -532,6 +546,8 @@ export default function RomView({ roms, viewMode, cardScale = 1, showFileName = 
                             onToggleSelect={onToggleSelect}
                             language={i18n.resolvedLanguage}
                             showFileName={showFileName}
+                            isHidden={isRomHidden?.(rom)}
+                            onContextMenu={onRomContextMenu}
                           />
                         ) : (
                           <GridCard
@@ -541,6 +557,8 @@ export default function RomView({ roms, viewMode, cardScale = 1, showFileName = 
                             onToggleSelect={onToggleSelect}
                             language={i18n.resolvedLanguage}
                             showFileName={showFileName}
+                            isHidden={isRomHidden?.(rom)}
+                            onContextMenu={onRomContextMenu}
                           />
                         )}
                       </div>

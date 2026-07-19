@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "游戏名",
       "file": "文件名"
+    },
+    "context": {
+      "hide": "隐藏",
+      "unhide": "取消隐藏",
+      "delete": "删除 ROM",
+      "showHidden": "显示隐藏项（{{count}}）",
+      "deleteConfirmTitle": "永久删除 ROM",
+      "deleteConfirmDesc": "确定要永久删除「{{name}}」吗？该操作会从磁盘抹除 ROM 文件（含同一游戏的多个轨道/文件），无法恢复。",
+      "deleteSuccess": "ROM 已删除",
+      "deleteFailed": "删除失败：{{error}}",
+      "hideFailed": "操作失败：{{error}}"
     }
   },
   "romDetail": {

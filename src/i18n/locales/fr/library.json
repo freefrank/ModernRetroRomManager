@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "Nom du jeu",
       "file": "Nom de fichier"
+    },
+    "context": {
+      "hide": "Masquer",
+      "unhide": "Afficher",
+      "delete": "Supprimer la ROM",
+      "showHidden": "Afficher les masqués ({{count}})",
+      "deleteConfirmTitle": "Supprimer définitivement la ROM",
+      "deleteConfirmDesc": "Supprimer définitivement « {{name}} » ? Cela efface le fichier ROM (y compris toutes les pistes/fichiers du même jeu) du disque et est irréversible.",
+      "deleteSuccess": "ROM supprimée",
+      "deleteFailed": "Échec de la suppression : {{error}}",
+      "hideFailed": "Échec de l'opération : {{error}}"
     }
   },
   "romDetail": {

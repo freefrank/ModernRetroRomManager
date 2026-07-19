@@ -14,9 +14,12 @@ import {
   Save,
   Tag,
   FileText,
+  Eye,
+  EyeOff,
+  Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useRomStore } from "@/stores/romStore";
+import { useRomStore, hiddenRomKey } from "@/stores/romStore";
 import { useAppStore } from "@/stores/appStore";
 import { clsx } from "clsx";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -47,6 +50,7 @@ function isAlreadyTranslated(rom: Rom, targetLanguage: string): boolean {
 }
 import RomDetail from "@/components/rom/RomDetail";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
+import RomContextMenu from "@/components/rom/RomContextMenu";
 
 const VIEW_MODES: { mode: ViewMode; icon: typeof Grid3X3; labelKey: string }[] = [
   { mode: "cover", icon: Grid3X3, labelKey: "library.viewMode.cover" },
@@ -76,6 +80,10 @@ export default function Library() {
     scanDirectories,
     exportData,
     isExporting,
+    hiddenKeys,
+    fetchHiddenRoms,
+    setRomHidden,
+    deleteRom,
   } = useRomStore();
   const activeLibrary = scanDirectories.find(item => item.isActive);
   const { viewMode, setViewMode, searchQuery, setSearchQuery, nameDisplayMode, setNameDisplayMode } = useAppStore();
@@ -91,28 +99,73 @@ export default function Library() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateProgress, setTranslateProgress] = useState({ current: 0, total: 0 });
   const translateCancelRef = useRef(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ rom: Rom; x: number; y: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Rom | null>(null);
 
   const systemData = systemRoms.find((s) => s.system === systemName);
   const romsOfSystem = useMemo(() => systemData?.roms ?? [], [systemData]);
 
+  const isRomHidden = useMemo(
+    () => (rom: Rom) => hiddenKeys.has(hiddenRomKey(rom.directory, rom.file)),
+    [hiddenKeys],
+  );
+
   useEffect(() => {
     if (systemName && !systemData) void fetchSystemRoms(systemName);
   }, [fetchSystemRoms, systemData, systemName]);
+
+  // 首次进入页面加载隐藏清单
+  useEffect(() => {
+    void fetchHiddenRoms();
+  }, [fetchHiddenRoms]);
+
+  const handleDeleteRom = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteRom(deleteTarget);
+      toast.success(t("library.context.deleteSuccess"));
+    } catch (error) {
+      toast.error(t("library.context.deleteFailed", { error: String(error) }));
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleToggleHidden = async (rom: Rom) => {
+    const hidden = isRomHidden(rom);
+    try {
+      await setRomHidden(rom, !hidden);
+    } catch (error) {
+      toast.error(t("library.context.hideFailed", { error: String(error) }));
+    }
+  };
 
   // 路由即为选中系统；数据随后按需加载，批量抓取等逻辑可立即拿到目标平台。
   useEffect(() => {
     setSelectedSystem(systemName ?? null);
   }, [systemName, setSelectedSystem]);
 
-  // 系统内搜索过滤
+  // 系统内搜索 + 隐藏过滤(未开启"显示隐藏"时排除隐藏项)
   const filteredRoms = useMemo(() => {
-    if (!debouncedSearch) return romsOfSystem;
-    const lowerQuery = debouncedSearch.toLowerCase();
-    return romsOfSystem.filter((r) =>
-      [r.name, r.chinese_name, r.english_name]
-        .some((name) => name?.toLowerCase().includes(lowerQuery)),
-    );
-  }, [romsOfSystem, debouncedSearch]);
+    let list = romsOfSystem;
+    if (!showHidden) {
+      list = list.filter((r) => !hiddenKeys.has(hiddenRomKey(r.directory, r.file)));
+    }
+    if (debouncedSearch) {
+      const lowerQuery = debouncedSearch.toLowerCase();
+      list = list.filter((r) =>
+        [r.name, r.chinese_name, r.english_name]
+          .some((name) => name?.toLowerCase().includes(lowerQuery)),
+      );
+    }
+    return list;
+  }, [romsOfSystem, debouncedSearch, showHidden, hiddenKeys]);
+
+  const hiddenCount = useMemo(
+    () => romsOfSystem.filter((r) => hiddenKeys.has(hiddenRomKey(r.directory, r.file))).length,
+    [romsOfSystem, hiddenKeys],
+  );
 
   const isPs3 = systemName.toLowerCase().includes("ps3");
   const hasPendingData = romsOfSystem.some((rom) => rom.has_temp_metadata);
@@ -517,6 +570,19 @@ export default function Library() {
             </IconButton>
           </div>
 
+          {/* 显示隐藏项开关(仅当存在隐藏项时出现) */}
+          {hiddenCount > 0 && (
+            <IconButton
+              size="sm"
+              variant={showHidden ? "primary" : "ghost"}
+              onClick={() => setShowHidden((value) => !value)}
+              title={t("library.context.showHidden", { count: hiddenCount })}
+              aria-label={t("library.context.showHidden", { count: hiddenCount })}
+            >
+              {showHidden ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            </IconButton>
+          )}
+
           {/* View Toggle */}
           <div className="flex items-center gap-1 p-1 bg-bg-secondary rounded-[var(--radius-md)] border-[length:var(--border-width)] border-border-default">
             {VIEW_MODES.map(({ mode, icon: Icon, labelKey }) => (
@@ -555,12 +621,57 @@ export default function Library() {
             selectedIds={selectedRomIds}
             onRomClick={setActiveRom}
             onToggleSelect={(id) => toggleRomSelection(id, true)}
+            isRomHidden={isRomHidden}
+            onRomContextMenu={(rom, event) =>
+              setContextMenu({ rom, x: event.clientX, y: event.clientY })
+            }
           />
         )}
       </div>
 
       {/* Detail Panel */}
       <RomDetail rom={activeRom} onClose={() => setActiveRom(null)} />
+
+      {/* ROM 右键菜单 */}
+      {contextMenu && (
+        <RomContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isHidden={isRomHidden(contextMenu.rom)}
+          onToggleHidden={() => void handleToggleHidden(contextMenu.rom)}
+          onDelete={() => setDeleteTarget(contextMenu.rom)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* 删除确认(永久删除,不可恢复) */}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <span className="flex items-center gap-3 text-accent-error">
+            <Trash2 className="w-5 h-5 shrink-0" />
+            {t("library.context.deleteConfirmTitle")}
+          </span>
+        }
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="danger" onClick={() => void handleDeleteRom()}>
+              <Trash2 className="w-4 h-4" />
+              {t("library.context.delete")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary leading-relaxed">
+          {t("library.context.deleteConfirmDesc", {
+            name: deleteTarget ? deleteTarget.file : "",
+          })}
+        </p>
+      </Dialog>
 
       {/* Batch Scrape Dialog */}
       <BatchScrapeDialog

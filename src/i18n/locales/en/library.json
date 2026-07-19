@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "Game name",
       "file": "File name"
+    },
+    "context": {
+      "hide": "Hide",
+      "unhide": "Unhide",
+      "delete": "Delete ROM",
+      "showHidden": "Show hidden ({{count}})",
+      "deleteConfirmTitle": "Permanently delete ROM",
+      "deleteConfirmDesc": "Permanently delete \"{{name}}\"? This erases the ROM file (including all tracks/files of the same game) from disk and cannot be undone.",
+      "deleteSuccess": "ROM deleted",
+      "deleteFailed": "Delete failed: {{error}}",
+      "hideFailed": "Operation failed: {{error}}"
     }
   },
   "romDetail": {

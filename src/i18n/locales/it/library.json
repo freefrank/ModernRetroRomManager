@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "Nome del gioco",
       "file": "Nome file"
+    },
+    "context": {
+      "hide": "Nascondi",
+      "unhide": "Mostra",
+      "delete": "Elimina ROM",
+      "showHidden": "Mostra nascosti ({{count}})",
+      "deleteConfirmTitle": "Elimina definitivamente la ROM",
+      "deleteConfirmDesc": "Eliminare definitivamente \"{{name}}\"? Questo cancella il file ROM (incluse tutte le tracce/file dello stesso gioco) dal disco e non può essere annullato.",
+      "deleteSuccess": "ROM eliminata",
+      "deleteFailed": "Eliminazione non riuscita: {{error}}",
+      "hideFailed": "Operazione non riuscita: {{error}}"
     }
   },
   "romDetail": {

@@ -54,16 +54,29 @@ function mapSummaries(summaries: RomSystemSummary[]): SystemInfo[] {
   }));
 }
 
+/** 隐藏 ROM 的匹配键:规范化目录 + "|" + 相对文件名。与后端 normalize_dir_key 一致。 */
+export function normalizeDirKey(directory: string): string {
+  return directory.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+export function hiddenRomKey(directory: string, file: string): string {
+  return `${normalizeDirKey(directory)}|${file}`;
+}
+
 interface RomState {
   // ROM 列表
   roms: Rom[];
   systemRoms: SystemRoms[];
   availableSystems: SystemInfo[];
   selectedSystem: string | null;
+  // 被隐藏 ROM 的键集合(hiddenRomKey)
+  hiddenKeys: Set<string>;
   setSelectedSystem: (system: string | null) => void;
   fetchRoms: (filter?: FilterOption) => Promise<void>;
   fetchLibrarySummary: () => Promise<void>;
   fetchSystemRoms: (system: string) => Promise<void>;
+  fetchHiddenRoms: () => Promise<void>;
+  setRomHidden: (rom: Rom, hidden: boolean) => Promise<void>;
+  deleteRom: (rom: Rom) => Promise<void>;
   scanLibrary: (full?: boolean) => Promise<void>;
   cancelScan: () => Promise<void>;
   initializeScanProgress: () => Promise<void>;
@@ -132,6 +145,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   systemRoms: [],
   availableSystems: [],
   selectedSystem: null,
+  hiddenKeys: new Set<string>(),
   isLoadingRoms: false,
   setSelectedSystem: (system: string | null) => {
     set({ selectedSystem: system });
@@ -153,10 +167,53 @@ export const useRomStore = create<RomState>((set, get) => ({
   fetchRoms: async (_filter?: FilterOption) => {
     const selected = get().selectedSystem;
     if (selected) {
-      await Promise.all([get().fetchLibrarySummary(), get().fetchSystemRoms(selected)]);
+      await Promise.all([
+        get().fetchLibrarySummary(),
+        get().fetchSystemRoms(selected),
+        get().fetchHiddenRoms(),
+      ]);
     } else {
-      await get().fetchLibrarySummary();
+      await Promise.all([get().fetchLibrarySummary(), get().fetchHiddenRoms()]);
     }
+  },
+
+  fetchHiddenRoms: async () => {
+    try {
+      const hidden = await api.getHiddenRoms();
+      set({ hiddenKeys: new Set(hidden.map((item) => `${item.directory}|${item.file}`)) });
+    } catch (error) {
+      console.error("Failed to fetch hidden ROMs:", error);
+    }
+  },
+
+  setRomHidden: async (rom: Rom, hidden: boolean) => {
+    await api.setRomHidden(rom.directory, rom.file, hidden);
+    const key = hiddenRomKey(rom.directory, rom.file);
+    set((state) => {
+      const next = new Set(state.hiddenKeys);
+      if (hidden) next.add(key);
+      else next.delete(key);
+      return { hiddenKeys: next };
+    });
+  },
+
+  deleteRom: async (rom: Rom) => {
+    await api.deleteRom(rom.directory, rom.file);
+    const key = hiddenRomKey(rom.directory, rom.file);
+    // 从当前列表移除该 ROM,并清理其隐藏键
+    set((state) => {
+      const next = new Set(state.hiddenKeys);
+      next.delete(key);
+      const removeFrom = (list: Rom[]) =>
+        list.filter((item) => !(item.directory === rom.directory && item.file === rom.file));
+      return {
+        hiddenKeys: next,
+        roms: removeFrom(state.roms),
+        systemRoms: state.systemRoms.map((sys) =>
+          sys.system === rom.system ? { ...sys, roms: removeFrom(sys.roms) } : sys,
+        ),
+      };
+    });
   },
 
   fetchLibrarySummary: async () => {

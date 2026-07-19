@@ -71,6 +71,21 @@ export const api = {
     return httpFetch<SystemRoms[]>("/roms");
   },
 
+  /** 获取全部被隐藏的 ROM(directory 已规范化) */
+  async getHiddenRoms(): Promise<{ directory: string; file: string }[]> {
+    return isTauri() ? tauriInvoke("get_hidden_roms") : [];
+  },
+
+  /** 设置单个 ROM 的隐藏状态 */
+  async setRomHidden(directory: string, file: string, hidden: boolean): Promise<void> {
+    if (isTauri()) await tauriInvoke("set_rom_hidden", { directory, file, hidden });
+  },
+
+  /** 永久删除 ROM 文件(不可恢复) */
+  async deleteRom(directory: string, file: string): Promise<void> {
+    if (isTauri()) await tauriInvoke("delete_rom", { directory, file });
+  },
+
   async getRomLibrarySummary(): Promise<RomSystemSummary[]> {
     if (isTauri()) {
       return tauriInvoke<RomSystemSummary[]>("get_rom_library_summary");

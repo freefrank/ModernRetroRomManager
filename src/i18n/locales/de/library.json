@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "Spielname",
       "file": "Dateiname"
+    },
+    "context": {
+      "hide": "Ausblenden",
+      "unhide": "Einblenden",
+      "delete": "ROM löschen",
+      "showHidden": "Ausgeblendete anzeigen ({{count}})",
+      "deleteConfirmTitle": "ROM endgültig löschen",
+      "deleteConfirmDesc": "„{{name}}“ endgültig löschen? Dies entfernt die ROM-Datei (einschließlich aller Tracks/Dateien desselben Spiels) von der Festplatte und kann nicht rückgängig gemacht werden.",
+      "deleteSuccess": "ROM gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen: {{error}}",
+      "hideFailed": "Vorgang fehlgeschlagen: {{error}}"
     }
   },
   "romDetail": {

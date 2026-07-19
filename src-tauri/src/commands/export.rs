@@ -627,6 +627,16 @@ fn export_system_data(
     if metadata.games.is_empty() {
         return Err("临时元数据中没有可导出的游戏".to_string());
     }
+    // 隐藏的 ROM 不写入 gamelist/pegasus,即不被同步到前端与模拟器。
+    let hidden_files = crate::commands::rom::hidden_files_for_directory(&directory);
+    if !hidden_files.is_empty() {
+        metadata.games.retain(|game| {
+            game.file
+                .as_deref()
+                .map(|file| !crate::commands::rom::file_matches_hidden(file, &hidden_files))
+                .unwrap_or(true)
+        });
+    }
     for game in &mut metadata.games {
         normalize_game_paths(game);
     }

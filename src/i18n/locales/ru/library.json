@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "Название игры",
       "file": "Имя файла"
+    },
+    "context": {
+      "hide": "Скрыть",
+      "unhide": "Показать",
+      "delete": "Удалить ROM",
+      "showHidden": "Показать скрытые ({{count}})",
+      "deleteConfirmTitle": "Удалить ROM навсегда",
+      "deleteConfirmDesc": "Удалить «{{name}}» навсегда? Файл ROM (включая все дорожки/файлы этой игры) будет стёрт с диска без возможности восстановления.",
+      "deleteSuccess": "ROM удалён",
+      "deleteFailed": "Не удалось удалить: {{error}}",
+      "hideFailed": "Не удалось выполнить: {{error}}"
     }
   },
   "romDetail": {

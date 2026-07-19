@@ -65,6 +65,17 @@
     "nameDisplay": {
       "game": "Nombre del juego",
       "file": "Nombre de archivo"
+    },
+    "context": {
+      "hide": "Ocultar",
+      "unhide": "Mostrar",
+      "delete": "Eliminar ROM",
+      "showHidden": "Mostrar ocultos ({{count}})",
+      "deleteConfirmTitle": "Eliminar ROM permanentemente",
+      "deleteConfirmDesc": "¿Eliminar permanentemente \"{{name}}\"? Esto borra el archivo ROM (incluidas todas las pistas/archivos del mismo juego) del disco y no se puede deshacer.",
+      "deleteSuccess": "ROM eliminada",
+      "deleteFailed": "Error al eliminar: {{error}}",
+      "hideFailed": "Error en la operación: {{error}}"
     }
   },
   "romDetail": {
