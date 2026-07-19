@@ -6,6 +6,50 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-19
+
+### English
+
+#### Added
+
+- Export can now write both `gamelist.xml` and `metadata.pegasus.txt` in a single pass, and this "both" option is the new default, so an exported library works with EmulationStation/batocera and Pegasus front-ends at the same time.
+- The batch action bar gains hide/unhide buttons for the current selection.
+
+#### Changed
+
+- Exported media is now copied strictly by metadata reference — only the assets the gamelist/pegasus actually tracks — independent of file extension. This ends both silently dropped media and unreferenced orphan files.
+- Multi-track disc games are de-duplicated on load: a single `.cue` referencing several `.bin` tracks (Track 1/2/…) keeps only the cue; `.mds/.mdf` and `.ccd/.img/.sub` sets behave the same.
+- Disc descriptor files (`cue/ccd/mds`) now report the whole game's size (folder or sum of tracks) instead of the few-KB descriptor.
+- Hidden ROMs are no longer copied to the export target (previously they were only omitted from the gamelist); BIOS files are still copied.
+- One-way sync now cleans the target before copying from the source.
+- The export dialog remembers the last-used export directory.
+- Console copy/scan/scrape progress updates in place on a single line instead of flooding new lines; console log text can now be selected and copied.
+
+#### Fixed
+
+- Scraped media from providers that serve images through `.php` endpoints (e.g. ScreenScraper) were saved with a `.php` extension; the extension is now taken from the response `Content-Type`.
+
+### 简体中文
+
+#### 新增
+
+- 导出可一次性同时写出 `gamelist.xml` 与 `metadata.pegasus.txt`，并将“两者都导出”设为默认，导出的库同时兼容 EmulationStation/batocera 与 Pegasus 前端。
+- 批量操作栏新增隐藏/取消隐藏按钮。
+
+#### 变更
+
+- 导出媒体改为严格按元数据引用复制（只导出 gamelist/pegasus 实际追踪的资源），与文件扩展名无关——不再静默漏拷媒体，也不再产生无人引用的孤儿文件。
+- 多轨光盘游戏加载时按文件夹去重：单个 `.cue` 引用多条 `.bin` 轨道（Track 1/2/…）只保留 cue；`.mds/.mdf`、`.ccd/.img/.sub` 同理。
+- 光盘描述文件（`cue/ccd/mds`）显示整个游戏的总大小（文件夹或多轨之和），而非仅描述文件本身的几 KB。
+- 隐藏的 ROM 不再复制到导出目标（此前仅从 gamelist 过滤）；BIOS 照常复制。
+- 单向同步改为先清理目标、再从源复制。
+- 导出界面记住上次使用的导出目录。
+- 控制台复制/扫描/抓取进度就地行内更新，不再逐帧刷屏；控制台日志可选中复制。
+
+#### 修复
+
+- 部分通过 `.php` 端点返回图片的抓取源（如 ScreenScraper），媒体被存成 `.php` 后缀；现改为按响应 `Content-Type` 确定扩展名。
+
 ## [1.2.5] - 2026-07-19
 
 ### English
