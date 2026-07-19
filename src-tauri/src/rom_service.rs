@@ -127,6 +127,19 @@ fn fill_file_metadata(rom: &mut RomInfo, rom_path: &Path) {
             rom.file_size = Some(total);
         }
     }
+    // 多碟 m3u:大小取同名子文件夹 <基名>/(各碟都塞在里面)的总占用。
+    let is_m3u = Path::new(&rom.file)
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| value.eq_ignore_ascii_case("m3u"));
+    if is_m3u {
+        if let (Some(parent), Some(stem)) = (rom_path.parent(), rom_path.file_stem()) {
+            let folder = parent.join(stem);
+            if folder.is_dir() {
+                rom.file_size = Some(directory_total_size(&folder));
+            }
+        }
+    }
 }
 
 /// 系统 ROM 列表
@@ -558,7 +571,7 @@ fn fill_missing_temp_media(game: &mut PegasusGame, base_dir: &Path, rom_file: &s
 }
 
 /// 光盘平台(一张盘对应多个轨道/描述文件)。
-fn is_disc_platform(system_lower: &str) -> bool {
+pub(crate) fn is_disc_platform(system_lower: &str) -> bool {
     matches!(
         system_lower,
         "ps" | "ps1"

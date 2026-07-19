@@ -36,7 +36,8 @@
       "save": "Сохранить",
       "saveHint": "Сохранить метаданные Pegasus, gamelist.xml и изображения в папку ROM",
       "saveSuccess": "Метаданные Pegasus, gamelist.xml и ресурсы сохранены",
-      "saveFailed": "Ошибка сохранения: {{error}}"
+      "saveFailed": "Ошибка сохранения: {{error}}",
+      "multidiscOrganized": "Организовано игр с несколькими дисками: {{count}} (диски собраны в подпапку с плейлистом .m3u)"
     },
     "batch": {
       "selectedCount": "{{count}} выбрано",

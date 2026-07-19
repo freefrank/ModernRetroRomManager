@@ -36,7 +36,8 @@
       "save": "Save",
       "saveHint": "Save Pegasus metadata, gamelist.xml, and artwork into the ROM directory",
       "saveSuccess": "Pegasus metadata, gamelist.xml, and assets saved to the ROM directory",
-      "saveFailed": "Save failed: {{error}}"
+      "saveFailed": "Save failed: {{error}}",
+      "multidiscOrganized": "Organized {{count}} multi-disc game(s) (discs grouped into a subfolder with an .m3u playlist)"
     },
     "batch": {
       "selectedCount": "{{count}} selected",

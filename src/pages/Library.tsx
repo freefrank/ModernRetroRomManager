@@ -24,7 +24,7 @@ import { useAppStore } from "@/stores/appStore";
 import { clsx } from "clsx";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Rom, ViewMode } from "@/types";
-import { api, aiTranslationApi, ps3Api, scraperApi } from "@/lib/api";
+import { api, aiTranslationApi, ps3Api, scraperApi, isTauri } from "@/lib/api";
 import { romMetadata } from "@/lib/metadataTranslation";
 import { groupTranslationRequests } from "@/lib/translationBatch";
 import { Button, Dialog, EmptyState, IconButton, Input, toast } from "@/components/ui";
@@ -84,6 +84,7 @@ export default function Library() {
     fetchHiddenRoms,
     setRomHidden,
     deleteRom,
+    scanLibrary,
   } = useRomStore();
   const activeLibrary = scanDirectories.find(item => item.isActive);
   const { viewMode, setViewMode, searchQuery, setSearchQuery, nameDisplayMode, setNameDisplayMode } = useAppStore();
@@ -220,8 +221,26 @@ export default function Library() {
   const handleSaveToRomDirectory = async () => {
     if (!systemData || !hasPendingData) return;
     try {
+      // 写回前先做多碟物理整理(非光盘/无多碟为空操作),再原地写回元数据。
+      let organizedDiscGames = 0;
+      if (isTauri()) {
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          const report = await invoke<{ changed: boolean; groups: number }>(
+            "organize_multidisc_games",
+            { directory: systemData.path, system: systemData.system },
+          );
+          if (report?.changed) organizedDiscGames += report.groups;
+        } catch (error) {
+          console.error(`多碟整理失败 [${systemData.system}]:`, error);
+        }
+      }
       await exportData(systemData.system, systemData.path, "both", systemData.path, "original");
       toast.success(t("library.actions.saveSuccess"));
+      if (organizedDiscGames > 0) {
+        toast.info(t("library.actions.multidiscOrganized", { count: organizedDiscGames }));
+        await scanLibrary(true);
+      }
     } catch (error) {
       toast.error(t("library.actions.saveFailed", { error: String(error) }));
     }

@@ -36,7 +36,8 @@
       "save": "儲存",
       "saveHint": "將 Pegasus Metadata、gamelist.xml 和美術資源儲存到 ROM 目錄",
       "saveSuccess": "Pegasus Metadata、gamelist.xml 和資源已儲存",
-      "saveFailed": "儲存失敗：{{error}}"
+      "saveFailed": "儲存失敗：{{error}}",
+      "multidiscOrganized": "已整理 {{count}} 個多碟遊戲（各碟歸入子資料夾並產生 .m3u）"
     },
     "batch": {
       "selectedCount": "已選擇 {{count}} 項",

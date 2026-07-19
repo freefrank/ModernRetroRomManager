@@ -36,7 +36,8 @@
       "save": "Enregistrer",
       "saveHint": "Enregistrer les métadonnées Pegasus, gamelist.xml et les images dans le dossier ROM",
       "saveSuccess": "Métadonnées Pegasus, gamelist.xml et ressources enregistrés",
-      "saveFailed": "Échec : {{error}}"
+      "saveFailed": "Échec : {{error}}",
+      "multidiscOrganized": "{{count}} jeu(x) multi-disque organisé(s) (disques regroupés dans un sous-dossier avec playlist .m3u)"
     },
     "batch": {
       "selectedCount": "{{count}} sélectionné",

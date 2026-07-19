@@ -120,6 +120,7 @@ pub fn run() {
             // Tools
             commands::tools::update_cn_repo,
             commands::tools::organize_rom_archives,
+            commands::tools::organize_multidisc_games,
             // PS3
             commands::ps3::generate_ps3_boxart,
             // Theme

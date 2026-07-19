@@ -6,7 +6,7 @@ import { useRomStore } from "@/stores/romStore";
 import { Button, Card, EmptyState, toast } from "@/components/ui";
 import SystemCard from "@/components/rom/SystemCard";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
-import { api } from "@/lib/api";
+import { api, isTauri } from "@/lib/api";
 import type { GameSystem } from "@/types";
 
 const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
@@ -30,7 +30,7 @@ function findSystemLogo(
 export default function LibraryShelf() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { availableSystems, stats, systems, fetchSystems, scanDirectories, exportData, isExporting } = useRomStore();
+  const { availableSystems, stats, systems, fetchSystems, scanDirectories, exportData, scanLibrary, isExporting } = useRomStore();
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [isSavingLibrary, setIsSavingLibrary] = useState(false);
   const [mappedLogos, setMappedLogos] = useState<Record<string, string>>({});
@@ -38,6 +38,8 @@ export default function LibraryShelf() {
 
   // 把整个库中所有含待保存抓取数据的平台逐个原地写回 ROM 目录
   // (整库导出命令不允许原地写回,因此逐平台走单系统保存路径)。
+  // 写回前先做多碟物理整理:各碟塞进 <基名>/ 子文件夹、外层写 <基名>.m3u,
+  // 并把临时元数据里的各碟折叠成一条指向 m3u 的记录(命令对非光盘/无多碟为空操作)。
   const handleSaveLibrary = async () => {
     setIsSavingLibrary(true);
     try {
@@ -49,10 +51,31 @@ export default function LibraryShelf() {
         toast.info(t("library.shelf.saveNoPending"));
         return;
       }
+      let organizedDiscGames = 0;
+      const invoke = isTauri()
+        ? (await import("@tauri-apps/api/core")).invoke
+        : null;
       for (const sys of pending) {
+        if (invoke) {
+          try {
+            const report = await invoke<{ changed: boolean; groups: number }>(
+              "organize_multidisc_games",
+              { directory: sys.path, system: sys.system },
+            );
+            if (report?.changed) organizedDiscGames += report.groups;
+          } catch (error) {
+            // 整理失败不应阻断保存:记录并继续原地写回。
+            console.error(`多碟整理失败 [${sys.system}]:`, error);
+          }
+        }
         await exportData(sys.system, sys.path, "both", sys.path, "original");
       }
       toast.success(t("library.shelf.saveSuccess", { count: pending.length }));
+      if (organizedDiscGames > 0) {
+        toast.info(t("library.actions.multidiscOrganized", { count: organizedDiscGames }));
+        // 折叠改动了临时元数据:全量重扫,库视图各多碟游戏收成一条。
+        await scanLibrary(true);
+      }
     } catch (error) {
       toast.error(t("library.actions.saveFailed", { error: String(error) }));
     } finally {

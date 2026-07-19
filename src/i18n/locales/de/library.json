@@ -36,7 +36,8 @@
       "save": "Speichern",
       "saveHint": "Pegasus-Metadaten, gamelist.xml und Bilder im ROM-Ordner speichern",
       "saveSuccess": "Pegasus-Metadaten, gamelist.xml und Dateien gespeichert",
-      "saveFailed": "Speichern fehlgeschlagen: {{error}}"
+      "saveFailed": "Speichern fehlgeschlagen: {{error}}",
+      "multidiscOrganized": "{{count}} Multi-Disc-Spiel(e) organisiert (Discs in einem Unterordner mit .m3u-Playlist)"
     },
     "batch": {
       "selectedCount": "{{count}} ausgewählt",

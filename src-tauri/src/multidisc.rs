@@ -1,6 +1,6 @@
-// 骨架阶段:检测原语先落地,分组/m3u/导出接线后移除本 allow。
-#![allow(dead_code)]
-//! 多碟游戏检测:从 ROM 文件/文件夹名解析碟号,把同一游戏的多张碟归为一组。
+//! 多碟游戏检测与整理:从 ROM 文件/文件夹名解析碟号,把同一游戏的多张碟归为一组,
+//! 并在保存时物理整理源库(各碟塞进 `<基名>/` 子文件夹、外层写 `<基名>.m3u`)、
+//! 把临时元数据里的各碟折叠成一条指向 m3u 的记录。
 //!
 //! 支持的碟号标记(大小写不敏感):
 //! - `(Disc 1)` / `(Disk 1)` / `(CD 1)`     —— 括号内数字
@@ -241,13 +241,233 @@ pub fn detect_multidisc_groups(files: &[String]) -> Vec<MultiDiscGame> {
     }
     let mut result = Vec::new();
     for (base, mut discs) in groups {
-        discs.sort_by(|a, b| a.disc.cmp(&b.disc).then_with(|| a.file.cmp(&b.file)));
+        // 同碟号有多个文件(cue + bin/img/sub 等载荷轨)时,保留可加载的描述文件作为代表。
+        discs.sort_by(|a, b| {
+            a.disc
+                .cmp(&b.disc)
+                .then_with(|| ext_rank(&a.file).cmp(&ext_rank(&b.file)))
+                .then_with(|| a.file.cmp(&b.file))
+        });
         discs.dedup_by_key(|d| d.disc);
         if discs.len() >= 2 {
             result.push(MultiDiscGame { base, discs });
         }
     }
     result
+}
+
+/// 光盘代表文件优先级:可直接加载的描述文件优先,载荷/子码轨最次。
+fn ext_rank(file: &str) -> u8 {
+    let ext = file.rsplit('.').next().unwrap_or("").to_lowercase();
+    match ext.as_str() {
+        "cue" => 1,
+        "chd" => 2,
+        "gdi" => 3,
+        "iso" => 4,
+        "pbp" => 5,
+        "ccd" => 6,
+        "mds" => 7,
+        "cdi" => 8,
+        "bin" | "img" | "mdf" => 20,
+        "sub" => 30,
+        _ => 15,
+    }
+}
+
+// ============================================================================
+// 物理整理 + 元数据折叠
+// ============================================================================
+
+use crate::scraper::pegasus::PegasusGame;
+use std::path::Path;
+
+/// 多碟整理报告(供命令层序列化返回)。
+#[derive(Debug, Default, Clone, serde::Serialize)]
+pub struct OrganizeReport {
+    /// 是否发生改动(有多碟组被整理)。
+    pub changed: bool,
+    /// 整理的多碟游戏组数。
+    pub groups: usize,
+    /// 物理移动的顶层条目数(文件夹或平铺文件)。
+    pub files_moved: usize,
+    /// 写出的 m3u 文件数。
+    pub m3u_written: usize,
+}
+
+/// m3u 文件相对平台目录的路径 = `<基名>.m3u`。
+fn m3u_relpath(base: &str) -> String {
+    format!("{base}.m3u")
+}
+
+/// 某碟文件搬入 `<基名>/` 后的新相对路径(保留原顶层条目名)。
+fn reorg_target(base: &str, disc_file: &str) -> String {
+    format!("{base}/{}", disc_file.replace('\\', "/"))
+}
+
+/// 去掉游戏显示名里的碟号标记(用作折叠后的名字);无标记则原样返回。
+fn stripped_name(name: &str) -> String {
+    parse_disc_marker(name)
+        .map(|m| m.base)
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| name.to_string())
+}
+
+/// 把某组各碟的顶层条目移动到 `<基名>/` 下,并在平台目录写出 `<基名>.m3u`。
+/// 返回移动的顶层条目数;目标已存在(已整理)时跳过对应移动,保证幂等。
+fn apply_group_reorg(dir: &Path, group: &MultiDiscGame) -> Result<usize, String> {
+    let base = &group.base;
+    let base_dir = dir.join(base);
+
+    // 去重收集各碟的顶层条目(相对平台目录的第一段)。
+    let mut tops: Vec<String> = Vec::new();
+    for disc in &group.discs {
+        let top = disc
+            .file
+            .split('/')
+            .next()
+            .unwrap_or(&disc.file)
+            .to_string();
+        if !top.is_empty() && !tops.contains(&top) {
+            tops.push(top);
+        }
+    }
+
+    let mut moved = 0usize;
+    for top in &tops {
+        let src = dir.join(top);
+        if !src.exists() {
+            continue; // 已整理或缺失
+        }
+        std::fs::create_dir_all(&base_dir).map_err(|e| e.to_string())?;
+        if src.is_dir() {
+            // 文件夹型:整个碟目录搬入 <基名>/(保留目录名,无碰撞、可逆)。
+            let dst = base_dir.join(top);
+            if dst.exists() {
+                continue;
+            }
+            std::fs::rename(&src, &dst)
+                .map_err(|e| format!("移动 {} 失败: {e}", src.display()))?;
+            moved += 1;
+        } else {
+            // 平铺型:代表文件 + 同前缀兄弟轨(cue+bin/sub 等)一并搬入。
+            let stem = Path::new(top)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(top)
+                .to_lowercase();
+            let mut siblings: Vec<String> = Vec::new();
+            for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+                let entry = entry.map_err(|e| e.to_string())?;
+                if !entry.file_type().map_err(|e| e.to_string())?.is_file() {
+                    continue;
+                }
+                let name = entry.file_name().to_string_lossy().to_string();
+                let name_stem = Path::new(&name)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&name)
+                    .to_lowercase();
+                // 前缀匹配,但紧随其后不能是数字,避免 "(Disc 1)" 误吞 "(Disc 10)"。
+                let hit = match name_stem.strip_prefix(&stem) {
+                    Some(rest) => rest.chars().next().is_none_or(|c| !c.is_ascii_digit()),
+                    None => false,
+                };
+                if hit {
+                    siblings.push(name);
+                }
+            }
+            for name in siblings {
+                let s = dir.join(&name);
+                let dst = base_dir.join(&name);
+                if dst.exists() {
+                    continue;
+                }
+                std::fs::rename(&s, &dst)
+                    .map_err(|e| format!("移动 {} 失败: {e}", s.display()))?;
+            }
+            moved += 1;
+        }
+    }
+
+    // 写 m3u:按碟序逐行列出各碟代表文件(相对平台目录、正斜杠)。
+    let m3u_path = dir.join(m3u_relpath(base));
+    let mut content = String::new();
+    for disc in &group.discs {
+        content.push_str(&reorg_target(base, &disc.file));
+        content.push('\n');
+    }
+    std::fs::write(&m3u_path, content)
+        .map_err(|e| format!("写 m3u {} 失败: {e}", m3u_path.display()))?;
+
+    Ok(moved)
+}
+
+/// 对光盘平台的游戏列表做多碟折叠:物理整理源目录 + 各碟合并成一条指向 m3u 的记录。
+/// 就地修改 `games`;非光盘平台或无多碟组时不改动、`changed=false`。幂等(已整理再跑为空操作)。
+pub fn organize_and_collapse(
+    dir: &Path,
+    games: &mut Vec<PegasusGame>,
+    is_disc_platform: bool,
+) -> Result<OrganizeReport, String> {
+    let mut report = OrganizeReport::default();
+    if !is_disc_platform {
+        return Ok(report);
+    }
+
+    let files: Vec<String> = games
+        .iter()
+        .filter_map(|g| g.file.clone())
+        .map(|f| f.replace('\\', "/"))
+        .collect();
+    let groups = detect_multidisc_groups(&files);
+    if groups.is_empty() {
+        return Ok(report);
+    }
+
+    let group_bases: std::collections::HashSet<String> =
+        groups.iter().map(|g| g.base.clone()).collect();
+    let mut m3u_files: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for group in &groups {
+        // 物理整理 + 写 m3u。
+        let moved = apply_group_reorg(dir, group)?;
+        report.files_moved += moved;
+        report.m3u_written += 1;
+        report.groups += 1;
+
+        let m3u = m3u_relpath(&group.base);
+        m3u_files.insert(m3u.clone());
+        let keep_file = group.discs[0].file.clone();
+
+        // 保留碟序最小者:file 改为 m3u、名字去碟号;其余同组条目稍后一并删除。
+        if let Some(keep_idx) = games.iter().position(|g| {
+            g.file.as_deref().map(|f| f.replace('\\', "/")) == Some(keep_file.clone())
+        }) {
+            let new_name = stripped_name(&games[keep_idx].name);
+            games[keep_idx].name = new_name;
+            games[keep_idx].file = Some(m3u);
+            games[keep_idx].files.clear();
+        }
+    }
+
+    // 删除所有归入某组、且不是保留 m3u 条目的游戏(含各碟代表与散落的载荷轨条目)。
+    games.retain(|g| {
+        let file = g
+            .file
+            .as_deref()
+            .map(|f| f.replace('\\', "/"))
+            .unwrap_or_default();
+        if m3u_files.contains(&file) {
+            return true;
+        }
+        match disc_key(&file) {
+            Some((key, _)) => !group_bases.contains(&key),
+            None => true,
+        }
+    });
+
+    report.changed = report.groups > 0;
+    Ok(report)
 }
 
 #[cfg(test)]
@@ -371,5 +591,131 @@ mod tests {
             "孤单 (Disc 1).cue".to_string(), // 只有一碟,不成组
         ];
         assert!(detect_multidisc_groups(&files).is_empty());
+    }
+
+    #[test]
+    fn descriptor_wins_over_payload_track_as_representative() {
+        // 同碟号既有 cue 又有 bin 时,代表应为 cue。
+        let files = vec![
+            "世纪末Disc A/game.bin".to_string(),
+            "世纪末Disc A/game.cue".to_string(),
+            "世纪末Disc B/game.bin".to_string(),
+            "世纪末Disc B/game.cue".to_string(),
+        ];
+        let groups = detect_multidisc_groups(&files);
+        assert_eq!(groups.len(), 1);
+        assert!(groups[0].discs.iter().all(|d| d.file.ends_with(".cue")));
+    }
+
+    // --- 整理 + 折叠 ---
+
+    fn disc_game(name: &str, file: &str) -> PegasusGame {
+        PegasusGame {
+            name: name.to_string(),
+            file: Some(file.to_string()),
+            ..Default::default()
+        }
+    }
+
+    fn tmp_dir(tag: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!(
+            "mrrm-md-{tag}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn organize_folder_per_disc_moves_folders_writes_m3u_and_collapses() {
+        let dir = tmp_dir("folder");
+        for (folder, cue) in [
+            ("世纪末[简]Disc A", "世纪末A.cue"),
+            ("世纪末[简]Disc B", "世纪末B.cue"),
+        ] {
+            std::fs::create_dir_all(dir.join(folder)).unwrap();
+            std::fs::write(dir.join(folder).join(cue), b"cue").unwrap();
+            std::fs::write(dir.join(folder).join("game.bin"), b"bin").unwrap();
+        }
+        let mut games = vec![
+            disc_game("世纪末[简]", "世纪末[简]Disc A/世纪末A.cue"),
+            disc_game("世纪末[简]", "世纪末[简]Disc B/世纪末B.cue"),
+        ];
+
+        let report = organize_and_collapse(&dir, &mut games, true).unwrap();
+        assert!(report.changed);
+        assert_eq!(report.groups, 1);
+        assert_eq!(report.files_moved, 2);
+
+        // 折叠成一条,指向 m3u。
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].file.as_deref(), Some("世纪末[简].m3u"));
+
+        // m3u 落在平台根,列出两碟(相对平台目录)。
+        let m3u = std::fs::read_to_string(dir.join("世纪末[简].m3u")).unwrap();
+        assert!(m3u.contains("世纪末[简]/世纪末[简]Disc A/世纪末A.cue"));
+        assert!(m3u.contains("世纪末[简]/世纪末[简]Disc B/世纪末B.cue"));
+
+        // 各碟文件夹已搬入 <基名>/,原位置不再存在。
+        assert!(dir
+            .join("世纪末[简]")
+            .join("世纪末[简]Disc A")
+            .join("世纪末A.cue")
+            .exists());
+        assert!(!dir.join("世纪末[简]Disc A").exists());
+
+        // 幂等:再跑一次无改动。
+        let again = organize_and_collapse(&dir, &mut games, true).unwrap();
+        assert!(!again.changed);
+        assert_eq!(games.len(), 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn organize_flat_files_moves_siblings_into_subfolder() {
+        let dir = tmp_dir("flat");
+        for f in [
+            "FF7 (Disc 1).cue",
+            "FF7 (Disc 1).bin",
+            "FF7 (Disc 2).cue",
+            "FF7 (Disc 2).bin",
+        ] {
+            std::fs::write(dir.join(f), b"x").unwrap();
+        }
+        let mut games = vec![
+            disc_game("Final Fantasy VII", "FF7 (Disc 1).cue"),
+            disc_game("Final Fantasy VII", "FF7 (Disc 2).cue"),
+        ];
+
+        let report = organize_and_collapse(&dir, &mut games, true).unwrap();
+        assert!(report.changed);
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].file.as_deref(), Some("FF7.m3u"));
+
+        // 代表 cue 及其兄弟 bin 都搬进 FF7/。
+        assert!(dir.join("FF7").join("FF7 (Disc 1).cue").exists());
+        assert!(dir.join("FF7").join("FF7 (Disc 1).bin").exists());
+        assert!(dir.join("FF7").join("FF7 (Disc 2).bin").exists());
+        assert!(!dir.join("FF7 (Disc 1).cue").exists());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn non_disc_platform_is_untouched() {
+        let dir = tmp_dir("nondisc");
+        let mut games = vec![
+            disc_game("三国志2 (Disc 1)", "三国志2 (Disc 1).sfc"),
+            disc_game("三国志2 (Disc 2)", "三国志2 (Disc 2).sfc"),
+        ];
+        let report = organize_and_collapse(&dir, &mut games, false).unwrap();
+        assert!(!report.changed);
+        assert_eq!(games.len(), 2);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
