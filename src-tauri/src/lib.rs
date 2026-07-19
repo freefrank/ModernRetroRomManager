@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod embedded_resources;
+mod multidisc;
 mod ps3;
 mod rating;
 pub mod rom_archive;
