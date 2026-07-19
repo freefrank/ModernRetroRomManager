@@ -49,9 +49,30 @@ describe("Dialog", () => {
         面板内容
       </Dialog>,
     );
-    fireEvent.click(document.querySelector(".rr-dialog")!);
+    const dialog = document.querySelector(".rr-dialog")!;
+    const backdrop = dialog.parentElement!;
+    // 面板内点击不关闭
+    fireEvent.mouseDown(dialog);
+    fireEvent.click(dialog);
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(document.querySelector(".rr-dialog")!.parentElement!);
+    // 遮罩按下并松开才关闭
+    fireEvent.mouseDown(backdrop);
+    fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("拖拽选中输入框文字后在遮罩松开不关闭", () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="t">
+        <input aria-label="search" />
+      </Dialog>,
+    );
+    const backdrop = document.querySelector(".rr-dialog")!.parentElement!;
+    const input = screen.getByLabelText("search");
+    // 在输入框内按下,拖拽到遮罩松开:click 落在遮罩但按下不在遮罩,不应关闭
+    fireEvent.mouseDown(input);
+    fireEvent.click(backdrop);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, type HTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, type HTMLAttributes, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,9 @@ export const Dialog = forwardRef<HTMLDivElement, Props>(function Dialog(
   ref,
 ) {
   const { t } = useTranslation();
+  // 记录 mousedown 是否发生在遮罩本身。拖拽选中对话框内输入框文字后在遮罩松开,
+  // click 的 target 会落在遮罩(公共祖先),若仅凭 click 关闭会误关。
+  const pressedBackdrop = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +38,13 @@ export const Dialog = forwardRef<HTMLDivElement, Props>(function Dialog(
   return createPortal(
     <div
       className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-bg-primary/60 backdrop-blur-sm"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        pressedBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        // 仅当按下与松开都在遮罩本身时才关闭
+        if (e.target === e.currentTarget && pressedBackdrop.current) onClose();
+      }}
     >
       <div
         ref={ref}
