@@ -6,6 +6,28 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-07-19
+
+### English
+
+#### Changed
+
+- UI chrome text is no longer selectable by default, avoiding accidental selection of labels and buttons; dynamic content (ROM names, descriptions, developer/publisher, directories) stays selectable and copyable, and input fields remain fully editable.
+
+#### Fixed
+
+- Dragging to select text inside a dialog's input field no longer closes the dialog when the mouse is released over the backdrop. The backdrop now closes only when both the press and release happen on it.
+
+### 简体中文
+
+#### 变更
+
+- 界面固定文字默认不可选中，避免误选标签、按钮等；动态内容（ROM 名称、描述、开发商/发行商、目录）保持可选可复制，输入框仍可正常编辑。
+
+#### 修复
+
+- 在对话框输入框内拖拽选中文字、于遮罩上松开鼠标时不再误关对话框。遮罩现在仅在按下与松开都发生在其自身时才关闭。
+
 ## [1.2.0] - 2026-07-19
 
 ### English
