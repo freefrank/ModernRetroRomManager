@@ -601,31 +601,16 @@ async fn cache_media_candidates(
             continue;
         }
         *index += 1;
-        let extension = asset
-            .url
-            .split('?')
-            .next()
-            .and_then(|value| Path::new(value).extension())
-            .and_then(|value| value.to_str())
-            .filter(|value| value.len() <= 5)
-            .unwrap_or(if asset.asset_type.as_str() == "video" {
-                "mp4"
-            } else {
-                "jpg"
-            });
         let directory = root.join(&asset.provider).join(asset.asset_type.as_str());
         if fs::create_dir_all(&directory).is_err() {
             continue;
         }
-        let target = directory.join(format!(
-            "candidate-{}-{:016x}.{}",
-            *index,
-            asset_cache_key(&asset.url),
-            extension
-        ));
+        // 跳过检查按 URL 哈希 marker 匹配,与扩展名无关(旧缓存后缀可能不一致)。
+        let marker = format!("-{:016x}.", asset_cache_key(&asset.url));
         let legacy_marker = format!("-{:016x}.", legacy_asset_cache_key(&asset.url));
         if !force_refresh
-            && (target.exists() || find_asset_with_marker(&directory, &legacy_marker).is_some())
+            && (find_asset_with_marker(&directory, &marker).is_some()
+                || find_asset_with_marker(&directory, &legacy_marker).is_some())
         {
             continue;
         }
@@ -635,6 +620,21 @@ async fn cache_media_candidates(
         if !response.status().is_success() {
             continue;
         }
+        // 扩展名以响应 Content-Type 为准,避免把 `.php` 端点存成 `.php`。
+        let extension = crate::scraper::cache::media_extension(
+            response
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok()),
+            &asset.url,
+            asset.asset_type.as_str() == "video",
+        );
+        let target = directory.join(format!(
+            "candidate-{}-{:016x}.{}",
+            *index,
+            asset_cache_key(&asset.url),
+            extension
+        ));
         let Ok(bytes) = response.bytes().await else {
             continue;
         };

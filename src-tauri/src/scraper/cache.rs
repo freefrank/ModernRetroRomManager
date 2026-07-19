@@ -30,6 +30,63 @@ pub fn stable_key(value: &str) -> String {
     )
 }
 
+/// 已知媒体扩展名(小写),用于校验从 URL 猜出的后缀,过滤掉 `.php` 之类的端点后缀。
+const MEDIA_EXTENSIONS: &[&str] = &[
+    "png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "svg", "ico", "mp4", "webm",
+];
+
+fn extension_from_mime(mime: &str) -> Option<&'static str> {
+    Some(match mime {
+        "image/png" => "png",
+        "image/jpeg" | "image/jpg" | "image/pjpeg" => "jpg",
+        "image/webp" => "webp",
+        "image/gif" => "gif",
+        "image/bmp" | "image/x-bmp" | "image/x-ms-bmp" => "bmp",
+        "image/avif" => "avif",
+        "image/svg+xml" => "svg",
+        "image/x-icon" | "image/vnd.microsoft.icon" => "ico",
+        "video/mp4" => "mp4",
+        "video/webm" => "webm",
+        _ => return None,
+    })
+}
+
+/// 根据 HTTP 响应的 `Content-Type` 推断媒体文件扩展名。
+///
+/// 优先用 `Content-Type`(可靠),否则回退到 URL 路径后缀(先去查询串/锚点,再校验白名单),
+/// 最后按是否视频给默认值。这样 ScreenScraper 等以 `.php` 端点返回图片的 URL 不会再被存成 `.php`。
+pub fn media_extension(content_type: Option<&str>, url: &str, is_video: bool) -> String {
+    if let Some(extension) = content_type
+        .map(|value| {
+            value
+                .split(';')
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_ascii_lowercase()
+        })
+        .as_deref()
+        .and_then(extension_from_mime)
+    {
+        return extension.to_string();
+    }
+    if let Some(extension) = url
+        .split(['?', '#'])
+        .next()
+        .and_then(|value| Path::new(value).extension())
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())
+        .filter(|value| MEDIA_EXTENSIONS.contains(&value.as_str()))
+    {
+        return extension;
+    }
+    if is_video {
+        "mp4".to_string()
+    } else {
+        "jpg".to_string()
+    }
+}
+
 fn normalized_query(query: &ScrapeQuery) -> String {
     format!(
         "{}\n{}",
@@ -120,5 +177,34 @@ mod tests {
     fn stable_key_is_repeatable_and_sensitive() {
         assert_eq!(stable_key("same"), stable_key("same"));
         assert_ne!(stable_key("same"), stable_key("different"));
+    }
+
+    #[test]
+    fn media_extension_prefers_content_type() {
+        // ScreenScraper 之类 `.php` 端点返回图片,应按 Content-Type 落成 jpg。
+        assert_eq!(
+            media_extension(
+                Some("image/jpeg"),
+                "https://api.screenscraper.fr/api2/mediaJeu.php?media=box-2D",
+                false,
+            ),
+            "jpg"
+        );
+        assert_eq!(
+            media_extension(Some("image/png; charset=binary"), "x.php", false),
+            "png"
+        );
+    }
+
+    #[test]
+    fn media_extension_falls_back_to_url_then_default() {
+        // 无 Content-Type 时用 URL 白名单后缀。
+        assert_eq!(
+            media_extension(None, "https://cdn.example.com/art.webp?token=1", false),
+            "webp"
+        );
+        // URL 后缀不在白名单(如 `.php`)时按类型给默认值。
+        assert_eq!(media_extension(None, "https://x/media.php", false), "jpg");
+        assert_eq!(media_extension(None, "https://x/clip.php", true), "mp4");
     }
 }

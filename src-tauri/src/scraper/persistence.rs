@@ -163,16 +163,22 @@ pub async fn download_media(
     fs::create_dir_all(&target_dir).map_err(|e| format!("无法创建媒体目录: {}", e))?;
 
     for asset in selected_assets {
-        let extension = asset.url.split('.').next_back().unwrap_or("png");
-        let filename = format!("{}.{}", asset.asset_type.as_str(), extension);
-        let save_path = target_dir.join(filename);
-
         let resp = client
             .get(&asset.url)
             .send()
             .await
             .map_err(|e| e.to_string())?;
         if resp.status().is_success() {
+            // 扩展名以响应 Content-Type 为准,避免把 `.php` 端点存成 `.php`。
+            let extension = crate::scraper::cache::media_extension(
+                resp.headers()
+                    .get(reqwest::header::CONTENT_TYPE)
+                    .and_then(|value| value.to_str().ok()),
+                &asset.url,
+                asset.asset_type.as_str() == "video",
+            );
+            let filename = format!("{}.{}", asset.asset_type.as_str(), extension);
+            let save_path = target_dir.join(filename);
             let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
             fs::write(&save_path, bytes).map_err(|e| e.to_string())?;
             downloaded.push((asset.asset_type, save_path));
