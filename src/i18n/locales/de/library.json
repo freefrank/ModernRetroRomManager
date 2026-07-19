@@ -75,7 +75,12 @@
       "deleteConfirmDesc": "„{{name}}“ endgültig löschen? Dies entfernt die ROM-Datei (einschließlich aller Tracks/Dateien desselben Spiels) von der Festplatte und kann nicht rückgängig gemacht werden.",
       "deleteSuccess": "ROM gelöscht",
       "deleteFailed": "Löschen fehlgeschlagen: {{error}}",
-      "hideFailed": "Vorgang fehlgeschlagen: {{error}}"
+      "hideFailed": "Vorgang fehlgeschlagen: {{error}}",
+      "openLocation": "Dateispeicherort öffnen",
+      "openLocationFailed": "Öffnen fehlgeschlagen: {{error}}",
+      "batchDeleteConfirmDesc": "Die {{count}} ausgewählten ROMs endgültig löschen? Die Dateien werden von der Festplatte entfernt und können nicht wiederhergestellt werden.",
+      "batchDeleteSuccess": "{{count}} ROMs gelöscht",
+      "batchDeletePartial": "Fertig, {{failed}}/{{total}} fehlgeschlagen"
     }
   },
   "romDetail": {

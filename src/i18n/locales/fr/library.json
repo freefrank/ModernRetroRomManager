@@ -75,7 +75,12 @@
       "deleteConfirmDesc": "Supprimer définitivement « {{name}} » ? Cela efface le fichier ROM (y compris toutes les pistes/fichiers du même jeu) du disque et est irréversible.",
       "deleteSuccess": "ROM supprimée",
       "deleteFailed": "Échec de la suppression : {{error}}",
-      "hideFailed": "Échec de l'opération : {{error}}"
+      "hideFailed": "Échec de l'opération : {{error}}",
+      "openLocation": "Ouvrir l'emplacement",
+      "openLocationFailed": "Échec de l'ouverture : {{error}}",
+      "batchDeleteConfirmDesc": "Supprimer définitivement les {{count}} ROM sélectionnées ? Les fichiers seront effacés du disque, sans retour possible.",
+      "batchDeleteSuccess": "{{count}} ROM supprimées",
+      "batchDeletePartial": "Terminé, {{failed}}/{{total}} en échec"
     }
   },
   "romDetail": {

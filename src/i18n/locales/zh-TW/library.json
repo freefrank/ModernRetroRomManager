@@ -75,7 +75,12 @@
       "deleteConfirmDesc": "確定要永久刪除「{{name}}」嗎？此操作會從磁碟抹除 ROM 檔案（含同一遊戲的多個軌道/檔案），無法復原。",
       "deleteSuccess": "ROM 已刪除",
       "deleteFailed": "刪除失敗：{{error}}",
-      "hideFailed": "操作失敗：{{error}}"
+      "hideFailed": "操作失敗：{{error}}",
+      "openLocation": "開啟檔案位置",
+      "openLocationFailed": "開啟檔案位置失敗：{{error}}",
+      "batchDeleteConfirmDesc": "確定要永久刪除選取的 {{count}} 個 ROM 嗎？此操作會從磁碟抹除對應檔案，無法復原。",
+      "batchDeleteSuccess": "已刪除 {{count}} 個 ROM",
+      "batchDeletePartial": "刪除完成，{{failed}}/{{total}} 個失敗"
     }
   },
   "romDetail": {

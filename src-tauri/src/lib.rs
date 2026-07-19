@@ -51,6 +51,7 @@ pub fn run() {
             commands::rom::get_hidden_roms,
             commands::rom::set_rom_hidden,
             commands::rom::delete_rom,
+            commands::rom::open_rom_location,
             commands::directory::add_directory,
             commands::directory::get_directories,
             commands::directory::remove_directory,

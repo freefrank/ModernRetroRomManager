@@ -1338,6 +1338,12 @@ fn is_bios_file(file_name_lower: &str) -> bool {
         // Dreamcast 引导/闪存
         || stem == "dc_boot"
         || stem == "dc_flash"
+        // FC 磁碟机 BIOS
+        || stem == "disksys"
+        // 常见系统卡/引导 ROM
+        || stem == "syscard3j"
+        || stem == "gamecube"
+        || stem.ends_with("_boot")
 }
 
 /// 无 metadata 时扫描 ROM 文件

@@ -75,7 +75,12 @@
       "deleteConfirmDesc": "Eliminare definitivamente \"{{name}}\"? Questo cancella il file ROM (incluse tutte le tracce/file dello stesso gioco) dal disco e non può essere annullato.",
       "deleteSuccess": "ROM eliminata",
       "deleteFailed": "Eliminazione non riuscita: {{error}}",
-      "hideFailed": "Operazione non riuscita: {{error}}"
+      "hideFailed": "Operazione non riuscita: {{error}}",
+      "openLocation": "Apri posizione file",
+      "openLocationFailed": "Apertura non riuscita: {{error}}",
+      "batchDeleteConfirmDesc": "Eliminare definitivamente le {{count}} ROM selezionate? I file verranno cancellati dal disco e non sarà possibile annullare.",
+      "batchDeleteSuccess": "{{count}} ROM eliminate",
+      "batchDeletePartial": "Fatto, {{failed}}/{{total}} non riuscite"
     }
   },
   "romDetail": {

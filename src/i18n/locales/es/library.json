@@ -75,7 +75,12 @@
       "deleteConfirmDesc": "¿Eliminar permanentemente \"{{name}}\"? Esto borra el archivo ROM (incluidas todas las pistas/archivos del mismo juego) del disco y no se puede deshacer.",
       "deleteSuccess": "ROM eliminada",
       "deleteFailed": "Error al eliminar: {{error}}",
-      "hideFailed": "Error en la operación: {{error}}"
+      "hideFailed": "Error en la operación: {{error}}",
+      "openLocation": "Abrir ubicación del archivo",
+      "openLocationFailed": "Error al abrir: {{error}}",
+      "batchDeleteConfirmDesc": "¿Eliminar permanentemente las {{count}} ROM seleccionadas? Los archivos se borrarán del disco y no se podrá deshacer.",
+      "batchDeleteSuccess": "{{count}} ROM eliminadas",
+      "batchDeletePartial": "Listo, {{failed}}/{{total}} con error"
     }
   },
   "romDetail": {

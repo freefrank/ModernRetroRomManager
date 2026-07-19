@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Trash2, FolderOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface RomContextMenuProps {
   x: number;
   y: number;
   isHidden: boolean;
+  onOpenLocation: () => void;
   onToggleHidden: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -15,6 +16,7 @@ export default function RomContextMenu({
   x,
   y,
   isHidden,
+  onOpenLocation,
   onToggleHidden,
   onDelete,
   onClose,
@@ -48,6 +50,18 @@ export default function RomContextMenu({
       className="rr-card fixed z-50 min-w-[170px] py-1 rounded-[var(--radius-md)] bg-bg-secondary border-[length:var(--border-width)] border-border-default shadow-[var(--shadow-dialog)]"
       style={{ left, top }}
     >
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onOpenLocation();
+          onClose();
+        }}
+        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-text-primary hover:bg-bg-tertiary transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
+      >
+        <FolderOpen className="w-4 h-4 shrink-0" />
+        <span>{t("library.context.openLocation")}</span>
+      </button>
       <button
         type="button"
         role="menuitem"

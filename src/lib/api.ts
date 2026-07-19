@@ -86,6 +86,11 @@ export const api = {
     if (isTauri()) await tauriInvoke("delete_rom", { directory, file });
   },
 
+  /** 在系统文件管理器中定位 ROM 文件 */
+  async openRomLocation(directory: string, file: string): Promise<void> {
+    if (isTauri()) await tauriInvoke("open_rom_location", { directory, file });
+  },
+
   async getRomLibrarySummary(): Promise<RomSystemSummary[]> {
     if (isTauri()) {
       return tauriInvoke<RomSystemSummary[]>("get_rom_library_summary");

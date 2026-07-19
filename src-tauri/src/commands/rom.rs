@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_opener::OpenerExt;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -510,6 +511,21 @@ pub fn delete_rom(directory: String, file: String) -> Result<(), String> {
         let _ = save_hidden_map(&map);
     }
     Ok(())
+}
+
+/// 在系统文件管理器中定位 ROM(选中该文件);文件不存在时退回打开平台目录。
+#[tauri::command]
+pub fn open_rom_location(app: AppHandle, directory: String, file: String) -> Result<(), String> {
+    let path = PathBuf::from(&directory).join(&file);
+    if path.exists() {
+        app.opener()
+            .reveal_item_in_dir(&path)
+            .map_err(|error| error.to_string())
+    } else {
+        app.opener()
+            .open_path(directory, None::<&str>)
+            .map_err(|error| error.to_string())
+    }
 }
 
 #[cfg(test)]

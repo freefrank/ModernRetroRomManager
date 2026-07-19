@@ -24,7 +24,7 @@ import { useAppStore } from "@/stores/appStore";
 import { clsx } from "clsx";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Rom, ViewMode } from "@/types";
-import { aiTranslationApi, ps3Api, scraperApi } from "@/lib/api";
+import { api, aiTranslationApi, ps3Api, scraperApi } from "@/lib/api";
 import { romMetadata } from "@/lib/metadataTranslation";
 import { groupTranslationRequests } from "@/lib/translationBatch";
 import { Button, Dialog, EmptyState, IconButton, Input, toast } from "@/components/ui";
@@ -102,6 +102,7 @@ export default function Library() {
   const [showHidden, setShowHidden] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ rom: Rom; x: number; y: number } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Rom | null>(null);
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
 
   const systemData = systemRoms.find((s) => s.system === systemName);
   const romsOfSystem = useMemo(() => systemData?.roms ?? [], [systemData]);
@@ -138,6 +139,33 @@ export default function Library() {
       await setRomHidden(rom, !hidden);
     } catch (error) {
       toast.error(t("library.context.hideFailed", { error: String(error) }));
+    }
+  };
+
+  const handleOpenLocation = async (rom: Rom) => {
+    try {
+      await api.openRomLocation(rom.directory, rom.file);
+    } catch (error) {
+      toast.error(t("library.context.openLocationFailed", { error: String(error) }));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    const targets = romsOfSystem.filter((rom) => selectedRomIds.has(rom.file));
+    let failed = 0;
+    for (const rom of targets) {
+      try {
+        await deleteRom(rom);
+      } catch {
+        failed += 1;
+      }
+    }
+    clearSelection();
+    setConfirmBatchDelete(false);
+    if (failed > 0) {
+      toast.error(t("library.context.batchDeletePartial", { failed, total: targets.length }));
+    } else {
+      toast.success(t("library.context.batchDeleteSuccess", { count: targets.length }));
     }
   };
 
@@ -407,6 +435,11 @@ export default function Library() {
             {t("library.translation.selected")}
           </Button>
 
+          <Button size="sm" variant="danger" onClick={() => setConfirmBatchDelete(true)}>
+            <Trash2 className="w-4 h-4" />
+            {t("library.context.delete")}
+          </Button>
+
           <Button size="sm" variant="ghost" onClick={clearSelection}>
             {t("common.cancel")}
           </Button>
@@ -619,7 +652,14 @@ export default function Library() {
             cardScale={cardScale}
             showFileName={nameDisplayMode === "file"}
             selectedIds={selectedRomIds}
-            onRomClick={setActiveRom}
+            onRomClick={(rom) => {
+              // 多选模式(已有选中项)下点击条目任意位置切换选中,否则打开详情
+              if (selectedRomIds.size > 0) {
+                toggleRomSelection(rom.file, true);
+              } else {
+                setActiveRom(rom);
+              }
+            }}
             onToggleSelect={(id) => toggleRomSelection(id, true)}
             isRomHidden={isRomHidden}
             onRomContextMenu={(rom, event) =>
@@ -638,6 +678,7 @@ export default function Library() {
           x={contextMenu.x}
           y={contextMenu.y}
           isHidden={isRomHidden(contextMenu.rom)}
+          onOpenLocation={() => void handleOpenLocation(contextMenu.rom)}
           onToggleHidden={() => void handleToggleHidden(contextMenu.rom)}
           onDelete={() => setDeleteTarget(contextMenu.rom)}
           onClose={() => setContextMenu(null)}
@@ -670,6 +711,33 @@ export default function Library() {
           {t("library.context.deleteConfirmDesc", {
             name: deleteTarget ? deleteTarget.file : "",
           })}
+        </p>
+      </Dialog>
+
+      {/* 批量删除确认(永久删除,不可恢复) */}
+      <Dialog
+        open={confirmBatchDelete}
+        onClose={() => setConfirmBatchDelete(false)}
+        title={
+          <span className="flex items-center gap-3 text-accent-error">
+            <Trash2 className="w-5 h-5 shrink-0" />
+            {t("library.context.deleteConfirmTitle")}
+          </span>
+        }
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmBatchDelete(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="danger" onClick={() => void handleBatchDelete()}>
+              <Trash2 className="w-4 h-4" />
+              {t("library.context.delete")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary leading-relaxed">
+          {t("library.context.batchDeleteConfirmDesc", { count: selectedRomIds.size })}
         </p>
       </Dialog>
 

@@ -225,13 +225,19 @@ function CoverCard({ rom, isSelected, onRomClick, onToggleSelect, language, show
             onToggleSelect(rom.file);
           }}
           className={clsx(
-            "w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
-            isSelected
-              ? "bg-accent-primary border-accent-primary text-text-primary"
-              : "bg-bg-primary/60 border-text-primary/50 text-transparent hover:border-text-primary hover:bg-bg-primary/80"
+            "p-2 -m-2 rounded-full flex items-center justify-center transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
           )}
         >
-          <CheckCircle2 className="w-3 h-3" />
+          <span
+            className={clsx(
+              "w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
+              isSelected
+                ? "bg-accent-primary border-accent-primary text-text-primary"
+                : "bg-bg-primary/60 border-text-primary/50 text-transparent hover:border-text-primary hover:bg-bg-primary/80"
+            )}
+          >
+            <CheckCircle2 className="w-3 h-3" />
+          </span>
         </button>
       </div>
     </div>
@@ -290,14 +296,18 @@ function GridCard({ rom, isSelected, onRomClick, onToggleSelect, language, showF
               e.stopPropagation();
               onToggleSelect(rom.file);
             }}
-            className={clsx(
-              "w-6 h-6 rounded-full flex items-center justify-center border transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
-              isSelected
-                ? "bg-accent-primary border-accent-primary text-text-primary"
-                : "bg-bg-primary/60 border-text-primary/40 text-transparent hover:border-text-primary hover:bg-bg-primary/80"
-            )}
+            className="p-2 -m-2 rounded-full flex items-center justify-center"
           >
-            <CheckCircle2 className="w-4 h-4" />
+            <span
+              className={clsx(
+                "w-6 h-6 rounded-full flex items-center justify-center border transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
+                isSelected
+                  ? "bg-accent-primary border-accent-primary text-text-primary"
+                  : "bg-bg-primary/60 border-text-primary/40 text-transparent hover:border-text-primary hover:bg-bg-primary/80"
+              )}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+            </span>
           </button>
         </div>
 
@@ -351,14 +361,18 @@ function ListRow({ rom, isSelected, onRomClick, onToggleSelect, language, showFi
           e.stopPropagation();
           onToggleSelect(rom.file);
         }}
-        className={clsx(
-          "w-5 h-5 rounded-[var(--radius-sm)] flex items-center justify-center border transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)] flex-shrink-0",
-          isSelected
-            ? "bg-accent-primary border-accent-primary text-text-primary"
-            : "bg-transparent border-border-default text-transparent hover:border-border-hover"
-        )}
+        className="p-2 -m-2 flex items-center justify-center flex-shrink-0"
       >
-        <CheckCircle2 className="w-3 h-3" />
+        <span
+          className={clsx(
+            "w-5 h-5 rounded-[var(--radius-sm)] flex items-center justify-center border transition-colors duration-[var(--motion-fast)] ease-[var(--motion-easing)]",
+            isSelected
+              ? "bg-accent-primary border-accent-primary text-text-primary"
+              : "bg-transparent border-border-default text-transparent hover:border-border-hover"
+          )}
+        >
+          <CheckCircle2 className="w-3 h-3" />
+        </span>
       </button>
 
       {/* Cover + Name */}

@@ -75,7 +75,12 @@
       "deleteConfirmDesc": "Permanently delete \"{{name}}\"? This erases the ROM file (including all tracks/files of the same game) from disk and cannot be undone.",
       "deleteSuccess": "ROM deleted",
       "deleteFailed": "Delete failed: {{error}}",
-      "hideFailed": "Operation failed: {{error}}"
+      "hideFailed": "Operation failed: {{error}}",
+      "openLocation": "Open file location",
+      "openLocationFailed": "Failed to open location: {{error}}",
+      "batchDeleteConfirmDesc": "Permanently delete the {{count}} selected ROM(s)? This erases the files from disk and cannot be undone.",
+      "batchDeleteSuccess": "Deleted {{count}} ROM(s)",
+      "batchDeletePartial": "Done, {{failed}}/{{total}} failed"
     }
   },
   "romDetail": {
