@@ -29,7 +29,9 @@
       "action": "Exportar metadatos y activos",
       "libraryAction": "Exportar biblioteca completa",
       "libraryLoadFailed": "Error al cargar la biblioteca: {{error}}",
-      "failed": "Error al exportar: {{error}}"
+      "failed": "Error al exportar: {{error}}",
+      "syncDelete": "Sincronización unidireccional (eliminar ROM sobrantes en destino)",
+      "syncDeleteHint": "Si se activa, la exportación elimina en el destino las ROM ocultas o eliminadas de tu biblioteca. Los archivos BIOS siempre se conservan y copian. Esto borra archivos de destino — úsalo con cuidado."
     }
   }
 }

@@ -27,6 +27,7 @@ export default function Import() {
   const [format, setFormat] = useState<ExportFormat>("pegasus");
   const [nameMode, setNameMode] = useState<ExportNameMode>("original");
   const [romAssetsOnly, setRomAssetsOnly] = useState(false);
+  const [syncDelete, setSyncDelete] = useState(false);
   const [targetDirectory, setTargetDirectory] = useState("");
   const [isLoadingSystems, setIsLoadingSystems] = useState(false);
 
@@ -131,6 +132,7 @@ export default function Import() {
         nameMode,
         romAssetsOnly,
         allSystemsSelected ? undefined : selectedSystemPaths,
+        syncDelete,
       );
     } catch (error) {
       toast.error(t("import.export.failed", { error: String(error) }));
@@ -242,6 +244,21 @@ export default function Import() {
                 <span className="block text-sm font-medium">{t("import.export.romAssetsOnly")}</span>
                 <span className="mt-1 block text-xs text-text-muted">
                   {t("import.export.romAssetsOnlyHint")}
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-[var(--radius-md)] border border-border-default bg-bg-primary/50 p-4">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-accent-error"
+                checked={syncDelete}
+                onChange={(event) => setSyncDelete(event.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium">{t("import.export.syncDelete")}</span>
+                <span className="mt-1 block text-xs text-text-muted">
+                  {t("import.export.syncDeleteHint")}
                 </span>
               </span>
             </label>

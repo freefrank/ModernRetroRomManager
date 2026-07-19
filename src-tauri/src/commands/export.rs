@@ -577,6 +577,102 @@ struct ExportOutcome {
     output: PathBuf,
 }
 
+/// 判断是否为 ROM 文件(不含媒体/图片,避免单向同步误删封面等资源)。
+fn is_rom_extension(path: &Path) -> bool {
+    const ROM_EXTENSIONS: &[&str] = &[
+        "zip", "7z", "rar", "nes", "fds", "unf", "unif", "sfc", "smc", "fig", "gb", "gbc", "gba",
+        "agb", "nds", "dsi", "3ds", "cia", "n64", "z64", "v64", "md", "gen", "smd", "32x", "sms",
+        "gg", "ws", "wsc", "pce", "sgx", "cue", "bin", "img", "iso", "chd", "cso", "pbp", "gdi",
+        "cdi", "ccd", "sub", "mds", "mdf", "rvz", "gcm", "wbfs", "wad", "xci", "nsp", "pkg", "p8",
+        "lnx", "a26", "a52", "a78", "col", "vec", "ngc", "ngp", "mgw", "min", "m3u", "rom",
+    ];
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| ROM_EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str()))
+}
+
+/// 目录内(递归)是否包含 ROM 文件——用于判断顶层子文件夹是否为游戏文件夹。
+fn directory_contains_rom(directory: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if directory_contains_rom(&path) {
+                return true;
+            }
+        } else if is_rom_extension(&path) {
+            return true;
+        }
+    }
+    false
+}
+
+/// 单向同步:删除目标里源库已隐藏或已删除的 ROM。
+/// - keep 集 = 已过滤隐藏的 metadata 中、源文件仍存在的游戏范围键(顶层文件名/子文件夹名)。
+/// - BIOS 文件(顶层)保留;媒体/资源目录不动;只删 ROM 文件与确含 ROM 的游戏子文件夹。
+fn sync_delete_removed_roms(
+    source: &Path,
+    target: &Path,
+    games: &[crate::scraper::pegasus::PegasusGame],
+) -> Result<usize, String> {
+    let scope_key = |file: &str| -> String {
+        let normalized = file.replace('\\', "/");
+        normalized
+            .split('/')
+            .next()
+            .unwrap_or(&normalized)
+            .to_lowercase()
+    };
+    let mut keep: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for game in games {
+        if let Some(file) = &game.file {
+            if source.join(file).exists() {
+                keep.insert(scope_key(file));
+            }
+        }
+    }
+
+    let mut removed = 0;
+    for entry in fs::read_dir(target).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        if path.is_dir() {
+            // 媒体/资源/BIOS 目录不参与同步删除
+            if matches!(
+                name.as_str(),
+                "media" | "images" | "artwork" | "screenshots" | "_archives" | "bios"
+            ) {
+                continue;
+            }
+            if keep.contains(&name) {
+                continue;
+            }
+            // 仅删除确实是游戏文件夹(含 ROM)的目录,避免误删任意目录
+            if directory_contains_rom(&path) {
+                fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
+                removed += 1;
+            }
+        } else if path.is_file() {
+            // BIOS 默认复制且保留,不被同步删除
+            if crate::rom_service::is_bios_file(&name) {
+                continue;
+            }
+            if !is_rom_extension(&path) {
+                continue;
+            }
+            if keep.contains(&name) {
+                continue;
+            }
+            fs::remove_file(&path).map_err(|error| error.to_string())?;
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
 fn export_system_data(
     system: String,
     directory: String,
@@ -584,6 +680,7 @@ fn export_system_data(
     target_directory: Option<String>,
     name_mode: Option<String>,
     rom_assets_only: bool,
+    sync_delete: bool,
     progress: &dyn Fn(usize, String),
 ) -> Result<ExportOutcome, String> {
     let source_directory = PathBuf::from(&directory);
@@ -681,6 +778,14 @@ fn export_system_data(
         &target.join("media"),
         &media_progress,
     )?;
+
+    // 单向同步:导出到外部目录时,删除目标中源库已隐藏/删除的 ROM(BIOS 保留)。
+    // 原地保存(目标即源)不触发,避免误删源文件。
+    if sync_delete && !paths_equal(&source_directory, &target) {
+        progress(96, "单向同步:清理目标中已移除的 ROM...".to_string());
+        let _ = sync_delete_removed_roms(&source_directory, &target, &metadata.games);
+    }
+
     Ok(ExportOutcome {
         games: metadata.games.len(),
         media: media_count,
@@ -698,6 +803,7 @@ pub async fn export_scraped_data(
     target_directory: Option<String>,
     name_mode: Option<String>,
     rom_assets_only: Option<bool>,
+    sync_delete: Option<bool>,
 ) -> Result<(), String> {
     if EXPORT_RUNNING.swap(true, Ordering::SeqCst) {
         return Err("已有导出任务正在运行".to_string());
@@ -712,6 +818,7 @@ pub async fn export_scraped_data(
             target_directory,
             name_mode,
             rom_assets_only.unwrap_or(false),
+            sync_delete.unwrap_or(false),
             &|current, message| {
                 emit_progress(&progress_app, current, message, false);
             },
@@ -772,6 +879,7 @@ pub async fn export_library_scraped_data(
     name_mode: Option<String>,
     rom_assets_only: Option<bool>,
     system_paths: Option<Vec<String>>,
+    sync_delete: Option<bool>,
 ) -> Result<(), String> {
     let library = get_settings()
         .directories
@@ -823,6 +931,7 @@ pub async fn export_library_scraped_data(
     let progress_app = app.clone();
     let target_for_task = target_directory.clone();
     let rom_assets_only = rom_assets_only.unwrap_or(false);
+    let sync_delete = sync_delete.unwrap_or(false);
     let joined = tokio::task::spawn_blocking(move || {
         let mut total_games = 0;
         let mut total_media = 0;
@@ -841,6 +950,7 @@ pub async fn export_library_scraped_data(
                     Some(display_path(&target)),
                     name_mode.clone(),
                     rom_assets_only,
+                    sync_delete,
                     &|current, message| {
                         emit_progress(
                             &progress_app,
@@ -949,6 +1059,87 @@ mod tests {
             logo: Some("media/game/logo.png".into()),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn sync_delete_removes_hidden_and_deleted_roms_but_keeps_bios_and_visible() {
+        let base = std::env::temp_dir().join(format!(
+            "mrrm-sync-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = base.join("src");
+        let target = base.join("dst");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&target).unwrap();
+
+        // 源:仅保留 keep.sfc(可见);hidden.sfc 与 gone.sfc 不在 games(隐藏/删除)
+        fs::write(source.join("keep.sfc"), b"rom").unwrap();
+        // 目标:含可见、隐藏、已删除、BIOS、媒体目录
+        fs::write(target.join("keep.sfc"), b"rom").unwrap();
+        fs::write(target.join("hidden.sfc"), b"rom").unwrap();
+        fs::write(target.join("gone.sfc"), b"rom").unwrap();
+        fs::write(target.join("scph1001.bin"), b"bios").unwrap();
+        fs::create_dir_all(target.join("media")).unwrap();
+        fs::write(target.join("media").join("keep.png"), b"img").unwrap();
+
+        // metadata 只含可见游戏 keep.sfc(隐藏项已在导出前从 games 过滤)
+        let visible = PegasusGame {
+            name: "Keep".into(),
+            file: Some("keep.sfc".into()),
+            ..Default::default()
+        };
+        let removed = sync_delete_removed_roms(&source, &target, &[visible]).unwrap();
+
+        assert_eq!(removed, 2, "应删除 hidden.sfc 与 gone.sfc");
+        assert!(target.join("keep.sfc").exists(), "可见 ROM 保留");
+        assert!(!target.join("hidden.sfc").exists(), "隐藏 ROM 删除");
+        assert!(!target.join("gone.sfc").exists(), "已删除 ROM 删除");
+        assert!(target.join("scph1001.bin").exists(), "BIOS 必须保留");
+        assert!(
+            target.join("media").join("keep.png").exists(),
+            "媒体不受影响"
+        );
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn sync_delete_removes_hidden_disc_game_folder() {
+        let base = std::env::temp_dir().join(format!(
+            "mrrm-sync-disc-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = base.join("src");
+        let target = base.join("dst");
+        fs::create_dir_all(source.join("KeepGame")).unwrap();
+        fs::write(source.join("KeepGame").join("Keep.cue"), b"cue").unwrap();
+        // 目标含保留游戏文件夹与一个源已移除的游戏文件夹
+        fs::create_dir_all(target.join("KeepGame")).unwrap();
+        fs::write(target.join("KeepGame").join("Keep.cue"), b"cue").unwrap();
+        fs::write(target.join("KeepGame").join("Keep.bin"), b"bin").unwrap();
+        fs::create_dir_all(target.join("HiddenGame")).unwrap();
+        fs::write(target.join("HiddenGame").join("Hidden.cue"), b"cue").unwrap();
+        fs::write(target.join("HiddenGame").join("Hidden.bin"), b"bin").unwrap();
+
+        let visible = PegasusGame {
+            name: "Keep".into(),
+            file: Some(r"KeepGame\Keep.cue".into()),
+            ..Default::default()
+        };
+        let removed = sync_delete_removed_roms(&source, &target, &[visible]).unwrap();
+
+        assert_eq!(removed, 1);
+        assert!(target.join("KeepGame").join("Keep.cue").exists());
+        assert!(
+            !target.join("HiddenGame").exists(),
+            "整个隐藏游戏文件夹删除"
+        );
+        let _ = fs::remove_dir_all(&base);
     }
 
     #[test]

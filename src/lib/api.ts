@@ -446,9 +446,10 @@ export const scraperApi = {
     nameMode?: "original" | "chinese",
     romAssetsOnly = false,
     systemPaths?: string[],
+    syncDelete = false,
   ): Promise<void> {
     if (isTauri()) {
-      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode, romAssetsOnly, systemPaths });
+      await tauriInvoke("export_library_scraped_data", { libraryId, format, targetDirectory, nameMode, romAssetsOnly, systemPaths, syncDelete });
     }
   },
 

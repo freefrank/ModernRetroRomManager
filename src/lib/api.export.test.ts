@@ -41,6 +41,7 @@ describe("export option wiring", () => {
       nameMode: "original",
       romAssetsOnly: true,
       systemPaths: ["Y:\\gba", "Y:\\psp"],
+      syncDelete: false,
     });
   });
 });

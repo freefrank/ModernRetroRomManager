@@ -1388,7 +1388,7 @@ fn get_system_extensions(system_name: &str) -> Option<Vec<String>> {
 
 /// 各平台常见 BIOS/系统文件,不应作为游戏被索引与抓取。
 /// 输入为小写文件名(含扩展名)。
-fn is_bios_file(file_name_lower: &str) -> bool {
+pub(crate) fn is_bios_file(file_name_lower: &str) -> bool {
     let stem = file_name_lower
         .rsplit_once('.')
         .map(|(stem, _)| stem)

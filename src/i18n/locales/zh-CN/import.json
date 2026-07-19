@@ -29,7 +29,9 @@
       "action": "导出 Metadata 与资产",
       "libraryAction": "导出整个 Library",
       "libraryLoadFailed": "读取 Library 失败：{{error}}",
-      "failed": "导出失败：{{error}}"
+      "failed": "导出失败：{{error}}",
+      "syncDelete": "单向同步（删除目标多余 ROM）",
+      "syncDeleteHint": "勾选后,导出会删除目标目录中已在 ROM 库隐藏或删除的 ROM。BIOS 文件始终保留并复制。此操作会抹除目标文件,请谨慎。"
     }
   }
 }

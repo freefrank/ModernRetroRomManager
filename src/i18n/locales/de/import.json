@@ -29,7 +29,9 @@
       "action": "Metadaten und Assets exportieren",
       "libraryAction": "Gesamte Bibliothek exportieren",
       "libraryLoadFailed": "Bibliothek konnte nicht geladen werden: {{error}}",
-      "failed": "Export fehlgeschlagen: {{error}}"
+      "failed": "Export fehlgeschlagen: {{error}}",
+      "syncDelete": "Einweg-Synchronisierung (überzählige ROMs im Ziel löschen)",
+      "syncDeleteHint": "Wenn aktiviert, löscht der Export im Ziel ROMs, die in Ihrer Bibliothek ausgeblendet oder entfernt wurden. BIOS-Dateien werden immer beibehalten und kopiert. Dies löscht Zieldateien — mit Vorsicht verwenden."
     }
   }
 }
