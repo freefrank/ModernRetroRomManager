@@ -80,7 +80,9 @@
       "openLocationFailed": "Failed to open location: {{error}}",
       "batchDeleteConfirmDesc": "Permanently delete the {{count}} selected ROM(s)? This erases the files from disk and cannot be undone.",
       "batchDeleteSuccess": "Deleted {{count}} ROM(s)",
-      "batchDeletePartial": "Done, {{failed}}/{{total}} failed"
+      "batchDeletePartial": "Done, {{failed}}/{{total}} failed",
+      "batchHideSuccess": "Hid {{count}} ROM(s)",
+      "batchUnhideSuccess": "Unhid {{count}} ROM(s)"
     }
   },
   "romDetail": {

@@ -36,7 +36,7 @@ const levels: ConsoleLevel[] = ["debug", "info", "warn", "error"];
 
 export default function ConsolePanel() {
   const { t } = useTranslation();
-  const { entries, expanded, addEntry, clear, toggle } = useConsoleStore();
+  const { entries, expanded, addEntry, upsertProgress, clear, toggle } = useConsoleStore();
   const [visibleLevels, setVisibleLevels] = useState<Set<ConsoleLevel>>(
     () => new Set(levels),
   );
@@ -54,27 +54,29 @@ export default function ConsolePanel() {
         const level = payload.finished
           ? payload.cancelled ? "warn" : "info"
           : "info";
-        addEntry(level, `${payload.message} (${payload.current}/${payload.total})`, "scraper");
+        const message = `${payload.message} (${payload.current}/${payload.total})`;
+        // 进行中就地更新,完成时留存一条独立记录
+        if (payload.finished) addEntry(level, message, "scraper");
+        else upsertProgress(level, message, "scraper");
       }),
       listen<ProgressPayload>("export-progress", ({ payload }) => {
-        addEntry("info", payload.message, "export");
+        if (payload.finished) addEntry("info", payload.message, "export");
+        else upsertProgress("info", payload.message, "export");
       }),
       listen<LogPayload>("app-log", ({ payload }) => {
         addEntry(payload.level || "info", payload.message, payload.source || "backend");
       }),
       listen<RomScanPayload>("rom-scan-progress", ({ payload }) => {
         const level: ConsoleLevel = payload.finished ? "info" : payload.changed ? "info" : "debug";
-        addEntry(
-          level,
-          `${payload.message}${payload.total > 0 ? ` (${payload.current}/${payload.total})` : ""}`,
-          `rom-${payload.mode}`,
-        );
+        const message = `${payload.message}${payload.total > 0 ? ` (${payload.current}/${payload.total})` : ""}`;
+        if (payload.finished) addEntry(level, message, `rom-${payload.mode}`);
+        else upsertProgress(level, message, `rom-${payload.mode}`);
       }),
     ];
     return () => {
       for (const cleanup of cleanups) cleanup.then((unlisten) => unlisten());
     };
-  }, [addEntry]);
+  }, [addEntry, upsertProgress]);
 
   useEffect(() => {
     if (expanded) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -150,7 +152,7 @@ export default function ConsolePanel() {
               );
             })}
           </div>
-          <div ref={scrollRef} className="h-[calc(24vh-2rem)] overflow-y-auto px-3 py-2 custom-scrollbar">
+          <div ref={scrollRef} className="select-text h-[calc(24vh-2rem)] overflow-y-auto px-3 py-2 custom-scrollbar">
           {visibleEntries.length === 0 ? (
             <p className="text-text-muted">{t("console.empty")}</p>
           ) : visibleEntries.map((entry) => (

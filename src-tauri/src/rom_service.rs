@@ -53,6 +53,57 @@ pub struct RomInfo {
     pub has_temp_metadata: bool,
 }
 
+/// 递归统计目录内所有文件的总大小。
+fn directory_total_size(dir: &Path) -> u64 {
+    let mut total = 0_u64;
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                total = total.saturating_add(directory_total_size(&path));
+            } else if let Ok(meta) = entry.metadata() {
+                total = total.saturating_add(meta.len());
+            }
+        }
+    }
+    total
+}
+
+/// 光盘描述文件(cue/ccd/mds)本身只有几 KB,应显示整个游戏的实际占用:
+/// - 子文件夹型光盘游戏:整个游戏文件夹总大小
+/// - 平台根目录下的描述文件:该描述文件 + 同名兄弟数据轨的大小
+fn disc_game_total_size(rom: &RomInfo, rom_path: &Path) -> Option<u64> {
+    let file_norm = rom.file.replace('\\', "/");
+    if let Some((first, _)) = file_norm.split_once('/') {
+        // 子文件夹型:游戏文件夹 = 平台目录 + 第一段
+        let folder = Path::new(&rom.directory).join(first);
+        if folder.is_dir() {
+            return Some(directory_total_size(&folder));
+        }
+        None
+    } else {
+        // 顶层:同名兄弟(cue + 其 bin 轨道等)
+        let parent = rom_path.parent()?;
+        let stem = rom_path.file_stem()?.to_str()?.to_lowercase();
+        let mut total = 0_u64;
+        for entry in fs::read_dir(parent).ok()?.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let matches = path
+                    .file_stem()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|value| value.to_lowercase() == stem);
+                if matches {
+                    if let Ok(meta) = entry.metadata() {
+                        total = total.saturating_add(meta.len());
+                    }
+                }
+            }
+        }
+        (total > 0).then_some(total)
+    }
+}
+
 /// 从文件系统补齐 ROM 的大小与修改时间(失败给 None,不中断扫描)
 fn fill_file_metadata(rom: &mut RomInfo, rom_path: &Path) {
     if let Ok(meta) = fs::metadata(rom_path) {
@@ -65,6 +116,16 @@ fn fill_file_metadata(rom: &mut RomInfo, rom_path: &Path) {
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64);
+    }
+    // 光盘描述文件显示整个游戏(文件夹/多轨)的总大小,而非仅描述文件本身。
+    let is_disc_descriptor = Path::new(&rom.file)
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| matches!(value.to_lowercase().as_str(), "cue" | "ccd" | "mds"));
+    if is_disc_descriptor {
+        if let Some(total) = disc_game_total_size(rom, rom_path) {
+            rom.file_size = Some(total);
+        }
     }
 }
 
@@ -534,16 +595,43 @@ fn keep_temp_metadata_entry(
     if !is_disc_platform(system_lower) {
         return true;
     }
-    let lower = file.to_lowercase();
+    let lower = file.replace('\\', "/").to_lowercase();
+    let dir = lower.rsplit_once('/').map(|(d, _)| d).unwrap_or("");
+    let in_subfolder = lower.contains('/');
     let Some((stem, ext)) = lower.rsplit_once('.') else {
         return true;
     };
+    // 同一目录下是否存在指定扩展的描述文件。
+    let dir_has = |want: &str| {
+        all_files_lower.iter().any(|candidate| {
+            let candidate = candidate.replace('\\', "/").to_lowercase();
+            let candidate_dir = candidate.rsplit_once('/').map(|(d, _)| d).unwrap_or("");
+            candidate_dir == dir
+                && candidate
+                    .rsplit_once('.')
+                    .map(|(_, e)| e == want)
+                    .unwrap_or(false)
+        })
+    };
     let has_sibling = |extension: &str| all_files_lower.contains(&format!("{stem}.{extension}"));
     match ext {
+        // 子码从不单独成条
         "sub" => false,
-        "bin" | "img" => !has_sibling("cue") && !has_sibling("ccd"),
-        "mdf" => !has_sibling("mds"),
-        "ccd" => !has_sibling("cue"),
+        // 主描述文件保留;次级描述文件仅在无更高优先级时保留(cue > ccd > mds)
+        "cue" => true,
+        "ccd" => !dir_has("cue"),
+        "mds" => !dir_has("cue") && !dir_has("ccd"),
+        // 载荷/数据轨:
+        "bin" | "img" | "mdf" => {
+            if in_subfolder {
+                // 子文件夹(一游戏一目录):同目录存在任一描述文件即视为其轨道去重,
+                // 覆盖单 cue 引用多个 bin 轨道(Track 1/2/…)的情况。
+                !(dir_has("cue") || dir_has("ccd") || dir_has("mds"))
+            } else {
+                // 平台根目录:改用同名兄弟匹配,避免误删同目录其它游戏的轨道。
+                !(has_sibling("cue") || has_sibling("ccd") || (ext == "mdf" && has_sibling("mds")))
+            }
+        }
         _ => true,
     }
 }
@@ -1944,6 +2032,62 @@ mod tests {
         );
         assert_eq!(roms.len(), 2, "载荷轨/子码/BIOS 不应成为游戏: {files:?}");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn temp_metadata_dedupes_multi_track_cue() {
+        // 单 cue 引用多个 bin 轨道(子文件夹型):只保留 cue,所有 bin 去重。
+        let files: std::collections::HashSet<String> = [
+            r"Game\Game.cue",
+            r"Game\Game (Track 1).bin",
+            r"Game\Game (Track 2).bin",
+            r"Game\Game (Track 3).bin",
+        ]
+        .iter()
+        .map(|f| f.to_lowercase())
+        .collect();
+        assert!(keep_temp_metadata_entry(r"Game\Game.cue", &files, "ps1"));
+        assert!(!keep_temp_metadata_entry(
+            r"Game\Game (Track 1).bin",
+            &files,
+            "ps1"
+        ));
+        assert!(!keep_temp_metadata_entry(
+            r"Game\Game (Track 2).bin",
+            &files,
+            "ps1"
+        ));
+        assert!(!keep_temp_metadata_entry(
+            r"Game\Game (Track 3).bin",
+            &files,
+            "ps1"
+        ));
+    }
+
+    #[test]
+    fn disc_descriptor_reports_whole_game_size() {
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-disc-size-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let game = root.join("Game");
+        fs::create_dir_all(&game).unwrap();
+        fs::write(game.join("Game.cue"), vec![0_u8; 100]).unwrap();
+        fs::write(game.join("Game (Track 1).bin"), vec![0_u8; 5000]).unwrap();
+        fs::write(game.join("Game (Track 2).bin"), vec![0_u8; 3000]).unwrap();
+
+        let mut rom = RomInfo {
+            file: r"Game\Game.cue".to_string(),
+            directory: root.to_string_lossy().to_string(),
+            ..Default::default()
+        };
+        fill_file_metadata(&mut rom, &game.join("Game.cue"));
+        // cue 本身 100 字节,但应报告整个游戏文件夹 8100 字节
+        assert_eq!(rom.file_size, Some(8100));
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

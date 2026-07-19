@@ -80,7 +80,9 @@
       "openLocationFailed": "Öffnen fehlgeschlagen: {{error}}",
       "batchDeleteConfirmDesc": "Die {{count}} ausgewählten ROMs endgültig löschen? Die Dateien werden von der Festplatte entfernt und können nicht wiederhergestellt werden.",
       "batchDeleteSuccess": "{{count}} ROMs gelöscht",
-      "batchDeletePartial": "Fertig, {{failed}}/{{total}} fehlgeschlagen"
+      "batchDeletePartial": "Fertig, {{failed}}/{{total}} fehlgeschlagen",
+      "batchHideSuccess": "{{count}} ROMs ausgeblendet",
+      "batchUnhideSuccess": "{{count}} ROMs eingeblendet"
     }
   },
   "romDetail": {

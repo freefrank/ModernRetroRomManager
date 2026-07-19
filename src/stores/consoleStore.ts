@@ -14,6 +14,8 @@ interface ConsoleState {
   entries: ConsoleEntry[];
   expanded: boolean;
   addEntry: (level: ConsoleLevel, message: string, source?: string) => void;
+  /** 高频进度事件:若末尾已是同源进度条目则就地更新,否则新增一条,避免刷屏。 */
+  upsertProgress: (level: ConsoleLevel, message: string, source: string) => void;
   clear: () => void;
   toggle: () => void;
 }
@@ -31,6 +33,22 @@ export const useConsoleStore = create<ConsoleState>((set) => ({
         { id: nextId++, timestamp: Date.now(), level, source, message },
       ].slice(-MAX_ENTRIES),
     })),
+  upsertProgress: (level, message, source) =>
+    set((state) => {
+      const last = state.entries[state.entries.length - 1];
+      if (last && last.source === source) {
+        // 同源进度就地覆盖最后一条(行内动态更新)
+        const entries = state.entries.slice();
+        entries[entries.length - 1] = { ...last, level, message, timestamp: Date.now() };
+        return { entries };
+      }
+      return {
+        entries: [
+          ...state.entries,
+          { id: nextId++, timestamp: Date.now(), level, source, message },
+        ].slice(-MAX_ENTRIES),
+      };
+    }),
   clear: () => set({ entries: [] }),
   toggle: () => set((state) => ({ expanded: !state.expanded })),
 }));

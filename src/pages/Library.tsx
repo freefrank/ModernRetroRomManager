@@ -169,6 +169,25 @@ export default function Library() {
     }
   };
 
+  const handleBatchHide = async () => {
+    // 选中项若全部已隐藏则整体取消隐藏,否则整体隐藏
+    const targets = romsOfSystem.filter((rom) => selectedRomIds.has(rom.file));
+    const hide = !targets.every((rom) => isRomHidden(rom));
+    for (const rom of targets) {
+      try {
+        await setRomHidden(rom, hide);
+      } catch {
+        /* 单项失败不中断其余 */
+      }
+    }
+    clearSelection();
+    toast.success(
+      hide
+        ? t("library.context.batchHideSuccess", { count: targets.length })
+        : t("library.context.batchUnhideSuccess", { count: targets.length }),
+    );
+  };
+
   // 路由即为选中系统；数据随后按需加载，批量抓取等逻辑可立即拿到目标平台。
   useEffect(() => {
     setSelectedSystem(systemName ?? null);
@@ -433,6 +452,11 @@ export default function Library() {
           <Button size="sm" variant="ghost" onClick={() => openTranslation("selection")} disabled={isTranslating}>
             <Languages className="w-4 h-4" />
             {t("library.translation.selected")}
+          </Button>
+
+          <Button size="sm" variant="ghost" onClick={() => void handleBatchHide()}>
+            <EyeOff className="w-4 h-4" />
+            {t("library.context.hide")}
           </Button>
 
           <Button size="sm" variant="danger" onClick={() => setConfirmBatchDelete(true)}>

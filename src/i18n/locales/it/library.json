@@ -80,7 +80,9 @@
       "openLocationFailed": "Apertura non riuscita: {{error}}",
       "batchDeleteConfirmDesc": "Eliminare definitivamente le {{count}} ROM selezionate? I file verranno cancellati dal disco e non sarà possibile annullare.",
       "batchDeleteSuccess": "{{count}} ROM eliminate",
-      "batchDeletePartial": "Fatto, {{failed}}/{{total}} non riuscite"
+      "batchDeletePartial": "Fatto, {{failed}}/{{total}} non riuscite",
+      "batchHideSuccess": "{{count}} ROM nascoste",
+      "batchUnhideSuccess": "{{count}} ROM mostrate"
     }
   },
   "romDetail": {

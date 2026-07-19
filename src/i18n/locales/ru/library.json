@@ -80,7 +80,9 @@
       "openLocationFailed": "Не удалось открыть: {{error}}",
       "batchDeleteConfirmDesc": "Удалить навсегда выбранные ROM ({{count}})? Файлы будут стёрты с диска без возможности восстановления.",
       "batchDeleteSuccess": "Удалено ROM: {{count}}",
-      "batchDeletePartial": "Готово, ошибок: {{failed}}/{{total}}"
+      "batchDeletePartial": "Готово, ошибок: {{failed}}/{{total}}",
+      "batchHideSuccess": "Скрыто ROM: {{count}}",
+      "batchUnhideSuccess": "Показано ROM: {{count}}"
     }
   },
   "romDetail": {

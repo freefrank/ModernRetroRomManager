@@ -80,7 +80,9 @@
       "openLocationFailed": "打开文件位置失败：{{error}}",
       "batchDeleteConfirmDesc": "确定要永久删除选中的 {{count}} 个 ROM 吗？该操作会从磁盘抹除对应文件，无法恢复。",
       "batchDeleteSuccess": "已删除 {{count}} 个 ROM",
-      "batchDeletePartial": "删除完成，{{failed}}/{{total}} 个失败"
+      "batchDeletePartial": "删除完成，{{failed}}/{{total}} 个失败",
+      "batchHideSuccess": "已隐藏 {{count}} 个 ROM",
+      "batchUnhideSuccess": "已取消隐藏 {{count}} 个 ROM"
     }
   },
   "romDetail": {

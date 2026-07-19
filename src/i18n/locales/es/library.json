@@ -80,7 +80,9 @@
       "openLocationFailed": "Error al abrir: {{error}}",
       "batchDeleteConfirmDesc": "¿Eliminar permanentemente las {{count}} ROM seleccionadas? Los archivos se borrarán del disco y no se podrá deshacer.",
       "batchDeleteSuccess": "{{count}} ROM eliminadas",
-      "batchDeletePartial": "Listo, {{failed}}/{{total}} con error"
+      "batchDeletePartial": "Listo, {{failed}}/{{total}} con error",
+      "batchHideSuccess": "{{count}} ROM ocultadas",
+      "batchUnhideSuccess": "{{count}} ROM mostradas"
     }
   },
   "romDetail": {

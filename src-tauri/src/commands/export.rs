@@ -98,6 +98,7 @@ fn directory_copy_stats(
     source: &Path,
     mode: CopyMode,
     inside_folder_rom: bool,
+    skip: &dyn Fn(&Path) -> bool,
 ) -> Result<(usize, u64), String> {
     check_export_cancelled()?;
     let mut files = 0;
@@ -107,11 +108,16 @@ fn directory_copy_stats(
         let entry = entry.map_err(|error| error.to_string())?;
         let file_type = entry.file_type().map_err(|error| error.to_string())?;
         if file_type.is_dir() {
+            if skip(&entry.path()) {
+                continue;
+            }
             let folder_rom = inside_folder_rom || entry.path().join("PS3_GAME").is_dir();
-            let (child_files, child_bytes) = directory_copy_stats(&entry.path(), mode, folder_rom)?;
+            let (child_files, child_bytes) =
+                directory_copy_stats(&entry.path(), mode, folder_rom, skip)?;
             files += child_files;
             bytes = bytes.saturating_add(child_bytes);
         } else if file_type.is_file()
+            && !skip(&entry.path())
             && (mode == CopyMode::All || inside_folder_rom || is_rom_or_asset_file(&entry.path()))
         {
             files += 1;
@@ -127,6 +133,7 @@ fn copy_directory_recursive(
     target: &Path,
     mode: CopyMode,
     inside_folder_rom: bool,
+    skip: &dyn Fn(&Path) -> bool,
     on_progress: &mut dyn FnMut(u64, u64, bool, bool, &Path),
 ) -> Result<usize, String> {
     check_export_cancelled()?;
@@ -137,6 +144,9 @@ fn copy_directory_recursive(
         let source_path = entry.path();
         let target_path = target.join(entry.file_name());
         let file_type = entry.file_type().map_err(|error| error.to_string())?;
+        if skip(&source_path) {
+            continue;
+        }
         if file_type.is_dir() {
             let folder_rom = inside_folder_rom || source_path.join("PS3_GAME").is_dir();
             copied += copy_directory_recursive(
@@ -144,6 +154,7 @@ fn copy_directory_recursive(
                 &target_path,
                 mode,
                 folder_rom,
+                skip,
                 on_progress,
             )?;
         } else if file_type.is_file()
@@ -213,6 +224,7 @@ fn copy_directory_contents_with_progress(
     source: &Path,
     target: &Path,
     mode: CopyMode,
+    skip: &dyn Fn(&Path) -> bool,
     progress: &dyn Fn(usize, String),
 ) -> Result<usize, String> {
     if paths_equal(source, target) {
@@ -229,7 +241,7 @@ fn copy_directory_contents_with_progress(
     }
     progress(0, "正在统计待导出文件...".to_string());
     let root_is_folder_rom = source.join("PS3_GAME").is_dir();
-    let (total_files, total_bytes) = directory_copy_stats(source, mode, root_is_folder_rom)?;
+    let (total_files, total_bytes) = directory_copy_stats(source, mode, root_is_folder_rom, skip)?;
     if total_files == 0 {
         return Ok(0);
     }
@@ -244,6 +256,7 @@ fn copy_directory_contents_with_progress(
         target,
         mode,
         root_is_folder_rom,
+        skip,
         &mut |processed, written, file_finished, skipped, source_path| {
             processed_bytes = processed_bytes.saturating_add(processed);
             written_bytes = written_bytes.saturating_add(written);
@@ -282,7 +295,7 @@ fn copy_directory_contents_with_progress(
 
 #[cfg(test)]
 fn copy_directory_contents(source: &Path, target: &Path) -> Result<usize, String> {
-    copy_directory_contents_with_progress(source, target, CopyMode::All, &|_, _| {})
+    copy_directory_contents_with_progress(source, target, CopyMode::All, &|_| false, &|_, _| {})
 }
 
 fn normalize_optional_path(value: &mut Option<String>) {
@@ -688,52 +701,84 @@ fn export_system_data(
     fs::create_dir_all(&target).map_err(|error| error.to_string())?;
 
     let copies_library = !paths_equal(&source_directory, &target);
+
+    // 隐藏的 ROM 既不写入 gamelist/pegasus,也不复制到目标。构造 copy 跳过闭包:
+    // 源文件相对路径落在隐藏游戏范围内则跳过;BIOS 不会被隐藏,照常复制。
+    let hidden_files = crate::commands::rom::hidden_files_for_directory(&directory);
+    let skip_source = source_directory.clone();
+    let skip_hidden = hidden_files.clone();
+    let skip_hidden_source = move |path: &Path| -> bool {
+        if skip_hidden.is_empty() {
+            return false;
+        }
+        match path.strip_prefix(&skip_source) {
+            Ok(relative) => {
+                crate::commands::rom::file_matches_hidden(&relative.to_string_lossy(), &skip_hidden)
+            }
+            Err(_) => false,
+        }
+    };
+
+    // 先解析临时元数据并过滤隐藏项(得到可见游戏集,供清理与写入)。
+    // 无临时元数据且是跨目录导出时,退化为纯 ROM/资源复制。
+    let metadata_path = find_temp_metadata(&source_directory, &system);
+    let mut metadata = match &metadata_path {
+        Ok(path) => {
+            progress(0, "读取临时抓取数据...".to_string());
+            let mut parsed = parse_pegasus_file(path)?;
+            if !hidden_files.is_empty() {
+                parsed.games.retain(|game| {
+                    game.file
+                        .as_deref()
+                        .map(|file| !crate::commands::rom::file_matches_hidden(file, &hidden_files))
+                        .unwrap_or(true)
+                });
+            }
+            Some(parsed)
+        }
+        Err(_) if copies_library => None,
+        Err(error) => return Err(error.clone()),
+    };
+
+    let copy_mode = if rom_assets_only {
+        CopyMode::RomAssetsOnly
+    } else {
+        CopyMode::All
+    };
+
+    // 导出到外部目录时:先清理(单向同步删除目标中源已隐藏/删除的 ROM),再同步(复制)。
     if copies_library {
+        if sync_delete {
+            if let Some(parsed) = &metadata {
+                progress(2, "单向同步:清理目标中已移除的 ROM...".to_string());
+                let _ = sync_delete_removed_roms(&source_directory, &target, &parsed.games);
+            }
+        }
         copy_directory_contents_with_progress(
             &source_directory,
             &target,
-            if rom_assets_only {
-                CopyMode::RomAssetsOnly
-            } else {
-                CopyMode::All
-            },
+            copy_mode,
+            &skip_hidden_source,
             progress,
         )?;
     }
 
-    let metadata_path = match find_temp_metadata(&source_directory, &system) {
-        Ok(path) => path,
-        Err(_) if copies_library => {
-            return Ok(ExportOutcome {
-                games: 0,
-                media: 0,
-                output: target,
-            });
-        }
-        Err(error) => return Err(error),
+    // 纯复制场景(无临时元数据):复制已完成,直接返回。
+    let Some(mut metadata) = metadata.take() else {
+        return Ok(ExportOutcome {
+            games: 0,
+            media: 0,
+            output: target,
+        });
     };
-    let temp_directory = metadata_path
-        .parent()
-        .ok_or_else(|| "临时元数据目录无效".to_string())?;
-
-    progress(
-        if copies_library { 72 } else { 0 },
-        "读取临时抓取数据...".to_string(),
-    );
-    let mut metadata = parse_pegasus_file(&metadata_path)?;
     if metadata.games.is_empty() {
         return Err("临时元数据中没有可导出的游戏".to_string());
     }
-    // 隐藏的 ROM 不写入 gamelist/pegasus,即不被同步到前端与模拟器。
-    let hidden_files = crate::commands::rom::hidden_files_for_directory(&directory);
-    if !hidden_files.is_empty() {
-        metadata.games.retain(|game| {
-            game.file
-                .as_deref()
-                .map(|file| !crate::commands::rom::file_matches_hidden(file, &hidden_files))
-                .unwrap_or(true)
-        });
-    }
+    let temp_directory = metadata_path
+        .as_ref()
+        .ok()
+        .and_then(|path| path.parent())
+        .ok_or_else(|| "临时元数据目录无效".to_string())?;
     for game in &mut metadata.games {
         normalize_game_paths(game);
     }
@@ -778,13 +823,6 @@ fn export_system_data(
         &target.join("media"),
         &media_progress,
     )?;
-
-    // 单向同步:导出到外部目录时,删除目标中源库已隐藏/删除的 ROM(BIOS 保留)。
-    // 原地保存(目标即源)不触发,避免误删源文件。
-    if sync_delete && !paths_equal(&source_directory, &target) {
-        progress(96, "单向同步:清理目标中已移除的 ROM...".to_string());
-        let _ = sync_delete_removed_roms(&source_directory, &target, &metadata.games);
-    }
 
     Ok(ExportOutcome {
         games: metadata.games.len(),
@@ -977,6 +1015,7 @@ pub async fn export_library_scraped_data(
                     } else {
                         CopyMode::All
                     },
+                    &|_| false,
                     &|current, message| {
                         emit_progress(
                             &progress_app,
@@ -1059,6 +1098,41 @@ mod tests {
             logo: Some("media/game/logo.png".into()),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn copy_skip_excludes_hidden_source_files() {
+        let base = std::env::temp_dir().join(format!(
+            "mrrm-copyskip-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = base.join("src");
+        let target = base.join("dst");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("visible.sfc"), b"rom").unwrap();
+        fs::write(source.join("hidden.sfc"), b"rom").unwrap();
+        fs::write(source.join("scph1001.bin"), b"bios").unwrap();
+
+        let hidden = vec!["hidden.sfc".to_string()];
+        let src_root = source.clone();
+        let skip = move |path: &Path| -> bool {
+            path.strip_prefix(&src_root)
+                .ok()
+                .map(|rel| {
+                    crate::commands::rom::file_matches_hidden(&rel.to_string_lossy(), &hidden)
+                })
+                .unwrap_or(false)
+        };
+        copy_directory_contents_with_progress(&source, &target, CopyMode::All, &skip, &|_, _| {})
+            .unwrap();
+
+        assert!(target.join("visible.sfc").exists(), "可见 ROM 应复制");
+        assert!(!target.join("hidden.sfc").exists(), "隐藏 ROM 不应复制");
+        assert!(target.join("scph1001.bin").exists(), "BIOS 应照常复制");
+        let _ = fs::remove_dir_all(&base);
     }
 
     #[test]
@@ -1331,6 +1405,7 @@ mod tests {
                 &source,
                 &target,
                 CopyMode::RomAssetsOnly,
+                &|_| false,
                 &|_, _| {}
             )
             .unwrap(),

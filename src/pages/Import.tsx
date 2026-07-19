@@ -15,6 +15,7 @@ const normalizePath = (path: string) => path.replace(/\\/g, "/");
 interface ExportSettings {
   export_format?: string;
   export_name_mode?: string;
+  export_target_directory?: string;
 }
 
 export default function Import() {
@@ -56,6 +57,9 @@ export default function Import() {
         }
         if (settings.export_name_mode === "original" || settings.export_name_mode === "chinese") {
           setNameMode(settings.export_name_mode);
+        }
+        if (settings.export_target_directory) {
+          setTargetDirectory(settings.export_target_directory);
         }
       })
       .catch((error) => console.error("Failed to load export preferences:", error));
@@ -124,6 +128,9 @@ export default function Import() {
 
   const handleExport = async () => {
     if (!selectedLibrary || !targetDirectory.trim()) return;
+    // 记住本次导出目录,下次打开导出页自动填入
+    void api.updateAppSetting("export_target_directory", targetDirectory.trim())
+      .catch((error) => console.error("Failed to save export target:", error));
     try {
       await exportLibraryData(
         selectedLibrary.id,

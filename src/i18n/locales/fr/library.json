@@ -80,7 +80,9 @@
       "openLocationFailed": "Échec de l'ouverture : {{error}}",
       "batchDeleteConfirmDesc": "Supprimer définitivement les {{count}} ROM sélectionnées ? Les fichiers seront effacés du disque, sans retour possible.",
       "batchDeleteSuccess": "{{count}} ROM supprimées",
-      "batchDeletePartial": "Terminé, {{failed}}/{{total}} en échec"
+      "batchDeletePartial": "Terminé, {{failed}}/{{total}} en échec",
+      "batchHideSuccess": "{{count}} ROM masquées",
+      "batchUnhideSuccess": "{{count}} ROM affichées"
     }
   },
   "romDetail": {
