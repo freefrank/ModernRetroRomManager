@@ -1761,10 +1761,8 @@ fn scan_rom_files_internal(
 
                 // 检查是否包含 PS3_GAME 目录
                 let ps3_game_dir = path.join("PS3_GAME");
-                let is_valid_ps3_folder = ps3_game_dir.exists() && ps3_game_dir.is_dir();
-
-                if is_valid_ps3_folder || true {
-                    // 暂时不做严格验证
+                // 暂时不做严格验证:PS3 子文件夹一律尝试解析(不校验 PS3_GAME 目录)
+                {
                     // 尝试解析 PARAM.SFO 获取游戏信息
                     let param_sfo_path = ps3_game_dir.join("PARAM.SFO");
                     let game_info = if param_sfo_path.exists() {
