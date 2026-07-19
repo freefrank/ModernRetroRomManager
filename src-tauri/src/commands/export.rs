@@ -787,12 +787,9 @@ fn export_system_data(
     let format = format
         .unwrap_or_else(|| "auto".to_string())
         .to_ascii_lowercase();
+    // 默认同时写 gamelist.xml + metadata.pegasus.txt,兼容 ES/batocera 与 Pegasus 前端。
     let resolved_format = if format == "auto" {
-        if target.join("gamelist.xml").exists() {
-            "emulationstation"
-        } else {
-            "pegasus"
-        }
+        "both"
     } else {
         format.as_str()
     };

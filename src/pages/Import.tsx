@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { useRomStore } from "@/stores/romStore";
 import type { RomSystemSummary, ScanDirectory } from "@/types";
 
-type ExportFormat = "pegasus" | "emulationstation";
+type ExportFormat = "both" | "pegasus" | "emulationstation";
 type ExportNameMode = "original" | "chinese";
 
 const normalizePath = (path: string) => path.replace(/\\/g, "/");
@@ -25,7 +25,7 @@ export default function Import() {
   const [libraryId, setLibraryId] = useState("");
   const [systems, setSystems] = useState<RomSystemSummary[]>([]);
   const [selectedSystemPaths, setSelectedSystemPaths] = useState<string[]>([]);
-  const [format, setFormat] = useState<ExportFormat>("pegasus");
+  const [format, setFormat] = useState<ExportFormat>("both");
   const [nameMode, setNameMode] = useState<ExportNameMode>("original");
   const [romAssetsOnly, setRomAssetsOnly] = useState(false);
   const [syncDelete, setSyncDelete] = useState(false);
@@ -52,7 +52,11 @@ export default function Import() {
     api.getAppSettings<ExportSettings>()
       .then((settings) => {
         if (cancelled) return;
-        if (settings.export_format === "pegasus" || settings.export_format === "emulationstation") {
+        if (
+          settings.export_format === "both" ||
+          settings.export_format === "pegasus" ||
+          settings.export_format === "emulationstation"
+        ) {
           setFormat(settings.export_format);
         }
         if (settings.export_name_mode === "original" || settings.export_name_mode === "chinese") {
@@ -220,6 +224,7 @@ export default function Import() {
             <label className="block">
               <span className="mb-2 block text-sm font-medium">{t("import.export.format")}</span>
               <Select value={format} onChange={(event) => handleFormatChange(event.target.value as ExportFormat)}>
+                <option value="both">两者都导出 — gamelist.xml + metadata.pegasus.txt</option>
                 <option value="pegasus">Pegasus — metadata.pegasus.txt</option>
                 <option value="emulationstation">EmulationStation — gamelist.xml</option>
               </Select>
