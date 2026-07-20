@@ -653,6 +653,9 @@ struct EsGame {
     releasedate: Option<String>,
     #[serde(default, deserialize_with = "crate::rating::deserialize_optional_f64")]
     rating: Option<f64>,
+    /// 多碟游戏的各碟 .cue 会被 ES 直接扫描显示;标记 hidden 让 ES 只显示 m3u 一条。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hidden: Option<bool>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -697,6 +700,7 @@ fn pegasus_to_es(game: &PegasusGame) -> Option<EsGame> {
         players: game.players.clone(),
         releasedate: game.release.clone(),
         rating: game.rating.as_deref().and_then(crate::rating::parse_rating),
+        hidden: None,
     })
 }
 
@@ -727,6 +731,38 @@ fn export_emulationstation(
             list.games.push(game);
         }
     }
+
+    // 多碟游戏折叠后只导出一条 m3u,但各碟的 .cue 仍以物理文件存在于 <基名>/ 子文件夹,
+    // EmulationStation 会直接扫描这些 .cue 并把每张碟当成独立游戏显示(且名字是英文文件名)。
+    // 解析每个 m3u、给它引用的各碟文件写 <hidden>true</hidden> 条目,让 ES 只显示 m3u 一条。
+    for game in &named_games {
+        let Some(file) = game.file.as_deref() else {
+            continue;
+        };
+        if !file.to_ascii_lowercase().ends_with(".m3u") {
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(target.join(file.replace('\\', "/"))) else {
+            continue;
+        };
+        for line in content.lines() {
+            let disc = line.trim();
+            if disc.is_empty() || disc.starts_with('#') {
+                continue;
+            }
+            let es_path = format!("./{}", disc.replace('\\', "/"));
+            if let Some(existing) = list.games.iter_mut().find(|entry| entry.path == es_path) {
+                existing.hidden = Some(true);
+            } else {
+                list.games.push(EsGame {
+                    path: es_path,
+                    hidden: Some(true),
+                    ..Default::default()
+                });
+            }
+        }
+    }
+
     let xml = quick_xml::se::to_string(&list).map_err(|error| error.to_string())?;
     fs::write(
         &path,
@@ -1759,6 +1795,40 @@ mod tests {
         assert!(
             merged.contains("old.gba") && merged.contains("new.gba"),
             "非 fresh 合并保留两者"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn es_export_hides_m3u_referenced_disc_files() {
+        // 多碟游戏折叠成一条 m3u,但各碟 .cue 仍以物理文件存在被 ES 扫描;导出须给它们写
+        // <hidden>true</hidden>,让 ES 只显示 m3u 一条,不把每张碟当独立游戏。
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-es-hide-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("FF7.m3u"),
+            "FF7/FF7 (Disc 1).cue\nFF7/FF7 (Disc 2).cue\nFF7/FF7 (Disc 3).cue\n",
+        )
+        .unwrap();
+        let game = PegasusGame {
+            name: "Final Fantasy VII".into(),
+            file: Some("FF7.m3u".into()),
+            ..Default::default()
+        };
+        export_emulationstation(&root, &[game], ExportNameMode::Original, true).unwrap();
+        let xml = fs::read_to_string(root.join("gamelist.xml")).unwrap();
+        assert!(xml.contains("./FF7.m3u"), "m3u 主条目保留");
+        assert!(xml.contains("./FF7/FF7 (Disc 1).cue"), "分碟条目写入");
+        assert_eq!(
+            xml.matches("<hidden>true</hidden>").count(),
+            3,
+            "3 张碟各一条 hidden"
         );
         let _ = fs::remove_dir_all(&root);
     }
