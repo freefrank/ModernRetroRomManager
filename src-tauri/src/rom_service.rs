@@ -592,7 +592,7 @@ pub(crate) fn is_disc_platform(system_lower: &str) -> bool {
 /// 临时元数据加载走独立路径,绕过了 scan_rom_files 的去重与 BIOS 排除。
 /// 此处对每个条目复用同样规则:全平台排除 BIOS;光盘平台一张盘只保留一个描述
 /// 文件(cue/mds),同名载荷轨(bin/img/mdf/ccd)与子码(sub)不单独成条。
-fn keep_temp_metadata_entry(
+pub(crate) fn keep_temp_metadata_entry(
     file: &str,
     all_files_lower: &std::collections::HashSet<String>,
     system_lower: &str,

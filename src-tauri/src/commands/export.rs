@@ -95,38 +95,61 @@ fn is_rom_or_asset_file(path: &Path) -> bool {
         .is_some_and(|extension| EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str()))
 }
 
+/// 统计一次复制的规模。返回 `(总文件数, 总字节, 待写入文件数, 待写入字节)`:
+/// 后两项为"增量"——目标已存在同尺寸文件会被复制阶段跳过(不写),故不计入。
+/// 进度显示用增量,避免把整库大小当分母、让增量同步看起来像全量拷贝。
 fn directory_copy_stats(
     source: &Path,
+    target: &Path,
     mode: CopyMode,
     inside_folder_rom: bool,
     skip: &dyn Fn(&Path) -> bool,
-) -> Result<(usize, u64), String> {
+) -> Result<(usize, u64, usize, u64), String> {
     check_export_cancelled()?;
     let mut files = 0;
     let mut bytes = 0_u64;
+    let mut pending_files = 0;
+    let mut pending_bytes = 0_u64;
     for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
         check_export_cancelled()?;
         let entry = entry.map_err(|error| error.to_string())?;
+        let source_path = entry.path();
         let file_type = entry.file_type().map_err(|error| error.to_string())?;
         if file_type.is_dir() {
-            if skip(&entry.path()) {
+            if skip(&source_path) {
                 continue;
             }
-            let folder_rom = inside_folder_rom || entry.path().join("PS3_GAME").is_dir();
-            let (child_files, child_bytes) =
-                directory_copy_stats(&entry.path(), mode, folder_rom, skip)?;
-            files += child_files;
-            bytes = bytes.saturating_add(child_bytes);
+            let folder_rom = inside_folder_rom || source_path.join("PS3_GAME").is_dir();
+            let (cf, cb, cpf, cpb) = directory_copy_stats(
+                &source_path,
+                &target.join(entry.file_name()),
+                mode,
+                folder_rom,
+                skip,
+            )?;
+            files += cf;
+            bytes = bytes.saturating_add(cb);
+            pending_files += cpf;
+            pending_bytes = pending_bytes.saturating_add(cpb);
         } else if file_type.is_file()
-            && !skip(&entry.path())
-            && (mode == CopyMode::All || inside_folder_rom || is_rom_or_asset_file(&entry.path()))
+            && !skip(&source_path)
+            && (mode == CopyMode::All || inside_folder_rom || is_rom_or_asset_file(&source_path))
         {
+            let size = entry.metadata().map_err(|error| error.to_string())?.len();
             files += 1;
-            bytes =
-                bytes.saturating_add(entry.metadata().map_err(|error| error.to_string())?.len());
+            bytes = bytes.saturating_add(size);
+            // 与 copy_directory_recursive 的“同尺寸即跳过”一致。
+            let unchanged = target
+                .join(entry.file_name())
+                .metadata()
+                .is_ok_and(|meta| meta.is_file() && meta.len() == size);
+            if !unchanged {
+                pending_files += 1;
+                pending_bytes = pending_bytes.saturating_add(size);
+            }
         }
     }
-    Ok((files, bytes))
+    Ok((files, bytes, pending_files, pending_bytes))
 }
 
 /// 估算把 `source` 复制到 `target` 时**实际需要写入**的字节数:目标已存在同尺寸文件
@@ -338,16 +361,16 @@ fn copy_directory_contents_with_progress(
     if target_text.starts_with(&format!("{source_text}/")) {
         return Err("导出目录不能位于源 ROM 目录内部".to_string());
     }
-    progress(0, "正在统计待导出文件...".to_string());
+    progress(0, "正在统计增量...".to_string());
     let root_is_folder_rom = source.join("PS3_GAME").is_dir();
-    let (total_files, total_bytes) = directory_copy_stats(source, mode, root_is_folder_rom, skip)?;
+    let (total_files, _total_bytes, pending_files, pending_bytes) =
+        directory_copy_stats(source, target, mode, root_is_folder_rom, skip)?;
     if total_files == 0 {
         return Ok(0);
     }
     let started = Instant::now();
     let mut last_emit = started;
     let mut copied_files = 0;
-    let mut processed_bytes = 0_u64;
     let mut written_bytes = 0_u64;
     let mut skipped_files = 0;
     copy_directory_recursive(
@@ -356,8 +379,8 @@ fn copy_directory_contents_with_progress(
         mode,
         root_is_folder_rom,
         skip,
-        &mut |processed, written, file_finished, skipped, source_path| {
-            processed_bytes = processed_bytes.saturating_add(processed);
+        &mut |_processed, written, file_finished, skipped, source_path| {
+            // 只累计实际写入的字节:进度反映“增量”,而非整库大小。
             written_bytes = written_bytes.saturating_add(written);
             if file_finished {
                 copied_files += 1;
@@ -371,18 +394,19 @@ fn copy_directory_contents_with_progress(
             {
                 let elapsed = now.duration_since(started).as_secs_f64().max(0.001);
                 let speed = (written_bytes as f64 / elapsed) as u64;
-                let percent = if total_bytes == 0 {
-                    copied_files * 70 / total_files
+                let percent = if pending_bytes == 0 {
+                    70
                 } else {
-                    (processed_bytes.saturating_mul(70) / total_bytes) as usize
+                    (written_bytes.saturating_mul(70) / pending_bytes).min(70) as usize
                 };
                 progress(
                 percent,
                 format!(
-                    "处理文件 {copied_files}/{total_files}（跳过 {skipped_files}）· {} · {}/{} · 写入 {}/s",
+                    "复制文件 {copied_files}/{total_files}（跳过 {skipped_files}）· 增量 {}/{}（{} 个）· {} · 写入 {}/s",
+                    format_bytes(written_bytes),
+                    format_bytes(pending_bytes),
+                    pending_files,
                     source_path.file_name().unwrap_or_default().to_string_lossy(),
-                    format_bytes(processed_bytes),
-                    format_bytes(total_bytes),
                     format_bytes(speed)
                 ),
             );
@@ -902,6 +926,32 @@ fn export_system_data(
         Ok(path) => {
             progress(0, "读取临时抓取数据...".to_string());
             let mut parsed = parse_pegasus_file(path)?;
+            // 光盘多轨去重:临时元数据可能把同一张盘的 .bin/.img/.sub 载荷轨与 .cue
+            // 描述文件并列成多条。加载(库视图)走 keep_temp_metadata_entry 去过重,但
+            // 导出此前直接读文件、绕过了它,导致 gamelist 每个游戏双份列出——载荷轨成了
+            // 无法启动、只有原始文件名的"游戏",ES 里看起来就是 metadata 读不到。此处复用
+            // 同一规则,一张盘只保留描述文件(cue/ccd/mds 或折叠后的 m3u)。
+            {
+                let all_files_lower: std::collections::HashSet<String> = parsed
+                    .games
+                    .iter()
+                    .filter_map(|game| game.file.as_deref())
+                    .map(|file| file.to_lowercase())
+                    .collect();
+                let system_lower = system.to_lowercase();
+                parsed.games.retain(|game| {
+                    game.file
+                        .as_deref()
+                        .map(|file| {
+                            crate::rom_service::keep_temp_metadata_entry(
+                                file,
+                                &all_files_lower,
+                                &system_lower,
+                            )
+                        })
+                        .unwrap_or(true)
+                });
+            }
             if !hidden_files.is_empty() {
                 parsed.games.retain(|game| {
                     game.file
@@ -1533,6 +1583,31 @@ mod tests {
         );
         assert!(!target.join("Removed").exists(), "源已移除的游戏应删除");
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn export_dedupes_multitrack_payload_leaving_descriptor_only() {
+        // 回归:光盘平台导出前须复用 keep_temp_metadata_entry 去重,单碟游戏的 .bin/.img
+        // 载荷轨不得与 .cue 双份写进 gamelist(此前导致 ES 里每个游戏出现两条、载荷轨无元数据)。
+        let files = vec![
+            "七风岛物语[简]/七风岛物语.cue".to_string(),
+            "七风岛物语[简]/七风岛物语.BIN".to_string(),
+            "D之食卓[简].m3u".to_string(),
+            "D之食卓[简]/D之食卓[简]CD1/disc1.cue".to_string(),
+            "D之食卓[简]/D之食卓[简]CD1/disc1.img".to_string(),
+        ];
+        let all_lower: std::collections::HashSet<String> =
+            files.iter().map(|f| f.to_lowercase()).collect();
+        let kept: Vec<&String> = files
+            .iter()
+            .filter(|f| crate::rom_service::keep_temp_metadata_entry(f, &all_lower, "saturn"))
+            .collect();
+        // 保留:两个 cue 描述文件 + m3u;剔除:BIN/img 载荷轨。
+        assert!(kept.iter().any(|f| f.ends_with("七风岛物语.cue")));
+        assert!(kept.iter().any(|f| f.ends_with(".m3u")));
+        assert!(kept.iter().any(|f| f.ends_with("disc1.cue")));
+        assert!(!kept.iter().any(|f| f.to_lowercase().ends_with(".bin")));
+        assert!(!kept.iter().any(|f| f.to_lowercase().ends_with(".img")));
     }
 
     #[test]
