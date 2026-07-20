@@ -1,5 +1,13 @@
 {
   "library": {
+    "sort": {
+      "label": "Сортировка",
+      "byName": "Имя",
+      "bySize": "Размер",
+      "byUpdated": "Изменён",
+      "asc": "По возрастанию",
+      "desc": "По убыванию"
+    },
     "title": "ROM Библиотека",
     "gameCount": "{{count}} игры",
     "search": "Поиск...",

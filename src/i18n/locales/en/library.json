@@ -1,5 +1,13 @@
 {
   "library": {
+    "sort": {
+      "label": "Sort",
+      "byName": "Name",
+      "bySize": "Size",
+      "byUpdated": "Modified",
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
     "title": "ROM Library",
     "gameCount": "{{count}} games",
     "search": "Search...",

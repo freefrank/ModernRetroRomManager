@@ -1,5 +1,13 @@
 {
   "library": {
+    "sort": {
+      "label": "Ordina",
+      "byName": "Nome",
+      "bySize": "Dimensione",
+      "byUpdated": "Modificato",
+      "asc": "Crescente",
+      "desc": "Decrescente"
+    },
     "title": "ROM Libreria",
     "gameCount": "{{count}} giochi",
     "search": "Cerca...",

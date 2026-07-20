@@ -17,6 +17,8 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRomStore, hiddenRomKey } from "@/stores/romStore";
@@ -27,7 +29,7 @@ import type { Rom, ViewMode } from "@/types";
 import { api, aiTranslationApi, ps3Api, scraperApi, isTauri } from "@/lib/api";
 import { romMetadata } from "@/lib/metadataTranslation";
 import { groupTranslationRequests } from "@/lib/translationBatch";
-import { Button, Dialog, EmptyState, IconButton, Input, toast } from "@/components/ui";
+import { Button, Dialog, EmptyState, IconButton, Input, Select, toast } from "@/components/ui";
 
 import RomView from "@/components/rom/RomView";
 
@@ -87,7 +89,7 @@ export default function Library() {
     scanLibrary,
   } = useRomStore();
   const activeLibrary = scanDirectories.find(item => item.isActive);
-  const { viewMode, setViewMode, searchQuery, setSearchQuery, nameDisplayMode, setNameDisplayMode } = useAppStore();
+  const { viewMode, setViewMode, searchQuery, setSearchQuery, nameDisplayMode, setNameDisplayMode, sortOption, setSortOption } = useAppStore();
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [activeRom, setActiveRom] = useState<Rom | null>(null);
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
@@ -207,8 +209,22 @@ export default function Library() {
           .some((name) => name?.toLowerCase().includes(lowerQuery)),
       );
     }
-    return list;
-  }, [romsOfSystem, debouncedSearch, showHidden, hiddenKeys]);
+    // 排序(稳定:同值保持原序)
+    const factor = sortOption.direction === "desc" ? -1 : 1;
+    return [...list].sort((a, b) => {
+      let cmp: number;
+      if (sortOption.field === "size") {
+        cmp = (a.file_size ?? 0) - (b.file_size ?? 0);
+      } else if (sortOption.field === "updatedAt") {
+        cmp = (a.modified_at ?? 0) - (b.modified_at ?? 0);
+      } else {
+        cmp = (a.chinese_name || a.name || a.file).localeCompare(
+          b.chinese_name || b.name || b.file,
+        );
+      }
+      return cmp * factor;
+    });
+  }, [romsOfSystem, debouncedSearch, showHidden, hiddenKeys, sortOption]);
 
   const hiddenCount = useMemo(
     () => romsOfSystem.filter((r) => hiddenKeys.has(hiddenRomKey(r.directory, r.file))).length,
@@ -605,6 +621,44 @@ export default function Library() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
+          </div>
+
+          {/* 排序:字段选择 + 升降序切换 */}
+          <div className="flex items-center gap-1">
+            <Select
+              className="w-auto"
+              aria-label={t("library.sort.label")}
+              title={t("library.sort.label")}
+              value={sortOption.field}
+              onChange={(e) =>
+                setSortOption({
+                  field: e.target.value as "name" | "size" | "updatedAt",
+                  direction: sortOption.direction,
+                })
+              }
+            >
+              <option value="name">{t("library.sort.byName")}</option>
+              <option value="size">{t("library.sort.bySize")}</option>
+              <option value="updatedAt">{t("library.sort.byUpdated")}</option>
+            </Select>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                setSortOption({
+                  field: sortOption.field,
+                  direction: sortOption.direction === "asc" ? "desc" : "asc",
+                })
+              }
+              title={sortOption.direction === "asc" ? t("library.sort.asc") : t("library.sort.desc")}
+              aria-label={sortOption.direction === "asc" ? t("library.sort.asc") : t("library.sort.desc")}
+            >
+              {sortOption.direction === "asc" ? (
+                <ArrowUp className="w-5 h-5" />
+              ) : (
+                <ArrowDown className="w-5 h-5" />
+              )}
+            </IconButton>
           </div>
 
           {/* 卡片尺寸滑杆(列表模式下隐藏) */}

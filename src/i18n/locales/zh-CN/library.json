@@ -1,5 +1,13 @@
 {
   "library": {
+    "sort": {
+      "label": "排序",
+      "byName": "名称",
+      "bySize": "大小",
+      "byUpdated": "修改时间",
+      "asc": "升序",
+      "desc": "降序"
+    },
     "title": "ROM 库",
     "gameCount": "{{count}} 个游戏",
     "search": "搜索...",
