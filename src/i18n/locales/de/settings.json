@@ -178,7 +178,9 @@
       "title": "Ungefähr",
       "version": "Version {{version}}",
       "repository": "GitHub-Repository",
-      "license": "MIT-Lizenz"
+      "license": "MIT-Lizenz",
+      "openLog": "Protokollordner öffnen",
+      "openLogFailed": "Protokollordner konnte nicht geöffnet werden"
     }
   }
 }

@@ -178,7 +178,9 @@
       "title": "Acerca de",
       "version": "Versión {{version}}",
       "repository": "Repositorio GitHub",
-      "license": "Licencia MIT"
+      "license": "Licencia MIT",
+      "openLog": "Abrir carpeta de registros",
+      "openLogFailed": "No se pudo abrir la carpeta de registros"
     }
   }
 }

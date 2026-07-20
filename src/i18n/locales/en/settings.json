@@ -178,7 +178,9 @@
       "title": "About",
       "version": "Version {{version}}",
       "repository": "GitHub Repository",
-      "license": "MIT License"
+      "license": "MIT License",
+      "openLog": "Open log folder",
+      "openLogFailed": "Failed to open log folder"
     }
   }
 }

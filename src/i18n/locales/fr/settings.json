@@ -178,7 +178,9 @@
       "title": "À propos",
       "version": "Version {{version}}",
       "repository": "Dépôt GitHub",
-      "license": "Licence MIT"
+      "license": "Licence MIT",
+      "openLog": "Ouvrir le dossier des journaux",
+      "openLogFailed": "Échec de l'ouverture du dossier des journaux"
     }
   }
 }

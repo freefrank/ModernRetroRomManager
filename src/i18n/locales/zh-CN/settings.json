@@ -178,7 +178,9 @@
       "title": "关于",
       "version": "版本 {{version}}",
       "repository": "GitHub 仓库",
-      "license": "MIT 许可证"
+      "license": "MIT 许可证",
+      "openLog": "打开日志目录",
+      "openLogFailed": "打开日志目录失败"
     }
   }
 }

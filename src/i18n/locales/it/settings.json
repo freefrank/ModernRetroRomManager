@@ -178,7 +178,9 @@
       "title": "Informazioni",
       "version": "Versione {{version}}",
       "repository": "Repository GitHub",
-      "license": "Licenza MIT"
+      "license": "Licenza MIT",
+      "openLog": "Apri cartella dei log",
+      "openLogFailed": "Impossibile aprire la cartella dei log"
     }
   }
 }

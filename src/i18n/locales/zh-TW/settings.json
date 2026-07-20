@@ -178,7 +178,9 @@
       "title": "關於",
       "version": "版本 {{version}}",
       "repository": "GitHub 倉庫",
-      "license": "MIT 許可證"
+      "license": "MIT 許可證",
+      "openLog": "開啟日誌目錄",
+      "openLogFailed": "開啟日誌目錄失敗"
     }
   }
 }

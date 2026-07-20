@@ -91,6 +91,16 @@ export const api = {
     if (isTauri()) await tauriInvoke("open_rom_location", { directory, file });
   },
 
+  /** 在系统文件管理器中打开日志目录 */
+  async openLogDirectory(): Promise<void> {
+    if (isTauri()) await tauriInvoke("open_log_directory");
+  },
+
+  /** 获取日志文件的完整路径 */
+  async getLogPath(): Promise<string> {
+    return isTauri() ? tauriInvoke<string>("get_log_path") : "";
+  },
+
   async getRomLibrarySummary(): Promise<RomSystemSummary[]> {
     if (isTauri()) {
       return tauriInvoke<RomSystemSummary[]>("get_rom_library_summary");

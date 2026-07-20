@@ -1,10 +1,27 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card } from "@/components/ui";
+import { Card, Button, toast } from "@/components/ui";
+import { api, isTauri } from "@/lib/api";
 
 const REPO_URL = "https://github.com/freefrank/ModernRetroRomManager";
 
 export default function AboutSection() {
   const { t } = useTranslation();
+  const [logPath, setLogPath] = useState("");
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    api.getLogPath().then(setLogPath).catch(() => setLogPath(""));
+  }, []);
+
+  const handleOpenLog = async () => {
+    try {
+      await api.openLogDirectory();
+    } catch {
+      toast.error(t("settings.about.openLogFailed"));
+    }
+  };
+
   return (
     <section>
       <h2 className="text-lg font-medium text-text-primary mb-4">
@@ -40,6 +57,17 @@ export default function AboutSection() {
             </div>
           </div>
         </div>
+
+        {isTauri() && (
+          <div className="mt-4">
+            <Button variant="ghost" size="sm" onClick={handleOpenLog}>
+              {t("settings.about.openLog")}
+            </Button>
+            {logPath && (
+              <p className="text-text-muted text-xs mt-2 break-all">{logPath}</p>
+            )}
+          </div>
+        )}
       </Card>
     </section>
   );

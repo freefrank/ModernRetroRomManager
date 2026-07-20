@@ -178,7 +178,9 @@
       "title": "О нас",
       "version": "Версия {{version}}",
       "repository": "Репозиторий GitHub",
-      "license": "Лицензия MIT"
+      "license": "Лицензия MIT",
+      "openLog": "Открыть папку журналов",
+      "openLogFailed": "Не удалось открыть папку журналов"
     }
   }
 }
