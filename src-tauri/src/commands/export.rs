@@ -762,6 +762,20 @@ fn sync_delete_removed_roms(
         if let Some(file) = &game.file {
             if source.join(file).exists() {
                 keep.insert(scope_key(file));
+                // 多碟游戏折叠后 file 指向 <基名>.m3u,而各碟实际位于 <基名>/ 子文件夹,
+                // 其顶层条目名(基名)不同于 m3u 文件名。必须解析 m3u、把各碟引用路径的
+                // 顶层条目一并加入 keep,否则单向同步会把这些碟片文件夹当作"已移除"删掉
+                // (随后复制阶段又重建),导致每次导出反复删/拷一堆已有 ROM。
+                if file.to_ascii_lowercase().ends_with(".m3u") {
+                    if let Ok(content) = fs::read_to_string(source.join(file)) {
+                        for line in content.lines() {
+                            let entry = line.trim();
+                            if !entry.is_empty() && !entry.starts_with('#') {
+                                keep.insert(scope_key(entry));
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1389,6 +1403,54 @@ mod tests {
             !target.join("HiddenGame").exists(),
             "整个隐藏游戏文件夹删除"
         );
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn sync_delete_keeps_multidisc_folder_referenced_by_m3u() {
+        // 回归:多碟游戏折叠后 metadata.file 指向 <基名>.m3u,各碟在 <基名>/ 子文件夹。
+        // 单向同步不得把该碟片文件夹当作"已移除"删掉(此前每次导出都会删一堆已有 ROM)。
+        let base = std::env::temp_dir().join(format!(
+            "mrrm-sync-m3u-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = base.join("src");
+        let target = base.join("dst");
+        // 源:折叠后的结构——FF7.m3u + FF7/ 子文件夹(各碟)
+        fs::create_dir_all(source.join("FF7")).unwrap();
+        fs::write(
+            source.join("FF7.m3u"),
+            "FF7/FF7 (Disc 1).cue\nFF7/FF7 (Disc 2).cue\n",
+        )
+        .unwrap();
+        fs::write(source.join("FF7").join("FF7 (Disc 1).cue"), b"cue").unwrap();
+        fs::write(source.join("FF7").join("FF7 (Disc 2).cue"), b"cue").unwrap();
+        // 目标:上次导出留下的同样结构 + 一个源已移除的游戏文件夹
+        fs::create_dir_all(target.join("FF7")).unwrap();
+        fs::write(target.join("FF7.m3u"), "FF7/FF7 (Disc 1).cue\n").unwrap();
+        fs::write(target.join("FF7").join("FF7 (Disc 1).cue"), b"cue").unwrap();
+        fs::write(target.join("FF7").join("FF7 (Disc 2).cue"), b"cue").unwrap();
+        fs::create_dir_all(target.join("GoneGame")).unwrap();
+        fs::write(target.join("GoneGame").join("Gone.cue"), b"cue").unwrap();
+
+        let game = PegasusGame {
+            name: "FF7".into(),
+            file: Some("FF7.m3u".into()),
+            ..Default::default()
+        };
+        let removed = sync_delete_removed_roms(&source, &target, &[game]).unwrap();
+
+        assert_eq!(removed, 1, "只应删除源已移除的 GoneGame");
+        assert!(
+            target.join("FF7").join("FF7 (Disc 1).cue").exists(),
+            "m3u 引用的碟片文件夹必须保留"
+        );
+        assert!(target.join("FF7").join("FF7 (Disc 2).cue").exists());
+        assert!(target.join("FF7.m3u").exists(), "m3u 本身保留");
+        assert!(!target.join("GoneGame").exists(), "源已移除的游戏应删除");
         let _ = fs::remove_dir_all(&base);
     }
 
