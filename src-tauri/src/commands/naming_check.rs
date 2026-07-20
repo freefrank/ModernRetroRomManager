@@ -2258,26 +2258,22 @@ fn export_pegasus_format(
     entries: &[TempMetadataEntry],
     system: Option<&str>,
 ) -> Result<(), String> {
-    use crate::scraper::pegasus::{write_pegasus_file, PegasusExportOptions, PegasusGame};
+    use crate::scraper::pegasus::{
+        parse_pegasus_file, write_pegasus_file, PegasusExportOptions, PegasusGame,
+    };
+    use std::collections::{HashMap, HashSet};
     use std::path::Path;
 
-    // 转换为 PegasusGame 列表
-    let games: Vec<PegasusGame> = entries
+    let norm = |value: &str| value.replace('\\', "/");
+    // file(正斜杠) -> (中文名, 英文名)。中文名取 extracted_cn_name(从文件名/文件夹提取的中文)。
+    let cn_map: HashMap<String, (Option<String>, Option<String>)> = entries
         .iter()
         .map(|entry| {
-            let mut game = PegasusGame {
-                name: entry.name.clone().unwrap_or_else(|| entry.file.clone()),
-                file: Some(entry.file.clone()),
-                ..Default::default()
-            };
-
-            // 添加英文名到 x-mrrm-eng 字段
-            if let Some(ref eng_name) = entry.english_name {
-                game.extra
-                    .insert("x-mrrm-eng".to_string(), eng_name.clone());
-            }
-
-            game
+            let chinese = entry
+                .extracted_cn_name
+                .clone()
+                .filter(|value| !value.trim().is_empty());
+            (norm(&entry.file), (chinese, entry.english_name.clone()))
         })
         .collect();
 
@@ -2307,8 +2303,76 @@ fn export_pegasus_format(
         ..Default::default()
     };
 
-    // 写入文件（不合并，直接覆盖）
-    write_pegasus_file(Path::new(target_path), &games, &options, false)
+    let target = Path::new(target_path);
+
+    // 目标已有 metadata:仅把 x-mrrm-cn(及 x-mrrm-eng)合并进已抓取的游戏,保留其名字/开发商/
+    // 描述/资源等一切字段;已有 metadata 里没有的游戏才追加最小条目。避免整份覆盖丢掉抓取数据。
+    if target.is_file() {
+        if let Ok(mut existing) = parse_pegasus_file(target) {
+            let mut seen: HashSet<String> = HashSet::new();
+            for game in &mut existing.games {
+                let Some(key) = game.file.as_deref().map(&norm) else {
+                    continue;
+                };
+                seen.insert(key.clone());
+                if let Some((chinese, english)) = cn_map.get(&key) {
+                    if let Some(chinese) = chinese {
+                        game.chinese_name = Some(chinese.clone());
+                    }
+                    if let Some(english) = english {
+                        game.extra.insert("x-mrrm-eng".to_string(), english.clone());
+                    }
+                }
+            }
+            for entry in entries {
+                let key = norm(&entry.file);
+                if seen.contains(&key) {
+                    continue;
+                }
+                let (chinese, english) = cn_map.get(&key).cloned().unwrap_or((None, None));
+                let mut game = PegasusGame {
+                    name: entry
+                        .name
+                        .clone()
+                        .or_else(|| chinese.clone())
+                        .or_else(|| english.clone())
+                        .unwrap_or_else(|| entry.file.clone()),
+                    file: Some(entry.file.clone()),
+                    chinese_name: chinese,
+                    ..Default::default()
+                };
+                if let Some(english) = english {
+                    game.extra.insert("x-mrrm-eng".to_string(), english);
+                }
+                existing.games.push(game);
+            }
+            return write_pegasus_file(target, &existing.games, &options, false);
+        }
+    }
+
+    // 目标无已有 metadata:全新写入(name + x-mrrm-cn + x-mrrm-eng)。
+    let games: Vec<PegasusGame> = entries
+        .iter()
+        .map(|entry| {
+            let (chinese, english) = cn_map.get(&norm(&entry.file)).cloned().unwrap_or((None, None));
+            let mut game = PegasusGame {
+                name: entry
+                    .name
+                    .clone()
+                    .or_else(|| chinese.clone())
+                    .unwrap_or_else(|| entry.file.clone()),
+                file: Some(entry.file.clone()),
+                chinese_name: chinese,
+                ..Default::default()
+            };
+            if let Some(english) = english {
+                game.extra.insert("x-mrrm-eng".to_string(), english);
+            }
+            game
+        })
+        .collect();
+
+    write_pegasus_file(target, &games, &options, false)
 }
 
 fn export_gamelist_format(target_path: &str, entries: &[TempMetadataEntry]) -> Result<(), String> {
@@ -2360,6 +2424,60 @@ fn detect_format(dir_path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cn_export_merges_x_mrrm_cn_into_existing_metadata_without_overwriting() {
+        use crate::scraper::pegasus::{
+            parse_pegasus_file, write_pegasus_file, PegasusExportOptions, PegasusGame,
+        };
+        let dir = std::env::temp_dir().join(format!(
+            "mrrm-cn-merge-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("metadata.pegasus.txt");
+
+        // 已抓取的 ROM 库 metadata:英文名 + 开发商 + 描述,尚无中文名。
+        let existing = vec![PegasusGame {
+            name: "Ridge Racer".into(),
+            file: Some("Ridge Racer (Japan).cue".into()),
+            developer: Some("Namco".into()),
+            description: Some("Arcade racing.".into()),
+            ..Default::default()
+        }];
+        write_pegasus_file(&target, &existing, &PegasusExportOptions::default(), false).unwrap();
+
+        // CN 工具导出:extracted_cn_name 提供中文名。
+        let entries = vec![TempMetadataEntry {
+            file: "Ridge Racer (Japan).cue".into(),
+            name: Some("山脊赛车".into()),
+            english_name: Some("Ridge Racer".into()),
+            confidence: None,
+            extracted_cn_name: Some("山脊赛车".into()),
+        }];
+        export_pegasus_format(
+            dir.to_str().unwrap(),
+            target.to_str().unwrap(),
+            &entries,
+            Some("psx"),
+        )
+        .unwrap();
+
+        let merged = parse_pegasus_file(&target).unwrap();
+        let game = merged
+            .games
+            .iter()
+            .find(|g| g.file.as_deref() == Some("Ridge Racer (Japan).cue"))
+            .expect("游戏应仍在");
+        assert_eq!(game.chinese_name.as_deref(), Some("山脊赛车"), "x-mrrm-cn 合并写入");
+        assert_eq!(game.name, "Ridge Racer", "已抓取英文名必须保留,不被覆盖");
+        assert_eq!(game.developer.as_deref(), Some("Namco"), "开发商保留");
+        assert_eq!(game.description.as_deref(), Some("Arcade racing."), "描述保留");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn resolves_chinese_sfc_title_to_english_via_embedded_db() {
