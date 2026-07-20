@@ -299,9 +299,23 @@ fn m3u_relpath(base: &str) -> String {
     format!("{base}.m3u")
 }
 
-/// 某碟文件搬入 `<基名>/` 后的新相对路径(保留原顶层条目名)。
+/// 去掉相对路径 `file` 里的 `parent_rel/` 前缀;`parent_rel` 为空或不匹配时原样返回。
+fn strip_parent<'a>(parent_rel: &str, file: &'a str) -> &'a str {
+    if parent_rel.is_empty() {
+        return file;
+    }
+    file.strip_prefix(parent_rel)
+        .and_then(|r| r.strip_prefix('/'))
+        .unwrap_or(file)
+}
+
+/// 某碟文件搬入 `<基名>/` 后的新相对路径(相对平台目录、正斜杠)。
+/// `base` 可能含分类子目录前缀(如 `RPG/FF7`),此时碟文件也带同一前缀,
+/// 需先剥除父目录前缀再拼接,避免前缀重复(审计 #1)。
 fn reorg_target(base: &str, disc_file: &str) -> String {
-    format!("{base}/{}", disc_file.replace('\\', "/"))
+    let normalized = disc_file.replace('\\', "/");
+    let parent_rel = base.rsplit_once('/').map(|(p, _)| p).unwrap_or("");
+    format!("{base}/{}", strip_parent(parent_rel, &normalized))
 }
 
 /// 去掉游戏显示名里的碟号标记(用作折叠后的名字);无标记则原样返回。
@@ -312,21 +326,39 @@ fn stripped_name(name: &str) -> String {
         .unwrap_or_else(|| name.to_string())
 }
 
+/// 判断 `candidate`(小写 stem)是否为代表文件 `prefix`(小写 stem)的同碟兄弟轨。
+/// 兄弟轨 = 与代表文件同名(仅扩展名不同,如 cue/bin/sub),或仅在其后追加了
+/// `(track N)` 轨号后缀。共享前缀但语义独立的文件(如 `... special`、`game 2`、
+/// `gametta`、`(disc 10)` 相对 `(disc 1)`)一律不算,避免误吞独立游戏(审计 #8)。
+fn is_sibling_track(prefix: &str, candidate: &str) -> bool {
+    match candidate.strip_prefix(prefix) {
+        None => false,
+        Some("") => true,
+        Some(rest) => rest.trim_start().starts_with("(track"),
+    }
+}
+
 /// 把某组各碟的顶层条目移动到 `<基名>/` 下,并在平台目录写出 `<基名>.m3u`。
 /// 返回移动的顶层条目数;目标已存在(已整理)时跳过对应移动,保证幂等。
 fn apply_group_reorg(dir: &Path, group: &MultiDiscGame) -> Result<usize, String> {
     let base = &group.base;
     let base_dir = dir.join(base);
 
-    // 去重收集各碟的顶层条目(相对平台目录的第一段)。
+    // 碟文件所在的父目录(相对平台目录):基名去掉最后一段。多碟游戏可能位于分类
+    // 子目录下(如 RPG/),此时顶层条目相对该父目录、而非平台根,否则会误搬整个
+    // 分类目录进自身(审计 #1)。
+    let parent_rel = base.rsplit_once('/').map(|(p, _)| p).unwrap_or("");
+    let parent_dir = if parent_rel.is_empty() {
+        dir.to_path_buf()
+    } else {
+        dir.join(parent_rel)
+    };
+
+    // 去重收集各碟的顶层条目(相对父目录的第一段)。
     let mut tops: Vec<String> = Vec::new();
     for disc in &group.discs {
-        let top = disc
-            .file
-            .split('/')
-            .next()
-            .unwrap_or(&disc.file)
-            .to_string();
+        let rel = strip_parent(parent_rel, &disc.file);
+        let top = rel.split('/').next().unwrap_or(rel).to_string();
         if !top.is_empty() && !tops.contains(&top) {
             tops.push(top);
         }
@@ -334,7 +366,7 @@ fn apply_group_reorg(dir: &Path, group: &MultiDiscGame) -> Result<usize, String>
 
     let mut moved = 0usize;
     for top in &tops {
-        let src = dir.join(top);
+        let src = parent_dir.join(top);
         if !src.exists() {
             continue; // 已整理或缺失
         }
@@ -356,7 +388,7 @@ fn apply_group_reorg(dir: &Path, group: &MultiDiscGame) -> Result<usize, String>
                 .unwrap_or(top)
                 .to_lowercase();
             let mut siblings: Vec<String> = Vec::new();
-            for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+            for entry in std::fs::read_dir(&parent_dir).map_err(|e| e.to_string())? {
                 let entry = entry.map_err(|e| e.to_string())?;
                 if !entry.file_type().map_err(|e| e.to_string())?.is_file() {
                     continue;
@@ -367,17 +399,12 @@ fn apply_group_reorg(dir: &Path, group: &MultiDiscGame) -> Result<usize, String>
                     .and_then(|s| s.to_str())
                     .unwrap_or(&name)
                     .to_lowercase();
-                // 前缀匹配,但紧随其后不能是数字,避免 "(Disc 1)" 误吞 "(Disc 10)"。
-                let hit = match name_stem.strip_prefix(&stem) {
-                    Some(rest) => rest.chars().next().is_none_or(|c| !c.is_ascii_digit()),
-                    None => false,
-                };
-                if hit {
+                if is_sibling_track(&stem, &name_stem) {
                     siblings.push(name);
                 }
             }
             for name in siblings {
-                let s = dir.join(&name);
+                let s = parent_dir.join(&name);
                 let dst = base_dir.join(&name);
                 if dst.exists() {
                     continue;
@@ -716,6 +743,78 @@ mod tests {
         let report = organize_and_collapse(&dir, &mut games, false).unwrap();
         assert!(!report.changed);
         assert_eq!(games.len(), 2);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn organize_multidisc_inside_category_subdir() {
+        // 回归(审计 #1):多碟游戏位于分类子目录 RPG/ 下,不得把整个 RPG 目录搬进自身。
+        let dir = tmp_dir("subdir");
+        std::fs::create_dir_all(dir.join("RPG")).unwrap();
+        for f in ["FF7 (Disc 1).cue", "FF7 (Disc 1).bin", "FF7 (Disc 2).cue"] {
+            std::fs::write(dir.join("RPG").join(f), b"x").unwrap();
+        }
+        // 同分类下另有无关独立游戏,绝不能被卷走。
+        std::fs::write(dir.join("RPG").join("Chrono Trigger.sfc"), b"z").unwrap();
+
+        let mut games = vec![
+            disc_game("FF7 (Disc 1)", "RPG/FF7 (Disc 1).cue"),
+            disc_game("FF7 (Disc 2)", "RPG/FF7 (Disc 2).cue"),
+        ];
+        let report = organize_and_collapse(&dir, &mut games, true).unwrap();
+        assert!(report.changed);
+        assert_eq!(report.groups, 1);
+
+        // 折叠成一条,m3u 相对平台目录含分类前缀。
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].file.as_deref(), Some("RPG/FF7.m3u"));
+
+        // 各碟搬入 RPG/FF7/,m3u 落在 RPG/ 下并指向正确相对路径。
+        assert!(dir.join("RPG").join("FF7").join("FF7 (Disc 1).cue").exists());
+        assert!(dir.join("RPG").join("FF7").join("FF7 (Disc 1).bin").exists());
+        assert!(dir.join("RPG").join("FF7").join("FF7 (Disc 2).cue").exists());
+        let m3u = std::fs::read_to_string(dir.join("RPG").join("FF7.m3u")).unwrap();
+        assert!(m3u.contains("RPG/FF7/FF7 (Disc 1).cue"));
+        assert!(m3u.contains("RPG/FF7/FF7 (Disc 2).cue"));
+
+        // 无关独立游戏原地不动,分类目录未被移动。
+        assert!(dir.join("RPG").join("Chrono Trigger.sfc").exists());
+        assert!(dir.join("RPG").is_dir());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn sibling_track_matching_excludes_prefix_shared_independent_games() {
+        // 回归(审计 #8):共享前缀的独立游戏不得被当兄弟轨搬走;多轨 Track N 应搬。
+        assert!(is_sibling_track("ff7 (disc 1)", "ff7 (disc 1)")); // 同 stem
+        assert!(is_sibling_track("ff7 (disc 1)", "ff7 (disc 1) (track 2)")); // 多轨
+        assert!(!is_sibling_track("ff7 (disc 1)", "ff7 (disc 1) special")); // 独立
+        assert!(!is_sibling_track("game", "game 2")); // 续号独立游戏
+        assert!(!is_sibling_track("game", "gametta")); // 无边界前缀
+
+        let dir = tmp_dir("sibguard");
+        for f in [
+            "Game (Disc 1).cue",
+            "Game (Disc 1).bin",
+            "Game (Disc 2).cue",
+            "Game (Disc 2).bin",
+        ] {
+            std::fs::write(dir.join(f), b"x").unwrap();
+        }
+        // 共享 "Game (Disc 1)" 前缀但独立的游戏,不能被搬。
+        std::fs::write(dir.join("Game (Disc 1) Bonus.zip"), b"b").unwrap();
+
+        let mut games = vec![
+            disc_game("Game (Disc 1)", "Game (Disc 1).cue"),
+            disc_game("Game (Disc 2)", "Game (Disc 2).cue"),
+        ];
+        organize_and_collapse(&dir, &mut games, true).unwrap();
+        assert!(dir.join("Game").join("Game (Disc 1).bin").exists());
+        assert!(
+            dir.join("Game (Disc 1) Bonus.zip").exists(),
+            "共享前缀的独立游戏必须原地保留"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
