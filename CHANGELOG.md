@@ -6,6 +6,20 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-07-20
+
+### English
+
+#### Fixed
+
+- One-way sync export no longer deletes the disc folders of multi-disc games. After collapsing, a game's metadata points at its `<game>.m3u`, while the discs live in a `<game>/` subfolder whose name differs from the playlist file; the sync's keep-set only recognized the `.m3u` name, so those folders were treated as "removed" and deleted every export (then re-copied). The keep-set now also parses each `.m3u` and preserves every disc path it references.
+
+### 简体中文
+
+#### 修复
+
+- 单向同步导出不再删除多碟游戏的碟片文件夹。折叠后游戏的元数据指向 `<游戏名>.m3u`,而各碟位于名称不同于该播放列表的 `<游戏名>/` 子文件夹;同步的保留集此前只认 `.m3u` 文件名,导致这些文件夹每次导出都被当作"已移除"删掉(随后又被复制回来)。现在保留集会解析每个 `.m3u`,保留其引用的所有碟片路径。
+
 ## [1.4.5] - 2026-07-20
 
 ### English
