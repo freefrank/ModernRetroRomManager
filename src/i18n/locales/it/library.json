@@ -26,7 +26,18 @@
       "addCard": "Aggiungi libreria",
       "addCardHint": "Aggiungi una libreria ROM indipendente in Impostazioni",
       "saveNoPending": "Nessun dato di scraping in sospeso da salvare",
-      "saveSuccess": "Dati di scraping salvati per {{count}} piattaforma/e nelle directory ROM"
+      "saveSuccess": "Dati di scraping salvati per {{count}} piattaforma/e nelle directory ROM",
+      "context": {
+        "hide": "Nascondi sistema",
+        "unhide": "Mostra",
+        "delete": "Elimina sistema",
+        "showHidden": "Mostra sistemi nascosti ({{count}})",
+        "deleteConfirmTitle": "Elimina definitivamente il sistema",
+        "deleteConfirmMessage": "Eliminare definitivamente la piattaforma \"{{name}}\"? Questa operazione cancella dal disco l’intera cartella della piattaforma e tutte le sue ROM e non può essere annullata.",
+        "deleteSuccess": "Piattaforma \"{{name}}\" eliminata",
+        "deleteFailed": "Eliminazione non riuscita: {{error}}",
+        "hideFailed": "Operazione non riuscita: {{error}}"
+      }
     },
     "breadcrumb": "Percorso di navigazione",
     "systemNotFound": {

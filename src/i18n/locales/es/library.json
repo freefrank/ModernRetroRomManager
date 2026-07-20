@@ -26,7 +26,18 @@
       "addCard": "Agregar biblioteca",
       "addCardHint": "Agregue una biblioteca ROM independiente en Configuración",
       "saveNoPending": "No hay datos de scraping pendientes de guardar",
-      "saveSuccess": "Datos de scraping guardados para {{count}} plataforma(s) en los directorios ROM"
+      "saveSuccess": "Datos de scraping guardados para {{count}} plataforma(s) en los directorios ROM",
+      "context": {
+        "hide": "Ocultar sistema",
+        "unhide": "Mostrar",
+        "delete": "Eliminar sistema",
+        "showHidden": "Mostrar sistemas ocultos ({{count}})",
+        "deleteConfirmTitle": "Eliminar sistema permanentemente",
+        "deleteConfirmMessage": "¿Eliminar permanentemente la plataforma \"{{name}}\"? Esto borra del disco toda la carpeta de la plataforma y todas sus ROM, y no se puede deshacer.",
+        "deleteSuccess": "Plataforma \"{{name}}\" eliminada",
+        "deleteFailed": "Error al eliminar: {{error}}",
+        "hideFailed": "Error en la acción: {{error}}"
+      }
     },
     "breadcrumb": "Ruta de navegación",
     "systemNotFound": {

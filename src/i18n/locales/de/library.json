@@ -26,7 +26,18 @@
       "addCard": "Bibliothek hinzufügen",
       "addCardHint": "Fügen Sie in den Einstellungen eine unabhängige ROM-Bibliothek hinzu",
       "saveNoPending": "Keine ausstehenden Scrape-Daten zu speichern",
-      "saveSuccess": "Scrape-Daten für {{count}} Plattform(en) in die ROM-Verzeichnisse gespeichert"
+      "saveSuccess": "Scrape-Daten für {{count}} Plattform(en) in die ROM-Verzeichnisse gespeichert",
+      "context": {
+        "hide": "System ausblenden",
+        "unhide": "Einblenden",
+        "delete": "System löschen",
+        "showHidden": "Ausgeblendete Systeme anzeigen ({{count}})",
+        "deleteConfirmTitle": "System dauerhaft löschen",
+        "deleteConfirmMessage": "Plattform \"{{name}}\" dauerhaft löschen? Dadurch werden der gesamte Plattformordner und alle darin enthaltenen ROMs von der Festplatte entfernt. Dies kann nicht rückgängig gemacht werden.",
+        "deleteSuccess": "Plattform \"{{name}}\" gelöscht",
+        "deleteFailed": "Löschen fehlgeschlagen: {{error}}",
+        "hideFailed": "Aktion fehlgeschlagen: {{error}}"
+      }
     },
     "breadcrumb": "Breadcrumb-Navigation",
     "systemNotFound": {

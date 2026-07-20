@@ -26,7 +26,18 @@
       "addCard": "Add Library",
       "addCardHint": "Add an independent ROM library in Settings",
       "saveNoPending": "No pending scraped data to save",
-      "saveSuccess": "Saved scraped data for {{count}} platform(s) to the ROM directories"
+      "saveSuccess": "Saved scraped data for {{count}} platform(s) to the ROM directories",
+      "context": {
+        "hide": "Hide system",
+        "unhide": "Unhide",
+        "delete": "Delete system",
+        "showHidden": "Show hidden systems ({{count}})",
+        "deleteConfirmTitle": "Delete system permanently",
+        "deleteConfirmMessage": "Permanently delete the platform \"{{name}}\"? This erases the entire platform folder and all its ROMs from disk and cannot be undone.",
+        "deleteSuccess": "Deleted platform \"{{name}}\"",
+        "deleteFailed": "Delete failed: {{error}}",
+        "hideFailed": "Action failed: {{error}}"
+      }
     },
     "breadcrumb": "Breadcrumb",
     "systemNotFound": {

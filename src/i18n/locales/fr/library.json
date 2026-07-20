@@ -26,7 +26,18 @@
       "addCard": "Ajouter une bibliothèque",
       "addCardHint": "Ajouter une bibliothèque ROM indépendante dans Paramètres",
       "saveNoPending": "Aucune donnée de scraping en attente à enregistrer",
-      "saveSuccess": "Données de scraping enregistrées pour {{count}} plateforme(s) dans les répertoires ROM"
+      "saveSuccess": "Données de scraping enregistrées pour {{count}} plateforme(s) dans les répertoires ROM",
+      "context": {
+        "hide": "Masquer le système",
+        "unhide": "Afficher",
+        "delete": "Supprimer le système",
+        "showHidden": "Afficher les systèmes masqués ({{count}})",
+        "deleteConfirmTitle": "Supprimer définitivement le système",
+        "deleteConfirmMessage": "Supprimer définitivement la plateforme « {{name}} » ? Cela efface du disque l’intégralité du dossier de la plateforme et toutes ses ROM, sans possibilité d’annulation.",
+        "deleteSuccess": "Plateforme « {{name}} » supprimée",
+        "deleteFailed": "Échec de la suppression : {{error}}",
+        "hideFailed": "Échec de l’action : {{error}}"
+      }
     },
     "breadcrumb": "Fil d’Ariane",
     "systemNotFound": {

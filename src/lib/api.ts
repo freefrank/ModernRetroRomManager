@@ -86,6 +86,21 @@ export const api = {
     if (isTauri()) await tauriInvoke("delete_rom", { directory, file });
   },
 
+  /** 获取全部被隐藏系统的规范化目录路径 */
+  async getHiddenSystems(): Promise<string[]> {
+    return isTauri() ? tauriInvoke<string[]>("get_hidden_systems") : [];
+  },
+
+  /** 设置单个系统目录的隐藏状态 */
+  async setSystemHidden(directory: string, hidden: boolean): Promise<void> {
+    if (isTauri()) await tauriInvoke("set_system_hidden", { directory, hidden });
+  },
+
+  /** 永久删除整个系统目录(不可恢复) */
+  async deleteSystemDirectory(directory: string): Promise<void> {
+    if (isTauri()) await tauriInvoke("delete_system_directory", { directory });
+  },
+
   /** 在系统文件管理器中定位 ROM 文件 */
   async openRomLocation(directory: string, file: string): Promise<void> {
     if (isTauri()) await tauriInvoke("open_rom_location", { directory, file });

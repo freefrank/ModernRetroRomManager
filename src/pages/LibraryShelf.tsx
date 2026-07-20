@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Database, Ghost, Plus, Save } from "lucide-react";
+import { Database, Eye, EyeOff, Ghost, Plus, Save, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useRomStore } from "@/stores/romStore";
-import { Button, Card, EmptyState, toast } from "@/components/ui";
+import { useRomStore, normalizeDirKey } from "@/stores/romStore";
+import { Button, Card, Dialog, EmptyState, IconButton, toast } from "@/components/ui";
 import SystemCard from "@/components/rom/SystemCard";
+import SystemContextMenu from "@/components/rom/SystemContextMenu";
 import BatchScrapeDialog from "@/components/rom/BatchScrapeDialog";
 import { api, isTauri } from "@/lib/api";
 import type { GameSystem } from "@/types";
+
+/** 系统货架卡片的最小信息(取自 romStore.availableSystems) */
+interface ShelfSystem {
+  name: string;
+  path: string;
+  romCount: number;
+}
 
 const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
 
@@ -34,7 +42,21 @@ export default function LibraryShelf() {
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [isSavingLibrary, setIsSavingLibrary] = useState(false);
   const [mappedLogos, setMappedLogos] = useState<Record<string, string>>({});
+  // 被隐藏系统的规范化目录路径集合
+  const [hiddenSystemPaths, setHiddenSystemPaths] = useState<Set<string>>(new Set());
+  const [showHidden, setShowHidden] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ sys: ShelfSystem; x: number; y: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ShelfSystem | null>(null);
   const activeLibrary = scanDirectories.find(item => item.isActive);
+
+  const refreshHiddenSystems = async () => {
+    try {
+      const paths = await api.getHiddenSystems();
+      setHiddenSystemPaths(new Set(paths.map(normalizeDirKey)));
+    } catch (error) {
+      console.error("Failed to load hidden systems:", error);
+    }
+  };
 
   // 把整个库中所有含待保存抓取数据的平台逐个原地写回 ROM 目录
   // (整库导出命令不允许原地写回,因此逐平台走单系统保存路径)。
@@ -104,6 +126,11 @@ export default function LibraryShelf() {
     };
   }, []);
 
+  // 启动加载被隐藏系统清单
+  useEffect(() => {
+    void refreshHiddenSystems();
+  }, []);
+
   const logoByName = useMemo(() => {
     const map = new Map<string, string | undefined>();
     for (const sys of availableSystems) {
@@ -111,6 +138,46 @@ export default function LibraryShelf() {
     }
     return map;
   }, [availableSystems, mappedLogos, systems]);
+
+  const isSystemHidden = useCallback(
+    (sys: ShelfSystem) => hiddenSystemPaths.has(normalizeDirKey(sys.path)),
+    [hiddenSystemPaths],
+  );
+
+  // 当前库中处于隐藏态的系统数量(仅统计实际存在的系统)
+  const hiddenCount = useMemo(
+    () => availableSystems.filter(isSystemHidden).length,
+    [availableSystems, isSystemHidden],
+  );
+
+  // 依据隐藏集与「显示隐藏系统」开关过滤货架
+  const visibleSystems = useMemo(
+    () => (showHidden ? availableSystems : availableSystems.filter((sys) => !isSystemHidden(sys))),
+    [availableSystems, isSystemHidden, showHidden],
+  );
+
+  const handleToggleHidden = async (sys: ShelfSystem) => {
+    const hidden = isSystemHidden(sys);
+    try {
+      await api.setSystemHidden(sys.path, !hidden);
+      await refreshHiddenSystems();
+    } catch (error) {
+      toast.error(t("library.shelf.context.hideFailed", { error: String(error) }));
+    }
+  };
+
+  const handleDeleteSystem = async () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    try {
+      await api.deleteSystemDirectory(target.path);
+      toast.success(t("library.shelf.context.deleteSuccess", { name: target.name }));
+      await Promise.all([scanLibrary(true), refreshHiddenSystems()]);
+    } catch (error) {
+      toast.error(t("library.shelf.context.deleteFailed", { error: String(error) }));
+    }
+  };
 
   return (
     <div className="rr-page flex flex-col h-full max-w-[1600px] mx-auto w-full">
@@ -127,6 +194,17 @@ export default function LibraryShelf() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {hiddenCount > 0 && (
+            <IconButton
+              size="sm"
+              variant={showHidden ? "primary" : "ghost"}
+              onClick={() => setShowHidden((value) => !value)}
+              title={t("library.shelf.context.showHidden", { count: hiddenCount })}
+              aria-label={t("library.shelf.context.showHidden", { count: hiddenCount })}
+            >
+              {showHidden ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            </IconButton>
+          )}
           <Button onClick={() => setIsBatchDialogOpen(true)} disabled={stats.totalRoms === 0}>
             <Database className="w-4 h-4" />
             {t("library.batch.scrapeLibrary")}
@@ -163,13 +241,22 @@ export default function LibraryShelf() {
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {availableSystems.map((sys) => (
+            {visibleSystems.map((sys) => (
               <SystemCard
                 key={sys.name}
                 name={sys.name}
                 romCount={sys.romCount}
                 logoFile={logoByName.get(sys.name)}
+                isHidden={isSystemHidden(sys)}
                 onClick={() => navigate(`/library/${encodeURIComponent(sys.name)}`)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setContextMenu({
+                    sys: { name: sys.name, path: sys.path, romCount: sys.romCount },
+                    x: event.clientX,
+                    y: event.clientY,
+                  });
+                }}
               />
             ))}
 
@@ -198,6 +285,47 @@ export default function LibraryShelf() {
         onClose={() => setIsBatchDialogOpen(false)}
         scope="library"
       />
+
+      {/* 系统卡片右键菜单 */}
+      {contextMenu && (
+        <SystemContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isHidden={isSystemHidden(contextMenu.sys)}
+          onToggleHidden={() => void handleToggleHidden(contextMenu.sys)}
+          onDelete={() => setDeleteTarget(contextMenu.sys)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* 删除系统确认(永久删除整个平台目录,不可恢复) */}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <span className="flex items-center gap-3 text-accent-error">
+            <Trash2 className="w-5 h-5 shrink-0" />
+            {t("library.shelf.context.deleteConfirmTitle")}
+          </span>
+        }
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="danger" onClick={() => void handleDeleteSystem()}>
+              <Trash2 className="w-4 h-4" />
+              {t("library.shelf.context.delete")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary leading-relaxed">
+          {t("library.shelf.context.deleteConfirmMessage", {
+            name: deleteTarget ? deleteTarget.name : "",
+          })}
+        </p>
+      </Dialog>
     </div>
   );
 }

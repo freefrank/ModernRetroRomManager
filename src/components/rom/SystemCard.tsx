@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Gamepad2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui";
@@ -11,11 +11,22 @@ interface SystemCardProps {
   romCount: number;
   /** 系统 logo 文件名(打包资源 logo/ 下),缺省时显示占位图标 */
   logoFile?: string;
+  /** 该系统是否处于隐藏态(仅在开启「显示隐藏系统」时可见,置灰呈现) */
+  isHidden?: boolean;
   onClick: () => void;
+  /** 右键回调,由父级管理上下文菜单状态 */
+  onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
 }
 
 /** 系统货架卡片:系统 logo(缺省回退占位图标)、系统名与游戏数,点击进入单系统页 */
-export default function SystemCard({ name, romCount, logoFile, onClick }: SystemCardProps) {
+export default function SystemCard({
+  name,
+  romCount,
+  logoFile,
+  isHidden = false,
+  onClick,
+  onContextMenu,
+}: SystemCardProps) {
   const { t } = useTranslation();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
@@ -46,7 +57,11 @@ export default function SystemCard({ name, romCount, logoFile, onClick }: System
       tabIndex={0}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className="group cursor-pointer select-none p-6 flex flex-col items-center gap-3 text-center hover:border-border-hover"
+      onContextMenu={onContextMenu}
+      className={
+        "group cursor-pointer select-none p-6 flex flex-col items-center gap-3 text-center hover:border-border-hover" +
+        (isHidden ? " opacity-50" : "")
+      }
     >
       <div className="w-full h-16 rounded-[var(--radius-md)] bg-bg-tertiary border-[length:var(--border-width)] border-border-default flex items-center justify-center overflow-hidden">
         {logoUrl && !imgError ? (

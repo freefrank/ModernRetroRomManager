@@ -164,6 +164,13 @@ fn directory_fingerprint(path: &Path) -> u64 {
     hasher.finish()
 }
 
+/// 以 `.` 开头的目录(如 `.agents`、`.claude`、`.git`)不是游戏平台,扫描时跳过。
+fn is_dot_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with('.'))
+}
+
 fn root_has_direct_games(path: &Path) -> bool {
     const ROM_EXTENSIONS: &[&str] = &[
         "zip", "7z", "rar", "nes", "fds", "sfc", "smc", "gb", "gbc", "gba", "nds", "3ds", "cia",
@@ -223,7 +230,7 @@ fn discover_candidates(directories: &[DirectoryConfig]) -> Vec<ScanCandidate> {
         let mut system_dirs: Vec<_> = entries
             .filter_map(Result::ok)
             .map(|entry| entry.path())
-            .filter(|entry_path| entry_path.is_dir())
+            .filter(|entry_path| entry_path.is_dir() && !is_dot_dir(entry_path))
             .collect();
         system_dirs.sort();
         for system_path in system_dirs {

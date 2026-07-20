@@ -378,6 +378,66 @@ fn save_hidden_map(map: &HiddenMap) -> Result<(), String> {
     fs::write(path, bytes).map_err(|error| error.to_string())
 }
 
+// ── 货架页:隐藏/删除整个系统(平台目录) ──────────────────────────────────
+fn hidden_systems_path() -> PathBuf {
+    crate::config::get_config_dir().join("hidden-systems.json")
+}
+
+fn load_hidden_systems() -> std::collections::HashSet<String> {
+    fs::read(hidden_systems_path())
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default()
+}
+
+fn save_hidden_systems(set: &std::collections::HashSet<String>) -> Result<(), String> {
+    let path = hidden_systems_path();
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let bytes = serde_json::to_vec_pretty(set).map_err(|error| error.to_string())?;
+    fs::write(path, bytes).map_err(|error| error.to_string())
+}
+
+/// 货架页被隐藏的系统目录(规范化路径集合;前端用相同规则匹配过滤)。
+#[tauri::command]
+pub fn get_hidden_systems() -> Vec<String> {
+    load_hidden_systems().into_iter().collect()
+}
+
+/// 隐藏/取消隐藏某系统(按其目录路径)。
+#[tauri::command]
+pub fn set_system_hidden(directory: String, hidden: bool) -> Result<(), String> {
+    let key = normalize_dir_key(&directory);
+    let mut set = load_hidden_systems();
+    if hidden {
+        set.insert(key);
+    } else {
+        set.remove(&key);
+    }
+    save_hidden_systems(&set)
+}
+
+/// 物理删除某系统目录(整个平台文件夹)。不可逆;前端须二次确认。
+#[tauri::command]
+pub fn delete_system_directory(directory: String) -> Result<(), String> {
+    let path = PathBuf::from(&directory);
+    if !path.is_dir() {
+        return Err("目录不存在".to_string());
+    }
+    // 安全:必须至少是 <盘符/库/系统> 三级路径,拒绝删除盘根或库根。
+    if path.parent().and_then(|p| p.parent()).is_none() {
+        return Err("拒绝删除:路径过浅,疑似盘根或库根".to_string());
+    }
+    fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
+    let key = normalize_dir_key(&directory);
+    let mut set = load_hidden_systems();
+    if set.remove(&key) {
+        let _ = save_hidden_systems(&set);
+    }
+    Ok(())
+}
+
 /// 某平台目录下被隐藏的 ROM 相对文件名列表(供导出过滤复用)。
 pub(crate) fn hidden_files_for_directory(directory: &str) -> Vec<String> {
     load_hidden_map()

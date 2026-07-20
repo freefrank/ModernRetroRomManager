@@ -26,7 +26,18 @@
       "addCard": "添加 Library",
       "addCardHint": "前往设置添加独立 ROM 游戏库",
       "saveNoPending": "没有待保存的抓取数据",
-      "saveSuccess": "已把 {{count}} 个平台的抓取数据保存到 ROM 目录"
+      "saveSuccess": "已把 {{count}} 个平台的抓取数据保存到 ROM 目录",
+      "context": {
+        "hide": "隐藏系统",
+        "unhide": "取消隐藏",
+        "delete": "删除系统",
+        "showHidden": "显示隐藏系统（{{count}}）",
+        "deleteConfirmTitle": "永久删除系统",
+        "deleteConfirmMessage": "确定要永久删除平台「{{name}}」吗？该操作会从磁盘抹除整个平台文件夹及其所有 ROM，无法恢复。",
+        "deleteSuccess": "已删除平台「{{name}}」",
+        "deleteFailed": "删除失败：{{error}}",
+        "hideFailed": "操作失败：{{error}}"
+      }
     },
     "breadcrumb": "面包屑导航",
     "systemNotFound": {
