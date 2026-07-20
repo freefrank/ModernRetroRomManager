@@ -6,6 +6,36 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.9] - 2026-07-20
+
+### English
+
+#### Fixed
+
+- Every export now rewrites `gamelist.xml`/`metadata.pegasus.txt` from the current game set instead of merging into the existing file (the previous version only did this for one-way sync). Since an export always contains the platform's full visible set, merging only accumulated stale entries — duplicate disc tracks, collapsed discs, excluded BIOS, hidden leftovers — which now no longer linger.
+
+#### Added
+
+- Export progress now shows a per-file progress bar in the Console (current file, its progress, incremental written/pending, speed, remaining time) and an estimated remaining time (ETA) on the export page.
+
+#### Changed
+
+- Copy progress during export now shows both the full size (walked/total) and the incremental amount actually written (written/pending). The disk-space check and the copy progress now share a single size implementation, and the library-level plain-copy path (no temporary metadata) is now covered by the free-space check too.
+
+### 简体中文
+
+#### 修复
+
+- 每次导出都从当前游戏集合重写 `gamelist.xml`/`metadata.pegasus.txt`,不再与已有文件合并(上一版只在单向同步时才这样)。导出集合始终是该平台的完整可见集合,合并只会不断堆积陈旧条目——碟轨重复、折叠掉的旧碟、排除的 BIOS、隐藏残留——现在不再残留。
+
+#### 新增
+
+- 导出进度新增:Console 里显示当前单个文件的进度条(文件名、进度、增量已写/待写、速度、剩余时间),导出页显示预计剩余时间(ETA)。
+
+#### 变更
+
+- 导出复制进度同时显示总量(走查/总量)与实际写入的增量(已写/待写)。磁盘空间校验与复制进度现在共用同一套体积统计实现;库级"无临时元数据→纯复制"路径也补上了可用空间校验。
+
 ## [1.4.8] - 2026-07-20
 
 ### English

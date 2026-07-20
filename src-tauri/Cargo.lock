@@ -2514,7 +2514,7 @@ dependencies = [
 
 [[package]]
 name = "modern-retro-rom-manager"
-version = "1.4.8"
+version = "1.4.9"
 dependencies = [
  "async-trait",
  "chardetng",
