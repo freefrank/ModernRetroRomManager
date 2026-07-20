@@ -6,6 +6,34 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.5] - 2026-07-20
+
+### English
+
+#### Added
+
+- The ROM library can now be sorted by name, file size, or last-modified time, with an ascending/descending toggle in the toolbar.
+- Before copying to an external target, export now checks the target drive's free space against the amount it will actually write (files already present at the same size are not counted) and aborts with a clear message if there isn't enough room. When one-way sync is enabled, the target is cleaned first so the freed space counts toward the check.
+
+#### Fixed
+
+- The export dialog now really remembers the last-used export directory. It was being cleared on load right after being restored, so the field always came up empty.
+- Multi-disc organizing no longer mishandles games that live inside a category subfolder (e.g. `RPG/`): previously it tried to move the whole category folder into itself. Sibling-track matching was also tightened so that prefix-sharing independent games (e.g. `Game (Disc 1) Bonus.zip`) are never swept into a disc folder.
+- Export guards now run before any deletion: exporting into a folder nested inside the source ROM directory, or exporting empty temporary metadata, is rejected up front instead of after the target has already been partially cleaned. One-way sync deletion errors now abort the export instead of being silently ignored.
+
+### 简体中文
+
+#### 新增
+
+- ROM 库支持按名称、文件大小或修改时间排序,工具栏可切换升序/降序。
+- 导出到外部目标前,会先统计本次实际需要写入的体积(目标已存在的同尺寸文件不计入),与目标磁盘可用空间比较,空间不足则明确报错中止。启用单向同步时先清理目标,清理释放的空间也计入校验。
+
+#### 修复
+
+- 导出对话框现在真正记住上次使用的导出目录。此前回填的值会在页面加载后被立即清空,导致该输入框每次都是空的。
+- 多碟整理不再错误处理位于分类子目录(如 `RPG/`)下的游戏:此前会尝试把整个分类目录搬进自身。同时收严了兄弟轨匹配,共享前缀的独立游戏(如 `Game (Disc 1) Bonus.zip`)不会再被卷进碟文件夹。
+- 导出的前置校验改在任何删除动作之前执行:导出目录嵌套在源 ROM 目录内部、或临时元数据为空时,直接提前拒绝,而不是等目标已被部分清理后才报错。单向同步的删除失败现在会中止导出,而非被静默忽略。
+
 ## [1.4.0] - 2026-07-20
 
 ### English

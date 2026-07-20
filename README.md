@@ -7,6 +7,7 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 ## Features
 
 - Scan and organize multi-platform ROM libraries
+- Sort the ROM library by name, file size, or last-modified time, with an ascending/descending toggle
 - Organize multi-disc games automatically on save: each disc is moved into one subfolder, an `.m3u` playlist is generated, the library and export collapse to a single entry, and RetroArch/batocera can swap discs (recognizes `(Disc N)`, `Disc A/B`, `CD1/CD2`, and Chinese markers like `第1碟`)
 - Manage multiple independent libraries, rename them, and switch the active library from Settings or the ROM sidebar
 - Open large local, SD-card, and Samba libraries quickly with an immediate persistent index, per-system lazy loading, and non-blocking background incremental scans
@@ -18,7 +19,7 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 - Select optional media types, reuse persistent scrape results across libraries, and cache alternative artwork for review
 - Translate metadata for one game, a selection, or an entire platform through a configurable OpenAI-compatible endpoint, with merged requests, reasoning-effort control, adaptive retries, and per-language completion markers
 - Optional AI name-resolution fallback for batch scraping: translated ROMs that cannot be resolved locally are matched by the LLM against the built-in No-Intro title list, with local result caching
-- Export the active or a selected library for EmulationStation or Pegasus with file-level progress, live speed, cancellation, same-size skipping, and an optional ROM-and-assets-only filter
+- Export the active or a selected library for EmulationStation or Pegasus with file-level progress, live speed, cancellation, same-size skipping, an optional ROM-and-assets-only filter, and a free-space preflight that aborts before a partial copy
 - Inspect scan, scrape, provider, and error messages in a level-filtered bottom Console
 - ROM library right-click menu to open file location, hide/unhide, and permanently delete; hidden ROMs are neither shown nor synced on export
 - Optional one-way export sync deletes ROMs at the target that are hidden/removed in the library (BIOS always kept), keeping the target in sync
