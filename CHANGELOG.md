@@ -6,6 +6,36 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.8] - 2026-07-20
+
+### English
+
+#### Fixed
+
+- Exported `gamelist.xml`/`metadata.pegasus.txt` no longer list each disc game twice. Disc platforms are now de-duplicated on export the same way they are on load — only the loadable descriptor (`.cue`/`.ccd`/`.m3u`) is kept, and payload tracks (`.bin`/`.img`/`.sub`) are dropped — so EmulationStation no longer shows a second, metadata-less "game" per title.
+- Hidden games are no longer copied to the export target, and one-way sync now removes them from the target. Previously only the exact hidden file was matched, so flat multi-track games (e.g. a `.cue` plus its `.bin`) leaked their payload tracks; sibling tracks that share the same name are now hidden together.
+- ROM library search now matches Chinese filenames and pending (preview) Chinese names, not just applied names.
+- The CN tool export now merges the Chinese title into the `x-mrrm-cn` field of the existing metadata instead of overwriting the whole file, so scraped names, developer, description and artwork are preserved.
+- One-way sync export now rewrites `gamelist.xml`/`metadata.pegasus.txt` from scratch instead of merging, pruning stale entries left behind by de-duplication, disc collapsing or BIOS exclusion; a corrupt existing gamelist no longer blocks the export.
+
+#### Changed
+
+- Copy progress during export now reports the incremental amount to be written (files already present at the same size are excluded) instead of the whole library size.
+
+### 简体中文
+
+#### 修复
+
+- 导出的 `gamelist.xml`/`metadata.pegasus.txt` 不再把每个光盘游戏列两条。导出时按与加载相同的规则对光盘平台去重——只保留可加载的描述文件(`.cue`/`.ccd`/`.m3u`),剔除 `.bin`/`.img`/`.sub` 载荷轨——EmulationStation 里不再出现每个游戏多一条无元数据的"游戏"。
+- 隐藏游戏不再被复制到导出目标,单向同步也会从目标删除它们。此前仅精确匹配隐藏文件本身,导致平铺多轨游戏(如 `.cue` 加同名 `.bin`)的载荷轨漏网;现在同名兄弟轨会一并隐藏。
+- ROM 库搜索现在能匹配中文文件名与未应用的(预览)中文名,不再只查已应用的名字。
+- 中文工具导出改为把中文名合并进已有 metadata 的 `x-mrrm-cn` 字段,不再整份覆盖,已抓取的英文名、开发商、描述与美术资源全部保留。
+- 单向同步导出现在从头重写 `gamelist.xml`/`metadata.pegasus.txt` 而非合并,清除去重、多碟折叠或 BIOS 排除后残留的陈旧条目;已损坏的旧 gamelist 也不再阻塞导出。
+
+#### 变更
+
+- 导出时的复制进度改为显示本次实际待写入的增量(排除目标已存在的同尺寸文件),不再显示整库大小。
+
 ## [1.4.7] - 2026-07-20
 
 ### English
