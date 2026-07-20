@@ -61,3 +61,4 @@ rayon = "1.8"
 regex = "1.12.2"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 unrar = "0.5.8"
+fs2 = "0.4.3"

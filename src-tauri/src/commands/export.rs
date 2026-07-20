@@ -128,6 +128,104 @@ fn directory_copy_stats(
     Ok((files, bytes))
 }
 
+/// 估算把 `source` 复制到 `target` 时**实际需要写入**的字节数:目标已存在同尺寸文件
+/// 会被复制阶段跳过(不写),故不计入。用于导出前的可用空间校验,避免半途写满磁盘。
+fn directory_pending_bytes(
+    source: &Path,
+    target: &Path,
+    mode: CopyMode,
+    inside_folder_rom: bool,
+    skip: &dyn Fn(&Path) -> bool,
+) -> Result<u64, String> {
+    check_export_cancelled()?;
+    let mut bytes = 0_u64;
+    for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
+        check_export_cancelled()?;
+        let entry = entry.map_err(|error| error.to_string())?;
+        let source_path = entry.path();
+        if skip(&source_path) {
+            continue;
+        }
+        let file_type = entry.file_type().map_err(|error| error.to_string())?;
+        let target_path = target.join(entry.file_name());
+        if file_type.is_dir() {
+            let folder_rom = inside_folder_rom || source_path.join("PS3_GAME").is_dir();
+            bytes = bytes.saturating_add(directory_pending_bytes(
+                &source_path,
+                &target_path,
+                mode,
+                folder_rom,
+                skip,
+            )?);
+        } else if file_type.is_file()
+            && (mode == CopyMode::All || inside_folder_rom || is_rom_or_asset_file(&source_path))
+        {
+            let source_size = entry.metadata().map_err(|error| error.to_string())?.len();
+            // 与 copy_directory_recursive 的“同尺寸即跳过”一致:已存在同尺寸的不占新空间。
+            let unchanged = target_path
+                .metadata()
+                .is_ok_and(|metadata| metadata.is_file() && metadata.len() == source_size);
+            if !unchanged {
+                bytes = bytes.saturating_add(source_size);
+            }
+        }
+    }
+    Ok(bytes)
+}
+
+/// 估算被引用媒体复制到 `target` 时实际需要写入的字节数(同尺寸已存在的不计)。
+/// 媒体来源优先取 `primary_root`(临时抓取目录),回退 `fallback_root`(源库)。
+fn media_pending_bytes(
+    referenced: &std::collections::BTreeSet<String>,
+    primary_root: &Path,
+    fallback_root: &Path,
+    target: &Path,
+) -> u64 {
+    let mut bytes = 0_u64;
+    for relative in referenced {
+        let primary = primary_root.join(relative);
+        let source_file = if primary.is_file() {
+            primary
+        } else {
+            let fallback = fallback_root.join(relative);
+            if fallback.is_file() {
+                fallback
+            } else {
+                continue;
+            }
+        };
+        let Ok(metadata) = source_file.metadata() else {
+            continue;
+        };
+        let source_size = metadata.len();
+        let target_file = target.join(relative);
+        let unchanged = target_file
+            .metadata()
+            .is_ok_and(|meta| meta.is_file() && meta.len() == source_size);
+        if !unchanged {
+            bytes = bytes.saturating_add(source_size);
+        }
+    }
+    bytes
+}
+
+/// 校验目标磁盘可用空间足以容纳本次导出实际写入量;不足时报错中止(在任何复制之前)。
+fn ensure_sufficient_space(target: &Path, needed: u64) -> Result<(), String> {
+    if needed == 0 {
+        return Ok(());
+    }
+    let available =
+        fs2::available_space(target).map_err(|error| format!("无法读取目标磁盘可用空间: {error}"))?;
+    if available < needed {
+        return Err(format!(
+            "目标磁盘空间不足:本次导出需写入 {},目标仅剩 {}",
+            format_bytes(needed),
+            format_bytes(available)
+        ));
+    }
+    Ok(())
+}
+
 fn copy_directory_recursive(
     source: &Path,
     target: &Path,
@@ -723,6 +821,20 @@ fn export_system_data(
 
     let copies_library = !paths_equal(&source_directory, &target);
 
+    // 目标不得位于源 ROM 目录内部——必须在任何删除/复制**之前**校验,
+    // 否则 sync_delete 会先删掉源目录里的文件才在复制阶段报错(审计 #3)。
+    if copies_library {
+        let source_text = display_path(&source_directory)
+            .trim_end_matches('/')
+            .to_ascii_lowercase();
+        let target_text = display_path(&target)
+            .trim_end_matches('/')
+            .to_ascii_lowercase();
+        if target_text.starts_with(&format!("{source_text}/")) {
+            return Err("导出目录不能位于源 ROM 目录内部".to_string());
+        }
+    }
+
     // 隐藏的 ROM 既不写入 gamelist/pegasus,也不复制到目标。构造 copy 跳过闭包:
     // 源文件相对路径落在隐藏游戏范围内则跳过;BIOS 不会被隐藏,照常复制。
     let hidden_files = crate::commands::rom::hidden_files_for_directory(&directory);
@@ -775,14 +887,48 @@ fn export_system_data(
         skip_hidden_source(path) || (skip_media_subtree && path == media_root_dir.as_path())
     };
 
-    // 导出到外部目录时:先清理(单向同步删除目标中源已隐藏/删除的 ROM),再同步(复制)。
+    // 有临时元数据但可见游戏为空(如整平台被隐藏)时,绝不执行 sync_delete——
+    // 否则会以空 keep 清空目标平台 ROM 后才在下方报错中止(审计 #2)。
+    if let Some(parsed) = &metadata {
+        if parsed.games.is_empty() {
+            return Err("临时元数据中没有可导出的游戏".to_string());
+        }
+    }
+
+    // 导出到外部目录时:先清理(单向同步删除目标中源已隐藏/删除的 ROM),再校验空间,最后复制。
     if copies_library {
         if sync_delete {
             if let Some(parsed) = &metadata {
                 progress(2, "单向同步:清理目标中已移除的 ROM...".to_string());
-                let _ = sync_delete_removed_roms(&source_directory, &target, &parsed.games);
+                sync_delete_removed_roms(&source_directory, &target, &parsed.games)?;
             }
         }
+
+        // 清理之后再校验:统计实际待写入体积(主库 + 被引用媒体),与目标可用空间比较。
+        // 顺序很关键——清理会释放空间,提前校验才能反映清理后的真实余量(需求)。
+        progress(3, "校验目标磁盘可用空间...".to_string());
+        let root_is_folder_rom = source_directory.join("PS3_GAME").is_dir();
+        let mut needed = directory_pending_bytes(
+            &source_directory,
+            &target,
+            copy_mode,
+            root_is_folder_rom,
+            &skip_for_copy,
+        )?;
+        if let Some(parsed) = &metadata {
+            if let Some(temp_directory) = metadata_path.as_ref().ok().and_then(|path| path.parent())
+            {
+                let referenced = referenced_media_paths(&parsed.games);
+                needed = needed.saturating_add(media_pending_bytes(
+                    &referenced,
+                    temp_directory,
+                    &source_directory,
+                    &target,
+                ));
+            }
+        }
+        ensure_sufficient_space(&target, needed)?;
+
         copy_directory_contents_with_progress(
             &source_directory,
             &target,
