@@ -47,6 +47,30 @@ fn emit_progress(app: &AppHandle, current: usize, message: impl Into<String>, fi
     );
 }
 
+fn emit_file_progress(app: &AppHandle, progress: ExportFileProgress) {
+    let _ = app.emit("export-file-progress", progress);
+}
+
+/// 复制阶段的细粒度进度:当前单个文件的进度 + 增量总进度 + 速度 + 预计剩余时间(ETA)。
+/// 供 Console 显示单文件进度条、导出页显示剩余时间。
+#[derive(Clone, Serialize, Debug, Default)]
+pub struct ExportFileProgress {
+    /// 当前正在处理的文件名(basename)。
+    pub file: String,
+    /// 当前文件已处理字节。
+    pub file_done: u64,
+    /// 当前文件总字节。
+    pub file_total: u64,
+    /// 本次导出实际已写入字节(增量)。
+    pub written: u64,
+    /// 本次导出实际待写入字节(增量总量)。
+    pub pending: u64,
+    /// 写入速度(字节/秒)。
+    pub speed_bytes: u64,
+    /// 预计剩余秒数;0 表示尚不可估(速度未知)。
+    pub eta_secs: u64,
+}
+
 fn display_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
@@ -150,51 +174,6 @@ fn directory_copy_stats(
         }
     }
     Ok((files, bytes, pending_files, pending_bytes))
-}
-
-/// 估算把 `source` 复制到 `target` 时**实际需要写入**的字节数:目标已存在同尺寸文件
-/// 会被复制阶段跳过(不写),故不计入。用于导出前的可用空间校验,避免半途写满磁盘。
-fn directory_pending_bytes(
-    source: &Path,
-    target: &Path,
-    mode: CopyMode,
-    inside_folder_rom: bool,
-    skip: &dyn Fn(&Path) -> bool,
-) -> Result<u64, String> {
-    check_export_cancelled()?;
-    let mut bytes = 0_u64;
-    for entry in fs::read_dir(source).map_err(|error| error.to_string())? {
-        check_export_cancelled()?;
-        let entry = entry.map_err(|error| error.to_string())?;
-        let source_path = entry.path();
-        if skip(&source_path) {
-            continue;
-        }
-        let file_type = entry.file_type().map_err(|error| error.to_string())?;
-        let target_path = target.join(entry.file_name());
-        if file_type.is_dir() {
-            let folder_rom = inside_folder_rom || source_path.join("PS3_GAME").is_dir();
-            bytes = bytes.saturating_add(directory_pending_bytes(
-                &source_path,
-                &target_path,
-                mode,
-                folder_rom,
-                skip,
-            )?);
-        } else if file_type.is_file()
-            && (mode == CopyMode::All || inside_folder_rom || is_rom_or_asset_file(&source_path))
-        {
-            let source_size = entry.metadata().map_err(|error| error.to_string())?.len();
-            // 与 copy_directory_recursive 的“同尺寸即跳过”一致:已存在同尺寸的不占新空间。
-            let unchanged = target_path
-                .metadata()
-                .is_ok_and(|metadata| metadata.is_file() && metadata.len() == source_size);
-            if !unchanged {
-                bytes = bytes.saturating_add(source_size);
-            }
-        }
-    }
-    Ok(bytes)
 }
 
 /// 估算被引用媒体复制到 `target` 时实际需要写入的字节数(同尺寸已存在的不计)。
@@ -348,6 +327,7 @@ fn copy_directory_contents_with_progress(
     mode: CopyMode,
     skip: &dyn Fn(&Path) -> bool,
     progress: &dyn Fn(usize, String),
+    on_file: &dyn Fn(ExportFileProgress),
 ) -> Result<usize, String> {
     if paths_equal(source, target) {
         return Ok(0);
@@ -361,9 +341,10 @@ fn copy_directory_contents_with_progress(
     if target_text.starts_with(&format!("{source_text}/")) {
         return Err("导出目录不能位于源 ROM 目录内部".to_string());
     }
-    progress(0, "正在统计增量...".to_string());
+    progress(0, "正在统计文件与增量...".to_string());
     let root_is_folder_rom = source.join("PS3_GAME").is_dir();
-    let (total_files, _total_bytes, pending_files, pending_bytes) =
+    // 一次遍历同时得到总量与增量(增量=目标已有同尺寸文件不计):两者都展示。
+    let (total_files, total_bytes, pending_files, pending_bytes) =
         directory_copy_stats(source, target, mode, root_is_folder_rom, skip)?;
     if total_files == 0 {
         return Ok(0);
@@ -371,19 +352,31 @@ fn copy_directory_contents_with_progress(
     let started = Instant::now();
     let mut last_emit = started;
     let mut copied_files = 0;
-    let mut written_bytes = 0_u64;
+    let mut processed_bytes = 0_u64; // 走查进度(含跳过),抵达 total_bytes
+    let mut written_bytes = 0_u64; // 实际写入(增量),抵达 pending_bytes
     let mut skipped_files = 0;
+    // 当前单文件追踪:文件切换时重置并读取其总大小。
+    let mut cur_file: Option<std::path::PathBuf> = None;
+    let mut cur_done = 0_u64;
+    let mut cur_total = 0_u64;
     copy_directory_recursive(
         source,
         target,
         mode,
         root_is_folder_rom,
         skip,
-        &mut |_processed, written, file_finished, skipped, source_path| {
-            // 只累计实际写入的字节:进度反映“增量”,而非整库大小。
+        &mut |processed, written, file_finished, skipped, source_path| {
+            if cur_file.as_deref() != Some(source_path) {
+                cur_file = Some(source_path.to_path_buf());
+                cur_done = 0;
+                cur_total = fs::metadata(source_path).map(|meta| meta.len()).unwrap_or(0);
+            }
+            cur_done = cur_done.saturating_add(processed);
+            processed_bytes = processed_bytes.saturating_add(processed);
             written_bytes = written_bytes.saturating_add(written);
             if file_finished {
                 copied_files += 1;
+                cur_done = cur_total; // 收尾对齐,避免分块凑不满
                 if skipped {
                     skipped_files += 1;
                 }
@@ -394,15 +387,37 @@ fn copy_directory_contents_with_progress(
             {
                 let elapsed = now.duration_since(started).as_secs_f64().max(0.001);
                 let speed = (written_bytes as f64 / elapsed) as u64;
-                let percent = if pending_bytes == 0 {
-                    70
+                // ETA:按写入速度估算剩余增量所需时间;速度未知时为 0(前端显示“计算中”)。
+                let eta_secs = if speed > 0 {
+                    pending_bytes.saturating_sub(written_bytes) / speed
                 } else {
-                    (written_bytes.saturating_mul(70) / pending_bytes).min(70) as usize
+                    0
+                };
+                on_file(ExportFileProgress {
+                    file: source_path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned(),
+                    file_done: cur_done.min(cur_total),
+                    file_total: cur_total,
+                    written: written_bytes,
+                    pending: pending_bytes,
+                    speed_bytes: speed,
+                    eta_secs,
+                });
+                // 进度按“走查总量”平滑推进(跳过的也算走过),避免大量跳过时进度卡在 0。
+                let percent = if total_bytes == 0 {
+                    copied_files * 70 / total_files.max(1)
+                } else {
+                    (processed_bytes.saturating_mul(70) / total_bytes).min(70) as usize
                 };
                 progress(
                 percent,
                 format!(
-                    "复制文件 {copied_files}/{total_files}（跳过 {skipped_files}）· 增量 {}/{}（{} 个）· {} · 写入 {}/s",
+                    "复制 {copied_files}/{total_files}（跳过 {skipped_files}）· 总 {}/{} · 增量 {}/{}（{} 个）· {} · 写入 {}/s",
+                    format_bytes(processed_bytes),
+                    format_bytes(total_bytes),
                     format_bytes(written_bytes),
                     format_bytes(pending_bytes),
                     pending_files,
@@ -418,7 +433,14 @@ fn copy_directory_contents_with_progress(
 
 #[cfg(test)]
 fn copy_directory_contents(source: &Path, target: &Path) -> Result<usize, String> {
-    copy_directory_contents_with_progress(source, target, CopyMode::All, &|_| false, &|_, _| {})
+    copy_directory_contents_with_progress(
+        source,
+        target,
+        CopyMode::All,
+        &|_| false,
+        &|_, _| {},
+        &|_| {},
+    )
 }
 
 fn normalize_optional_path(value: &mut Option<String>) {
@@ -889,6 +911,7 @@ fn export_system_data(
     rom_assets_only: bool,
     sync_delete: bool,
     progress: &dyn Fn(usize, String),
+    on_file: &dyn Fn(ExportFileProgress),
 ) -> Result<ExportOutcome, String> {
     let source_directory = PathBuf::from(&directory);
     let target = PathBuf::from(target_directory.as_deref().unwrap_or(&directory));
@@ -1022,13 +1045,15 @@ fn export_system_data(
         // 顺序很关键——清理会释放空间,提前校验才能反映清理后的真实余量(需求)。
         progress(3, "校验目标磁盘可用空间...".to_string());
         let root_is_folder_rom = source_directory.join("PS3_GAME").is_dir();
-        let mut needed = directory_pending_bytes(
+        // 复用 directory_copy_stats 的增量(pending),与复制进度用同一实现,避免两套算法漂移。
+        let (_, _, _, pending) = directory_copy_stats(
             &source_directory,
             &target,
             copy_mode,
             root_is_folder_rom,
             &skip_for_copy,
         )?;
+        let mut needed = pending;
         if let Some(parsed) = &metadata {
             if let Some(temp_directory) = metadata_path.as_ref().ok().and_then(|path| path.parent())
             {
@@ -1049,6 +1074,7 @@ fn export_system_data(
             copy_mode,
             &skip_for_copy,
             progress,
+            on_file,
         )?;
     }
 
@@ -1086,15 +1112,17 @@ fn export_system_data(
         if copies_library { 75 } else { 10 },
         "写入元数据...".to_string(),
     );
-    // 单向同步时元数据也全新写(不合并),使 gamelist/pegasus 与本次导出集合一致,
-    // 清除去重/折叠/BIOS 排除后残留的陈旧条目。
+    // 元数据始终全新写(不合并):metadata.games 是该平台当前全部可见游戏(去隐藏/去重/
+    // 折叠后)的权威集合,gamelist/pegasus 就该等于它。合并只会不断堆积陈旧条目(碟轨重复、
+    // 折叠掉的旧碟、排除的 BIOS、隐藏游戏残留),与是否单向同步无关。单向同步只是额外再删
+    // 目标里的 ROM 文件。
     let output = export_metadata_formats(
         &target,
         &system,
         &metadata.games,
         name_mode,
         resolved_format,
-        sync_delete,
+        true,
     )?;
 
     let media_progress = |current, message| {
@@ -1153,6 +1181,7 @@ pub async fn export_scraped_data(
             &|current, message| {
                 emit_progress(&progress_app, current, message, false);
             },
+            &|file_progress| emit_file_progress(&progress_app, file_progress),
         )
     })
     .await;
@@ -1290,6 +1319,7 @@ pub async fn export_library_scraped_data(
                             false,
                         )
                     },
+                    &|file_progress| emit_file_progress(&progress_app, file_progress),
                 )?;
                 total_games += outcome.games;
                 total_media += outcome.media;
@@ -1300,14 +1330,23 @@ pub async fn export_library_scraped_data(
                     format!("[{system_name}] 复制 ROM 与现有资源..."),
                     false,
                 );
+                let copy_mode = if rom_assets_only {
+                    CopyMode::RomAssetsOnly
+                } else {
+                    CopyMode::All
+                };
+                // 纯复制回退同样先校验空间,避免中途写满目标磁盘。
+                fs::create_dir_all(&target).map_err(|error| error.to_string())?;
+                let root_is_folder_rom = source.join("PS3_GAME").is_dir();
+                let (_, _, _, needed) =
+                    directory_copy_stats(&source, &target, copy_mode, root_is_folder_rom, &|_| {
+                        false
+                    })?;
+                ensure_sufficient_space(&target, needed)?;
                 copy_directory_contents_with_progress(
                     &source,
                     &target,
-                    if rom_assets_only {
-                        CopyMode::RomAssetsOnly
-                    } else {
-                        CopyMode::All
-                    },
+                    copy_mode,
                     &|_| false,
                     &|current, message| {
                         emit_progress(
@@ -1317,6 +1356,7 @@ pub async fn export_library_scraped_data(
                             false,
                         )
                     },
+                    &|file_progress| emit_file_progress(&progress_app, file_progress),
                 )?;
                 total_games += system.roms.len();
             }
@@ -1419,7 +1459,7 @@ mod tests {
                 })
                 .unwrap_or(false)
         };
-        copy_directory_contents_with_progress(&source, &target, CopyMode::All, &skip, &|_, _| {})
+        copy_directory_contents_with_progress(&source, &target, CopyMode::All, &skip, &|_, _| {}, &|_| {})
             .unwrap();
 
         assert!(target.join("visible.sfc").exists(), "可见 ROM 应复制");
@@ -1896,7 +1936,8 @@ mod tests {
                 &target,
                 CopyMode::RomAssetsOnly,
                 &|_| false,
-                &|_, _| {}
+                &|_, _| {},
+                &|_| {},
             )
             .unwrap(),
             3
