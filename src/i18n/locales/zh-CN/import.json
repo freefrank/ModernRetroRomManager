@@ -31,7 +31,9 @@
       "libraryLoadFailed": "读取 Library 失败：{{error}}",
       "failed": "导出失败：{{error}}",
       "syncDelete": "单向同步（删除目标多余 ROM）",
-      "syncDeleteHint": "勾选后,导出会删除目标目录中已在 ROM 库隐藏或删除的 ROM。BIOS 文件始终保留并复制。此操作会抹除目标文件,请谨慎。"
+      "syncDeleteHint": "勾选后,导出会删除目标目录中已在 ROM 库隐藏或删除的 ROM。BIOS 文件始终保留并复制。此操作会抹除目标文件,请谨慎。",
+      "etaLabel": "剩余",
+      "etaCalculating": "计算中…"
     }
   }
 }

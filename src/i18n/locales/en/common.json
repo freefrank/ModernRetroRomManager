@@ -29,7 +29,17 @@
   "console": {
     "title": "Console",
     "clear": "Clear logs",
-    "empty": "No logs"
+    "empty": "No logs",
+    "fileProgress": {
+      "copying": "Copying",
+      "remaining": "ETA",
+      "calculating": "calculating…"
+    }
+  },
+  "duration": {
+    "hour": "{{count}}h ",
+    "minute": "{{count}}m ",
+    "second": "{{count}}s"
   },
   "scan": {
     "preparing": "Preparing",

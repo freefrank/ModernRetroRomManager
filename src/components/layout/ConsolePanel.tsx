@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, CircleAlert, Terminal, Trash2 } from "lucide-re
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { useConsoleStore, type ConsoleLevel } from "@/stores/consoleStore";
+import { formatDuration, formatFileSize, formatSpeed } from "@/lib/format";
 
 interface ProgressPayload {
   current: number;
@@ -11,6 +12,16 @@ interface ProgressPayload {
   message: string;
   finished: boolean;
   cancelled?: boolean;
+}
+
+interface FileProgressPayload {
+  file: string;
+  file_done: number;
+  file_total: number;
+  written: number;
+  pending: number;
+  speed_bytes: number;
+  eta_secs: number;
 }
 
 interface LogPayload {
@@ -40,6 +51,7 @@ export default function ConsolePanel() {
   const [visibleLevels, setVisibleLevels] = useState<Set<ConsoleLevel>>(
     () => new Set(levels),
   );
+  const [fileProgress, setFileProgress] = useState<FileProgressPayload | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const visibleEntries = useMemo(
     () => entries.filter((entry) => visibleLevels.has(entry.level)),
@@ -60,8 +72,15 @@ export default function ConsolePanel() {
         else upsertProgress(level, message, "scraper");
       }),
       listen<ProgressPayload>("export-progress", ({ payload }) => {
-        if (payload.finished) addEntry("info", payload.message, "export");
-        else upsertProgress("info", payload.message, "export");
+        if (payload.finished) {
+          addEntry("info", payload.message, "export");
+          setFileProgress(null);
+        } else {
+          upsertProgress("info", payload.message, "export");
+        }
+      }),
+      listen<FileProgressPayload>("export-file-progress", ({ payload }) => {
+        setFileProgress(payload);
       }),
       listen<LogPayload>("app-log", ({ payload }) => {
         addEntry(payload.level || "info", payload.message, payload.source || "backend");
@@ -126,6 +145,39 @@ export default function ConsolePanel() {
 
       {expanded && (
         <div className="border-t border-border-default bg-black/25 font-mono text-[11px]">
+          {fileProgress && (
+            <div className="rr-console-file-progress border-b border-border-default px-3 py-1.5">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="min-w-0 flex-1 truncate text-text-secondary">
+                  {t("console.fileProgress.copying")} {fileProgress.file}
+                </span>
+                <span className="shrink-0 tabular-nums text-text-muted">
+                  {formatFileSize(fileProgress.written)} / {formatFileSize(fileProgress.pending)}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-[var(--radius-sm)] bg-bg-tertiary">
+                <div
+                  className="h-full bg-accent-primary transition-[width] duration-[var(--motion-fast)] ease-[var(--motion-easing)]"
+                  style={{
+                    width: `${
+                      fileProgress.file_total > 0
+                        ? Math.min(100, (fileProgress.file_done / fileProgress.file_total) * 100)
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-2 tabular-nums text-text-muted">
+                <span className="truncate">{formatSpeed(fileProgress.speed_bytes)}</span>
+                <span className="shrink-0">
+                  {t("console.fileProgress.remaining")}{" "}
+                  {fileProgress.eta_secs > 0
+                    ? formatDuration(fileProgress.eta_secs, t)
+                    : t("console.fileProgress.calculating")}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-1 border-b border-border-default px-3 py-1">
             {levels.map((level) => {
               const active = visibleLevels.has(level);

@@ -22,6 +22,16 @@ interface BatchProgress {
   cancelled?: boolean;
 }
 
+export interface ExportFileProgress {
+  file: string;
+  file_done: number;
+  file_total: number;
+  written: number;
+  pending: number;
+  speed_bytes: number;
+  eta_secs: number;
+}
+
 interface SystemInfo {
   name: string;
   romCount: number;
@@ -134,7 +144,8 @@ interface RomState {
   // 导出状态
   isExporting: boolean;
   exportProgress: { current: number; total: number; message: string; finished: boolean } | null;
-  
+  exportFileProgress: ExportFileProgress | null;
+
   exportData: (system: string, directory: string, format?: string, targetDirectory?: string, nameMode?: "original" | "chinese", romAssetsOnly?: boolean) => Promise<void>;
   exportLibraryData: (libraryId: string, format?: string, targetDirectory?: string, nameMode?: "original" | "chinese", romAssetsOnly?: boolean, systemPaths?: string[], syncDelete?: boolean) => Promise<void>;
   cancelExport: () => Promise<void>;
@@ -160,6 +171,7 @@ export const useRomStore = create<RomState>((set, get) => ({
   // 导出状态
   isExporting: false,
   exportProgress: null,
+  exportFileProgress: null,
   cancelExport: async () => {
     await scraperApi.cancelExport();
   },
@@ -395,26 +407,32 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
 
   exportData: async (system: string, directory: string, format = "auto", targetDirectory?: string, nameMode = "original", romAssetsOnly = false) => {
-    set({ isExporting: true, exportProgress: null });
+    set({ isExporting: true, exportProgress: null, exportFileProgress: null });
     let unlisten: (() => void) | undefined;
+    let unlistenFile: (() => void) | undefined;
     try {
       const { listen } = await import("@tauri-apps/api/event");
       unlisten = await listen<{ current: number; total: number; message: string; finished: boolean }>("export-progress", (event) => {
         set({ exportProgress: event.payload });
         if (event.payload.finished) {
           setTimeout(() => {
-            set({ isExporting: false, exportProgress: null });
+            set({ isExporting: false, exportProgress: null, exportFileProgress: null });
             get().fetchRoms();
           }, 1500);
           unlisten?.();
+          unlistenFile?.();
         }
+      });
+      unlistenFile = await listen<ExportFileProgress>("export-file-progress", (event) => {
+        set({ exportFileProgress: event.payload });
       });
 
       await scraperApi.exportScrapedData(system, directory, format, targetDirectory, nameMode, romAssetsOnly);
     } catch (error) {
       unlisten?.();
+      unlistenFile?.();
       console.error("Failed to export data:", error);
-      set({ isExporting: false });
+      set({ isExporting: false, exportFileProgress: null });
       throw error;
     }
   },
@@ -515,26 +533,32 @@ export const useRomStore = create<RomState>((set, get) => ({
   },
 
   exportLibraryData: async (libraryId: string, format = "auto", targetDirectory?: string, nameMode = "original", romAssetsOnly = false, systemPaths?: string[], syncDelete = false) => {
-    set({ isExporting: true, exportProgress: null });
+    set({ isExporting: true, exportProgress: null, exportFileProgress: null });
     let unlisten: (() => void) | undefined;
+    let unlistenFile: (() => void) | undefined;
     try {
       const { listen } = await import("@tauri-apps/api/event");
       unlisten = await listen<{ current: number; total: number; message: string; finished: boolean }>("export-progress", (event) => {
         set({ exportProgress: event.payload });
         if (event.payload.finished) {
           setTimeout(() => {
-            set({ isExporting: false, exportProgress: null });
+            set({ isExporting: false, exportProgress: null, exportFileProgress: null });
             get().fetchRoms();
           }, 1500);
           unlisten?.();
+          unlistenFile?.();
         }
+      });
+      unlistenFile = await listen<ExportFileProgress>("export-file-progress", (event) => {
+        set({ exportFileProgress: event.payload });
       });
 
       await scraperApi.exportLibraryScrapedData(libraryId, format, targetDirectory, nameMode, romAssetsOnly, systemPaths, syncDelete);
     } catch (error) {
       unlisten?.();
+      unlistenFile?.();
       console.error("Failed to export library data:", error);
-      set({ isExporting: false });
+      set({ isExporting: false, exportFileProgress: null });
       throw error;
     }
   },

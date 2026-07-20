@@ -31,7 +31,9 @@
       "libraryLoadFailed": "Échec du chargement de la bibliothèque : {{error}}",
       "failed": "Échec de l'exportation : {{error}}",
       "syncDelete": "Synchronisation unidirectionnelle (supprimer les ROM en trop)",
-      "syncDeleteHint": "Une fois activé, l'export supprime dans la cible les ROM masquées ou supprimées de votre bibliothèque. Les fichiers BIOS sont toujours conservés et copiés. Cela efface des fichiers cibles — à utiliser avec prudence."
+      "syncDeleteHint": "Une fois activé, l'export supprime dans la cible les ROM masquées ou supprimées de votre bibliothèque. Les fichiers BIOS sont toujours conservés et copiés. Cela efface des fichiers cibles — à utiliser avec prudence.",
+      "etaLabel": "Restant",
+      "etaCalculating": "calcul en cours…"
     }
   }
 }

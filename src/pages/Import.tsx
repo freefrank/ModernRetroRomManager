@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import DirectoryInput from "@/components/common/DirectoryInput";
 import { Button, Card, Select, toast } from "@/components/ui";
 import { api } from "@/lib/api";
+import { formatDuration } from "@/lib/format";
 import { useRomStore } from "@/stores/romStore";
 import type { RomSystemSummary, ScanDirectory } from "@/types";
 
@@ -20,7 +21,7 @@ interface ExportSettings {
 
 export default function Import() {
   const { t } = useTranslation();
-  const { exportLibraryData, cancelExport, isExporting, exportProgress } = useRomStore();
+  const { exportLibraryData, cancelExport, isExporting, exportProgress, exportFileProgress } = useRomStore();
   const [libraries, setLibraries] = useState<ScanDirectory[]>([]);
   const [libraryId, setLibraryId] = useState("");
   const [systems, setSystems] = useState<RomSystemSummary[]>([]);
@@ -280,7 +281,18 @@ export default function Import() {
               {isExporting && exportProgress && (
                 <div className="mt-3">
                   <div className="mb-1 flex justify-between text-xs">
-                    <span>{exportProgress.message}</span><span>{exportProgress.current}%</span>
+                    <span>{exportProgress.message}</span>
+                    <span className="flex items-center gap-2 tabular-nums">
+                      {exportFileProgress && !exportProgress.finished && (
+                        <span className="text-text-muted">
+                          {t("import.export.etaLabel")}{" "}
+                          {exportFileProgress.eta_secs > 0
+                            ? formatDuration(exportFileProgress.eta_secs, t)
+                            : t("import.export.etaCalculating")}
+                        </span>
+                      )}
+                      <span>{exportProgress.current}%</span>
+                    </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-bg-tertiary">
                     <div className="h-full bg-accent-primary" style={{ width: `${exportProgress.current}%` }} />

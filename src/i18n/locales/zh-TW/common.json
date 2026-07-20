@@ -29,7 +29,17 @@
   "console": {
     "title": "控制台",
     "clear": "清空日誌",
-    "empty": "暫無日誌"
+    "empty": "暫無日誌",
+    "fileProgress": {
+      "copying": "複製中",
+      "remaining": "剩餘",
+      "calculating": "計算中…"
+    }
+  },
+  "duration": {
+    "hour": "{{count}}小時",
+    "minute": "{{count}}分",
+    "second": "{{count}}秒"
   },
   "scan": {
     "preparing": "準備中",

@@ -29,7 +29,17 @@
   "console": {
     "title": "Konsole",
     "clear": "Protokolle löschen",
-    "empty": "Keine Protokolle"
+    "empty": "Keine Protokolle",
+    "fileProgress": {
+      "copying": "Kopieren",
+      "remaining": "Verbleibend",
+      "calculating": "wird berechnet…"
+    }
+  },
+  "duration": {
+    "hour": "{{count}} Std. ",
+    "minute": "{{count}} Min. ",
+    "second": "{{count}} Sek."
   },
   "scan": {
     "preparing": "Vorbereiten",

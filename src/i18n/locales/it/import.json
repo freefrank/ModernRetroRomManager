@@ -31,7 +31,9 @@
       "libraryLoadFailed": "Impossibile caricare la libreria: {{error}}",
       "failed": "Esportazione non riuscita: {{error}}",
       "syncDelete": "Sincronizzazione unidirezionale (elimina ROM in eccesso nella destinazione)",
-      "syncDeleteHint": "Se attivo, l'esportazione elimina nella destinazione le ROM nascoste o rimosse dalla libreria. I file BIOS vengono sempre mantenuti e copiati. Questa operazione cancella file di destinazione — usare con cautela."
+      "syncDeleteHint": "Se attivo, l'esportazione elimina nella destinazione le ROM nascoste o rimosse dalla libreria. I file BIOS vengono sempre mantenuti e copiati. Questa operazione cancella file di destinazione — usare con cautela.",
+      "etaLabel": "Rimanente",
+      "etaCalculating": "calcolo…"
     }
   }
 }

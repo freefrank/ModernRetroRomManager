@@ -29,7 +29,17 @@
   "console": {
     "title": "Console",
     "clear": "Effacer les journaux",
-    "empty": "Aucun journal"
+    "empty": "Aucun journal",
+    "fileProgress": {
+      "copying": "Copie",
+      "remaining": "Restant",
+      "calculating": "calcul en cours…"
+    }
+  },
+  "duration": {
+    "hour": "{{count}} h ",
+    "minute": "{{count}} min ",
+    "second": "{{count}} s"
   },
   "scan": {
     "preparing": "Préparation",

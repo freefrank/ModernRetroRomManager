@@ -29,7 +29,17 @@
   "console": {
     "title": "Консоль",
     "clear": "Очистить журналы",
-    "empty": "Нет журналов"
+    "empty": "Нет журналов",
+    "fileProgress": {
+      "copying": "Копирование",
+      "remaining": "Осталось",
+      "calculating": "вычисление…"
+    }
+  },
+  "duration": {
+    "hour": "{{count}} ч ",
+    "minute": "{{count}} мин ",
+    "second": "{{count}} с"
   },
   "scan": {
     "preparing": "Подготовка",

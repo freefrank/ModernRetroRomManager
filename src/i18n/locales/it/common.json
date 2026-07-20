@@ -29,7 +29,17 @@
   "console": {
     "title": "Consolle",
     "clear": "Cancella registri",
-    "empty": "Nessun registro"
+    "empty": "Nessun registro",
+    "fileProgress": {
+      "copying": "Copia",
+      "remaining": "Rimanente",
+      "calculating": "calcolo…"
+    }
+  },
+  "duration": {
+    "hour": "{{count}} h ",
+    "minute": "{{count}} min ",
+    "second": "{{count}} s"
   },
   "scan": {
     "preparing": "Preparazione",

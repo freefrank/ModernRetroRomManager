@@ -31,7 +31,9 @@
       "libraryLoadFailed": "Failed to load library: {{error}}",
       "failed": "Export failed: {{error}}",
       "syncDelete": "One-way sync (delete extra ROMs at target)",
-      "syncDeleteHint": "When enabled, export deletes ROMs at the target that are hidden or removed in your library. BIOS files are always kept and copied. This erases target files — use with care."
+      "syncDeleteHint": "When enabled, export deletes ROMs at the target that are hidden or removed in your library. BIOS files are always kept and copied. This erases target files — use with care.",
+      "etaLabel": "ETA",
+      "etaCalculating": "calculating…"
     }
   }
 }
