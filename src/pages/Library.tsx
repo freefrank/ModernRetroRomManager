@@ -204,9 +204,18 @@ export default function Library() {
     }
     if (debouncedSearch) {
       const lowerQuery = debouncedSearch.toLowerCase();
+      // 覆盖文件名 + 全部名字变体(含未应用的预览抓取名 temp_data),
+      // 否则输入中文匹配不到中文文件名或预览中文名。
       list = list.filter((r) =>
-        [r.name, r.chinese_name, r.english_name]
-          .some((name) => name?.toLowerCase().includes(lowerQuery)),
+        [
+          r.file,
+          r.name,
+          r.chinese_name,
+          r.english_name,
+          r.temp_data?.name,
+          r.temp_data?.chinese_name,
+          r.temp_data?.english_name,
+        ].some((value) => value?.toLowerCase().includes(lowerQuery)),
       );
     }
     // 排序(稳定:同值保持原序)
