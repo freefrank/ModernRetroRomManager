@@ -991,6 +991,15 @@ fn export_system_data(
                         .unwrap_or(true)
                 });
             }
+            // 防御:只导出源头实际存在的 ROM 文件。临时元数据可能残留陈旧条目(如折叠 bug
+            // 留下的双层路径、或改名/删除后未重扫的条目),否则会把这些"幽灵"写进 gamelist,
+            // 指向根本没复制过去的文件,ES 里显示为无法启动的坏条目。
+            parsed.games.retain(|game| {
+                game.file
+                    .as_deref()
+                    .map(|file| source_directory.join(file.replace('\\', "/")).exists())
+                    .unwrap_or(false)
+            });
             Some(parsed)
         }
         Err(_) if copies_library => None,
