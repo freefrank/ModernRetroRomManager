@@ -20,7 +20,7 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 - Translate metadata for one game, a selection, or an entire platform through a configurable OpenAI-compatible endpoint, with merged requests, reasoning-effort control, adaptive retries, and per-language completion markers
 - Optional AI name-resolution fallback for batch scraping: translated ROMs that cannot be resolved locally are matched by the LLM against the built-in No-Intro title list, with local result caching
 - Export the active or a selected library for EmulationStation or Pegasus with file-level progress, live speed, cancellation, same-size skipping, an optional ROM-and-assets-only filter, and a free-space preflight that aborts before a partial copy
-- Inspect scan, scrape, provider, and error messages in a level-filtered bottom Console
+- Inspect scan, scrape, provider, and error messages in a level-filtered bottom Console; exports and one-way-sync decisions are also written to a log file, with an "Open log folder" button in Settings → About
 - ROM library right-click menu to open file location, hide/unhide, and permanently delete; hidden ROMs are neither shown nor synced on export
 - Optional one-way export sync deletes ROMs at the target that are hidden/removed in the library (BIOS always kept), keeping the target in sync
 - Import custom themes and use the built-in responsive dark interface; the Retro theme bundles Zpix for consistent English and Chinese pixel text

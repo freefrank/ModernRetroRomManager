@@ -6,6 +6,28 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.7] - 2026-07-20
+
+### English
+
+#### Fixed
+
+- One-way sync export no longer deletes and re-transfers ROMs that are still in the library. A safety net now checks every target entry against the same skip logic the copy step uses: anything still present in the source that would just be re-copied is never deleted. This covers cases the previous fix missed — e.g. a degenerate keep-set where a whole platform's metadata paths collapse to one wrong key — which caused each one-way-sync export to wipe and re-copy large amounts of existing ROMs.
+
+#### Added
+
+- Application activity (exports, and every one-way-sync delete/keep decision) is now written to `<config>/logs/mrrm.log`, and Settings → About gains an "Open log folder" button so the log can be retrieved for troubleshooting.
+
+### 简体中文
+
+#### 修复
+
+- 单向同步导出不再删除并重传仍在库里的 ROM。新增安全网:删除任何目标条目前,用与复制阶段相同的跳过判定检查——只要该条目在源里仍存在、且复制只会把它原样拷回,就绝不删除。这覆盖了上一版修复漏掉的情形(例如某个平台的元数据路径全部退化成同一个错误键),此前会导致每次单向同步导出都清空并重传大量已有 ROM。
+
+#### 新增
+
+- 应用活动(导出,以及单向同步的每条删除/保留决策)现写入 `<config>/logs/mrrm.log`,设置→关于页新增「打开日志目录」按钮,便于取回日志排查问题。
+
 ## [1.4.6] - 2026-07-20
 
 ### English
