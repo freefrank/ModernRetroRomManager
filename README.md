@@ -7,6 +7,7 @@ ModernRetroRomManager (MRRM) is a modern, cross-platform, open-source ROM librar
 ## Features
 
 - Scan and organize multi-platform ROM libraries
+- Organize multi-disc games automatically on save: each disc is moved into one subfolder, an `.m3u` playlist is generated, the library and export collapse to a single entry, and RetroArch/batocera can swap discs (recognizes `(Disc N)`, `Disc A/B`, `CD1/CD2`, and Chinese markers like `第1碟`)
 - Manage multiple independent libraries, rename them, and switch the active library from Settings or the ROM sidebar
 - Open large local, SD-card, and Samba libraries quickly with an immediate persistent index, per-system lazy loading, and non-blocking background incremental scans
 - Run a visible full refresh when needed, with current-system progress and structured Console logs

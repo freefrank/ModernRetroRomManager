@@ -6,6 +6,20 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-20
+
+### English
+
+#### Added
+
+- Multi-disc games are now organized automatically when you save a library. Discs of the same game — whether laid out as per-disc folders (`… Disc A/`, `CD1阳之章`) or flat files (`… (Disc 1).chd`) — are moved into a single `<game>/` subfolder, an `<game>.m3u` playlist is written next to it, and the library collapses them into one entry that points at the playlist. The exported `gamelist.xml`/`metadata.pegasus.txt` list one entry per game, and RetroArch/batocera can swap discs via the `.m3u`. Disc numbers are recognized from `(Disc/Disk/CD N)`, trailing `Disc A/B`, `CD1/CD2`, and Chinese markers (`第1碟`, `碟2`). Non-disc platforms and already-organized games are left untouched.
+
+### 简体中文
+
+#### 新增
+
+- 保存库时自动整理多碟游戏。同一游戏的各碟——无论是按碟分文件夹(`… Disc A/`、`CD1阳之章`)还是平铺文件(`… (Disc 1).chd`)——都会被搬进同一个 `<游戏名>/` 子文件夹,外层生成 `<游戏名>.m3u` 播放列表,库视图随之折叠成一条指向该 m3u 的记录。导出的 `gamelist.xml`/`metadata.pegasus.txt` 每个游戏只列一条,RetroArch/batocera 可通过 `.m3u` 换碟。碟号识别支持 `(Disc/Disk/CD N)`、结尾 `Disc A/B`、`CD1/CD2` 及中文标记(`第1碟`、`碟2`)。非光盘平台与已整理过的游戏不受影响。
+
 ## [1.3.0] - 2026-07-19
 
 ### English
