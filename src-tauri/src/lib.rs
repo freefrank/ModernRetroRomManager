@@ -1,6 +1,8 @@
 mod commands;
 mod config;
 mod embedded_resources;
+#[macro_use]
+mod logging;
 mod multidisc;
 mod ps3;
 mod rating;
@@ -78,6 +80,8 @@ pub fn run() {
             commands::storage::scan_orphaned_library_assets,
             commands::storage::cleanup_orphaned_library_assets,
             commands::storage::open_cache_directory,
+            commands::diagnostics::get_log_path,
+            commands::diagnostics::open_log_directory,
             commands::media_cache::resolve_cached_library_asset,
             // AI metadata translation
             commands::ai::get_ai_translation_config,

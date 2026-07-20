@@ -1,5 +1,6 @@
 //! 将临时抓取结果导出为 Pegasus 或 EmulationStation 数据包。
 
+use crate::applog;
 use crate::config::get_temp_dir_for_library;
 use crate::rom_index::{load_cached_roms_for_library, scan_library_by_id, ScanMode};
 use crate::scraper::pegasus::{
@@ -743,11 +744,15 @@ fn directory_contains_rom(directory: &Path) -> bool {
 
 /// 单向同步:删除目标里源库已隐藏或已删除的 ROM。
 /// - keep 集 = 已过滤隐藏的 metadata 中、源文件仍存在的游戏范围键(顶层文件名/子文件夹名)。
+/// - **安全网**:任何"源里仍存在且复制阶段会拷回"的顶层条目一律不删——否则删了又立刻被
+///   复制重建,纯属反复删/拷。`copy_skips` 必须与主复制用同一套跳过判定,保证删除决策
+///   与复制决策一致:只有源里已不存在、或复制会跳过(如隐藏)的条目才允许删。
 /// - BIOS 文件(顶层)保留;媒体/资源目录不动;只删 ROM 文件与确含 ROM 的游戏子文件夹。
 fn sync_delete_removed_roms(
     source: &Path,
     target: &Path,
     games: &[crate::scraper::pegasus::PegasusGame],
+    copy_skips: &dyn Fn(&Path) -> bool,
 ) -> Result<usize, String> {
     let scope_key = |file: &str| -> String {
         let normalized = file.replace('\\', "/");
@@ -763,9 +768,8 @@ fn sync_delete_removed_roms(
             if source.join(file).exists() {
                 keep.insert(scope_key(file));
                 // 多碟游戏折叠后 file 指向 <基名>.m3u,而各碟实际位于 <基名>/ 子文件夹,
-                // 其顶层条目名(基名)不同于 m3u 文件名。必须解析 m3u、把各碟引用路径的
-                // 顶层条目一并加入 keep,否则单向同步会把这些碟片文件夹当作"已移除"删掉
-                // (随后复制阶段又重建),导致每次导出反复删/拷一堆已有 ROM。
+                // 其顶层条目名(基名)不同于 m3u 文件名。解析 m3u、把各碟引用路径的顶层
+                // 条目一并加入 keep(与下方安全网互为兜底)。
                 if file.to_ascii_lowercase().ends_with(".m3u") {
                     if let Ok(content) = fs::read_to_string(source.join(file)) {
                         for line in content.lines() {
@@ -779,12 +783,26 @@ fn sync_delete_removed_roms(
             }
         }
     }
+    applog!(
+        "sync_delete 开始: source={} target={} games={} keep={:?}",
+        source.display(),
+        target.display(),
+        games.len(),
+        keep
+    );
+
+    // 源里仍存在且复制阶段会拷回的顶层条目 → 删了也会被立刻重建,一律保留(安全网)。
+    let restored_by_copy = |raw_name: &std::ffi::OsStr| -> bool {
+        let src = source.join(raw_name);
+        src.exists() && !copy_skips(&src)
+    };
 
     let mut removed = 0;
     for entry in fs::read_dir(target).map_err(|error| error.to_string())? {
         let entry = entry.map_err(|error| error.to_string())?;
         let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_lowercase();
+        let raw_name = entry.file_name();
+        let name = raw_name.to_string_lossy().to_lowercase();
         if path.is_dir() {
             // 媒体/资源/BIOS 目录不参与同步删除
             if matches!(
@@ -796,8 +814,13 @@ fn sync_delete_removed_roms(
             if keep.contains(&name) {
                 continue;
             }
+            if restored_by_copy(&raw_name) {
+                applog!("sync_delete 保留目录(源存在且会复制): {}", path.display());
+                continue;
+            }
             // 仅删除确实是游戏文件夹(含 ROM)的目录,避免误删任意目录
             if directory_contains_rom(&path) {
+                applog!("sync_delete 删除目录: {}", path.display());
                 fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
                 removed += 1;
             }
@@ -812,10 +835,16 @@ fn sync_delete_removed_roms(
             if keep.contains(&name) {
                 continue;
             }
+            if restored_by_copy(&raw_name) {
+                applog!("sync_delete 保留文件(源存在且会复制): {}", path.display());
+                continue;
+            }
+            applog!("sync_delete 删除文件: {}", path.display());
             fs::remove_file(&path).map_err(|error| error.to_string())?;
             removed += 1;
         }
     }
+    applog!("sync_delete 结束: removed={removed}");
     Ok(removed)
 }
 
@@ -909,12 +938,25 @@ fn export_system_data(
         }
     }
 
+    applog!(
+        "导出开始: system={system} source={} target={} copies_library={copies_library} \
+         sync_delete={sync_delete} rom_assets_only={rom_assets_only} games={}",
+        source_directory.display(),
+        target.display(),
+        metadata.as_ref().map(|m| m.games.len()).unwrap_or(0)
+    );
+
     // 导出到外部目录时:先清理(单向同步删除目标中源已隐藏/删除的 ROM),再校验空间,最后复制。
     if copies_library {
         if sync_delete {
             if let Some(parsed) = &metadata {
                 progress(2, "单向同步:清理目标中已移除的 ROM...".to_string());
-                sync_delete_removed_roms(&source_directory, &target, &parsed.games)?;
+                sync_delete_removed_roms(
+                    &source_directory,
+                    &target,
+                    &parsed.games,
+                    &skip_for_copy,
+                )?;
             }
         }
 
@@ -1355,7 +1397,7 @@ mod tests {
             file: Some("keep.sfc".into()),
             ..Default::default()
         };
-        let removed = sync_delete_removed_roms(&source, &target, &[visible]).unwrap();
+        let removed = sync_delete_removed_roms(&source, &target, &[visible], &|_: &Path| false).unwrap();
 
         assert_eq!(removed, 2, "应删除 hidden.sfc 与 gone.sfc");
         assert!(target.join("keep.sfc").exists(), "可见 ROM 保留");
@@ -1395,7 +1437,7 @@ mod tests {
             file: Some(r"KeepGame\Keep.cue".into()),
             ..Default::default()
         };
-        let removed = sync_delete_removed_roms(&source, &target, &[visible]).unwrap();
+        let removed = sync_delete_removed_roms(&source, &target, &[visible], &|_: &Path| false).unwrap();
 
         assert_eq!(removed, 1);
         assert!(target.join("KeepGame").join("Keep.cue").exists());
@@ -1441,7 +1483,7 @@ mod tests {
             file: Some("FF7.m3u".into()),
             ..Default::default()
         };
-        let removed = sync_delete_removed_roms(&source, &target, &[game]).unwrap();
+        let removed = sync_delete_removed_roms(&source, &target, &[game], &|_: &Path| false).unwrap();
 
         assert_eq!(removed, 1, "只应删除源已移除的 GoneGame");
         assert!(
@@ -1451,6 +1493,45 @@ mod tests {
         assert!(target.join("FF7").join("FF7 (Disc 2).cue").exists());
         assert!(target.join("FF7.m3u").exists(), "m3u 本身保留");
         assert!(!target.join("GoneGame").exists(), "源已移除的游戏应删除");
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn sync_delete_keeps_source_present_rom_even_when_keep_misses_it() {
+        // 安全网回归:即便 keep 集因 metadata.file 格式对不上而漏掉某个可见 ROM,
+        // 只要它在源里仍存在且复制阶段会拷回,就绝不能删——否则删了又立刻重传(churn)。
+        let base = std::env::temp_dir().join(format!(
+            "mrrm-sync-safety-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source = base.join("src");
+        let target = base.join("dst");
+        // 源:一个平铺 ROM + 一个文件夹型游戏,都仍在库里
+        fs::create_dir_all(source.join("FolderGame")).unwrap();
+        fs::write(source.join("Flat.chd"), b"rom").unwrap();
+        fs::write(source.join("FolderGame").join("game.mdf"), b"rom").unwrap();
+        // 目标:同样内容 + 一个源已移除的游戏
+        fs::create_dir_all(target.join("FolderGame")).unwrap();
+        fs::write(target.join("Flat.chd"), b"rom").unwrap();
+        fs::write(target.join("FolderGame").join("game.mdf"), b"rom").unwrap();
+        fs::create_dir_all(target.join("Removed")).unwrap();
+        fs::write(target.join("Removed").join("old.chd"), b"rom").unwrap();
+
+        // 故意传空 games:keep 全空,只能靠安全网保住源里仍在的条目。
+        // copy_skips 返回 false = 复制阶段会拷所有源文件。
+        let removed =
+            sync_delete_removed_roms(&source, &target, &[], &|_: &Path| false).unwrap();
+
+        assert_eq!(removed, 1, "只应删除源已移除的 Removed");
+        assert!(target.join("Flat.chd").exists(), "源里仍在的平铺 ROM 必须保留");
+        assert!(
+            target.join("FolderGame").join("game.mdf").exists(),
+            "源里仍在的文件夹型游戏必须保留"
+        );
+        assert!(!target.join("Removed").exists(), "源已移除的游戏应删除");
         let _ = fs::remove_dir_all(&base);
     }
 

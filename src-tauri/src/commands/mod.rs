@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod config;
+pub mod diagnostics;
 pub mod directory;
 pub mod export;
 pub mod import;
