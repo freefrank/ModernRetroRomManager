@@ -594,6 +594,7 @@ fn export_pegasus(
     system: &str,
     games: &[PegasusGame],
     name_mode: ExportNameMode,
+    fresh: bool,
 ) -> Result<PathBuf, String> {
     let path = target.join("metadata.pegasus.txt");
     let mut normalized_games = games.to_vec();
@@ -607,7 +608,8 @@ fn export_pegasus(
         include_assets: true,
         ..Default::default()
     };
-    write_pegasus_file(&path, &normalized_games, &options, true)?;
+    // fresh(单向同步)时不合并:只写当前导出集合,清除去重/折叠/BIOS 排除后的陈旧条目。
+    write_pegasus_file(&path, &normalized_games, &options, !fresh)?;
     Ok(path)
 }
 
@@ -680,9 +682,12 @@ fn export_emulationstation(
     target: &Path,
     games: &[PegasusGame],
     name_mode: ExportNameMode,
+    fresh: bool,
 ) -> Result<PathBuf, String> {
     let path = target.join("gamelist.xml");
-    let mut list = if path.exists() {
+    // fresh(单向同步)时从空开始:只保留当前导出集合,清除陈旧条目(去重/折叠/BIOS 排除
+    // 掉的旧条目、以及路径已不在导出集合里的孤儿);顺带避免损坏的旧 gamelist 解析失败阻塞导出。
+    let mut list = if !fresh && path.exists() {
         quick_xml::de::from_str::<EsGameList>(
             &fs::read_to_string(&path).map_err(|error| error.to_string())?,
         )
@@ -715,13 +720,16 @@ fn export_metadata_formats(
     games: &[PegasusGame],
     name_mode: ExportNameMode,
     format: &str,
+    fresh: bool,
 ) -> Result<PathBuf, String> {
     match format {
-        "emulationstation" | "es" | "gamelist" => export_emulationstation(target, games, name_mode),
-        "pegasus" => export_pegasus(target, system, games, name_mode),
+        "emulationstation" | "es" | "gamelist" => {
+            export_emulationstation(target, games, name_mode, fresh)
+        }
+        "pegasus" => export_pegasus(target, system, games, name_mode, fresh),
         "both" => {
-            export_emulationstation(target, games, name_mode)?;
-            export_pegasus(target, system, games, name_mode)?;
+            export_emulationstation(target, games, name_mode, fresh)?;
+            export_pegasus(target, system, games, name_mode, fresh)?;
             Ok(target.to_path_buf())
         }
         other => Err(format!("不支持的导出格式: {other}")),
@@ -1078,12 +1086,15 @@ fn export_system_data(
         if copies_library { 75 } else { 10 },
         "写入元数据...".to_string(),
     );
+    // 单向同步时元数据也全新写(不合并),使 gamelist/pegasus 与本次导出集合一致,
+    // 清除去重/折叠/BIOS 排除后残留的陈旧条目。
     let output = export_metadata_formats(
         &target,
         &system,
         &metadata.games,
         name_mode,
         resolved_format,
+        sync_delete,
     )?;
 
     let media_progress = |current, message| {
@@ -1615,7 +1626,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("mrrm-export-es-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
-        let path = export_emulationstation(&root, &[game()], ExportNameMode::Original).unwrap();
+        let path = export_emulationstation(&root, &[game()], ExportNameMode::Original, false).unwrap();
         let xml = fs::read_to_string(path).unwrap();
         assert!(xml.contains("<path>./game.gba</path>"));
         assert!(xml.contains("<image>./media/game/boxfront.png</image>"));
@@ -1645,7 +1656,7 @@ mod tests {
         )
         .unwrap();
 
-        let path = export_emulationstation(&root, &[game()], ExportNameMode::Original).unwrap();
+        let path = export_emulationstation(&root, &[game()], ExportNameMode::Original, false).unwrap();
         let xml = fs::read_to_string(path).unwrap();
         assert!(xml.contains("<path>./empty.gba</path>"));
         assert!(xml.contains("<path>./game.gba</path>"));
@@ -1658,10 +1669,49 @@ mod tests {
         let root = std::env::temp_dir().join(format!("mrrm-export-pg-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
-        let path = export_pegasus(&root, "GBA", &[game()], ExportNameMode::Original).unwrap();
+        let path = export_pegasus(&root, "GBA", &[game()], ExportNameMode::Original, false).unwrap();
         let content = fs::read_to_string(path).unwrap();
         assert!(content.contains("assets.boxFront: media/game/boxfront.png"));
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn fresh_export_prunes_stale_gamelist_entries_but_merge_keeps_them() {
+        // 单向同步(fresh=true)时 gamelist 只保留当前导出集合,清除路径已不在集合里的陈旧条目;
+        // 非 fresh 仍合并保留。修复:去重/折叠/BIOS 排除掉的旧条目此前会一直赖在 gamelist 里。
+        let root = std::env::temp_dir().join(format!(
+            "mrrm-export-fresh-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let mk = |name: &str, file: &str| PegasusGame {
+            name: name.into(),
+            file: Some(file.into()),
+            ..Default::default()
+        };
+
+        // 先写入 old.gba
+        export_emulationstation(&root, &[mk("Old", "old.gba")], ExportNameMode::Original, false)
+            .unwrap();
+        // fresh 写入 new.gba:old 应被清除
+        export_emulationstation(&root, &[mk("New", "new.gba")], ExportNameMode::Original, true)
+            .unwrap();
+        let fresh = fs::read_to_string(root.join("gamelist.xml")).unwrap();
+        assert!(fresh.contains("new.gba"), "新条目应在");
+        assert!(!fresh.contains("old.gba"), "fresh 应清除陈旧条目");
+
+        // 非 fresh 再写 old.gba:合并保留两者
+        export_emulationstation(&root, &[mk("Old", "old.gba")], ExportNameMode::Original, false)
+            .unwrap();
+        let merged = fs::read_to_string(root.join("gamelist.xml")).unwrap();
+        assert!(
+            merged.contains("old.gba") && merged.contains("new.gba"),
+            "非 fresh 合并保留两者"
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -1670,7 +1720,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
 
-        export_metadata_formats(&root, "GBA", &[game()], ExportNameMode::Original, "both").unwrap();
+        export_metadata_formats(&root, "GBA", &[game()], ExportNameMode::Original, "both", false).unwrap();
 
         assert!(root.join("metadata.pegasus.txt").is_file());
         assert!(root.join("gamelist.xml").is_file());
@@ -1687,12 +1737,12 @@ mod tests {
         mixed.box_front = Some("media\\game\\boxfront.png".into());
 
         let pegasus =
-            export_pegasus(&root, "GBA", &[mixed.clone()], ExportNameMode::Original).unwrap();
+            export_pegasus(&root, "GBA", &[mixed.clone()], ExportNameMode::Original, false).unwrap();
         let pegasus_content = fs::read_to_string(pegasus).unwrap();
         assert!(pegasus_content.contains("file: folder/game.gba"));
         assert!(pegasus_content.contains("assets.boxFront: media/game/boxfront.png"));
 
-        let es = export_emulationstation(&root, &[mixed], ExportNameMode::Original).unwrap();
+        let es = export_emulationstation(&root, &[mixed], ExportNameMode::Original, false).unwrap();
         let es_content = fs::read_to_string(es).unwrap();
         assert!(es_content.contains("<path>./folder/game.gba</path>"));
         assert!(es_content.contains("<image>./media/game/boxfront.png</image>"));
@@ -1709,12 +1759,12 @@ mod tests {
         named.extra.insert("x-mrrm-cn".into(), "中文游戏".into());
 
         let original =
-            export_pegasus(&root, "GBA", &[named.clone()], ExportNameMode::Original).unwrap();
+            export_pegasus(&root, "GBA", &[named.clone()], ExportNameMode::Original, false).unwrap();
         let content = fs::read_to_string(original).unwrap();
         assert!(content.contains("game: Original Game"));
         assert!(content.contains("x-mrrm-cn: 中文游戏"));
 
-        let chinese = export_emulationstation(&root, &[named], ExportNameMode::Chinese).unwrap();
+        let chinese = export_emulationstation(&root, &[named], ExportNameMode::Chinese, false).unwrap();
         let content = fs::read_to_string(chinese).unwrap();
         assert!(content.contains("<name>中文游戏</name>"));
         assert!(content.contains("<chinese-name>中文游戏</chinese-name>"));
