@@ -26,10 +26,6 @@
   - 位置：`src-tauri/src/commands/import.rs:6,11`
   - 两个 deprecated 兼容入口的错误信息仍是英文，应改为简体中文。
 
-- [ ] 整理审计文档命名
-  - 当前同时存在 `docs/AUDIT_FIX.md` 与 `docs/AUTID_FIX.md`。
-  - `AUTID_FIX.md` 疑似拼写错误，确认后合并或改名。
-
 ## 环境准备
 
 - [ ] 恢复后执行基础验证：
@@ -40,6 +36,8 @@
 
 ## 已完成（自上次整理起）
 
+- [x] 多碟游戏整理：保存时各碟归入 `<基名>/` 子文件夹、生成 `.m3u`，库与导出折叠成一条（`multidisc.rs` + `organize_multidisc_games`，v1.4.0）。
+- [x] 整理审计文档命名：`AUDIT_FIX.md` / `AUTID_FIX.md` 及已完成的前端重构计划移入 `docs/archive/`。
 - [x] 导入/导出页面接口对齐：`Import.tsx` 已改用 `exportLibraryData`，不再调用旧 `export_to_emulationstation`。
 - [x] ScreenScraper systemid 映射：`screenscraper.rs` 已提供完整 `system_id()` 平台别名映射表。
 - [x] 清理 `src/pages/Library.tsx` 中的过期 TODO 注释。

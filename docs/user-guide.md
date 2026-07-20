@@ -1,101 +1,114 @@
-# RetroRomManager 用户指南
+# ModernRetroRomManager 用户指南
+
+面向桌面版(Tauri)。功能全览见仓库根 `README.zh-CN.md`,变更历史见 `CHANGELOG.md`。
 
 ## 快速入门
 
 ### 安装
 
 #### Windows
-1. 下载 `RetroRomManager_x.x.x_x64.msi`
-2. 双击运行安装程序
-3. 按提示完成安装
+1. 下载 `ModernRetroRomManager_x.x.x_x64-setup.exe` 或 `.msi`
+2. 运行安装程序,按提示完成
+3. 亦提供免安装便携版
 
 #### macOS
-1. 下载 `RetroRomManager_x.x.x_macos.dmg`
+1. 下载 `ModernRetroRomManager_x.x.x_*.dmg`
 2. 拖拽到 Applications 文件夹
 
 #### Linux
-```bash
-# Debian/Ubuntu
-sudo dpkg -i retro-rom-manager_x.x.x_amd64.deb
-
-# Arch
-yay -S retro-rom-manager
-```
+下载对应的 `.deb` / `.rpm` / `.AppImage` 后安装或直接运行。
 
 ---
 
 ## 添加 ROM 库
 
-1. 点击左侧菜单 **"库管理"**
-2. 点击 **"添加目录"**
-3. 选择你的 ROM 目录或包含多个系统的根目录
-4. 选择元数据格式 (推荐 Pegasus 或 EmulationStation)
-5. 软件会自动解析并展示 ROM (无需漫长的导入过程)
+1. 进入 **库管理**,点击 **添加目录**(或把文件夹拖入窗口)
+2. 选择单个系统目录,或包含多个系统子目录的**根目录**
+3. 根目录可勾选要索引的系统子文件夹
+4. 软件即时建立持久索引并按系统展示 ROM,无需漫长导入
+
+可管理多个相互独立的库,支持改名,并从设置页或 ROM 侧栏切换当前库。大型本地 / SD 卡 / Samba 库通过持久索引、按系统延迟加载和后台增量扫描快速打开。
 
 ---
 
 ## 数据格式说明
 
-支持直接读取以下格式，无需导入步骤：
+直接读取以下格式,无需导入步骤:
 
-| 格式 | 文件 | 来源 |
-|------|------|------|
-| EmulationStation | gamelist.xml | RetroPie, ES-DE |
-| Pegasus | metadata.txt | Pegasus, Recalbox, Batocera |
-| 无 Metadata | (仅扫描文件) | 简单文件列表模式 |
+| 格式 | 文件 | 常见前端 |
+|------|------|----------|
+| EmulationStation | `gamelist.xml` | RetroPie, ES-DE, batocera |
+| Pegasus | `metadata.pegasus.txt` / `metadata.txt` | Pegasus |
+| 无 Metadata | (仅扫描 ROM 文件) | 简单文件列表模式 |
 
----
-
-## Scraping 游戏信息
-
-### 配置 API 密钥
-
-1. 进入 **设置 > Scraper**
-2. 添加你的 API 密钥:
-   - IGDB (需要 Twitch 账号)
-   - SteamGridDB (免费注册获取)
-   - TheGamesDB
-   - MobyGames
-   - AI Scraper (可选 OpenAI/Claude API Key，或使用本地 Ollama)
-
-### 单个游戏 Scrape
-
-1. 右键点击游戏
-2. 选择 **"Scrape"**
-3. 确认或编辑搜索结果
-4. 选择要下载的资产
-
-### 批量 Scrape
-
-1. 选择多个游戏 (Ctrl/Cmd + 点击)
-2. 右键 > **"批量 Scrape"**
-3. 配置选项后开始
+所有编辑先写入**临时元数据**(`config/temp`),不改动原始 ROM 目录;点击**保存**时才写回 ROM 目录。
 
 ---
 
-## 常用快捷键
+## 抓取游戏信息(Scraping)
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Ctrl+F` | 全局搜索 |
-| `Ctrl+R` | 刷新 |
-| `Ctrl+E` | 导出 |
-| `Del` | 删除选中 |
-| `F2` | 重命名 |
-| `F5` | Scrape 选中 |
+### 配置 Provider
+
+进入 **设置 > Scraper**。已集成的 Provider:
+
+- **ScreenScraper** — 已内置应用开发者凭据,只需填写你自己的会员用户名 / 密码即可提速
+- **SteamGridDB** — 免费注册获取 API Key(封面 / 横幅 / Logo / 图标)
+- **TheGamesDB** — 免费 API Key
+- **本地中文数据库** — 内置,用于汉化 ROM 的中英文名匹配(见「中文 ROM 整理」)
+- **AI 名称解析** — 可选,配置 OpenAI 兼容接口或本地模型,作为无法识别英文名时的兜底
+
+可为每个 Provider 配置凭据、请求速率、并发线程、优先级,并选择需要下载的媒体类型。结果按平台匹配度与资源完整度做置信度排序与故障切换。
+
+### 单个 / 批量抓取
+
+- **单个**:右键游戏 > **抓取**,确认或编辑搜索结果,勾选要下载的资产
+- **批量**:多选游戏(Ctrl/Cmd + 点击)或整平台 / 整库,右键 > **批量抓取**;可选择忽略已有元数据与缓存做全量重抓,支持进度提示与随时停止
+
+抓取结果先入临时元数据并异步下载媒体,确认无误后点击**保存**写回库目录。
+
+---
+
+## 中文 ROM 整理
+
+针对汉化 ROM:进入 **中文 ROM 工具**,扫描目录后基于内置数据库(cn_repo + jy6d-dz 双数据源)自动匹配中英文名,可一键批量修复、手动修正并锁定结果,再按 Pegasus 或 gamelist 格式导出。整理只写临时元数据,不破坏原始命名。
+
+---
+
+## 多碟游戏整理
+
+保存库时自动整理多碟游戏:同一游戏的各碟(无论是按碟分文件夹如 `… Disc A/`、`CD1阳之章`,还是平铺文件如 `… (Disc 1).chd`)会被搬进同一个 `<游戏名>/` 子文件夹,外层生成 `<游戏名>.m3u` 播放列表,库视图与导出随之折叠成**一条**指向该 m3u 的记录。RetroArch / batocera 可通过 `.m3u` 换碟。碟号识别支持 `(Disc/Disk/CD N)`、结尾 `Disc A/B`、`CD1/CD2` 及中文标记(`第1碟`、`碟2`)。非光盘平台与已整理过的游戏不受影响。
+
+---
+
+## 导出与同步
+
+- **保存 / 导出**:默认同时写 `gamelist.xml` 与 `metadata.pegasus.txt`(可选仅 Pegasus 或仅 EmulationStation),兼容 ES/batocera 与 Pegasus 前端
+- 支持按系统多选导出、原始名 / 中文名两种命名模式、仅导出 ROM 与资产、文件级进度与实时速度、同大小文件跳过、随时停止
+- **单向同步**(可选):把库导出到目标目录时,删除目标中已隐藏 / 删除的 ROM(BIOS 始终保留),使目标与库一致
+- 隐藏的 ROM 既不显示也不导出;可从 ROM 右键菜单打开文件位置、隐藏 / 取消隐藏、永久删除
+
+---
+
+## 界面与快捷键
+
+- 响应式暗色界面,支持导入自定义主题(`.rrtheme`)
+- 对话框按 **Esc** 关闭;搜索框按 **Enter** 执行搜索
+- 底部 **Console** 显示扫描 / 抓取 / Provider / 错误日志,支持按级别筛选,日志文本可选中复制
+- 界面语言:简体中文、繁体中文、英语、法语、德语、意大利语、西班牙语、俄语
 
 ---
 
 ## 常见问题
 
-### Q: ROM 无法识别？
-A: 尝试以下步骤:
-1. 检查文件是否完整
-2. 手动选择系统类型
-3. 使用 Hash 搜索
+### Q: ROM 无法识别?
+1. 确认文件完整、扩展名正确
+2. 建库时为该目录手动指定系统类型
+3. 支持的卡带平台可依赖 ROM Header / 序列号 + 内置数据库识别;光盘平台可用序列号匹配
 
-### Q: Scrape 速度慢？
-A: 建议:
-1. 注册付费 API 账户
-2. 调整并发请求数
-3. 使用缓存功能
+### Q: 抓取速度慢?
+1. 在设置中填写自己的 ScreenScraper 会员账号(免费用户限速明显)
+2. 调整并发线程与请求速率
+3. 复用媒体候选缓存,避免重复请求
+
+### Q: 修改后没生效?
+编辑只写入临时元数据,需点击**保存**才会写回 ROM 目录的 `gamelist.xml` / `metadata.pegasus.txt`。
