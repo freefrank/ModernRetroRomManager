@@ -330,7 +330,7 @@ fn stripped_name(name: &str) -> String {
 /// 兄弟轨 = 与代表文件同名(仅扩展名不同,如 cue/bin/sub),或仅在其后追加了
 /// `(track N)` 轨号后缀。共享前缀但语义独立的文件(如 `... special`、`game 2`、
 /// `gametta`、`(disc 10)` 相对 `(disc 1)`)一律不算,避免误吞独立游戏(审计 #8)。
-fn is_sibling_track(prefix: &str, candidate: &str) -> bool {
+pub(crate) fn is_sibling_track(prefix: &str, candidate: &str) -> bool {
     match candidate.strip_prefix(prefix) {
         None => false,
         Some("") => true,

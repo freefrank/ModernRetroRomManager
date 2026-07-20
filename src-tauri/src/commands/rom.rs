@@ -390,9 +390,18 @@ pub(crate) fn hidden_files_for_directory(directory: &str) -> Vec<String> {
 /// 文件一并隐藏;单文件游戏精确匹配。
 pub(crate) fn file_matches_hidden(file: &str, hidden_files: &[String]) -> bool {
     let normalize = |value: &str| value.replace('\\', "/");
+    // 去扩展名取 stem(小写)。ROM 文件均带扩展名,取最后一个 '.' 为分隔即可。
+    let stem = |value: &str| -> String {
+        value
+            .rsplit_once('.')
+            .map(|(s, _)| s)
+            .unwrap_or(value)
+            .to_lowercase()
+    };
     let target = normalize(file);
     let target_first = target.split('/').next().unwrap_or(&target).to_string();
     let target_has_subfolder = target.contains('/');
+    let target_stem = stem(&target);
     hidden_files.iter().any(|hidden| {
         let hidden = normalize(hidden);
         if hidden.contains('/') {
@@ -401,7 +410,9 @@ pub(crate) fn file_matches_hidden(file: &str, hidden_files: &[String]) -> bool {
         } else if target_has_subfolder {
             false
         } else {
-            target == hidden
+            // 平铺型:同名(不同扩展,如 cue+bin+sub)或 "(track N)" 兄弟轨都属同一游戏,
+            // 一并隐藏。此前仅精确匹配,导致隐藏游戏的载荷轨仍被复制/不被单向同步删除。
+            crate::multidisc::is_sibling_track(&stem(&hidden), &target_stem)
         }
     })
 }
@@ -543,6 +554,20 @@ mod hidden_tests {
         let hidden = vec!["Chrono Trigger.sfc".to_string()];
         assert!(file_matches_hidden("Chrono Trigger.sfc", &hidden));
         assert!(!file_matches_hidden("Final Fantasy.sfc", &hidden));
+    }
+
+    #[test]
+    fn hidden_match_covers_flat_multitrack_siblings() {
+        // 平铺型光盘游戏:隐藏 .cue 时,同名 .bin/.img/.sub 载荷轨与 (track N) 轨都应一并隐藏,
+        // 否则隐藏游戏的载荷轨仍被导出复制、且单向同步删不掉(回归)。
+        let hidden = vec!["Ridge Racer (Japan).cue".to_string()];
+        assert!(file_matches_hidden("Ridge Racer (Japan).cue", &hidden));
+        assert!(file_matches_hidden("Ridge Racer (Japan).bin", &hidden));
+        assert!(file_matches_hidden("Ridge Racer (Japan).sub", &hidden));
+        assert!(file_matches_hidden("Ridge Racer (Japan) (Track 2).bin", &hidden));
+        // 不误伤共享前缀但独立的游戏。
+        assert!(!file_matches_hidden("Ridge Racer (Japan) 2.cue", &hidden));
+        assert!(!file_matches_hidden("Ridge Racer Type 4 (Japan).cue", &hidden));
     }
 
     #[test]
