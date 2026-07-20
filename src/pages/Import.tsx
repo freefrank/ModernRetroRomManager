@@ -105,9 +105,6 @@ export default function Import() {
     () => libraries.find((library) => library.id === libraryId),
     [libraries, libraryId],
   );
-  useEffect(() => {
-    setTargetDirectory("");
-  }, [libraryId]);
 
   const allSystemsSelected = systems.length > 0 && selectedSystemPaths.length === systems.length;
   const toggleSystem = (path: string) => {
