@@ -6,6 +6,32 @@ All notable changes to this project are documented here. This file follows [Keep
 
 ## [Unreleased]
 
+## [1.4.10] - 2026-07-21
+
+### English
+
+#### Fixed
+
+- Export no longer writes `gamelist.xml`/`metadata.pegasus.txt` entries for ROMs that don't actually exist in the source. Stale temporary-metadata entries (left by disc collapsing or by files renamed/removed outside the app without a rescan) used to become "ghost" entries pointing at files that were never copied, showing up as broken games in EmulationStation.
+- Folders whose name starts with a dot (`.agents`, `.claude`, `.git`, …) are no longer scanned as game systems.
+- Multi-disc games no longer appear as one entry per disc in EmulationStation. The exported gamelist now marks each disc `.cue` referenced by an `.m3u` as `<hidden>true</hidden>`, so ES shows only the single `.m3u` game instead of each disc as a separate, English-named entry.
+
+#### Added
+
+- The system shelf now has a right-click menu on each system card to hide/unhide it (with a "show hidden systems" toggle) or permanently delete the whole platform folder (with confirmation).
+
+### 简体中文
+
+#### 修复
+
+- 导出不再为源头实际不存在的 ROM 写 `gamelist.xml`/`metadata.pegasus.txt` 条目。临时元数据里的陈旧条目(多碟折叠残留,或在 app 外改名/删除文件却没重扫)此前会变成指向从未复制过去文件的"幽灵"条目,在 EmulationStation 里显示为坏游戏。
+- 以 `.` 开头的文件夹(`.agents`、`.claude`、`.git` 等)不再被当作游戏平台扫描。
+- 多碟游戏不再在 EmulationStation 里每张碟显示一条。导出的 gamelist 现在把 `.m3u` 引用的各碟 `.cue` 标记为 `<hidden>true</hidden>`,ES 只显示 `.m3u` 一条,而不是把每张碟当成独立的英文名游戏。
+
+#### 新增
+
+- 系统货架每张卡片新增右键菜单:隐藏/取消隐藏(配"显示隐藏系统"开关),或永久删除整个平台文件夹(带确认)。
+
 ## [1.4.9] - 2026-07-20
 
 ### English
